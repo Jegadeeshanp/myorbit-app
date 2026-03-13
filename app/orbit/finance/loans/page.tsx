@@ -1,0 +1,25 @@
+import Sidebar from '@/components/Sidebar';
+import Navbar from '@/components/Navbar';
+
+export default function LoansPage() {
+  return (
+    <div className="flex bg-neutral-100 min-h-screen">
+      <Sidebar />
+      <div className="flex-1 flex flex-col">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <div className="text-center">
+              <div className="text-6xl mb-4">💰</div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Loans & Debt</h2>
+              <p className="text-gray-600">Track your loans, EMIs, and debt payments</p>
+              <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-blue-700">Manage home loans, car loans, and other debts in one place.</p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
