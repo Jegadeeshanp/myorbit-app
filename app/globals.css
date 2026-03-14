@@ -38,3 +38,31 @@ body {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* PWA safe area support */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+}
+
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* Smooth scrolling on mobile */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent overscroll bounce on iOS */
+body {
+  overscroll-behavior: none;
+}
+
+/* Better touch targets */
+button, a {
+  touch-action: manipulation;
+}

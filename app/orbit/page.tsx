@@ -65,7 +65,7 @@ export default function Orbit() {
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
-      <div className="mx-auto max-w-6xl px-6 py-20">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
         <div className="text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm">
             ⭑
@@ -77,7 +77,7 @@ export default function Orbit() {
           <p className="mt-1 text-base text-gray-600">Choose what you want to manage today.</p>
         </div>
 
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {MODULES.map((module) => (
             <ModuleCard key={module.id} {...module} />
           ))}
