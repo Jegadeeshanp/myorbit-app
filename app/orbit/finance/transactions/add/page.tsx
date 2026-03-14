@@ -94,14 +94,36 @@ export default function AddTransactionPage() {
 
   const handleSave = () => {
     if (!amount || !accountId) return;
-    addTransaction({
-      date,
-      category: category || 'Others',
-      description: notes || category || type,
-      amount: type === 'income' ? Number(amount) : -Number(amount),
-      type: type === 'transfer' ? 'expense' : type,
-      accountId,
-    });
+    if (type === 'transfer') {
+      if (!toAccountId) return;
+      // Debit from source
+      addTransaction({
+        date,
+        category: 'Transfer',
+        description: notes || 'Transfer',
+        amount: -Number(amount),
+        type: 'expense',
+        accountId,
+      });
+      // Credit to destination
+      addTransaction({
+        date,
+        category: 'Transfer',
+        description: notes || 'Transfer',
+        amount: Number(amount),
+        type: 'income',
+        accountId: toAccountId,
+      });
+    } else {
+      addTransaction({
+        date,
+        category: category || 'Others',
+        description: notes || category || type,
+        amount: type === 'income' ? Number(amount) : -Number(amount),
+        type,
+        accountId,
+      });
+    }
     router.back();
   };
 

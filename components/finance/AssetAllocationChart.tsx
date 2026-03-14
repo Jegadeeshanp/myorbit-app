@@ -1,6 +1,7 @@
 'use client';
 
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { getCategoryConfig } from '@/lib/assetCategories';
 import { useFinance } from '@/lib/financeStore';
 import { useMemo } from 'react';
 

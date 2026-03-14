@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
+import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 
 const INCOME_SOURCES = ['Salary', 'Freelance', 'Investments', 'Dividends', 'Rental', 'Gifts', 'Other'];
@@ -19,6 +20,17 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave }: AddI
   const [description, setDesc]    = useState('');
   const [amount, setAmount]       = useState('');
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
+
+  // Reset all fields when the modal opens
+  useEffect(() => {
+    if (open) {
+      setDate(new Date().toISOString().slice(0, 10));
+      setSource('Salary');
+      setDesc('');
+      setAmount('');
+      setAccountId(accounts[0]?.id ?? '');
+    }
+  }, [open]);
 
   const canSubmit = useMemo(() =>
     !!date && !!source && !!amount && !!accountId && !isNaN(Number(amount)) && Number(amount) > 0,

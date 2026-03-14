@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
@@ -22,6 +22,17 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave }: Add
   const [amount, setAmount]       = useState('');
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
 
+  // Reset all fields when the modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setDate(new Date().toISOString().slice(0, 10));
+      setCategory(CATEGORIES[0]);
+      setDesc('');
+      setAmount('');
+      setAccountId(accounts[0]?.id ?? '');
+    }
+  }, [open]);
+
   const canSubmit = useMemo(() =>
     !!date && !!category && !!description.trim() && !!amount && !!accountId && !isNaN(Number(amount)) && Number(amount) > 0,
   [date, category, description, amount, accountId]);
@@ -30,7 +41,7 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave }: Add
     if (!canSubmit) return;
     onSave({ date, category, description: description.trim(), amount: -Math.abs(Number(amount)), type: 'expense', accountId });
     toast('Expense recorded');
-    setDesc(''); setAmount('');
+    setDesc(''); setAmount(''); setCategory(CATEGORIES[0]);
     onClose();
   };
 

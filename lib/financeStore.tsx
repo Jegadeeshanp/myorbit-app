@@ -43,8 +43,10 @@ type FinanceAction =
   | { type: 'deleteTransaction'; payload: string }
   | { type: 'addAsset';         payload: Asset }
   | { type: 'deleteAsset';      payload: string }
-  | { type: 'addLiability';     payload: Liability }
-  | { type: 'deleteLiability';  payload: string }
+  | { type: 'addLiability';        payload: Liability }
+  | { type: 'updateLiability';      payload: Liability }
+  | { type: 'recordLiabilityPayment'; payload: { id: string; amount: number } }
+  | { type: 'deleteLiability';        payload: string }
   | { type: 'addBudget';        payload: BudgetCategory }
   | { type: 'deleteBudget';     payload: string }
   | { type: 'hydrate';          payload: FinanceState };
@@ -141,6 +143,23 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'addLiability':
       return { ...state, liabilities: [...state.liabilities, action.payload] };
 
+    case 'updateLiability':
+      return { ...state, liabilities: state.liabilities.map(l => l.id === action.payload.id ? action.payload : l) };
+
+    case 'recordLiabilityPayment': {
+      const { id, amount } = action.payload;
+      return {
+        ...state,
+        liabilities: state.liabilities.map(l => {
+          if (l.id !== id) return l;
+          const newOutstanding = Math.max(0, l.outstanding - amount);
+          const newRepaid      = l.totalRepaid + amount;
+          const newEmisLeft    = Math.max(0, l.emisLeft - 1);
+          return { ...l, outstanding: newOutstanding, totalRepaid: newRepaid, emisLeft: newEmisLeft };
+        }),
+      };
+    }
+
     case 'deleteLiability':
       return { ...state, liabilities: state.liabilities.filter(l => l.id !== action.payload) };
 
@@ -163,8 +182,10 @@ type FinanceContextValue = {
   deleteTransaction:(id: string)                            => void;
   addAsset:         (asset:       Omit<Asset,        'id'>) => void;
   deleteAsset:      (id: string)                            => void;
-  addLiability:     (liability:   Omit<Liability,    'id'>) => void;
-  deleteLiability:  (id: string)                            => void;
+  addLiability:          (liability: Omit<Liability, 'id'>) => void;
+  updateLiability:       (liability: Liability)              => void;
+  recordLiabilityPayment:(id: string, amount: number)        => void;
+  deleteLiability:       (id: string)                        => void;
   addBudget:        (budget:      Omit<BudgetCategory,'id'>) => void;
   deleteBudget:     (id: string)                            => void;
   clearData:        ()                                      => void;
@@ -196,8 +217,10 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     deleteTransaction:(id: string)                   => dispatch({ type: 'deleteTransaction',payload: id }),
     addAsset:         (a: Omit<Asset,         'id'>) => dispatch({ type: 'addAsset',         payload: { ...a, id: generateId() } }),
     deleteAsset:      (id: string)                   => dispatch({ type: 'deleteAsset',      payload: id }),
-    addLiability:     (l: Omit<Liability,     'id'>) => dispatch({ type: 'addLiability',     payload: { ...l, id: generateId() } }),
-    deleteLiability:  (id: string)                   => dispatch({ type: 'deleteLiability',  payload: id }),
+    addLiability:          (l: Omit<Liability, 'id'>) => dispatch({ type: 'addLiability',          payload: { ...l, id: generateId() } }),
+    updateLiability:       (l: Liability)              => dispatch({ type: 'updateLiability',       payload: l }),
+    recordLiabilityPayment:(id: string, amount: number)=> dispatch({ type: 'recordLiabilityPayment', payload: { id, amount } }),
+    deleteLiability:       (id: string)                => dispatch({ type: 'deleteLiability',        payload: id }),
     addBudget:        (b: Omit<BudgetCategory,'id'>) => dispatch({ type: 'addBudget',        payload: { ...b, id: generateId() } }),
     deleteBudget:     (id: string)                   => dispatch({ type: 'deleteBudget',     payload: id }),
     clearData: () => {
