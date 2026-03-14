@@ -67,6 +67,7 @@ export default function FinanceOverviewPage() {
   return (
     <div className="space-y-5">
       <FinanceTopBar />
+      <p className="text-sm text-gray-500">Your personal money command center — manage and control finances with clarity.</p>
 
       {/* Net Worth */}
       <NetWorthCard />

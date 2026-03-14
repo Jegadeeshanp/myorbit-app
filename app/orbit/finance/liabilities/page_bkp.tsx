@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import LiabilityTable from '@/components/finance/LiabilityTable';
 import AddLiabilityModal from '@/components/finance/AddLiabilityModal';
-import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
 
 export default function LiabilitiesPage() {
@@ -16,7 +15,17 @@ export default function LiabilitiesPage() {
 
   return (
     <div className="space-y-6">
-      <FinanceTopBar action={
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Liabilities</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Keep an eye on loans, credit, and monthly obligations.
+          </p>
+          <div className="mt-3 text-sm text-gray-600">
+            Total outstanding: <span className="font-semibold">₹{totalOutstanding.toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -24,7 +33,7 @@ export default function LiabilitiesPage() {
         >
           Add liability
         </button>
-      } />
+      </header>
 
       <div className="rounded-2xl border border-white/40 bg-white/60 p-6 shadow-sm">
         <LiabilityTable liabilities={state.liabilities} />

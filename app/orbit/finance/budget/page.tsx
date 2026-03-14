@@ -1,26 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import BudgetCard from '@/components/finance/BudgetCard';
-import { budgets as budgetsData, BudgetCategory } from '@/lib/financeData';
+import { useFinance } from '@/lib/financeStore';
+import FinanceTopBar from '@/components/finance/FinanceTopBar';
 
 export default function BudgetPage() {
-  const [budgets] = useState<BudgetCategory[]>(budgetsData);
+  const { state } = useFinance();
+  const { budgets } = state;
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Budget</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Follow your monthly spending plan and stay on track.
-          </p>
+      <FinanceTopBar action={
+        <div className="flex gap-2">
+          <Link
+            href="/orbit/finance/categories"
+            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+          >
+            Categories
+          </Link>
+          <Link
+            href="/orbit/finance/budget/add"
+            className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+          >
+            Add budget
+          </Link>
         </div>
-
-        <button className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
-          Adjust budget
-        </button>
-      </header>
+      } />
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {budgets.map((budget) => (

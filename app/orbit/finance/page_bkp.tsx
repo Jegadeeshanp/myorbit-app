@@ -17,8 +17,6 @@ import SavingsRateCard     from '@/components/finance/SavingsRateCard';
 import BudgetStatus        from '@/components/finance/BudgetStatus';
 import UpcomingBills       from '@/components/finance/UpcomingBills';
 import QuickActions        from '@/components/finance/QuickActions';
-import SmartInsights       from '@/components/finance/SmartInsights';
-import FinancialHealthScore from '@/components/finance/FinancialHealthScore';
 
 function fmt(v: number) {
   return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -104,12 +102,6 @@ export default function FinanceOverviewPage() {
 
       {/* Quick actions */}
       <QuickActions />
-
-      {/* Health + Insights */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <FinancialHealthScore transactions={transactions} />
-        <SmartInsights transactions={transactions} />
-      </div>
 
       {/* Cash Flow */}
       <CashFlowChart data={monthData} />

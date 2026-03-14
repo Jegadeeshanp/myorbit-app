@@ -1,6 +1,7 @@
 'use client';
 
-import { Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb, LogOut } from 'lucide-react';
+import { Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb, LogOut, Settings, Tag } from 'lucide-react';
+import Link from 'next/link';
 import ModuleCard from '@/components/ModuleCard';
 import { useAuth } from '@/lib/authStore';
 import { useRouter } from 'next/navigation';
@@ -82,12 +83,12 @@ export default function Orbit() {
           ))}
         </div>
 
-        <div className="mt-12 text-center">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
-          >
+        <div className="mt-12 flex items-center justify-center gap-3">
+          <Link href="/orbit/settings" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900">
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
+          <button type="button" onClick={handleSignOut} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900">
             <LogOut className="h-4 w-4" />
             Sign out
           </button>

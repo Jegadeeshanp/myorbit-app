@@ -2,18 +2,24 @@
 
 import { insights as insightsData, Insight } from '@/lib/financeData';
 import { useState } from 'react';
-import FinanceTopBar from '@/components/finance/FinanceTopBar';
 
 export default function InsightsPage() {
   const [insights] = useState<Insight[]>(insightsData);
 
   return (
     <div className="space-y-6">
-      <FinanceTopBar action={
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Insights</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Financial insights based on your activity and trends.
+          </p>
+        </div>
+
         <button className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
           Refresh insights
         </button>
-      } />
+      </header>
 
       <div className="grid gap-6 md:grid-cols-2">
         {insights.map((insight) => (
