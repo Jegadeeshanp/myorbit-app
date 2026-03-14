@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
 import { AuthProvider } from '@/lib/authStore';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
-import { auth } from '@/lib/auth';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -26,9 +25,9 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-
+// Root layout does NOT call auth() — SessionProvider handles session
+// via its own cookie-based client fetch. auth() belongs in protected layouts.
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -39,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <SessionProvider session={session}>
+        <SessionProvider>
           <AuthProvider>{children}</AuthProvider>
         </SessionProvider>
         <ServiceWorkerRegistration />
