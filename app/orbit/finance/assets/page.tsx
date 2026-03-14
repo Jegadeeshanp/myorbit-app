@@ -155,7 +155,7 @@ export default function AssetsPage() {
                   <Pie data={allocationData} dataKey="value" innerRadius={60} outerRadius={95} paddingAngle={3} strokeWidth={0}>
                     {allocationData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }} />
+                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
