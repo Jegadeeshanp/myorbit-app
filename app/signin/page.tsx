@@ -8,20 +8,18 @@ import { useAuth } from '@/lib/authStore';
 export default function SignInPage() {
   const router = useRouter();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading]   = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
-
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
       return;
     }
-
     setLoading(true);
     try {
       await signIn(email.trim(), password);
@@ -46,55 +44,27 @@ export default function SignInPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
           )}
-
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              required
-            />
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="email">Email</label>
+            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200" />
           </div>
-
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              required
-            />
+            <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="password">Password</label>
+            <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200" />
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-700/30 transition hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
+          <button type="submit" disabled={loading}
+            className="w-full rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed">
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-600">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-semibold text-emerald-700 hover:text-emerald-900">
-            Create one
-          </Link>
+          <Link href="/signup" className="font-semibold text-emerald-700 hover:text-emerald-900">Create one</Link>
         </div>
       </div>
     </main>

@@ -5,7 +5,23 @@ import { useFinance } from '@/lib/financeStore';
 import { Transaction } from '@/lib/financeData';
 import { ShieldCheck } from 'lucide-react';
 
-function getScore(transactions: Transaction[], totalAssets: number, totalLiab: number): { score: number; factors: { label: string; score: number; max: number }[]; summary: string } {
+function getScore(transactions: Transaction[], totalAssets: number, totalLiab: number): { score: number; factors: { label: string; score: number; max: number }[]; summary: string; hasData: boolean } {
+  const hasData = transactions.length > 0 || totalAssets > 0 || totalLiab > 0;
+
+  if (!hasData) {
+    return {
+      score: 0,
+      hasData: false,
+      factors: [
+        { label: 'Savings Rate',    score: 0, max: 25 },
+        { label: 'Debt Level',      score: 0, max: 25 },
+        { label: 'Consistency',     score: 0, max: 25 },
+        { label: 'Diversification', score: 0, max: 25 },
+      ],
+      summary: 'Add your accounts, transactions and assets to get a personalised health score.',
+    };
+  }
+
   const now = new Date();
   const thisMonth = transactions.filter(t => {
     const d = new Date(t.date);
@@ -15,10 +31,10 @@ function getScore(transactions: Transaction[], totalAssets: number, totalLiab: n
   const expense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
 
-  const savingsScore      = Math.min(25, Math.round(savingsRate * 0.8));
-  const debtScore         = totalLiab < totalAssets * 0.3 ? 25 : totalLiab < totalAssets * 0.5 ? 18 : 10;
-  const consistencyScore  = transactions.length > 5 ? 25 : Math.round(transactions.length * 5);
-  const diversifyScore    = 25;
+  const savingsScore     = Math.min(25, Math.round(savingsRate * 0.8));
+  const debtScore        = totalAssets === 0 ? 0 : totalLiab < totalAssets * 0.3 ? 25 : totalLiab < totalAssets * 0.5 ? 18 : 10;
+  const consistencyScore = transactions.length > 5 ? 25 : Math.round(transactions.length * 5);
+  const diversifyScore   = totalAssets > 0 ? 25 : 0;
 
   const total = savingsScore + debtScore + consistencyScore + diversifyScore;
 
@@ -28,11 +44,12 @@ function getScore(transactions: Transaction[], totalAssets: number, totalLiab: n
 
   return {
     score: total,
+    hasData: true,
     factors: [
-      { label: 'Savings Rate',   score: savingsScore,     max: 25 },
-      { label: 'Debt Level',     score: debtScore,        max: 25 },
-      { label: 'Consistency',    score: consistencyScore, max: 25 },
-      { label: 'Diversification',score: diversifyScore,   max: 25 },
+      { label: 'Savings Rate',    score: savingsScore,     max: 25 },
+      { label: 'Debt Level',      score: debtScore,        max: 25 },
+      { label: 'Consistency',     score: consistencyScore, max: 25 },
+      { label: 'Diversification', score: diversifyScore,   max: 25 },
     ],
     summary,
   };

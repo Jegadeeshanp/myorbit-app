@@ -29,10 +29,14 @@ export default function NetWorthCard() {
         <p className={`text-4xl font-bold tracking-tight leading-none ${isPositive ? 'text-gray-900' : 'text-rose-600'}`}>
           {isPositive ? '' : '-'}{fmt(Math.abs(netWorth))}
         </p>
-        <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 mb-0.5">
-          <TrendingUp className="h-3 w-3 text-emerald-600" />
-          <span className="text-xs font-semibold text-emerald-600">+4.2% this month</span>
-        </div>
+        {total > 0 && (
+          <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 mb-0.5">
+            <TrendingUp className="h-3 w-3 text-emerald-600" />
+            <span className="text-xs font-semibold text-emerald-600">
+              {assetPct}% in assets
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Assets • Liabilities inline */}

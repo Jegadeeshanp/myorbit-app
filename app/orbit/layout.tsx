@@ -1,5 +1,8 @@
-import AuthGuard from '@/components/AuthGuard';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function OrbitLayout({ children }: { children: React.ReactNode }) {
-  return <AuthGuard>{children}</AuthGuard>;
+export default async function OrbitLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  if (!session?.user) redirect('/signin');
+  return <>{children}</>;
 }

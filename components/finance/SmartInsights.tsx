@@ -3,10 +3,11 @@
 import { useMemo } from 'react';
 import { Lightbulb, TrendingUp, TrendingDown, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Transaction } from '@/lib/financeData';
+import { useFinance } from '@/lib/financeStore';
 
 type Insight = { icon: React.ElementType; text: string; type: 'positive' | 'warning' | 'neutral' };
 
-function getInsights(transactions: Transaction[]): Insight[] {
+function getInsights(transactions: Transaction[], totalAssets: number, totalLiab: number): Insight[] {
   const now = new Date();
   const thisMonth = transactions.filter(t => {
     const d = new Date(t.date);
@@ -44,8 +45,13 @@ function getInsights(transactions: Transaction[]): Insight[] {
   else if (savingsRate > 10) insights.push({ icon: Lightbulb, text: `Your savings rate is ${savingsRate}% this month. Try to push above 30%.`, type: 'neutral' });
   else if (thisIncome > 0)   insights.push({ icon: AlertCircle, text: `Your savings rate is only ${savingsRate}%. Consider cutting discretionary spending.`, type: 'warning' });
 
-  // Net worth trend
-  insights.push({ icon: TrendingUp, text: `Your net worth grew by 4.2% this month — keep up the momentum.`, type: 'positive' });
+  // Only show net worth insight when there is actual data
+  if (totalAssets > 0 || totalLiab > 0) {
+    const debtRatio = totalAssets > 0 ? Math.round((totalLiab / totalAssets) * 100) : 0;
+    if (debtRatio < 30) insights.push({ icon: TrendingUp, text: `Your debt-to-asset ratio is ${debtRatio}% — a healthy financial position.`, type: 'positive' });
+    else if (debtRatio < 60) insights.push({ icon: Lightbulb, text: `Your debt is ${debtRatio}% of your assets. Focus on paying down liabilities.`, type: 'neutral' });
+    else insights.push({ icon: AlertCircle, text: `Your debt is ${debtRatio}% of your assets. Prioritise reducing debt urgently.`, type: 'warning' });
+  }
 
   return insights.slice(0, 4);
 }
@@ -57,7 +63,11 @@ const TYPE_STYLE = {
 };
 
 export default function SmartInsights({ transactions }: { transactions: Transaction[] }) {
-  const insights = useMemo(() => getInsights(transactions), [transactions]);
+  const { state } = useFinance();
+  const insights = useMemo(
+    () => getInsights(transactions, state.assets.reduce((s,a) => s + a.value, 0), state.liabilities.reduce((s,l) => s + l.outstanding, 0)),
+    [transactions, state.assets, state.liabilities]
+  );
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -66,18 +76,25 @@ export default function SmartInsights({ transactions }: { transactions: Transact
         <h2 className="text-sm font-semibold text-gray-900">Smart Insights</h2>
         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">AI</span>
       </div>
-      <div className="grid gap-2.5 sm:grid-cols-2">
-        {insights.map((ins, i) => {
-          const s = TYPE_STYLE[ins.type];
-          const Icon = ins.icon;
-          return (
-            <div key={i} className={`flex items-start gap-3 rounded-xl border ${s.border} ${s.bg} p-3.5`}>
-              <Icon className={`mt-0.5 h-4 w-4 flex-none ${s.icon}`} />
-              <p className={`text-xs leading-relaxed ${s.text}`}>{ins.text}</p>
-            </div>
-          );
-        })}
-      </div>
+      {insights.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <Lightbulb className="mb-2 h-8 w-8 text-gray-200" />
+          <p className="text-sm text-gray-400">Add transactions and assets to get personalised insights.</p>
+        </div>
+      ) : (
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {insights.map((ins, i) => {
+            const s = TYPE_STYLE[ins.type];
+            const Icon = ins.icon;
+            return (
+              <div key={i} className={`flex items-start gap-3 rounded-xl border ${s.border} ${s.bg} p-3.5`}>
+                <Icon className={`mt-0.5 h-4 w-4 flex-none ${s.icon}`} />
+                <p className={`text-xs leading-relaxed ${s.text}`}>{ins.text}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,19 +1,9 @@
 'use client';
 
-import React, {
-  createContext,
-  PropsWithChildren,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from 'react';
+import { createContext, useContext, PropsWithChildren } from 'react';
+import { useSession, signIn as nextSignIn, signOut as nextSignOut } from 'next-auth/react';
 
-export type User = {
-  id: string;
-  email: string;
-  name: string;
-};
+export type User = { id: string; email: string; name: string };
 
 type AuthState =
   | { status: 'loading' }
@@ -27,97 +17,58 @@ type AuthContextValue = {
   signOut: () => void;
 };
 
-const AUTH_USERS_KEY = 'myorbit_users_v1';
-const AUTH_SESSION_KEY = 'myorbit_session_v1';
-
-type StoredUser = { id: string; email: string; name: string; passwordHash: string };
-
-// Naive hash — good enough for a localStorage-only demo; NOT suitable for production.
-async function hashPassword(password: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(password + 'myorbit_salt')
-  );
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function getUsers(): StoredUser[] {
-  try {
-    return JSON.parse(localStorage.getItem(AUTH_USERS_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: StoredUser[]) {
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
-}
-
-function saveSession(user: User) {
-  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(user));
-}
-
-function clearSession() {
-  localStorage.removeItem(AUTH_SESSION_KEY);
-}
-
-function loadSession(): User | null {
-  try {
-    const raw = localStorage.getItem(AUTH_SESSION_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
-
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    const session = loadSession();
-    setAuth(session ? { status: 'authenticated', user: session } : { status: 'unauthenticated' });
-  }, []);
+  const auth: AuthState =
+    status === 'loading'
+      ? { status: 'loading' }
+      : status === 'authenticated' && session?.user
+      ? { status: 'authenticated', user: session.user as User }
+      : { status: 'unauthenticated' };
 
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const users = getUsers();
-    if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error('An account with this email already exists.');
+  const signUp = async (email: string, password: string, name: string) => {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ error: 'Sign up failed' }));
+      throw new Error(data.error ?? 'Sign up failed');
     }
-    const passwordHash = await hashPassword(password);
-    const user: StoredUser = {
-      id: crypto.randomUUID?.() ?? `${Date.now()}`,
+
+    // Auto sign-in after registration
+    const result = await nextSignIn('credentials', {
       email,
-      name,
-      passwordHash,
-    };
-    saveUsers([...users, user]);
-    const session: User = { id: user.id, email: user.email, name: user.name };
-    saveSession(session);
-    setAuth({ status: 'authenticated', user: session });
-  }, []);
+      password,
+      redirect: false,
+    });
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const users = getUsers();
-    const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!found) throw new Error('No account found with that email.');
-    const hash = await hashPassword(password);
-    if (hash !== found.passwordHash) throw new Error('Incorrect password.');
-    const session: User = { id: found.id, email: found.email, name: found.name };
-    saveSession(session);
-    setAuth({ status: 'authenticated', user: session });
-  }, []);
+    if (result?.error) {
+      throw new Error('Account created but sign in failed. Please sign in manually.');
+    }
+  };
 
-  const signOut = useCallback(() => {
-    clearSession();
-    setAuth({ status: 'unauthenticated' });
-  }, []);
+  const signIn = async (email: string, password: string) => {
+    const result = await nextSignIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error || !result?.ok) {
+      throw new Error('Invalid email or password.');
+    }
+  };
+
+  const handleSignOut = () => nextSignOut({ callbackUrl: '/signin' });
 
   return (
-    <AuthContext.Provider value={{ auth, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ auth, signUp, signIn, signOut: handleSignOut }}>
       {children}
     </AuthContext.Provider>
   );

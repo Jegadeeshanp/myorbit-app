@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { SessionProvider } from 'next-auth/react';
 import { AuthProvider } from '@/lib/authStore';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
+import { auth } from '@/lib/auth';
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -11,16 +13,9 @@ export const metadata: Metadata = {
   title: 'MyOrbit — Your life, one orbit',
   description: 'Track your finances, goals, health, habits and tasks in one beautiful dashboard.',
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'MyOrbit',
-  },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'MyOrbit' },
   formatDetection: { telephone: false },
-  icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
-  },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
 };
 
 export const viewport: Viewport = {
@@ -31,7 +26,9 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+
   return (
     <html lang="en">
       <head>
@@ -42,7 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <SessionProvider session={session}>
+          <AuthProvider>{children}</AuthProvider>
+        </SessionProvider>
         <ServiceWorkerRegistration />
       </body>
     </html>

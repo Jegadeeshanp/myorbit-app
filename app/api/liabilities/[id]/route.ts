@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { liabilitySchema } from '@/lib/validation';
+import { encryptNumber, decryptNumber } from '@/lib/encryption';
+
+async function decryptLiability(row: any) {
+  return {
+    id: row.id, name: row.name, lender: row.lender ?? undefined,
+    nextDueDate: row.nextDueDate ?? undefined, emisLeft: row.emisLeft,
+    borrowed: await decryptNumber(row.borrowed),
+    outstanding: await decryptNumber(row.outstanding),
+    monthlyEmi: await decryptNumber(row.monthlyEmi),
+    totalRepaid: await decryptNumber(row.totalRepaid),
+  };
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const userId = await requireUserId();
+    const existing = await prisma.liability.findFirst({ where: { id: params.id, userId } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const parsed = liabilitySchema.partial().safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+
+    const data: any = { ...parsed.data };
+    for (const f of ['borrowed', 'outstanding', 'monthlyEmi', 'totalRepaid'] as const) {
+      if (data[f] != null) data[f] = await encryptNumber(data[f]);
+    }
+
+    const row = await prisma.liability.update({ where: { id: params.id }, data });
+    return NextResponse.json(await decryptLiability(row));
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const userId = await requireUserId();
+    const existing = await prisma.liability.findFirst({ where: { id: params.id, userId } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    await prisma.liability.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}

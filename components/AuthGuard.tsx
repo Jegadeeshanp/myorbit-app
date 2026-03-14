@@ -1,18 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authStore';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { auth } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (auth.status === 'unauthenticated') {
-      router.replace('/signin');
-    }
-  }, [auth.status, router]);
 
   if (auth.status === 'loading') {
     return (
