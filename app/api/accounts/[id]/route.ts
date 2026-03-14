@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { accountSchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
 
+export const runtime = 'nodejs';
+
 async function decryptAccount(row: any) {
   return {
     id: row.id, name: row.name, type: row.type,
@@ -12,21 +14,21 @@ async function decryptAccount(row: any) {
   };
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const userId = await requireUserId();
-    const existing = await prisma.account.findFirst({ where: { id: params.id, userId } });
+    const existing = await prisma.account.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const body = await req.json();
-    const parsed = accountSchema.partial().safeParse(body);
+    const parsed = accountSchema.partial().safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
     const data: any = { ...parsed.data };
     if (data.balance != null) data.balance = await encryptNumber(data.balance);
     if (data.creditLimit != null) data.creditLimit = await encryptNumber(data.creditLimit);
 
-    const row = await prisma.account.update({ where: { id: params.id }, data });
+    const row = await prisma.account.update({ where: { id }, data });
     return NextResponse.json(await decryptAccount(row));
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,12 +36,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const userId = await requireUserId();
-    const existing = await prisma.account.findFirst({ where: { id: params.id, userId } });
+    const existing = await prisma.account.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    await prisma.account.delete({ where: { id: params.id } });
+    await prisma.account.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
