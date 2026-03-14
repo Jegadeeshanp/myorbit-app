@@ -400,7 +400,7 @@ function AboutSection() {
               <div>
                 <h4 className="text-lg font-semibold text-gray-900">Made for routines</h4>
                 <p className="mt-2 text-sm text-gray-600 leading-relaxed">
-                  Whether you're tracking finances, habits, or goals, MyOrbit is built to be part of your daily rhythm.
+                  Whether you&apos;re tracking finances, habits, or goals, MyOrbit is built to be part of your daily rhythm.
                 </p>
               </div>
             </div>
