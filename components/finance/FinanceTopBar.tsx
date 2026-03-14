@@ -4,6 +4,16 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
+const PAGE_TITLES: Record<string, string> = {
+  '/orbit/finance':              'Overview',
+  '/orbit/finance/accounts':     'Accounts',
+  '/orbit/finance/transactions': 'Transactions',
+  '/orbit/finance/assets':       'Assets',
+  '/orbit/finance/liabilities':  'Liabilities',
+  '/orbit/finance/budget':       'Budget',
+  '/orbit/finance/insights':     'Insights',
+};
+
 const PAGE_SUBTITLES: Record<string, string> = {
   '/orbit/finance':              'Your personal money command center — manage and control finances with clarity.',
   '/orbit/finance/accounts':     'Track your bank accounts, wallets, and credit cards in one place.',
@@ -16,19 +26,19 @@ const PAGE_SUBTITLES: Record<string, string> = {
 
 export default function FinanceTopBar({ action }: { action?: React.ReactNode }) {
   const pathname = usePathname() ?? '';
+  const title    = PAGE_TITLES[pathname] ?? null;
   const subtitle = PAGE_SUBTITLES[pathname] ?? null;
 
   return (
     <div className="mb-1 flex items-center justify-between gap-3 border-b border-gray-200 pb-4">
-      {/* Left: subtitle — hidden on mobile to save space */}
-      {subtitle ? (
-        <p className="hidden text-sm text-gray-500 sm:block">{subtitle}</p>
-      ) : (
-        <div />
-      )}
+      {/* Left: title + subtitle stacked */}
+      <div>
+        {title && <h1 className="text-xl font-semibold text-gray-900">{title}</h1>}
+        {subtitle && <p className="mt-0.5 hidden text-sm text-gray-500 sm:block">{subtitle}</p>}
+      </div>
 
-      {/* Right: action + My Orbit (My Orbit hidden on mobile — use back gesture) */}
-      <div className="flex flex-none items-center gap-2 ml-auto">
+      {/* Right: action + My Orbit */}
+      <div className="flex flex-none items-center gap-2">
         {action}
         <Link href="/orbit"
           className="hidden items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:inline-flex">
