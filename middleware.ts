@@ -1,12 +1,17 @@
-import { auth } from '@/lib/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/lib/auth.config';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+
+// Use edge-safe config — NO Prisma, NO bcrypt
+const { auth } = NextAuth(authConfig);
 
 const PROTECTED = ['/orbit', '/dashboard'];
 const AUTH_PAGES = ['/signin', '/signup'];
 
 export default auth(function middleware(req) {
-  const { nextUrl, auth: session } = req as any;
+  const { nextUrl } = req as NextRequest & { auth: any };
+  const session = (req as any).auth;
   const isLoggedIn = !!session?.user;
   const isProtected = PROTECTED.some(p => nextUrl.pathname.startsWith(p));
   const isAuthPage = AUTH_PAGES.some(p => nextUrl.pathname.startsWith(p));

@@ -9,12 +9,12 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// Node.js runtime auth — has Prisma + bcrypt
+// Used by API routes and server components (NOT middleware)
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
   session: { strategy: 'jwt' },
-  pages: {
-    signIn: '/signin',
-  },
+  pages: { signIn: '/signin' },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -42,17 +42,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
-
         try {
           const { email, password } = parsed.data;
           const user = await prisma.user.findUnique({
             where: { email: email.toLowerCase().trim() },
           });
           if (!user) return null;
-
           const valid = await bcrypt.compare(password, user.passwordHash);
           if (!valid) return null;
-
           return { id: user.id, email: user.email, name: user.name };
         } catch {
           return null;
@@ -64,8 +61,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 export async function requireUserId(): Promise<string> {
   const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error('Unauthorized');
-  }
+  if (!session?.user?.id) throw new Error('Unauthorized');
   return session.user.id;
 }
