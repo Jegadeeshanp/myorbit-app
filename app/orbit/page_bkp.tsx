@@ -1,9 +1,7 @@
 'use client';
 
-import { Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb, LogOut } from 'lucide-react';
+import { Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb } from 'lucide-react';
 import ModuleCard from '@/components/ModuleCard';
-import { useAuth } from '@/lib/authStore';
-import { useRouter } from 'next/navigation';
 
 const MODULES = [
   {
@@ -52,45 +50,21 @@ const MODULES = [
 ];
 
 export default function Orbit() {
-  const { auth, signOut } = useAuth();
-  const router = useRouter();
-
-  const handleSignOut = () => {
-    signOut();
-    router.push('/signin');
-  };
-
-  const userName = auth.status === 'authenticated' ? auth.user.name : '';
-
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
       <div className="mx-auto max-w-6xl px-6 py-20">
         <div className="text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-3xl text-emerald-700 shadow-sm">
             ⭑
           </div>
           <h1 className="mt-6 text-4xl font-bold tracking-tight sm:text-5xl">MyOrbit</h1>
-          {userName && (
-            <p className="mt-2 text-base text-emerald-700 font-medium">Welcome back, {userName}</p>
-          )}
-          <p className="mt-1 text-base text-gray-600">Choose what you want to manage today.</p>
+          <p className="mt-3 text-base text-gray-600">Choose what you want to manage today.</p>
         </div>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {MODULES.map((module) => (
             <ModuleCard key={module.id} {...module} />
           ))}
-        </div>
-
-        <div className="mt-12 text-center">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
         </div>
       </div>
     </main>

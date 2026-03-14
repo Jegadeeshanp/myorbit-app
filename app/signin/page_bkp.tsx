@@ -2,54 +2,45 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/lib/authStore';
 
 export default function SignInPage() {
   const router = useRouter();
-  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null);
 
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
       return;
     }
 
-    setLoading(true);
-    try {
-      await signIn(email.trim(), password);
-      router.push('/orbit');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // Stubbed authentication flow
+    // Replace with real auth logic (API call / OAuth / etc.)
+    router.push('/orbit');
   };
 
   return (
     <main className="min-h-screen bg-[#F7F7F5] flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-3xl bg-white p-9 shadow-lg shadow-emerald-200/40">
         <div className="mb-8 text-center">
-          <Link href="/" className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-sm text-lg">
-            ⭑
-          </Link>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
+            🔐
+          </div>
           <h1 className="mt-5 text-2xl font-semibold text-gray-900">Sign in to MyOrbit</h1>
-          <p className="mt-2 text-sm text-gray-600">Access your dashboard and track your finances.</p>
+          <p className="mt-2 text-sm text-gray-600">
+            Access your dashboard and keep track of your finances.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
+          {error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
-          )}
+          ) : null}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="email">
@@ -81,20 +72,29 @@ export default function SignInPage() {
             />
           </div>
 
+          <div className="flex items-center justify-between text-sm">
+            <label className="inline-flex items-center gap-2 text-gray-600">
+              <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+              Remember me
+            </label>
+            <a href="#" className="font-medium text-emerald-700 hover:text-emerald-900">
+              Forgot password?
+            </a>
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-700/30 transition hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-700/30 transition hover:bg-emerald-800"
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            Sign In
           </button>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-600">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-semibold text-emerald-700 hover:text-emerald-900">
+          <a href="/signup" className="font-semibold text-emerald-700 hover:text-emerald-900">
             Create one
-          </Link>
+          </a>
         </div>
       </div>
     </main>

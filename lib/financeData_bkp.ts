@@ -1,7 +1,7 @@
 export type Account = {
   id: string;
   name: string;
-  type: 'Bank' | 'Credit Card' | 'Cash' | 'Debit Card' | 'Wallet';
+  type: 'Savings' | 'Credit Card' | 'Cash' | 'Checking';
   balance: number;
 };
 
@@ -43,8 +43,8 @@ export type Insight = {
 };
 
 export const accounts: Account[] = [
-  { id: 'a1', name: 'HDFC Savings', type: 'Bank', balance: 15420 },
-  { id: 'a2', name: 'SBI Savings', type: 'Bank', balance: 8200 },
+  { id: 'a1', name: 'HDFC Savings', type: 'Savings', balance: 15420 },
+  { id: 'a2', name: 'SBI Savings', type: 'Savings', balance: 8200 },
   { id: 'a3', name: 'Cash Wallet', type: 'Cash', balance: 1200 },
   { id: 'a4', name: 'Axis Credit Card', type: 'Credit Card', balance: -42000 },
 ];
