@@ -1,7 +1,6 @@
 /**
  * AES-256-GCM field-level encryption.
- * Uses only Web Crypto API — works in Node.js, Edge, and browser.
- * No Buffer dependency.
+ * Pure Web Crypto API — no Buffer, no Node.js globals.
  */
 
 const ALG = 'AES-GCM';
@@ -19,15 +18,18 @@ function getKeyHex(): string {
 async function importKey(): Promise<CryptoKey> {
   const hex = getKeyHex();
   const bytes = new Uint8Array(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
-  return crypto.subtle.importKey('raw', bytes, { name: ALG, length: KEY_LEN }, false, ['encrypt', 'decrypt']);
+  return crypto.subtle.importKey('raw', bytes.buffer as ArrayBuffer, { name: ALG, length: KEY_LEN }, false, ['encrypt', 'decrypt']);
 }
 
 function toBase64(buffer: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
-function fromBase64(b64: string): Uint8Array {
-  return new Uint8Array(atob(b64).split('').map(c => c.charCodeAt(0)));
+function fromBase64(b64: string): ArrayBuffer {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer as ArrayBuffer;
 }
 
 function toHex(bytes: Uint8Array): string {
@@ -42,7 +44,7 @@ export async function encrypt(plaintext: string): Promise<string> {
   const key = await importKey();
   const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const encoded = new TextEncoder().encode(plaintext);
-  const ciphertext = await crypto.subtle.encrypt({ name: ALG, iv }, key, encoded);
+  const ciphertext = await crypto.subtle.encrypt({ name: ALG, iv }, key, encoded.buffer as ArrayBuffer);
   return `${toHex(iv)}:${toBase64(ciphertext)}`;
 }
 
@@ -52,7 +54,7 @@ export async function decrypt(encoded: string): Promise<string> {
   if (!ivHex || !ctB64) throw new Error('Invalid encrypted format');
   const iv = fromHex(ivHex);
   const ciphertext = fromBase64(ctB64);
-  const plaintext = await crypto.subtle.decrypt({ name: ALG, iv }, key, ciphertext);
+  const plaintext = await crypto.subtle.decrypt({ name: ALG, iv: iv.buffer as ArrayBuffer }, key, ciphertext);
   return new TextDecoder().decode(plaintext);
 }
 
