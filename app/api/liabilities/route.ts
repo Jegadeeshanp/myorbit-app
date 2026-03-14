@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { liabilitySchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
 
+export const runtime = 'nodejs';
+
 async function decryptLiability(row: any) {
   return {
     id: row.id, name: row.name, lender: row.lender ?? undefined,

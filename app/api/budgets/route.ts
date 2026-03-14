@@ -3,6 +3,8 @@ import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { budgetSchema } from '@/lib/validation';
 
+export const runtime = 'nodejs';
+
 export async function GET() {
   try {
     const userId = await requireUserId();

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { assetSchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
 
+export const runtime = 'nodejs';
+
 async function decryptAsset(row: any) {
   return {
     id: row.id, name: row.name, category: row.category,
