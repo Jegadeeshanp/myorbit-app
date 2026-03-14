@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import Modal, { SectionLabel, inputCls } from './Modal';
+import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 
-const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Utilities', 'Education', 'Travel', 'Other'];
+// Category names must match financeData budget names exactly for budget tracking
+const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Education', 'Travel', 'Others'];
 
 export type AddExpenseProps = {
   open: boolean;
@@ -27,6 +29,7 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave }: Add
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({ date, category, description: description.trim(), amount: -Math.abs(Number(amount)), type: 'expense', accountId });
+    toast('Expense recorded');
     setDesc(''); setAmount('');
     onClose();
   };

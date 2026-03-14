@@ -1,6 +1,8 @@
 'use client';
 
 import { Asset } from '@/lib/financeData';
+import { useFinance } from '@/lib/financeStore';
+import { Trash2 } from 'lucide-react';
 
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {
   'Stocks':       { bg: 'bg-blue-100',    text: 'text-blue-700' },
@@ -21,6 +23,7 @@ function getInvested(value: number, category: string) {
 }
 
 export default function AssetTable({ assets }: { assets: Asset[] }) {
+  const { deleteAsset } = useFinance();
   const total = assets.reduce((s, a) => s + a.value, 0);
 
   return (
@@ -28,7 +31,7 @@ export default function AssetTable({ assets }: { assets: Asset[] }) {
       <table className="w-full text-left">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50/60">
-            {['Asset', 'Type', 'Invested', 'Current Value', 'P&L', 'Allocation'].map(h => (
+            {['Asset', 'Type', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => (
               <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 ${h === 'Invested' || h === 'Current Value' || h === 'P&L' || h === 'Allocation' ? 'text-right' : ''}`}>{h}</th>
             ))}
           </tr>
@@ -59,6 +62,13 @@ export default function AssetTable({ assets }: { assets: Asset[] }) {
                     </div>
                     <span className="w-8 text-right text-xs text-gray-500">{allocPct}%</span>
                   </div>
+                </td>
+                <td className="px-3 py-3.5">
+                  <button onClick={() => deleteAsset(asset.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+                    title="Delete asset">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </td>
               </tr>
             );

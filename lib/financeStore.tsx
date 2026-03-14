@@ -23,7 +23,7 @@ import {
 
 export type AccountTypeName = 'Bank' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Wallet';
 
-export type Account = AccountType;
+export type Account = AccountType & { creditLimit?: number };
 export type Transaction = TransactionType;
 export type Asset = AssetType;
 export type Liability = LiabilityType;
@@ -37,11 +37,17 @@ type FinanceState = {
 };
 
 type FinanceAction =
-  | { type: 'addAccount'; payload: Account }
-  | { type: 'addTransaction'; payload: Transaction }
-  | { type: 'addAsset'; payload: Asset }
-  | { type: 'addLiability'; payload: Liability }
-  | { type: 'hydrate'; payload: FinanceState };
+  | { type: 'addAccount';       payload: Account }
+  | { type: 'deleteAccount';    payload: string }
+  | { type: 'addTransaction';   payload: Transaction }
+  | { type: 'deleteTransaction'; payload: string }
+  | { type: 'addAsset';         payload: Asset }
+  | { type: 'deleteAsset';      payload: string }
+  | { type: 'addLiability';     payload: Liability }
+  | { type: 'deleteLiability';  payload: string }
+  | { type: 'addBudget';        payload: BudgetCategory }
+  | { type: 'deleteBudget';     payload: string }
+  | { type: 'hydrate';          payload: FinanceState };
 
 const STORAGE_KEY = 'myorbit_finance_v1';
 
@@ -61,40 +67,89 @@ function saveToStorage(state: FinanceState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // storage quota exceeded or private mode — fail silently
+    // quota exceeded or private mode — fail silently
   }
 }
 
 const defaultState: FinanceState = {
-  accounts: initialAccounts,
+  accounts:     initialAccounts,
   transactions: initialTransactions,
-  assets: initialAssets,
-  liabilities: initialLiabilities,
-  budgets: initialBudgets,
+  assets:       initialAssets,
+  liabilities:  initialLiabilities,
+  budgets:      initialBudgets,
 };
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
     case 'hydrate':
       return action.payload;
+
     case 'addAccount':
       return { ...state, accounts: [...state.accounts, action.payload] };
+
+    case 'deleteAccount':
+      return { ...state, accounts: state.accounts.filter(a => a.id !== action.payload) };
+
     case 'addTransaction': {
-      const newState = { ...state, transactions: [action.payload, ...state.transactions] };
-      const cat = action.payload.category;
-      if (action.payload.type === 'expense') {
-        newState.budgets = state.budgets.map((b) =>
-          b.name === cat
-            ? { ...b, spent: b.spent + Math.abs(action.payload.amount) }
-            : b
-        );
-      }
-      return newState;
+      const tx = action.payload;
+      // Update linked account balance
+      const accounts = state.accounts.map(a => {
+        if (a.id !== tx.accountId) return a;
+        return { ...a, balance: a.balance + tx.amount };
+      });
+      // Update matching budget spent when expense is added
+      const budgets = tx.type === 'expense'
+        ? state.budgets.map(b =>
+            b.name === tx.category
+              ? { ...b, spent: b.spent + Math.abs(tx.amount) }
+              : b
+          )
+        : state.budgets;
+      return { ...state, accounts, budgets, transactions: [tx, ...state.transactions] };
     }
+
+    case 'deleteTransaction': {
+      const tx = state.transactions.find(t => t.id === action.payload);
+      if (!tx) return state;
+      // Reverse the account balance effect
+      const accounts = state.accounts.map(a => {
+        if (a.id !== tx.accountId) return a;
+        return { ...a, balance: a.balance - tx.amount };
+      });
+      // Reverse the budget spent effect
+      const budgets = tx.type === 'expense'
+        ? state.budgets.map(b =>
+            b.name === tx.category
+              ? { ...b, spent: Math.max(0, b.spent - Math.abs(tx.amount)) }
+              : b
+          )
+        : state.budgets;
+      return {
+        ...state,
+        accounts,
+        budgets,
+        transactions: state.transactions.filter(t => t.id !== action.payload),
+      };
+    }
+
     case 'addAsset':
       return { ...state, assets: [...state.assets, action.payload] };
+
+    case 'deleteAsset':
+      return { ...state, assets: state.assets.filter(a => a.id !== action.payload) };
+
     case 'addLiability':
       return { ...state, liabilities: [...state.liabilities, action.payload] };
+
+    case 'deleteLiability':
+      return { ...state, liabilities: state.liabilities.filter(l => l.id !== action.payload) };
+
+    case 'addBudget':
+      return { ...state, budgets: [...state.budgets, action.payload] };
+
+    case 'deleteBudget':
+      return { ...state, budgets: state.budgets.filter(b => b.id !== action.payload) };
+
     default:
       return state;
   }
@@ -102,11 +157,17 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
 
 type FinanceContextValue = {
   state: FinanceState;
-  addAccount: (account: Omit<Account, 'id'>) => void;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  addAsset: (asset: Omit<Asset, 'id'>) => void;
-  addLiability: (liability: Omit<Liability, 'id'>) => void;
-  clearData: () => void;
+  addAccount:       (account:     Omit<Account,      'id'>) => void;
+  deleteAccount:    (id: string)                            => void;
+  addTransaction:   (transaction: Omit<Transaction,  'id'>) => void;
+  deleteTransaction:(id: string)                            => void;
+  addAsset:         (asset:       Omit<Asset,        'id'>) => void;
+  deleteAsset:      (id: string)                            => void;
+  addLiability:     (liability:   Omit<Liability,    'id'>) => void;
+  deleteLiability:  (id: string)                            => void;
+  addBudget:        (budget:      Omit<BudgetCategory,'id'>) => void;
+  deleteBudget:     (id: string)                            => void;
+  clearData:        ()                                      => void;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -118,50 +179,38 @@ function generateId() {
 export function FinanceProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(financeReducer, defaultState);
 
-  // Hydrate from localStorage on mount
   useEffect(() => {
     const saved = loadFromStorage();
-    if (saved) {
-      dispatch({ type: 'hydrate', payload: saved });
-    }
+    if (saved) dispatch({ type: 'hydrate', payload: saved });
   }, []);
 
-  // Persist to localStorage on every state change
   useEffect(() => {
     saveToStorage(state);
   }, [state]);
 
-  const addAccount = (account: Omit<Account, 'id'>) => {
-    dispatch({ type: 'addAccount', payload: { ...account, id: generateId() } });
-  };
-
-  const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    dispatch({ type: 'addTransaction', payload: { ...transaction, id: generateId() } });
-  };
-
-  const addAsset = (asset: Omit<Asset, 'id'>) => {
-    dispatch({ type: 'addAsset', payload: { ...asset, id: generateId() } });
-  };
-
-  const addLiability = (liability: Omit<Liability, 'id'>) => {
-    dispatch({ type: 'addLiability', payload: { ...liability, id: generateId() } });
-  };
-
-  const clearData = () => {
-    if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY);
-    dispatch({ type: 'hydrate', payload: defaultState });
-  };
-
-  const value = useMemo(
-    () => ({ state, addAccount, addTransaction, addAsset, addLiability, clearData }),
-    [state]
-  );
+  const value = useMemo(() => ({
+    state,
+    addAccount:       (a: Omit<Account,       'id'>) => dispatch({ type: 'addAccount',       payload: { ...a, id: generateId() } }),
+    deleteAccount:    (id: string)                   => dispatch({ type: 'deleteAccount',    payload: id }),
+    addTransaction:   (t: Omit<Transaction,   'id'>) => dispatch({ type: 'addTransaction',   payload: { ...t, id: generateId() } }),
+    deleteTransaction:(id: string)                   => dispatch({ type: 'deleteTransaction',payload: id }),
+    addAsset:         (a: Omit<Asset,         'id'>) => dispatch({ type: 'addAsset',         payload: { ...a, id: generateId() } }),
+    deleteAsset:      (id: string)                   => dispatch({ type: 'deleteAsset',      payload: id }),
+    addLiability:     (l: Omit<Liability,     'id'>) => dispatch({ type: 'addLiability',     payload: { ...l, id: generateId() } }),
+    deleteLiability:  (id: string)                   => dispatch({ type: 'deleteLiability',  payload: id }),
+    addBudget:        (b: Omit<BudgetCategory,'id'>) => dispatch({ type: 'addBudget',        payload: { ...b, id: generateId() } }),
+    deleteBudget:     (id: string)                   => dispatch({ type: 'deleteBudget',     payload: id }),
+    clearData: () => {
+      if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY);
+      dispatch({ type: 'hydrate', payload: defaultState });
+    },
+  }), [state]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
 
 export function useFinance() {
-  const context = useContext(FinanceContext);
-  if (!context) throw new Error('useFinance must be used within FinanceProvider');
-  return context;
+  const ctx = useContext(FinanceContext);
+  if (!ctx) throw new Error('useFinance must be used within FinanceProvider');
+  return ctx;
 }

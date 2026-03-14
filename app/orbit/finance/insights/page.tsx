@@ -1,31 +1,18 @@
 'use client';
 
-import { insights as insightsData, Insight } from '@/lib/financeData';
-import { useState } from 'react';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
+import SmartInsights from '@/components/finance/SmartInsights';
+import FinancialHealthScore from '@/components/finance/FinancialHealthScore';
+import { useFinance } from '@/lib/financeStore';
 
 export default function InsightsPage() {
-  const [insights] = useState<Insight[]>(insightsData);
+  const { state } = useFinance();
 
   return (
-    <div className="space-y-6">
-      <FinanceTopBar action={
-        <button className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
-          Refresh insights
-        </button>
-      } />
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {insights.map((insight) => (
-          <div
-            key={insight.id}
-            className="rounded-2xl border border-white/40 bg-white/60 p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            <h2 className="text-lg font-semibold text-gray-900">{insight.title}</h2>
-            <p className="mt-2 text-sm text-gray-600">{insight.description}</p>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-5">
+      <FinanceTopBar />
+      <FinancialHealthScore transactions={state.transactions} />
+      <SmartInsights transactions={state.transactions} />
     </div>
   );
 }

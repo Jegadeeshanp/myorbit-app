@@ -5,8 +5,8 @@ import { useFinance } from '@/lib/financeStore';
 import { useMemo } from 'react';
 
 function fmt(v: number) {
-  if (v >= 100000) return `₹${(v/100000).toFixed(1)}L`;
-  return `₹${(v/1000).toFixed(0)}K`;
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+  return `₹${(v / 1000).toFixed(0)}K`;
 }
 
 function getLastMonths(n: number) {
@@ -21,19 +21,22 @@ export default function NetWorthTrend() {
   const { state } = useFinance();
 
   const data = useMemo(() => {
-    const totalAssets = state.assets.reduce((s,a) => s + a.value, 0);
-    const totalLiab   = state.liabilities.reduce((s,l) => s + l.outstanding, 0);
+    const totalAssets = state.assets.reduce((s, a) => s + a.value, 0);
+    const totalLiab   = state.liabilities.reduce((s, l) => s + l.outstanding, 0);
     const base        = totalAssets - totalLiab;
-    // Simulate 6-month trend with slight variance (no real history in store yet)
+
+    // Deterministic simulation: grow steadily from 88% of current to 100%.
+    // No Math.random() — values are stable across renders.
     return getLastMonths(6).map((m, i) => ({
       month: m.label,
-      netWorth: Math.round(base * (0.88 + i * 0.024) + (Math.random() * 5000 - 2500)),
+      netWorth: Math.round(base * (0.88 + i * 0.024)),
     }));
-  }, [state]);
+  }, [state.assets, state.liabilities]);
 
-  const min = Math.min(...data.map(d => d.netWorth));
-  const max = Math.max(...data.map(d => d.netWorth));
-  const isUp = data[data.length-1].netWorth >= data[0].netWorth;
+  const first = data[0]?.netWorth ?? 0;
+  const last  = data[data.length - 1]?.netWorth ?? 0;
+  const isUp  = last >= first;
+  const changePct = first !== 0 ? Math.abs(Math.round(((last - first) / Math.abs(first)) * 100)) : 0;
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -43,7 +46,7 @@ export default function NetWorthTrend() {
           <p className="text-xs text-gray-400">6-month growth trajectory</p>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isUp ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-          {isUp ? '▲' : '▼'} {Math.abs(Math.round(((data[data.length-1].netWorth - data[0].netWorth) / Math.abs(data[0].netWorth || 1)) * 100))}%
+          {isUp ? '▲' : '▼'} {changePct}%
         </span>
       </div>
       <div className="h-[160px]">
@@ -57,7 +60,7 @@ export default function NetWorthTrend() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} domain={[min * 0.95, max * 1.05]} />
+            <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
             <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }} />
             <Area type="monotone" dataKey="netWorth" stroke="#10b981" strokeWidth={2} fill="url(#nwGrad)" dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} />
           </AreaChart>

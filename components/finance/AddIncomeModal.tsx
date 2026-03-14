@@ -27,6 +27,7 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave }: AddI
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({ date, category: source, description: description.trim() || source, amount: Math.abs(Number(amount)), type: 'income', accountId });
+    toast('Income recorded');
     setSource('Salary'); setDesc(''); setAmount('');
     onClose();
   };

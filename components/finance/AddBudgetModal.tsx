@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import Modal, { SectionLabel, inputCls } from './Modal';
+import { toast } from '@/components/Toast';
 import { useFinance } from '@/lib/financeStore';
 
-const ALL_CATEGORIES = ['Food','Transport','Shopping','Bills','Healthcare','Entertainment','Education','Travel','Others'];
+// Unified category list — matches financeData budgets and AddExpenseModal
+const ALL_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Education', 'Travel', 'Others'];
 const PERIODS = ['Monthly', 'Weekly', 'Yearly'] as const;
 
 function Toggle({ value, onChange, label, sub }: { value: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) {
@@ -24,31 +26,37 @@ function Toggle({ value, onChange, label, sub }: { value: boolean; onChange: (v:
 }
 
 export default function AddBudgetModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state } = useFinance();
-  const [name, setName]               = useState('');
-  const [amount, setAmount]           = useState('');
-  const [period, setPeriod]           = useState<typeof PERIODS[number]>('Monthly');
+  const { state, addBudget } = useFinance();
+  const [name, setName]                 = useState('');
+  const [amount, setAmount]             = useState('');
+  const [period, setPeriod]             = useState<typeof PERIODS[number]>('Monthly');
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
-  const [allAccounts, setAllAccounts] = useState(true);
+  const [allAccounts, setAllAccounts]   = useState(true);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
-  const [overspend, setOverspend]     = useState(true);
-  const [warning, setWarning]         = useState(true);
+  const [overspend, setOverspend]       = useState(true);
+  const [warning, setWarning]           = useState(true);
 
-  const canSave = name.trim() && Number(amount) > 0;
+  const canSave = !!name.trim() && Number(amount) > 0;
 
-  const toggleCat = (c: string) => setSelectedCats(cs => cs.includes(c) ? cs.filter(x => x !== c) : [...cs, c]);
-  const toggleAccount = (id: string) => setSelectedAccounts(as => as.includes(id) ? as.filter(x => x !== id) : [...as, id]);
+  const toggleCat = (c: string) =>
+    setSelectedCats(cs => cs.includes(c) ? cs.filter(x => x !== c) : [...cs, c]);
+  const toggleAccount = (id: string) =>
+    setSelectedAccounts(as => as.includes(id) ? as.filter(x => x !== id) : [...as, id]);
 
   const handleSave = () => {
     if (!canSave) return;
-    // TODO: dispatch to store
+    addBudget({
+      name: name.trim(),
+      budget: Number(amount),
+      spent: 0,
+    });
+    toast('Budget created');
     setName(''); setAmount(''); setSelectedCats([]); setSelectedAccounts([]);
     onClose();
   };
 
   return (
     <Modal open={open} onClose={onClose} title="Add budget" subtitle="Set a spending limit for a category">
-      {/* Scrollable body */}
       <div className="max-h-[65vh] overflow-y-auto space-y-5 pr-1">
 
         <div>
@@ -60,7 +68,7 @@ export default function AddBudgetModal({ open, onClose }: { open: boolean; onClo
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="12000" type="number" className={inputCls} />
+              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="12000" type="number" min="1" className={inputCls} />
             </div>
           </div>
         </div>
@@ -80,7 +88,8 @@ export default function AddBudgetModal({ open, onClose }: { open: boolean; onClo
         <div>
           <div className="mb-2 flex items-center justify-between">
             <SectionLabel>Categories</SectionLabel>
-            <button type="button" onClick={() => setSelectedCats(selectedCats.length === ALL_CATEGORIES.length ? [] : [...ALL_CATEGORIES])}
+            <button type="button"
+              onClick={() => setSelectedCats(selectedCats.length === ALL_CATEGORIES.length ? [] : [...ALL_CATEGORIES])}
               className="text-xs font-medium text-emerald-600 hover:text-emerald-700">
               {selectedCats.length === ALL_CATEGORIES.length ? 'Deselect all' : 'Select all'}
             </button>
@@ -117,7 +126,7 @@ export default function AddBudgetModal({ open, onClose }: { open: boolean; onClo
                     className={`flex w-full items-center justify-between rounded-xl border px-4 py-2.5 transition ${active ? 'border-emerald-200 bg-emerald-50' : 'border-gray-100 bg-gray-50 hover:bg-gray-100'}`}>
                     <span className="text-sm font-medium text-gray-900">{a.name}</span>
                     <div className={`h-4 w-4 rounded border-2 transition ${active ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'}`}>
-                      {active && <svg viewBox="0 0 10 10" className="fill-white"><path d="M2 5l2.5 2.5L8 3" strokeWidth="1" stroke="white" fill="none"/></svg>}
+                      {active && <svg viewBox="0 0 10 10" className="fill-white"><path d="M2 5l2.5 2.5L8 3" strokeWidth="1.5" stroke="white" fill="none" /></svg>}
                     </div>
                   </button>
                 );

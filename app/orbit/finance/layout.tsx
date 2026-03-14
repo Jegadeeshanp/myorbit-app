@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import FinanceSidebar from '@/components/finance/FinanceSidebar';
 import MobileNav from '@/components/finance/MobileNav';
 import { FinanceProvider } from '@/lib/financeStore';
+import ToastContainer from '@/components/Toast';
 
 export default function FinanceLayout({ children }: { children: ReactNode }) {
   return (
@@ -19,6 +20,7 @@ export default function FinanceLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom nav — mobile only */}
         <MobileNav />
+        <ToastContainer />
       </div>
     </FinanceProvider>
   );

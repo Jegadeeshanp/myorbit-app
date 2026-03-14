@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Coffee, CreditCard, FileText, Film, ShoppingBag, Truck, Search } from 'lucide-react';
+import { Coffee, CreditCard, FileText, Film, ShoppingBag, Truck, Search, Trash2 } from 'lucide-react';
+import { useFinance } from '@/lib/financeStore';
+import EmptyState from '@/components/finance/EmptyState';
 import { Transaction } from '@/lib/financeData';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -54,6 +56,7 @@ function groupByMonth(txs: Transaction[]): { label: string; transactions: Transa
 }
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
+  const { deleteTransaction } = useFinance();
   const [period, setPeriod] = useState<Period>('This Month');
   const [search, setSearch] = useState('');
 
@@ -88,9 +91,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
 
       {/* Grouped transaction list */}
       {groups.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center">
-          <p className="text-sm text-gray-400">No transactions found</p>
-        </div>
+        <EmptyState icon={CreditCard} title="No transactions found" subtitle="Try a different filter or add a new transaction" />
       ) : (
         groups.map(group => {
           const total = group.transactions.reduce((s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0);
@@ -114,7 +115,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                   const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
                   const isExpense = tx.type === 'expense';
                   return (
-                    <div key={tx.id} className="flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-gray-50/50">
+                    <div key={tx.id} className="group flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-gray-50/50">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gray-50">
                           <Icon className="h-4 w-4 text-gray-500" />
@@ -127,9 +128,18 @@ export default function TransactionList({ transactions }: { transactions: Transa
                           </div>
                         </div>
                       </div>
-                      <p className={`flex-none text-sm font-bold ${isExpense ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {isExpense ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-bold ${isExpense ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {isExpense ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        </p>
+                        <button
+                          onClick={() => deleteTransaction(tx.id)}
+                          className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

@@ -98,10 +98,10 @@ export const liabilities: Liability[] = [
 ];
 
 export const budgets: BudgetCategory[] = [
-  { id: 'b1', name: 'Food', budget: 12000, spent: 9850 },
-  { id: 'b2', name: 'Transport', budget: 6500, spent: 4320 },
-  { id: 'b3', name: 'Shopping', budget: 11000, spent: 8200 },
-  { id: 'b4', name: 'Bills', budget: 9000, spent: 6850 },
+  { id: 'b1', name: 'Food',      budget: 12000, spent: 420 },
+  { id: 'b2', name: 'Transport', budget: 6500,  spent: 1200 },
+  { id: 'b3', name: 'Shopping',  budget: 11000, spent: 5900 },
+  { id: 'b4', name: 'Bills',     budget: 9000,  spent: 0 },
 ];
 
 export const insights: Insight[] = [
