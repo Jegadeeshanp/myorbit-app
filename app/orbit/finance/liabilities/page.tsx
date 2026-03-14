@@ -16,12 +16,12 @@ function fmt(v: number | undefined | null) {
   return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
-function fmtDate(iso: string) {
+function fmtDate(iso: string | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function daysUntil(iso: string) {
+function daysUntil(iso: string | undefined) {
   if (!iso) return null;
   const diff = Math.ceil((new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   return diff;
