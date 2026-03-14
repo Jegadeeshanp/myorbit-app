@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Modal from './Modal';
+import Modal, { SectionLabel, inputCls } from './Modal';
 import { Transaction } from '@/lib/financeData';
+
+const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Utilities', 'Education', 'Travel', 'Other'];
 
 export type AddExpenseProps = {
   open: boolean;
@@ -11,114 +13,70 @@ export type AddExpenseProps = {
   onSave: (payload: Omit<Transaction, 'id'>) => void;
 };
 
-const categories = ['Food', 'Transport', 'Bills', 'Shopping', 'Entertainment', 'Utilities', 'Other'];
-
 export default function AddExpenseModal({ open, onClose, accounts, onSave }: AddExpenseProps) {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [category, setCategory] = useState(categories[0]);
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
+  const [date, setDate]           = useState(() => new Date().toISOString().slice(0, 10));
+  const [category, setCategory]   = useState(CATEGORIES[0]);
+  const [description, setDesc]    = useState('');
+  const [amount, setAmount]       = useState('');
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
 
-  const canSubmit = useMemo(() => {
-    if (!date || !category || !description.trim() || !amount || !accountId) return false;
-    return !isNaN(Number(amount)) && Number(amount) > 0;
-  }, [date, category, description, amount, accountId]);
+  const canSubmit = useMemo(() =>
+    !!date && !!category && !!description.trim() && !!amount && !!accountId && !isNaN(Number(amount)) && Number(amount) > 0,
+  [date, category, description, amount, accountId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSave({
-      date,
-      category,
-      description: description.trim(),
-      amount: -Math.abs(Number(amount)),
-      type: 'expense',
-      accountId,
-    });
-    setDescription('');
-    setAmount('');
+    onSave({ date, category, description: description.trim(), amount: -Math.abs(Number(amount)), type: 'expense', accountId });
+    setDesc(''); setAmount('');
     onClose();
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Add expense">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-          />
-        </div>
+    <Modal open={open} onClose={onClose} title="Add expense" subtitle="Record a payment or purchase">
+      <div className="space-y-5">
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Category</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Lunch at cafe"
-            className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Amount</label>
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="250"
-              type="number"
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Account</label>
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-            >
-              {accounts.map((acct) => (
-                <option key={acct.id} value={acct.id}>
-                  {acct.name}
-                </option>
-              ))}
-            </select>
+          <SectionLabel>Expense details</SectionLabel>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Category</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className={inputCls}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
+              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="Lunch at cafe" className={inputCls} />
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+        <div>
+          <SectionLabel>Amount & account</SectionLabel>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
+              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="250" type="number" className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
+              <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputCls}>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Date</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
+          <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+            className="rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50">
             Save expense
           </button>
         </div>

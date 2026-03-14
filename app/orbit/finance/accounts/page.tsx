@@ -1,9 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Landmark, CreditCard, Wallet, Banknote, TrendingDown, PlusCircle } from 'lucide-react';
-import NetWorthCard from '@/components/finance/NetWorthCard';
-import AccountCard from '@/components/finance/AccountCard';
+import { Landmark, CreditCard, Wallet, Banknote, PlusCircle, TrendingDown, ArrowDownCircle } from 'lucide-react';
+import { StandardCard, CreditCardCard } from '@/components/finance/AccountCard';
 import AddAccountModal from '@/components/finance/AddAccountModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { Account, useFinance } from '@/lib/financeStore';
@@ -12,46 +11,60 @@ function fmt(v: number) {
   return Math.abs(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
-const SECTIONS: { key: string; title: string; icon: React.ElementType; types: Account['type'][] }[] = [
-  { key: 'bank',   title: 'Bank Accounts',  icon: Landmark,    types: ['Bank'] },
-  { key: 'credit', title: 'Credit Cards',   icon: CreditCard,  types: ['Credit Card'] },
-  { key: 'debit',  title: 'Debit Cards',    icon: CreditCard,  types: ['Debit Card'] },
-  { key: 'wallet', title: 'Wallets & Cash', icon: Wallet,      types: ['Cash', 'Wallet'] },
-];
-
-const METRIC_CONFIG = [
-  { key: 'assets',      label: 'Assets',      icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50',  border: 'border-emerald-100' },
-  { key: 'liabilities', label: 'Liabilities', icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',     border: 'border-rose-100' },
-  { key: 'liquid',      label: 'Liquid Cash', icon: Banknote,     color: 'text-amber-600',   bg: 'bg-amber-50',    border: 'border-amber-100' },
-  { key: 'credit',      label: 'Credit Used', icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',   border: 'border-orange-100' },
-];
+function SectionHeader({ icon: Icon, title, count, color }: { icon: React.ElementType; title: string; count: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2 px-1">
+      <Icon className={`h-4 w-4 ${color}`} />
+      <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{count}</span>
+    </div>
+  );
+}
 
 export default function AccountsPage() {
   const { state, addAccount } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
 
-  const metrics = useMemo(() => {
-    let bank = 0, credit = 0, debit = 0, wallet = 0;
-    state.accounts.forEach(a => {
-      if (a.type === 'Credit Card') credit += a.balance;
-      else if (a.type === 'Cash' || a.type === 'Wallet') wallet += a.balance;
-      else if (a.type === 'Debit Card') debit += a.balance;
-      else bank += a.balance;
-    });
-    const liquid = bank + wallet + debit;
-    const liabilities = Math.abs(Math.min(credit, 0));
-    return { assets: liquid, liabilities, liquid, credit: liabilities };
-  }, [state.accounts]);
+  const { totalBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
+    let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;
 
-  const bySection = useMemo(() =>
-    SECTIONS.reduce<Record<string, Account[]>>((acc, s) => {
-      acc[s.key] = state.accounts.filter(a => s.types.includes(a.type));
-      return acc;
-    }, {}),
-  [state.accounts]);
+    state.accounts.forEach(a => {
+      if (a.type === 'Bank')        bank   += a.balance;
+      if (a.type === 'Credit Card') credit += a.balance;
+      if (a.type === 'Wallet')      wallet += a.balance;
+      if (a.type === 'Cash')        cash   += a.balance;
+      if (a.type === 'Debit Card')  debit  += a.balance;
+    });
+
+    // Total balance = bank + wallet + cash + debit (no credit cards)
+    const totalBalance = bank + wallet + cash + debit;
+    const creditUsed   = Math.abs(Math.min(credit, 0));
+
+    // Total expenses from all transactions
+    const totalExpenses = state.transactions
+      .filter(t => t.type === 'expense')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+
+    const byType: Record<Account['type'], Account[]> = {
+      Bank:          [],
+      'Credit Card': [],
+      'Debit Card':  [],
+      Cash:          [],
+      Wallet:        [],
+    };
+    state.accounts.forEach(a => byType[a.type].push(a));
+
+    return { totalBalance, creditUsed, totalExpenses, byType };
+  }, [state.accounts, state.transactions]);
+
+  const metrics = [
+    { label: 'Balance',     value: fmt(totalBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'Bank + Wallets + Cash' },
+    { label: 'Credit Used', value: fmt(creditUsed),   icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Outstanding balance' },
+    { label: 'Expenses',    value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'All time recorded' },
+  ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <FinanceTopBar action={
         <button type="button" onClick={() => setModalOpen(true)}
           className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
@@ -59,46 +72,80 @@ export default function AccountsPage() {
         </button>
       } />
 
-      {/* Net Worth card */}
-      <NetWorthCard />
-
-      {/* 4 metric tiles */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {METRIC_CONFIG.map(m => {
-          const Icon = m.icon;
-          const val = metrics[m.key as keyof typeof metrics];
-          return (
-            <div key={m.key} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white p-3.5 shadow-sm`}>
-              <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
-                <Icon className={`h-4 w-4 ${m.color}`} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-gray-400">{m.label}</p>
-                <p className={`text-sm font-bold truncate ${m.color}`}>{fmt(val)}</p>
-              </div>
-            </div>
-          );
-        })}
+      {/* ── Primary balance card ── */}
+      <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
+        <p className="text-xs font-semibold uppercase tracking-widest text-emerald-200">Total Balance</p>
+        <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
+        <p className="mt-1.5 text-sm text-emerald-200">
+          Bank accounts, wallets &amp; cash
+        </p>
       </div>
 
-      {/* Account groups */}
-      {SECTIONS.map(section => {
-        const accounts = bySection[section.key] ?? [];
-        if (!accounts.length) return null;
-        const Icon = section.icon;
-        return (
-          <section key={section.key} id={`section-${section.key}`} className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <Icon className="h-4 w-4 text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-700">{section.title}</h2>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{accounts.length}</span>
+      {/* ── 3 metric cards ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {metrics.map(m => (
+          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white px-4 py-3.5 shadow-sm`}>
+            <div className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ${m.bg}`}>
+              <m.icon className={`h-5 w-5 ${m.color}`} />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {accounts.map(a => <AccountCard key={a.id} account={a} />)}
+            <div className="min-w-0">
+              <p className="text-xs text-gray-400">{m.label}</p>
+              <p className={`text-base font-bold truncate ${m.color}`}>{m.value}</p>
+              <p className="text-xs text-gray-400">{m.sub}</p>
             </div>
-          </section>
-        );
-      })}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Bank Accounts ── */}
+      {byType['Bank'].length > 0 && (
+        <div className="space-y-2.5">
+          <SectionHeader icon={Landmark} title="Bank Accounts" count={byType['Bank'].length} color="text-emerald-600" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {byType['Bank'].map(a => <StandardCard key={a.id} account={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Credit Cards ── */}
+      {byType['Credit Card'].length > 0 && (
+        <div className="space-y-2.5">
+          <SectionHeader icon={CreditCard} title="Credit Cards" count={byType['Credit Card'].length} color="text-rose-600" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {byType['Credit Card'].map(a => <CreditCardCard key={a.id} account={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Debit Cards ── */}
+      {byType['Debit Card'].length > 0 && (
+        <div className="space-y-2.5">
+          <SectionHeader icon={CreditCard} title="Debit Cards" count={byType['Debit Card'].length} color="text-blue-600" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {byType['Debit Card'].map(a => <StandardCard key={a.id} account={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Wallets ── */}
+      {byType['Wallet'].length > 0 && (
+        <div className="space-y-2.5">
+          <SectionHeader icon={Wallet} title="Wallets" count={byType['Wallet'].length} color="text-violet-600" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {byType['Wallet'].map(a => <StandardCard key={a.id} account={a} />)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Cash ── */}
+      {byType['Cash'].length > 0 && (
+        <div className="space-y-2.5">
+          <SectionHeader icon={Banknote} title="Cash" count={byType['Cash'].length} color="text-amber-600" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {byType['Cash'].map(a => <StandardCard key={a.id} account={a} />)}
+          </div>
+        </div>
+      )}
 
       <AddAccountModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAccount} />
     </div>

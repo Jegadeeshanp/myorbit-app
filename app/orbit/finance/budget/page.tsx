@@ -1,13 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import BudgetCard from '@/components/finance/BudgetCard';
+import AddBudgetModal from '@/components/finance/AddBudgetModal';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 
 export default function BudgetPage() {
   const { state } = useFinance();
   const { budgets } = state;
+  const [isModalOpen, setModalOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -17,14 +20,15 @@ export default function BudgetPage() {
             href="/orbit/finance/categories"
             className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
-            Categories
+            + Categories
           </Link>
-          <Link
-            href="/orbit/finance/budget/add"
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
             className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
           >
-            Add budget
-          </Link>
+            + Add budget
+          </button>
         </div>
       } />
 
@@ -33,6 +37,8 @@ export default function BudgetPage() {
           <BudgetCard key={budget.id} budget={budget} />
         ))}
       </div>
+
+      <AddBudgetModal open={isModalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Wallet, CreditCard, TrendingDown } from 'lucide-react';
+import { Wallet, CreditCard, TrendingDown, ChevronRight } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
+import Link from 'next/link';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 
 import NetWorthCard        from '@/components/finance/NetWorthCard';
@@ -51,6 +52,14 @@ export default function FinanceOverviewPage() {
     Math.abs(transactions.filter(t => t.type === 'expense' && new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear).reduce((s, t) => s + t.amount, 0)),
   [transactions, currentMonth, currentYear]);
 
+  const totalAssets = useMemo(() =>
+    state.assets.reduce((s, a) => s + a.value, 0),
+  [state.assets]);
+
+  const totalLiabilities = useMemo(() =>
+    state.liabilities.reduce((s, l) => s + l.outstanding, 0),
+  [state.liabilities]);
+
   const monthData = useMemo(() => {
     const months = getLastMonths(6);
     const map = new Map(months.map(m => [`${m.year}-${m.month}`, { month: m.label, income: 0, expense: 0 }]));
@@ -71,35 +80,46 @@ export default function FinanceOverviewPage() {
       {/* Net Worth */}
       <NetWorthCard />
 
-      {/* 3 Metric cards */}
+      {/* 3 Metric cards — clickable */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <SummaryCard
-          title="Available Balance"
-          value={fmt(availableBalance)}
-          subtitle={`Across ${accounts.length} accounts`}
-          Icon={Wallet}
-          valueClassName="text-emerald-600"
-          iconBg="bg-emerald-50"
-          iconColor="text-emerald-600"
-        />
-        <SummaryCard
-          title="Credit Used"
-          value={fmt(creditUsed)}
-          subtitle="Outstanding balance"
-          Icon={CreditCard}
-          valueClassName="text-orange-500"
-          iconBg="bg-orange-50"
-          iconColor="text-orange-500"
-        />
-        <SummaryCard
-          title="Spent This Month"
-          value={fmt(spentThisMonth)}
-          subtitle={new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-          Icon={TrendingDown}
-          valueClassName="text-rose-500"
-          iconBg="bg-rose-50"
-          iconColor="text-rose-500"
-        />
+        <Link href="/orbit/finance/assets"
+          className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50">
+            <Wallet className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-400">Assets</p>
+            <p className="text-xl font-bold text-emerald-600 truncate">{fmt(totalAssets)}</p>
+            <p className="text-xs text-gray-400">{state.assets.length} assets tracked</p>
+          </div>
+          <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
+        </Link>
+
+        <Link href="/orbit/finance/liabilities"
+          className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-rose-200 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-rose-50">
+            <CreditCard className="h-5 w-5 text-rose-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-400">Liabilities</p>
+            <p className="text-xl font-bold text-rose-600 truncate">{fmt(totalLiabilities)}</p>
+            <p className="text-xs text-gray-400">{state.liabilities.length} active loans</p>
+          </div>
+          <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
+        </Link>
+
+        <Link href="/orbit/finance/transactions"
+          className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-orange-200 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-orange-50">
+            <TrendingDown className="h-5 w-5 text-orange-500" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-400">Spent This Month</p>
+            <p className="text-xl font-bold text-orange-500 truncate">{fmt(spentThisMonth)}</p>
+            <p className="text-xs text-gray-400">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+          </div>
+          <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
+        </Link>
       </div>
 
       {/* Quick actions */}
