@@ -32,7 +32,7 @@ export default function CashFlowChart({ data }: { data: MonthRow[] }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
-            <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }} />
+            <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }} />
             <Bar dataKey="income"  fill="#10b981" radius={[4,4,0,0]} maxBarSize={28} />
             <Bar dataKey="expense" fill="#f87171" radius={[4,4,0,0]} maxBarSize={28} />
             <Line dataKey="savings" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} type="monotone" />
