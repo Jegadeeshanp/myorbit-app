@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { useFinance } from '@/lib/financeStore';
+import { BudgetCategory } from '@/lib/financeData';
 
 // Unified category list — matches financeData budgets and AddExpenseModal
 const ALL_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Education', 'Travel', 'Others'];
@@ -25,8 +26,8 @@ function Toggle({ value, onChange, label, sub }: { value: boolean; onChange: (v:
   );
 }
 
-export default function AddBudgetModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { state, addBudget } = useFinance();
+export default function AddBudgetModal({ open, onClose, initial }: { open: boolean; onClose: () => void; initial?: BudgetCategory }) {
+  const { state, addBudget, updateBudget } = useFinance();
   const [name, setName]                 = useState('');
   const [amount, setAmount]             = useState('');
   const [period, setPeriod]             = useState<typeof PERIODS[number]>('Monthly');
@@ -36,6 +37,15 @@ export default function AddBudgetModal({ open, onClose }: { open: boolean; onClo
   const [overspend, setOverspend]       = useState(true);
   const [warning, setWarning]           = useState(true);
 
+  useEffect(() => {
+    if (open) {
+      setName(initial?.name ?? '');
+      setAmount(initial ? String(initial.budget) : '');
+      setSelectedCats([]); setSelectedAccounts([]);
+    }
+  }, [open]);
+
+  const isEdit = !!initial;
   const canSave = !!name.trim() && Number(amount) > 0;
 
   const toggleCat = (c: string) =>
@@ -45,18 +55,18 @@ export default function AddBudgetModal({ open, onClose }: { open: boolean; onClo
 
   const handleSave = () => {
     if (!canSave) return;
-    addBudget({
-      name: name.trim(),
-      budget: Number(amount),
-      spent: 0,
-    });
-    toast('Budget created');
-    setName(''); setAmount(''); setSelectedCats([]); setSelectedAccounts([]);
+    if (isEdit) {
+      updateBudget({ ...initial, name: name.trim(), budget: Number(amount) });
+      toast('Budget updated');
+    } else {
+      addBudget({ name: name.trim(), budget: Number(amount), spent: 0 });
+      toast('Budget created');
+    }
     onClose();
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Add budget" subtitle="Set a spending limit for a category">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit budget' : 'Add budget'} subtitle="Set a spending limit for a category">
       <div className="max-h-[65vh] overflow-y-auto space-y-5 pr-1">
 
         <div>
@@ -154,7 +164,7 @@ export default function AddBudgetModal({ open, onClose }: { open: boolean; onClo
         </button>
         <button type="button" onClick={handleSave} disabled={!canSave}
           className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
-          Save budget
+          {isEdit ? 'Update budget' : 'Save budget'}
         </button>
       </div>
     </Modal>

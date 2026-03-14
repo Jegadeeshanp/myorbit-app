@@ -1,25 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Plus, Minus, ArrowLeftRight, TrendingUp } from 'lucide-react';
 import AddExpenseModal from '@/components/finance/AddExpenseModal';
-import AddIncomeModal from '@/components/finance/AddIncomeModal';
-import { useFinance } from '@/lib/financeStore';
+import AddIncomeModal  from '@/components/finance/AddIncomeModal';
+import TransferModal   from '@/components/finance/TransferModal';
+import AddAssetModal   from '@/components/finance/AddAssetModal';
+import { useFinance }  from '@/lib/financeStore';
 
 export default function QuickActions() {
-  const { state, addTransaction } = useFinance();
-  const router = useRouter();
-  const [expenseOpen, setExpenseOpen] = useState(false);
-  const [incomeOpen,  setIncomeOpen]  = useState(false);
+  const { state, addTransaction, addAsset } = useFinance();
+  const [expenseOpen,  setExpenseOpen]  = useState(false);
+  const [incomeOpen,   setIncomeOpen]   = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [assetOpen,    setAssetOpen]    = useState(false);
 
   const accounts = state.accounts.map(a => ({ id: a.id, name: a.name }));
 
   const ACTIONS = [
-    { label: 'Add Expense', icon: Minus,           bg: 'bg-rose-50',    text: 'text-rose-600',    border: 'border-rose-100',    onClick: () => setExpenseOpen(true) },
-    { label: 'Add Income',  icon: Plus,            bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', onClick: () => setIncomeOpen(true) },
-    { label: 'Transfer',    icon: ArrowLeftRight,  bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100',    onClick: () => router.push('/orbit/finance/transactions/add?type=transfer') },
-    { label: 'Add Asset',   icon: TrendingUp,      bg: 'bg-violet-50',  text: 'text-violet-600',  border: 'border-violet-100',  onClick: () => router.push('/orbit/finance/assets') },
+    { label: 'Add Expense', icon: Minus,          bg: 'bg-rose-50',    text: 'text-rose-600',    border: 'border-rose-100',    onClick: () => setExpenseOpen(true)  },
+    { label: 'Add Income',  icon: Plus,           bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', onClick: () => setIncomeOpen(true)   },
+    { label: 'Transfer',    icon: ArrowLeftRight, bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-100',    onClick: () => setTransferOpen(true) },
+    { label: 'Add Asset',   icon: TrendingUp,     bg: 'bg-violet-50',  text: 'text-violet-600',  border: 'border-violet-100',  onClick: () => setAssetOpen(true)    },
   ];
 
   return (
@@ -42,18 +44,12 @@ export default function QuickActions() {
         </div>
       </div>
 
-      <AddExpenseModal
-        open={expenseOpen}
-        onClose={() => setExpenseOpen(false)}
-        accounts={accounts}
-        onSave={addTransaction}
+      <AddExpenseModal  open={expenseOpen}  onClose={() => setExpenseOpen(false)}  accounts={accounts} onSave={addTransaction} />
+      <AddIncomeModal   open={incomeOpen}   onClose={() => setIncomeOpen(false)}   accounts={accounts} onSave={addTransaction} />
+      <TransferModal    open={transferOpen} onClose={() => setTransferOpen(false)} accounts={accounts}
+        onSave={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
       />
-      <AddIncomeModal
-        open={incomeOpen}
-        onClose={() => setIncomeOpen(false)}
-        accounts={accounts}
-        onSave={addTransaction}
-      />
+      <AddAssetModal    open={assetOpen}    onClose={() => setAssetOpen(false)}    onSave={addAsset} />
     </>
   );
 }

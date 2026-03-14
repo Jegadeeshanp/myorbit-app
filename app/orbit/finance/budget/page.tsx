@@ -6,11 +6,13 @@ import BudgetCard from '@/components/finance/BudgetCard';
 import AddBudgetModal from '@/components/finance/AddBudgetModal';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
+import { BudgetCategory } from '@/lib/financeData';
 
 export default function BudgetPage() {
   const { state } = useFinance();
   const { budgets } = state;
   const [isModalOpen, setModalOpen] = useState(false);
+  const [editTarget,  setEditTarget] = useState<BudgetCategory | null>(null);
 
   return (
     <div className="space-y-6">
@@ -34,11 +36,16 @@ export default function BudgetPage() {
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {budgets.map((budget) => (
-          <BudgetCard key={budget.id} budget={budget} />
+          <BudgetCard key={budget.id} budget={budget} onEdit={setEditTarget} />
         ))}
       </div>
 
       <AddBudgetModal open={isModalOpen} onClose={() => setModalOpen(false)} />
+      <AddBudgetModal
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        initial={editTarget ?? undefined}
+      />
     </div>
   );
 }

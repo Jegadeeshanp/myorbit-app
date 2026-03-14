@@ -5,7 +5,6 @@ import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 
-// Category names must match financeData budget names exactly for budget tracking
 const CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Education', 'Travel', 'Others'];
 
 export type AddExpenseProps = {
@@ -13,42 +12,54 @@ export type AddExpenseProps = {
   onClose: () => void;
   accounts: { id: string; name: string }[];
   onSave: (payload: Omit<Transaction, 'id'>) => void;
+  initial?: Transaction;
 };
 
-export default function AddExpenseModal({ open, onClose, accounts, onSave }: AddExpenseProps) {
-  const [date, setDate]           = useState(() => new Date().toISOString().slice(0, 10));
-  const [category, setCategory]   = useState(CATEGORIES[0]);
-  const [description, setDesc]    = useState('');
-  const [amount, setAmount]       = useState('');
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
+export default function AddExpenseModal({ open, onClose, accounts, onSave, initial }: AddExpenseProps) {
+  const [date,        setDate]      = useState(() => new Date().toISOString().slice(0, 10));
+  const [category,    setCategory]  = useState(CATEGORIES[0]);
+  const [description, setDesc]      = useState('');
+  const [amount,      setAmount]    = useState('');
+  const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
 
-  // Reset all fields when the modal opens/closes
   useEffect(() => {
     if (open) {
-      setDate(new Date().toISOString().slice(0, 10));
-      setCategory(CATEGORIES[0]);
-      setDesc('');
-      setAmount('');
-      setAccountId(accounts[0]?.id ?? '');
+      setDate(initial?.date ?? new Date().toISOString().slice(0, 10));
+      setCategory(initial?.category ?? CATEGORIES[0]);
+      setDesc(initial?.description ?? '');
+      setAmount(initial ? String(Math.abs(initial.amount)) : '');
+      setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
     }
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    !!date && !!category && !!description.trim() && !!amount && !!accountId && !isNaN(Number(amount)) && Number(amount) > 0,
+    !!date && !!category && !!description.trim() && Number(amount) > 0 && !!accountId,
   [date, category, description, amount, accountId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({ date, category, description: description.trim(), amount: -Math.abs(Number(amount)), type: 'expense', accountId });
-    toast('Expense recorded');
-    setDesc(''); setAmount(''); setCategory(CATEGORIES[0]);
+    toast(initial ? 'Expense updated' : 'Expense recorded');
     onClose();
   };
 
-  return (
-    <Modal open={open} onClose={onClose} title="Add expense" subtitle="Record a payment or purchase">
-      <div className="space-y-5">
+  const isEdit = !!initial;
 
+  const footer = (
+    <div className="flex items-center justify-end gap-3">
+      <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        Cancel
+      </button>
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+        className="rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {isEdit ? 'Update expense' : 'Save expense'}
+      </button>
+    </div>
+  );
+
+  return (
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit expense' : 'Add expense'} subtitle="Record a payment or purchase" footer={footer}>
+      <div className="space-y-5">
         <div>
           <SectionLabel>Expense details</SectionLabel>
           <div className="space-y-3">
@@ -64,7 +75,6 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave }: Add
             </div>
           </div>
         </div>
-
         <div>
           <SectionLabel>Amount & account</SectionLabel>
           <div className="space-y-3">
@@ -83,16 +93,6 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave }: Add
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-          <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-            className="rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50">
-            Save expense
-          </button>
         </div>
       </div>
     </Modal>

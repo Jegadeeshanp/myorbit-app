@@ -4,10 +4,12 @@ import { useState, useMemo } from 'react';
 import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
   Truck, Search, Trash2, ChevronDown, TrendingUp,
-  Landmark, Wallet, Banknote, ArrowLeftRight,
+  Landmark, Wallet, Banknote, ArrowLeftRight, Pencil,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
+import AddExpenseModal from '@/components/finance/AddExpenseModal';
+import AddIncomeModal  from '@/components/finance/AddIncomeModal';
 import { Transaction } from '@/lib/financeData';
 
 // ── Category icon + color maps ─────────────────────────────────────────────
@@ -92,11 +94,12 @@ function groupByMonth(txs: Transaction[]) {
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
-  const { state, deleteTransaction } = useFinance();
+  const { state, deleteTransaction, updateTransaction } = useFinance();
   const [activeTab, setActiveTab]   = useState('All');
   const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
   const [dropdownOpen, setDropdown] = useState(false);
+  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
 
   // Build account lookup: accountId → account type tab key
   const accountTabMap = useMemo(() => {
@@ -307,6 +310,13 @@ export default function TransactionList({ transactions }: { transactions: Transa
                           {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </p>
                         <button
+                          onClick={() => setEditTarget(tx)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-500"
+                          title="Edit transaction"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
                           onClick={() => deleteTransaction(tx.id)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
                           title="Delete transaction"
@@ -321,6 +331,26 @@ export default function TransactionList({ transactions }: { transactions: Transa
             </div>
           );
         })
+      )}
+
+      {/* Edit modals */}
+      {editTarget?.type === 'expense' && (
+        <AddExpenseModal
+          open={!!editTarget}
+          onClose={() => setEditTarget(null)}
+          accounts={state.accounts.map(a => ({ id: a.id, name: a.name }))}
+          initial={editTarget}
+          onSave={payload => { updateTransaction({ ...payload, id: editTarget.id }); setEditTarget(null); }}
+        />
+      )}
+      {editTarget?.type === 'income' && (
+        <AddIncomeModal
+          open={!!editTarget}
+          onClose={() => setEditTarget(null)}
+          accounts={state.accounts.map(a => ({ id: a.id, name: a.name }))}
+          initial={editTarget}
+          onSave={payload => { updateTransaction({ ...payload, id: editTarget.id }); setEditTarget(null); }}
+        />
       )}
     </div>
   );

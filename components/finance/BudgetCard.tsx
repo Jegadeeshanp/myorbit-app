@@ -2,13 +2,13 @@
 
 import { BudgetCategory } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
 function fmt(v: number) {
   return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
-export default function BudgetCard({ budget }: { budget: BudgetCategory }) {
+export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory; onEdit?: (b: BudgetCategory) => void }) {
   const { deleteBudget } = useFinance();
 
   // Fix: calculate raw % BEFORE clamping so we can use it for color logic
@@ -33,6 +33,15 @@ export default function BudgetCard({ budget }: { budget: BudgetCategory }) {
             <p className="text-sm font-semibold text-gray-900">{fmt(budget.budget)}</p>
             <p className="text-xs text-gray-400">budget</p>
           </div>
+          {onEdit && (
+            <button
+              onClick={() => onEdit(budget)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500"
+              title="Edit budget"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={() => deleteBudget(budget.id)}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"

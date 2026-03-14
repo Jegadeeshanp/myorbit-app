@@ -12,42 +12,54 @@ export type AddIncomeProps = {
   onClose: () => void;
   accounts: { id: string; name: string }[];
   onSave: (payload: Omit<Transaction, 'id'>) => void;
+  initial?: Transaction;
 };
 
-export default function AddIncomeModal({ open, onClose, accounts, onSave }: AddIncomeProps) {
-  const [date, setDate]           = useState(() => new Date().toISOString().slice(0, 10));
-  const [source, setSource]       = useState('Salary');
-  const [description, setDesc]    = useState('');
-  const [amount, setAmount]       = useState('');
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
+export default function AddIncomeModal({ open, onClose, accounts, onSave, initial }: AddIncomeProps) {
+  const [date,        setDate]      = useState(() => new Date().toISOString().slice(0, 10));
+  const [source,      setSource]    = useState('Salary');
+  const [description, setDesc]      = useState('');
+  const [amount,      setAmount]    = useState('');
+  const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
 
-  // Reset all fields when the modal opens
   useEffect(() => {
     if (open) {
-      setDate(new Date().toISOString().slice(0, 10));
-      setSource('Salary');
-      setDesc('');
-      setAmount('');
-      setAccountId(accounts[0]?.id ?? '');
+      setDate(initial?.date ?? new Date().toISOString().slice(0, 10));
+      setSource(initial?.category ?? 'Salary');
+      setDesc(initial?.description ?? '');
+      setAmount(initial ? String(Math.abs(initial.amount)) : '');
+      setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
     }
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    !!date && !!source && !!amount && !!accountId && !isNaN(Number(amount)) && Number(amount) > 0,
+    !!date && !!source && Number(amount) > 0 && !!accountId,
   [date, source, amount, accountId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({ date, category: source, description: description.trim() || source, amount: Math.abs(Number(amount)), type: 'income', accountId });
-    toast('Income recorded');
-    setSource('Salary'); setDesc(''); setAmount('');
+    toast(initial ? 'Income updated' : 'Income recorded');
     onClose();
   };
 
-  return (
-    <Modal open={open} onClose={onClose} title="Add income" subtitle="Record money received">
-      <div className="space-y-5">
+  const isEdit = !!initial;
 
+  const footer = (
+    <div className="flex items-center justify-end gap-3">
+      <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        Cancel
+      </button>
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+        className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {isEdit ? 'Update income' : 'Save income'}
+      </button>
+    </div>
+  );
+
+  return (
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit income' : 'Add income'} subtitle="Record money received" footer={footer}>
+      <div className="space-y-5">
         <div>
           <SectionLabel>Income details</SectionLabel>
           <div className="space-y-3">
@@ -63,7 +75,6 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave }: AddI
             </div>
           </div>
         </div>
-
         <div>
           <SectionLabel>Amount & account</SectionLabel>
           <div className="space-y-3">
@@ -82,16 +93,6 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave }: AddI
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-          <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-            className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-            Save income
-          </button>
         </div>
       </div>
     </Modal>

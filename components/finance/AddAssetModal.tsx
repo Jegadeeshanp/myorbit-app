@@ -1,21 +1,32 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
+import { Asset } from '@/lib/financeData';
 import { ASSET_CATEGORIES, AssetCategory } from '@/lib/assetCategories';
 
 export type AddAssetProps = {
   open: boolean;
   onClose: () => void;
   onSave: (payload: { name: string; category: AssetCategory; value: number; invested: number }) => void;
+  initial?: Asset;
 };
 
-export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) {
-  const [name, setName]         = useState('');
+export default function AddAssetModal({ open, onClose, onSave, initial }: AddAssetProps) {
+  const [name,     setName]     = useState('');
   const [category, setCategory] = useState<AssetCategory>('Stocks & Equity');
-  const [value, setValue]       = useState('');
+  const [value,    setValue]    = useState('');
   const [invested, setInvested] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setName(initial?.name ?? '');
+      setCategory(initial?.category ?? 'Stocks & Equity');
+      setValue(initial ? String(initial.value) : '');
+      setInvested(initial ? String(initial.invested) : '');
+    }
+  }, [open]);
 
   const canSubmit = useMemo(() =>
     !!name.trim() && Number(value) > 0 && Number(invested) > 0,
@@ -24,12 +35,12 @@ export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) 
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({ name: name.trim(), category, value: Number(value), invested: Number(invested) });
-    toast('Asset added');
-    setName(''); setValue(''); setInvested('');
+    toast(initial ? 'Asset updated' : 'Asset added');
     onClose();
   };
 
   const selected = ASSET_CATEGORIES.find(c => c.label === category)!;
+  const isEdit = !!initial;
 
   const footer = (
     <div className="flex items-center justify-end gap-3">
@@ -38,16 +49,15 @@ export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) 
       </button>
       <button type="button" onClick={handleSubmit} disabled={!canSubmit}
         className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-        Save asset
+        {isEdit ? 'Update asset' : 'Save asset'}
       </button>
     </div>
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Add asset" subtitle="Select a category and enter details" footer={footer}>
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit asset' : 'Add asset'} subtitle="Select a category and enter details" footer={footer}>
       <div className="space-y-5">
 
-        {/* Category grid */}
         <div>
           <SectionLabel>Asset class</SectionLabel>
           <div className="grid grid-cols-4 gap-2">
@@ -76,7 +86,6 @@ export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) 
           </div>
         </div>
 
-        {/* Selected category pill */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">Selected:</span>
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${selected.tagBg} ${selected.tagText}`}>
@@ -85,7 +94,6 @@ export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) 
           </span>
         </div>
 
-        {/* Asset details */}
         <div>
           <SectionLabel>Asset details</SectionLabel>
           <div className="space-y-3">
@@ -94,7 +102,7 @@ export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) 
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder={`e.g. ${category === 'Stocks & Equity' ? 'Reliance Industries' : category === 'Real Estate' ? 'Mumbai Apartment' : category === 'Mutual Funds' ? 'Nifty 50 Index Fund' : 'My ' + category}`}
+                placeholder={`e.g. ${category === 'Stocks & Equity' ? 'Reliance Industries' : category === 'Real Estate' ? 'Mumbai Apartment' : 'My ' + category}`}
                 className={inputCls}
               />
             </div>
@@ -108,6 +116,7 @@ export default function AddAssetModal({ open, onClose, onSave }: AddAssetProps) 
             </div>
           </div>
         </div>
+
       </div>
     </Modal>
   );

@@ -3,7 +3,7 @@
 import { Asset } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig } from '@/lib/assetCategories';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
 function fmt(v: number) {
   return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -12,12 +12,13 @@ function fmt(v: number) {
 type Props = {
   assets: Asset[];
   totalPortfolioValue?: number;
+  onEdit?: (asset: Asset) => void;
 };
 
-export default function AssetTable({ assets, totalPortfolioValue }: Props) {
+export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Props) {
   const { deleteAsset } = useFinance();
-  const tableTotal  = assets.reduce((s, a) => s + a.value, 0);
-  const allocBase   = totalPortfolioValue ?? tableTotal;
+  const tableTotal = assets.reduce((s, a) => s + a.value, 0);
+  const allocBase  = totalPortfolioValue ?? tableTotal;
 
   if (assets.length === 0) return null;
 
@@ -70,13 +71,24 @@ export default function AssetTable({ assets, totalPortfolioValue }: Props) {
                   </div>
                 </td>
                 <td className="px-3 py-3.5">
-                  <button
-                    onClick={() => deleteAsset(asset.id)}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
-                    title="Delete asset"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(asset)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-500"
+                        title="Edit asset"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteAsset(asset.id)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
+                      title="Delete asset"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             );

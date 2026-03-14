@@ -18,8 +18,9 @@ function fmt(v: number) {
 }
 
 export default function AssetsPage() {
-  const { state, addAsset } = useFinance();
+  const { state, addAsset, updateAsset } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
+  const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');
 
@@ -129,7 +130,7 @@ export default function AssetsPage() {
 
       {/* Asset table */}
       {filteredAssets.length > 0
-        ? <AssetTable assets={filteredAssets} totalPortfolioValue={allAssetsValue} />
+        ? <AssetTable assets={filteredAssets} totalPortfolioValue={allAssetsValue} onEdit={setEditTarget} />
         : (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-12 text-center">
             <TrendingUp className="h-8 w-8 text-gray-300 mb-3" />
@@ -191,6 +192,16 @@ export default function AssetsPage() {
       )}
 
       <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} />
+      <AddAssetModal
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        initial={editTarget ?? undefined}
+        onSave={payload => {
+          if (!editTarget) return;
+          updateAsset({ ...payload, id: editTarget.id });
+          setEditTarget(null);
+        }}
+      />
     </div>
   );
 }
