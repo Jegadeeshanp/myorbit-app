@@ -17,7 +17,6 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
   const [toId,   setToId]   = useState(accounts[1]?.id ?? accounts[0]?.id ?? '');
   const [amount, setAmount] = useState('');
   const [date,   setDate]   = useState(() => new Date().toISOString().slice(0, 10));
-  const [label,  setLabel]  = useState('');
   const [note,   setNote]   = useState('');
 
   useEffect(() => {
@@ -26,18 +25,17 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
       setToId(accounts[1]?.id ?? accounts[0]?.id ?? '');
       setAmount('');
       setDate(new Date().toISOString().slice(0, 10));
-      setLabel('');
       setNote('');
     }
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    Number(amount) > 0 && !!fromId && !!toId && fromId !== toId && !!label.trim(),
-  [amount, fromId, toId, label]);
+    Number(amount) > 0 && !!fromId && !!toId && fromId !== toId,
+  [amount, fromId, toId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const description = note.trim() ? `${label.trim()}\n${note.trim()}` : label.trim();
+    const description = note.trim() || 'Transfer';
     onSave(
       { date, category: 'Transfer', description, amount: -Number(amount), type: 'expense', accountId: fromId },
       { date, category: 'Transfer', description, amount:  Number(amount), type: 'income',  accountId: toId  },
@@ -95,12 +93,8 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Label</label>
-              <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Monthly savings transfer" className={inputCls} />
-            </div>
-            <div>
               <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">Note <OptionalBadge /></label>
-              <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note…" className={inputCls} />
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Monthly savings transfer" className={inputCls} />
             </div>
           </div>
         </div>

@@ -376,3 +376,69 @@ html.dark .bg-slate-50    { background-color: #1a1f2e !important; }
 html.dark .bg-slate-100   { background-color: #202535 !important; }
 html.dark .text-slate-600 { color: #94a3b8 !important; }
 html.dark .text-slate-700 { color: #cbd5e1 !important; }
+
+/* ── Landing page — CSS guard for pre-hydration flash ─────────
+   body:has([data-landing]) fires from CSS immediately (before JS),
+   covering the brief moment before ForceLightMode component runs.
+   The gradient hero needs explicit override since it uses via-white
+   which is already dark-mode patched above.
+──────────────────────────────────────────────────────────── */
+body:has([data-landing]) {
+  background-color: #F7F7F5 !important;
+  color: #111827 !important;
+}
+
+/* Restore light-mode hero gradient on the landing page */
+[data-landing] [class*="via-white"],
+html.dark [data-landing] [class*="via-white"] {
+  background-image: linear-gradient(to bottom right, #ecfdf5, #f0fdf4 30%, #ffffff) !important;
+}
+
+/* ── Landing page — force light palette (html.dark overrides) ─
+   ForceLightMode removes html.dark before React renders, but these
+   rules serve as a CSS-only fallback for any edge cases.
+──────────────────────────────────────────────────────────── */
+html.dark [data-landing] {
+  color-scheme: light;
+  background-color: #F7F7F5 !important;
+  color: #111827 !important;
+}
+
+/* Backgrounds */
+html.dark [data-landing] .bg-white,
+html.dark [data-landing] .bg-white\/70,
+html.dark [data-landing] .bg-white\/80,
+html.dark [data-landing] .bg-white\/90 { background-color: rgba(255,255,255,0.9) !important; }
+html.dark [data-landing] .bg-white\/60 { background-color: rgba(255,255,255,0.6) !important; }
+html.dark [data-landing] .bg-gray-50   { background-color: #f9fafb !important; }
+html.dark [data-landing] .bg-gray-100  { background-color: #f3f4f6 !important; }
+html.dark [data-landing] .bg-\[\#F7F7F5\] { background-color: #F7F7F5 !important; }
+html.dark [data-landing] .min-h-screen { background-color: #F7F7F5; }
+html.dark [data-landing] .bg-emerald-50  { background-color: #ecfdf5 !important; }
+html.dark [data-landing] .bg-emerald-100 { background-color: #d1fae5 !important; }
+
+/* Text */
+html.dark [data-landing] .text-gray-900 { color: #111827 !important; }
+html.dark [data-landing] .text-gray-800 { color: #1f2937 !important; }
+html.dark [data-landing] .text-gray-700 { color: #374151 !important; }
+html.dark [data-landing] .text-gray-600 { color: #4b5563 !important; }
+html.dark [data-landing] .text-gray-500 { color: #6b7280 !important; }
+html.dark [data-landing] .text-gray-400 { color: #9ca3af !important; }
+html.dark [data-landing] .text-emerald-700 { color: #047857 !important; }
+
+/* Borders */
+html.dark [data-landing] .border-white\/40 { border-color: rgba(255,255,255,0.4) !important; }
+html.dark [data-landing] .border-white\/50 { border-color: rgba(255,255,255,0.5) !important; }
+html.dark [data-landing] .border-gray-200  { border-color: #e5e7eb !important; }
+
+/* Shadows */
+html.dark [data-landing] .shadow-sm  { box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; }
+html.dark [data-landing] .shadow-lg  { box-shadow: 0 10px 15px rgba(0,0,0,0.1) !important; }
+
+/* Nav backdrop */
+html.dark [data-landing] header { background-color: rgba(255,255,255,0.7) !important; color: #111827 !important; }
+html.dark [data-landing] header * { color: inherit; }
+
+/* Hover states */
+html.dark [data-landing] .hover\:bg-gray-100:hover { background-color: #f3f4f6 !important; }
+html.dark [data-landing] .hover\:text-gray-900:hover { color: #111827 !important; }

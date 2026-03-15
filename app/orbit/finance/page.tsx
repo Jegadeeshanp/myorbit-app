@@ -18,7 +18,6 @@ import TopExpenses         from '@/components/finance/TopExpenses';
 import SavingsRateCard     from '@/components/finance/SavingsRateCard';
 import BudgetStatus        from '@/components/finance/BudgetStatus';
 import UpcomingBills       from '@/components/finance/UpcomingBills';
-import QuickActions        from '@/components/finance/QuickActions';
 import SmartInsights       from '@/components/finance/SmartInsights';
 import FinancialHealthScore from '@/components/finance/FinancialHealthScore';
 import { DashboardSkeleton } from '@/components/finance/SkeletonLoader';
@@ -122,9 +121,6 @@ export default function FinanceOverviewPage() {
           <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
         </Link>
       </div>
-
-      {/* Quick actions */}
-      <QuickActions />
 
       {/* Health + Insights */}
       <div className="grid gap-5 lg:grid-cols-2">
