@@ -2,19 +2,16 @@
 
 import { useMemo } from 'react';
 import { useFinance } from '@/lib/financeStore';
+import { formatINRCompact, formatINR } from '@/lib/currency';
 import { TrendingUp } from 'lucide-react';
-
-function fmt(v: number) {
-  if (Math.abs(v) >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`;
-  if (Math.abs(v) >= 100000)   return `₹${(v / 100000).toFixed(2)}L`;
-  return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-}
 
 export default function NetWorthCard() {
   const { state } = useFinance();
   const totalAssets      = useMemo(() => state.assets.reduce((s, a) => s + a.value, 0), [state.assets]);
   const totalLiabilities = useMemo(() => state.liabilities.reduce((s, l) => s + l.outstanding, 0), [state.liabilities]);
-  const netWorth         = totalAssets - totalLiabilities;
+  // Account balances (bank accounts, wallets) are part of net worth too
+  const accountBalance   = useMemo(() => state.accounts.reduce((s, a) => s + a.balance, 0), [state.accounts]);
+  const netWorth         = totalAssets + accountBalance - totalLiabilities;
   const isPositive       = netWorth >= 0;
   const total            = totalAssets + totalLiabilities;
   const assetPct         = total > 0 ? Math.round((totalAssets / total) * 100) : 0;
@@ -27,7 +24,7 @@ export default function NetWorthCard() {
       {/* Big number + trend */}
       <div className="mt-1 flex items-end justify-between gap-3">
         <p className={`text-4xl font-bold tracking-tight leading-none ${isPositive ? 'text-gray-900' : 'text-rose-600'}`}>
-          {isPositive ? '' : '-'}{fmt(Math.abs(netWorth))}
+          {formatINRCompact(netWorth)}
         </p>
         {total > 0 && (
           <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 mb-0.5">
@@ -42,10 +39,10 @@ export default function NetWorthCard() {
       {/* Assets • Liabilities inline */}
       <div className="mt-3 flex items-center gap-4 text-sm">
         <span className="text-gray-400">Assets</span>
-        <span className="font-semibold text-emerald-600">{fmt(totalAssets)}</span>
+        <span className="font-semibold text-emerald-600">{formatINR(totalAssets)}</span>
         <span className="text-gray-200">•</span>
         <span className="text-gray-400">Liabilities</span>
-        <span className="font-semibold text-rose-500">{fmt(totalLiabilities)}</span>
+        <span className="font-semibold text-rose-500">{formatINR(totalLiabilities)}</span>
       </div>
 
       {/* Thin progress bar */}

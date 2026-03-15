@@ -10,6 +10,7 @@ import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
 import AddExpenseModal from '@/components/finance/AddExpenseModal';
 import AddIncomeModal  from '@/components/finance/AddIncomeModal';
+import ConfirmDialog   from '@/components/ConfirmDialog';
 import { Transaction } from '@/lib/financeData';
 
 // ── Category icon + color maps ─────────────────────────────────────────────
@@ -98,8 +99,9 @@ export default function TransactionList({ transactions }: { transactions: Transa
   const [activeTab, setActiveTab]   = useState('All');
   const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
-  const [dropdownOpen, setDropdown] = useState(false);
-  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
+  const [dropdownOpen, setDropdown]     = useState(false);
+  const [editTarget, setEditTarget]     = useState<Transaction | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
 
   // Build account lookup: accountId → account type tab key
   const accountTabMap = useMemo(() => {
@@ -317,7 +319,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => deleteTransaction(tx.id)}
+                          onClick={() => setConfirmTarget(tx.id)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
                           title="Delete transaction"
                         >
@@ -352,6 +354,16 @@ export default function TransactionList({ transactions }: { transactions: Transa
           onSave={payload => { updateTransaction({ ...payload, id: editTarget.id }); setEditTarget(null); }}
         />
       )}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete transaction"
+        description="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => { if (confirmTarget) deleteTransaction(confirmTarget); setConfirmTarget(null); }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }
