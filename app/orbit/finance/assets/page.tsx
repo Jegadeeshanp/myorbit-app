@@ -8,6 +8,7 @@ import AddAssetModal from '@/components/finance/AddAssetModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig, ASSET_CATEGORIES } from '@/lib/assetCategories';
+import { AssetsSkeleton } from '@/components/finance/SkeletonLoader';
 
 const DONUT_COLORS = ['#10b981','#3b82f6','#f97316','#eab308','#8b5cf6','#06b6d4','#ec4899','#f43f5e','#84cc16','#a855f7'];
 
@@ -20,6 +21,8 @@ function fmt(v: number) {
 export default function AssetsPage() {
   const { state, addAsset, updateAsset } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
+
+  if (state.loadState === 'loading') return <AssetsSkeleton />;
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');

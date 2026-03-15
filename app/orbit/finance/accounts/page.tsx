@@ -6,6 +6,7 @@ import { StandardCard, CreditCardCard } from '@/components/finance/AccountCard';
 import AddAccountModal from '@/components/finance/AddAccountModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { Account, useFinance } from '@/lib/financeStore';
+import { AccountsSkeleton } from '@/components/finance/SkeletonLoader';
 
 function fmt(v: number) {
   return Math.abs(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -24,6 +25,8 @@ function SectionHeader({ icon: Icon, title, count, color }: { icon: React.Elemen
 export default function AccountsPage() {
   const { state, addAccount } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
+
+  if (state.loadState === 'loading') return <AccountsSkeleton />;
 
   const { totalBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
     let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;

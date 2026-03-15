@@ -8,6 +8,7 @@ import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
 import { Liability } from '@/lib/financeData';
 import { toast } from '@/components/Toast';
+import { LiabilitiesSkeleton } from '@/components/finance/SkeletonLoader';
 
 function fmt(v: number | undefined | null) {
   if (v == null || isNaN(v)) return '₹0';
@@ -112,6 +113,8 @@ function RecordPaymentModal({
 export default function LiabilitiesPage() {
   const { state, addLiability, updateLiability, deleteLiability } = useFinance();
   const liabilities = state.liabilities;
+
+  if (state.loadState === 'loading') return <LiabilitiesSkeleton />;
 
   const [addOpen,     setAddOpen]     = useState(false);
   const [editTarget,  setEditTarget]  = useState<Liability | null>(null);
