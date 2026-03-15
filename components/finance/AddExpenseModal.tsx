@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Modal, { SectionLabel, inputCls } from './Modal';
+import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 
@@ -18,7 +18,8 @@ export type AddExpenseProps = {
 export default function AddExpenseModal({ open, onClose, accounts, onSave, initial }: AddExpenseProps) {
   const [date,        setDate]      = useState(() => new Date().toISOString().slice(0, 10));
   const [category,    setCategory]  = useState(CATEGORIES[0]);
-  const [description, setDesc]      = useState('');
+  const [label,       setLabel]     = useState('');
+  const [note,        setNote]      = useState('');
   const [amount,      setAmount]    = useState('');
   const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
 
@@ -26,19 +27,27 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
     if (open) {
       setDate(initial?.date ?? new Date().toISOString().slice(0, 10));
       setCategory(initial?.category ?? CATEGORIES[0]);
-      setDesc(initial?.description ?? '');
+      if (initial?.description) {
+        const parts = initial.description.split('\n');
+        setLabel(parts[0] ?? '');
+        setNote(parts.slice(1).join('\n'));
+      } else {
+        setLabel('');
+        setNote('');
+      }
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
     }
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    !!date && !!category && !!description.trim() && Number(amount) > 0 && !!accountId,
-  [date, category, description, amount, accountId]);
+    !!date && !!category && !!label.trim() && Number(amount) > 0 && !!accountId,
+  [date, category, label, amount, accountId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSave({ date, category, description: description.trim(), amount: -Math.abs(Number(amount)), type: 'expense', accountId });
+    const description = note.trim() ? `${label.trim()}\n${note.trim()}` : label.trim();
+    onSave({ date, category, description, amount: -Math.abs(Number(amount)), type: 'expense', accountId });
     toast(initial ? 'Expense updated' : 'Expense recorded');
     onClose();
   };
@@ -70,8 +79,12 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="Lunch at cafe" className={inputCls} />
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Label</label>
+              <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Lunch at cafe" className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">Note <OptionalBadge /></label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note…" className={inputCls} />
             </div>
           </div>
         </div>

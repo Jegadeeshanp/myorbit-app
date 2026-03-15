@@ -18,7 +18,8 @@ export type AddIncomeProps = {
 export default function AddIncomeModal({ open, onClose, accounts, onSave, initial }: AddIncomeProps) {
   const [date,        setDate]      = useState(() => new Date().toISOString().slice(0, 10));
   const [source,      setSource]    = useState('Salary');
-  const [description, setDesc]      = useState('');
+  const [label,       setLabel]     = useState('');
+  const [note,        setNote]      = useState('');
   const [amount,      setAmount]    = useState('');
   const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
 
@@ -26,19 +27,27 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
     if (open) {
       setDate(initial?.date ?? new Date().toISOString().slice(0, 10));
       setSource(initial?.category ?? 'Salary');
-      setDesc(initial?.description ?? '');
+      if (initial?.description) {
+        const parts = initial.description.split('\n');
+        setLabel(parts[0] ?? '');
+        setNote(parts.slice(1).join('\n'));
+      } else {
+        setLabel('');
+        setNote('');
+      }
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
     }
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    !!date && !!source && Number(amount) > 0 && !!accountId,
-  [date, source, amount, accountId]);
+    !!date && !!source && !!label.trim() && Number(amount) > 0 && !!accountId,
+  [date, source, label, amount, accountId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSave({ date, category: source, description: description.trim() || source, amount: Math.abs(Number(amount)), type: 'income', accountId });
+    const description = note.trim() ? `${label.trim()}\n${note.trim()}` : label.trim();
+    onSave({ date, category: source, description, amount: Math.abs(Number(amount)), type: 'income', accountId });
     toast(initial ? 'Income updated' : 'Income recorded');
     onClose();
   };
@@ -70,8 +79,12 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
               </select>
             </div>
             <div>
-              <label className="mb-1.5 flex items-center text-sm font-medium text-gray-700">Description <OptionalBadge /></label>
-              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="March paycheck" className={inputCls} />
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Label</label>
+              <input value={label} onChange={e => setLabel(e.target.value)} placeholder="March paycheck" className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">Note <OptionalBadge /></label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note…" className={inputCls} />
             </div>
           </div>
         </div>

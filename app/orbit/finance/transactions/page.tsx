@@ -4,49 +4,73 @@ import { useState } from 'react';
 import { useFinance } from '@/lib/financeStore';
 import AddExpenseModal from '@/components/finance/AddExpenseModal';
 import AddIncomeModal from '@/components/finance/AddIncomeModal';
+import TransferModal from '@/components/finance/TransferModal';
+import TransactionTypePicker from '@/components/finance/TransactionTypePicker';
 import TransactionSummaryCard from '@/components/finance/TransactionSummaryCard';
 import TransactionList from '@/components/finance/TransactionList';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { TransactionsSkeleton } from '@/components/finance/SkeletonLoader';
+import { Plus } from 'lucide-react';
+
+type ActiveModal = 'expense' | 'income' | 'transfer' | null;
 
 export default function TransactionsPage() {
   const { state, addTransaction } = useFinance();
   const { transactions, accounts } = state;
 
+  const [pickerOpen,  setPickerOpen]  = useState(false);
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+
   if (state.loadState === 'loading') return <TransactionsSkeleton />;
 
-  const [isExpenseOpen, setExpenseOpen] = useState(false);
-  const [isIncomeOpen,  setIncomeOpen]  = useState(false);
+  const accountList = accounts.map(a => ({ id: a.id, name: a.name }));
+
+  function openModal(type: 'expense' | 'income' | 'transfer') {
+    setPickerOpen(false);
+    setActiveModal(type);
+  }
 
   return (
     <div className="space-y-5">
       <FinanceTopBar action={
-        <div className="flex gap-2">
-          <button type="button" onClick={() => setIncomeOpen(true)}
-            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
-            + Income
-          </button>
-          <button type="button" onClick={() => setExpenseOpen(true)}
-            className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-            + Expense
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+        >
+          <Plus className="h-4 w-4" />
+          Transaction
+        </button>
       } />
 
       <TransactionSummaryCard transactions={transactions} />
       <TransactionList transactions={transactions} />
 
-      <AddIncomeModal
-        open={isIncomeOpen}
-        onClose={() => setIncomeOpen(false)}
-        accounts={accounts.map(a => ({ id: a.id, name: a.name }))}
+      {/* Type picker sheet */}
+      <TransactionTypePicker
+        open={pickerOpen}
+        onSelect={openModal}
+        onClose={() => setPickerOpen(false)}
+      />
+
+      {/* Add modals */}
+      <AddExpenseModal
+        open={activeModal === 'expense'}
+        onClose={() => setActiveModal(null)}
+        accounts={accountList}
         onSave={addTransaction}
       />
-      <AddExpenseModal
-        open={isExpenseOpen}
-        onClose={() => setExpenseOpen(false)}
-        accounts={accounts.map(a => ({ id: a.id, name: a.name }))}
+      <AddIncomeModal
+        open={activeModal === 'income'}
+        onClose={() => setActiveModal(null)}
+        accounts={accountList}
         onSave={addTransaction}
+      />
+      <TransferModal
+        open={activeModal === 'transfer'}
+        onClose={() => setActiveModal(null)}
+        accounts={accountList}
+        onSave={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
       />
     </div>
   );
