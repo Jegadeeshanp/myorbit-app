@@ -8,7 +8,9 @@ export const runtime = 'nodejs';
 
 async function decryptAccount(row: any) {
   return {
-    id: row.id, name: row.name, type: row.type,
+    id: row.id,
+    name: row.name,
+    type: row.type,
     balance: await decryptNumber(row.balance),
     creditLimit: row.creditLimit ? await decryptNumber(row.creditLimit) : undefined,
   };
@@ -17,10 +19,14 @@ async function decryptAccount(row: any) {
 export async function GET() {
   try {
     const userId = await requireUserId();
-    const rows = await prisma.account.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
+    const rows = await prisma.account.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
     return NextResponse.json(await Promise.all(rows.map(decryptAccount)));
   } catch (e: any) {
-    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (e.message === 'Unauthorized')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -28,20 +34,38 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
+
     const parsed = accountSchema.safeParse(await req.json());
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+    if (!parsed.success)
+      return NextResponse.json(
+        { error: parsed.error.errors[0].message },
+        { status: 400 }
+      );
 
     const { name, type, balance, creditLimit } = parsed.data;
+
+    // FIX: Reject duplicate account names per user
+    const existing = await prisma.account.findFirst({ where: { userId, name } });
+    if (existing)
+      return NextResponse.json(
+        { error: `An account named "${name}" already exists` },
+        { status: 409 }
+      );
+
     const row = await prisma.account.create({
       data: {
-        userId, name, type,
+        userId,
+        name,
+        type,
         balance: await encryptNumber(balance),
         creditLimit: creditLimit != null ? await encryptNumber(creditLimit) : null,
       },
     });
+
     return NextResponse.json(await decryptAccount(row), { status: 201 });
   } catch (e: any) {
-    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (e.message === 'Unauthorized')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

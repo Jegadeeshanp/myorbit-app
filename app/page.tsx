@@ -126,10 +126,8 @@ function FloatingShapes() {
 function HeroText() {
   return (
     <div className="max-w-2xl">
-      <p className="inline-flex items-center rounded-full bg-emerald-100 px-4 py-1 text-sm font-semibold text-emerald-700">
-        New • Updated components
-      </p>
-      <h1 className="mt-6 text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+      {/* FIX: Removed "New • Updated components" dev badge — not appropriate for production */}
+      <h1 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
         Your life. One orbit.
       </h1>
       <p className="mt-6 text-lg leading-relaxed text-gray-600">
@@ -163,7 +161,17 @@ function HeroText() {
   );
 }
 
+// FIX: Was showing $38,480 which didn't match sub-cards sum of $25,560.
+// Now computed from a single source of truth so the numbers always add up.
 function HeroPreviewCard() {
+  const investments = 14220;
+  const expenses    = 2840;
+  const savings     = 8500;
+  const netWorth    = investments + savings; // $22,720
+
+  const fmt = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
   return (
     <div className="relative flex w-full max-w-2xl justify-center">
       <div className="pointer-events-none absolute inset-0">
@@ -175,7 +183,7 @@ function HeroPreviewCard() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Net worth</p>
-              <p className="text-2xl font-semibold text-gray-900">$38,480</p>
+              <p className="text-2xl font-semibold text-gray-900">{fmt(netWorth)}</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
               +7.2%
@@ -192,15 +200,15 @@ function HeroPreviewCard() {
           <div className="grid gap-3 rounded-2xl bg-white/80 p-4 shadow-inner shadow-emerald-100/50">
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>Investments</span>
-              <span className="font-semibold text-gray-900">$14,220</span>
+              <span className="font-semibold text-gray-900">{fmt(investments)}</span>
             </div>
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>Expenses</span>
-              <span className="font-semibold text-gray-900">$2,840</span>
+              <span className="font-semibold text-gray-900">{fmt(expenses)}</span>
             </div>
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>Savings</span>
-              <span className="font-semibold text-gray-900">$8,500</span>
+              <span className="font-semibold text-gray-900">{fmt(savings)}</span>
             </div>
           </div>
         </div>
@@ -308,7 +316,7 @@ function ProductPreviewSection() {
           />
 
           <p className="mt-6 text-base leading-relaxed text-gray-600">
-            MyOrbit’s preview offers a clean overview so you can quickly see what matters. Designed to feel like a personal command center.
+            MyOrbit&apos;s preview offers a clean overview so you can quickly see what matters. Designed to feel like a personal command center.
           </p>
         </div>
 
@@ -459,7 +467,7 @@ function CallToAction() {
 
 function Footer() {
   return (
-    <footer className={`${BACKGROUND} border-t border-white/40 py-12`}> 
+    <footer className={`${BACKGROUND} border-t border-white/40 py-12`}>
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-5 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-3 text-base font-semibold text-gray-900">
@@ -471,16 +479,11 @@ function Footer() {
           </p>
         </div>
 
+        {/* FIX: Footer links were all href="#" — now pointing to real routes */}
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-          <a href="#" className="hover:text-gray-900">
-            Privacy
-          </a>
-          <a href="#" className="hover:text-gray-900">
-            Terms
-          </a>
-          <a href="#" className="hover:text-gray-900">
-            Contact
-          </a>
+          <Link href="/privacy" className="hover:text-gray-900">Privacy</Link>
+          <Link href="/terms" className="hover:text-gray-900">Terms</Link>
+          <Link href="/contact" className="hover:text-gray-900">Contact</Link>
         </div>
       </div>
 
@@ -493,7 +496,7 @@ function Footer() {
 
 export default function Home() {
   return (
-    <main className={`${BACKGROUND} min-h-screen text-gray-900`}> 
+    <main className={`${BACKGROUND} min-h-screen text-gray-900`}>
       <NavBar />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-white pb-24 pt-20">
