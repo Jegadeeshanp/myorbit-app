@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Account, useFinance } from '@/lib/financeStore';
 import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2 } from 'lucide-react';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
   return Math.abs(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -83,6 +84,7 @@ export function StandardCard({ account }: { account: Account }) {
   const { deleteAccount } = useFinance();
   const cfg   = TYPE_CONFIG[account.type] ?? TYPE_CONFIG['Bank'];
   const label = ACCOUNT_LABEL[account.type];
+  const [showConfirm, setShowConfirm] = useState(false);
 
   return (
     <div className={`group flex items-center justify-between gap-3 rounded-2xl border ${cfg.border} bg-white px-4 py-3.5 shadow-sm transition hover:shadow-md`}>
@@ -98,13 +100,21 @@ export function StandardCard({ account }: { account: Account }) {
       <div className="flex flex-none items-center gap-1.5">
         <EditableBalance account={account} />
         <button
-          onClick={() => deleteAccount(account.id)}
+          onClick={() => setShowConfirm(true)}
           className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
           title="Delete account"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete account"
+        description={`This will permanently delete "${account.name}" and all associated data. This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { deleteAccount(account.id); setShowConfirm(false); }}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 }
@@ -118,6 +128,7 @@ export function CreditCardCard({ account }: { account: Account }) {
   const utilization  = creditLimit > 0 ? Math.round((outstanding / creditLimit) * 100) : 0;
   const barColor     = utilization > 70 ? 'bg-rose-500' : utilization > 40 ? 'bg-amber-400' : 'bg-emerald-500';
   const utilColor    = utilization > 70 ? 'text-rose-500' : utilization > 40 ? 'text-amber-500' : 'text-emerald-600';
+  const [showConfirm, setShowConfirm] = useState(false);
 
   return (
     <div className="group rounded-2xl border border-rose-100 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -134,7 +145,7 @@ export function CreditCardCard({ account }: { account: Account }) {
         <div className="flex items-center gap-1.5">
           <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
           <button
-            onClick={() => deleteAccount(account.id)}
+            onClick={() => setShowConfirm(true)}
             className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
             title="Delete account"
           >
@@ -154,6 +165,15 @@ export function CreditCardCard({ account }: { account: Account }) {
       </div>
 
       <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
+
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete account"
+        description={`This will permanently delete "${account.name}" and all associated data. This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { deleteAccount(account.id); setShowConfirm(false); }}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 }

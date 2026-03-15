@@ -9,9 +9,10 @@ export type ModuleCardProps = {
   icon: React.ReactNode;
   href?: string;
   enabled: boolean;
+  cta?: string;
 };
 
-export default function ModuleCard({ title, description, icon, href, enabled }: ModuleCardProps) {
+export default function ModuleCard({ title, description, icon, href, enabled, cta }: ModuleCardProps) {
   const card = (
     <div
       className={`group relative h-full rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
@@ -44,7 +45,7 @@ export default function ModuleCard({ title, description, icon, href, enabled }: 
           }`}
           disabled={!enabled}
         >
-          {enabled ? 'Open module →' : 'Coming soon'}
+          {enabled ? (cta ?? 'Open module →') : 'Coming soon'}
         </button>
       </div>
     </div>

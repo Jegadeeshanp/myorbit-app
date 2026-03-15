@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import BudgetCard from '@/components/finance/BudgetCard';
 import AddBudgetModal from '@/components/finance/AddBudgetModal';
+import CategoriesModal from '@/components/finance/CategoriesModal';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { BudgetCategory } from '@/lib/financeData';
@@ -13,17 +13,19 @@ export default function BudgetPage() {
   const { budgets } = state;
   const [isModalOpen, setModalOpen] = useState(false);
   const [editTarget,  setEditTarget] = useState<BudgetCategory | null>(null);
+  const [catOpen, setCatOpen] = useState(false);
 
   return (
     <div className="space-y-6">
       <FinanceTopBar action={
         <div className="flex gap-2">
-          <Link
-            href="/orbit/finance/categories"
+          <button
+            type="button"
+            onClick={() => setCatOpen(true)}
             className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
             + Categories
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => setModalOpen(true)}
@@ -46,6 +48,7 @@ export default function BudgetPage() {
         onClose={() => setEditTarget(null)}
         initial={editTarget ?? undefined}
       />
+      <CategoriesModal open={catOpen} onClose={() => setCatOpen(false)} />
     </div>
   );
 }

@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Landmark, ArrowRightLeft,
-  TrendingUp, CreditCard, Wallet, BarChart3,
+  TrendingUp, CreditCard, Wallet, BarChart3, Smartphone,
 } from 'lucide-react';
 
 const menu = [
@@ -20,6 +20,25 @@ const menu = [
 
 export default function FinanceSidebar() {
   const pathname = usePathname();
+  const installPromptRef = useRef<Event & { prompt: () => Promise<void> } | null>(null);
+  const [installVisible, setInstallVisible] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      installPromptRef.current = e as Event & { prompt: () => Promise<void> };
+      setInstallVisible(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPromptRef.current) return;
+    await installPromptRef.current.prompt();
+    installPromptRef.current = null;
+    setInstallVisible(false);
+  };
 
   const active = useMemo(() => {
     if (!pathname) return '';
@@ -30,8 +49,7 @@ export default function FinanceSidebar() {
   }, [pathname]);
 
   return (
-    /* hidden on mobile (md:flex), visible on desktop */
-    <aside className="hidden md:flex h-full w-56 flex-none flex-col border-r border-white/40 bg-white/50 px-3 py-8 backdrop-blur">
+    <aside className="hidden md:flex sticky top-0 h-screen w-56 flex-none flex-col border-r border-white/40 bg-white/50 px-3 py-8 backdrop-blur overflow-y-auto">
       <div className="mb-8 px-3">
         <div className="text-base font-semibold text-gray-900">Finance</div>
         <div className="mt-0.5 text-xs text-gray-500">Personal dashboard</div>
@@ -52,7 +70,20 @@ export default function FinanceSidebar() {
         })}
       </nav>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-emerald-50 p-3 text-xs text-gray-600">
+      {/* Install App — shown when PWA prompt is available */}
+      {installVisible && (
+        <button
+          type="button"
+          onClick={handleInstall}
+          className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 w-full"
+        >
+          <Smartphone className="h-4 w-4 text-gray-500" />
+          Install App
+        </button>
+      )}
+
+      {/* Need help — pinned to bottom */}
+      <div className="mt-auto pt-4 rounded-2xl border border-dashed border-gray-200 bg-emerald-50 p-3 text-xs text-gray-600">
         <p className="font-semibold text-gray-800">Need help?</p>
         <p className="mt-0.5 text-gray-500">Explore the help center.</p>
       </div>

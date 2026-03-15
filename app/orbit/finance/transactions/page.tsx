@@ -7,10 +7,13 @@ import AddIncomeModal from '@/components/finance/AddIncomeModal';
 import TransactionSummaryCard from '@/components/finance/TransactionSummaryCard';
 import TransactionList from '@/components/finance/TransactionList';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
+import { TransactionsSkeleton } from '@/components/finance/SkeletonLoader';
 
 export default function TransactionsPage() {
   const { state, addTransaction } = useFinance();
   const { transactions, accounts } = state;
+
+  if (state.loadState === 'loading') return <TransactionsSkeleton />;
 
   const [isExpenseOpen, setExpenseOpen] = useState(false);
   const [isIncomeOpen,  setIncomeOpen]  = useState(false);
