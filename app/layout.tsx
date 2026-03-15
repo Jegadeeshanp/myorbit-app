@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
 import { AuthProvider } from '@/lib/authStore';
+import { ThemeProvider } from '@/lib/themeStore';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
 import './globals.css';
 
@@ -29,8 +30,14 @@ export const viewport: Viewport = {
 // via its own cookie-based client fetch. auth() belongs in protected layouts.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Anti-flicker: apply saved theme before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`,
+          }}
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -39,7 +46,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </AuthProvider>
         </SessionProvider>
         <ServiceWorkerRegistration />
       </body>

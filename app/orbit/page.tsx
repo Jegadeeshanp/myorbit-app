@@ -1,10 +1,11 @@
 'use client';
 
-import { Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb, LogOut, Settings, Tag } from 'lucide-react';
+import { Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb, LogOut, Settings, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import ModuleCard from '@/components/ModuleCard';
 import { useAuth } from '@/lib/authStore';
 import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { useFinance } from '@/lib/financeStore';
 import OnboardingWizard from '@/components/OnboardingWizard';
 
@@ -16,6 +17,7 @@ const MODULES = [
     icon: <Wallet className="h-6 w-6" />,
     href: '/orbit/finance',
     enabled: true,
+    cta: 'Manage Money →',
   },
   {
     id: 'goals',
@@ -23,6 +25,7 @@ const MODULES = [
     description: 'Set and track personal targets with progress tracking.',
     icon: <Target className="h-6 w-6" />,
     enabled: false,
+    cta: 'Start Achieving →',
   },
   {
     id: 'health',
@@ -30,6 +33,7 @@ const MODULES = [
     description: 'Track workouts, wellness, and daily habits.',
     icon: <HeartPulse className="h-6 w-6" />,
     enabled: false,
+    cta: 'Start Tracking →',
   },
   {
     id: 'habits',
@@ -37,6 +41,7 @@ const MODULES = [
     description: 'Build positive routines with streaks and reminders.',
     icon: <CheckCircle className="h-6 w-6" />,
     enabled: false,
+    cta: 'Build Streaks →',
   },
   {
     id: 'todo',
@@ -44,6 +49,7 @@ const MODULES = [
     description: 'Manage tasks, projects, and quick notes.',
     icon: <ClipboardList className="h-6 w-6" />,
     enabled: false,
+    cta: 'Get Things Done →',
   },
   {
     id: 'insights',
@@ -51,6 +57,7 @@ const MODULES = [
     description: 'Smart summaries that help you stay on track.',
     icon: <Lightbulb className="h-6 w-6" />,
     enabled: false,
+    cta: 'Discover Insights →',
   },
 ];
 
@@ -58,6 +65,25 @@ export default function Orbit() {
   const { auth, signOut } = useAuth();
   const router = useRouter();
   const { state } = useFinance();
+  const installPromptRef = useRef<Event & { prompt: () => Promise<void> } | null>(null);
+  const [installVisible, setInstallVisible] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      installPromptRef.current = e as Event & { prompt: () => Promise<void> };
+      setInstallVisible(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPromptRef.current) return;
+    await installPromptRef.current.prompt();
+    installPromptRef.current = null;
+    setInstallVisible(false);
+  };
 
   const handleSignOut = () => {
     signOut();
@@ -89,7 +115,13 @@ export default function Orbit() {
           ))}
         </div>
 
-        <div className="mt-12 flex items-center justify-center gap-3">
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+          {installVisible && (
+            <button type="button" onClick={handleInstall} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2 text-sm font-medium text-emerald-700 shadow-sm transition hover:bg-emerald-100">
+              <Smartphone className="h-4 w-4" />
+              Install App
+            </button>
+          )}
           <Link href="/orbit/settings" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900">
             <Settings className="h-4 w-4" />
             Settings

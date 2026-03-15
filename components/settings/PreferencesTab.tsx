@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTheme } from '@/lib/themeStore';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -42,7 +43,7 @@ export default function PreferencesTab() {
   const [separator, setSeparator] = useState('comma');
   const [dashPeriod, setDashPeriod] = useState('month');
   const [startScreen, setStartScreen] = useState('overview');
-  const [theme, setTheme] = useState('system');
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="space-y-5">
