@@ -143,7 +143,7 @@ export default function QAAgent() {
         ok ? "302 redirect = credentials accepted ✓" : "Unexpected — check server logs");
     }
 
-    await sleep(300);
+    await sleep(1000);
     try {
       const sr = await fetch(`${BASE}/api/auth/session`, { credentials: "include" });
       const sd = sr.ok ? await sr.json() : {};
