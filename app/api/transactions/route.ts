@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
     const parsed = transactionSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { accountId, date, category, description, amount, type } = parsed.data;
+    const { accountId: rawAccountId, date, category, description, amount, type } = parsed.data;
+    // Normalize empty string to undefined — Prisma FK requires a valid id or null
+    const accountId = rawAccountId || undefined;
 
     // Verify the accountId belongs to this user (prevents spoofing another user's account)
     if (accountId) {

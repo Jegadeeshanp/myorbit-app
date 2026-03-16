@@ -3,21 +3,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
-import { Transaction } from '@/lib/financeData';
 
 export type TransferModalProps = {
   open: boolean;
   onClose: () => void;
   accounts: { id: string; name: string }[];
-  onSave: (tx1: Omit<Transaction, 'id'>, tx2: Omit<Transaction, 'id'>) => void;
+  onSave: (fromId: string, toId: string, amount: number, date: string, description: string) => Promise<void> | void;
 };
 
 export default function TransferModal({ open, onClose, accounts, onSave }: TransferModalProps) {
-  const [fromId, setFromId] = useState(accounts[0]?.id ?? '');
-  const [toId,   setToId]   = useState(accounts[1]?.id ?? accounts[0]?.id ?? '');
-  const [amount, setAmount] = useState('');
-  const [date,   setDate]   = useState(() => new Date().toISOString().slice(0, 10));
-  const [note,   setNote]   = useState('');
+  const [fromId,  setFromId]  = useState(accounts[0]?.id ?? '');
+  const [toId,    setToId]    = useState(accounts[1]?.id ?? accounts[0]?.id ?? '');
+  const [amount,  setAmount]  = useState('');
+  const [date,    setDate]    = useState(() => new Date().toISOString().slice(0, 10));
+  const [note,    setNote]    = useState('');
+  const [saving,  setSaving]  = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -33,15 +33,19 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
     Number(amount) > 0 && !!fromId && !!toId && fromId !== toId,
   [amount, fromId, toId]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const description = note.trim() || 'Transfer';
-    onSave(
-      { date, category: 'Transfer', description, amount: -Number(amount), type: 'expense', accountId: fromId },
-      { date, category: 'Transfer', description, amount:  Number(amount), type: 'income',  accountId: toId  },
-    );
-    toast('Transfer recorded');
-    onClose();
+  const handleSubmit = async () => {
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      const description = note.trim() || 'Transfer';
+      await onSave(fromId, toId, Number(amount), date, description);
+      toast('Transfer recorded');
+      onClose();
+    } catch {
+      toast('Failed to record transfer. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const footer = (
@@ -49,9 +53,9 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
       <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit || saving}
         className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-        Transfer
+        {saving ? 'Transferring…' : 'Transfer'}
       </button>
     </div>
   );

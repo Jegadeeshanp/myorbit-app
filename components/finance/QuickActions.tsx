@@ -9,7 +9,7 @@ import AddAssetModal   from '@/components/finance/AddAssetModal';
 import { useFinance }  from '@/lib/financeStore';
 
 export default function QuickActions() {
-  const { state, addTransaction, addAsset } = useFinance();
+  const { state, addTransaction, addTransfer, addAsset } = useFinance();
   const [expenseOpen,  setExpenseOpen]  = useState(false);
   const [incomeOpen,   setIncomeOpen]   = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -48,7 +48,7 @@ export default function QuickActions() {
       <AddExpenseModal  open={expenseOpen}  onClose={() => setExpenseOpen(false)}  accounts={accounts} onSave={addTransaction} />
       <AddIncomeModal   open={incomeOpen}   onClose={() => setIncomeOpen(false)}   accounts={accounts} onSave={addTransaction} />
       <TransferModal    open={transferOpen} onClose={() => setTransferOpen(false)} accounts={accounts}
-        onSave={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
+        onSave={addTransfer}
       />
       <AddAssetModal    open={assetOpen}    onClose={() => setAssetOpen(false)}    onSave={addAsset} />
     </>

@@ -313,9 +313,9 @@ type Props = {
   open: boolean;
   onClose: () => void;
   accounts: { id: string; name: string }[];
-  onSaveExpense: (tx: Omit<Transaction, 'id'>) => void;
-  onSaveIncome:  (tx: Omit<Transaction, 'id'>) => void;
-  onSaveTransfer: (tx1: Omit<Transaction, 'id'>, tx2: Omit<Transaction, 'id'>) => void;
+  onSaveExpense: (tx: Omit<Transaction, 'id'>) => Promise<void> | void;
+  onSaveIncome:  (tx: Omit<Transaction, 'id'>) => Promise<void> | void;
+  onSaveTransfer: (fromId: string, toId: string, amount: number, date: string, description: string) => Promise<void> | void;
 };
 
 // ── Main sheet component ──────────────────────────────────────────────────
@@ -402,25 +402,32 @@ export default function AddTransactionSheet({
   const canTransfer = useMemo(() => Number(trAmt) > 0 && !!trFromId && !!trToId && trFromId !== trToId, [trAmt, trFromId, trToId]);
   const canSubmit   = tab === 'expense' ? canExpense : tab === 'income' ? canIncome : canTransfer;
 
-  function handleSave() {
-    const rec = buildRecurring();
-    if (tab === 'expense' && canExpense) {
-      const desc = expNote.trim() ? `${expDesc.trim()}\n${expNote.trim()}` : expDesc.trim();
-      onSaveExpense({ date: expDate, category: expCat, description: desc, amount: -Math.abs(Number(expAmt)), type: 'expense', accountId: expAcc, recurring: rec });
-      toast('Expense recorded');
-    } else if (tab === 'income' && canIncome) {
-      const desc = incNote.trim() ? `${incDesc.trim()}\n${incNote.trim()}` : incDesc.trim();
-      onSaveIncome({ date: incDate, category: incCat, description: desc, amount: Math.abs(Number(incAmt)), type: 'income', accountId: incAcc, recurring: rec });
-      toast('Income recorded');
-    } else if (tab === 'transfer' && canTransfer) {
-      const desc = trNote.trim() || 'Transfer';
-      onSaveTransfer(
-        { date: trDate, category: 'Transfer', description: desc, amount: -Number(trAmt), type: 'expense', accountId: trFromId, recurring: rec },
-        { date: trDate, category: 'Transfer', description: desc, amount:  Number(trAmt), type: 'income',  accountId: trToId,   recurring: rec },
-      );
-      toast('Transfer recorded');
-    } else return;
-    onClose();
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const rec = buildRecurring();
+      if (tab === 'expense' && canExpense) {
+        const desc = expNote.trim() ? `${expDesc.trim()}\n${expNote.trim()}` : expDesc.trim();
+        await onSaveExpense({ date: expDate, category: expCat, description: desc, amount: -Math.abs(Number(expAmt)), type: 'expense', accountId: expAcc, recurring: rec });
+        toast('Expense recorded');
+      } else if (tab === 'income' && canIncome) {
+        const desc = incNote.trim() ? `${incDesc.trim()}\n${incNote.trim()}` : incDesc.trim();
+        await onSaveIncome({ date: incDate, category: incCat, description: desc, amount: Math.abs(Number(incAmt)), type: 'income', accountId: incAcc, recurring: rec });
+        toast('Income recorded');
+      } else if (tab === 'transfer' && canTransfer) {
+        const desc = trNote.trim() || 'Transfer';
+        await onSaveTransfer(trFromId, trToId, Number(trAmt), trDate, desc);
+        toast('Transfer recorded');
+      } else return;
+      onClose();
+    } catch {
+      toast('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const cfg = TAB_CONFIG[tab];
@@ -611,9 +618,9 @@ export default function AddTransactionSheet({
             className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
             Cancel
           </button>
-          <button type="button" onClick={handleSave} disabled={!canSubmit}
+          <button type="button" onClick={handleSave} disabled={!canSubmit || saving}
             className={`rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${cfg.btnCls}`}>
-            Save {cfg.label}
+            {saving ? 'Saving…' : `Save ${cfg.label}`}
           </button>
         </div>
 

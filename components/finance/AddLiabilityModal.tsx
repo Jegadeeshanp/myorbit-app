@@ -8,7 +8,7 @@ import { Liability } from '@/lib/financeData';
 export type AddLiabilityProps = {
   open: boolean;
   onClose: () => void;
-  onSave: (payload: Omit<Liability, 'id'>) => void;
+  onSave: (payload: Omit<Liability, 'id'>) => Promise<void> | void;
   initial?: Liability; // when set → edit mode
 };
 
@@ -48,20 +48,29 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial }: Ad
     Number(emi) > 0,
   [name, borrowed, outstanding, emi]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    onSave({
-      name:         name.trim(),
-      lender:       lender.trim(),
-      borrowed:     Number(borrowed),
-      outstanding:  Number(outstanding),
-      totalRepaid:  Number(totalRepaid) || 0,
-      monthlyEmi:   Number(emi),
-      emisLeft:     Number(emisLeft) || 0,
-      nextDueDate:  nextDue,
-    });
-    toast(isEdit ? 'Liability updated' : 'Liability added');
-    onClose();
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        name:         name.trim(),
+        lender:       lender.trim(),
+        borrowed:     Number(borrowed),
+        outstanding:  Number(outstanding),
+        totalRepaid:  Number(totalRepaid) || 0,
+        monthlyEmi:   Number(emi),
+        emisLeft:     Number(emisLeft) || 0,
+        nextDueDate:  nextDue,
+      });
+      toast(isEdit ? 'Liability updated' : 'Liability added');
+      onClose();
+    } catch {
+      toast('Failed to save liability. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -128,9 +137,9 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial }: Ad
         <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
           Cancel
         </button>
-        <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+        <button type="button" onClick={handleSubmit} disabled={!canSubmit || saving}
           className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-          {isEdit ? 'Update' : 'Save liability'}
+          {saving ? 'Saving…' : isEdit ? 'Update' : 'Save liability'}
         </button>
       </div>
     </Modal>

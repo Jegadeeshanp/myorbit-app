@@ -12,7 +12,7 @@ export type AddExpenseProps = {
   open: boolean;
   onClose: () => void;
   accounts: { id: string; name: string }[];
-  onSave: (payload: Omit<Transaction, 'id'>) => void;
+  onSave: (payload: Omit<Transaction, 'id'>) => Promise<void> | void;
   initial?: Transaction;
 };
 
@@ -193,12 +193,21 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
     !!date && !!category && !!description.trim() && Number(amount) > 0 && !!accountId,
   [date, category, description, amount, accountId]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const desc = note.trim() ? `${description.trim()}\n${note.trim()}` : description.trim();
-    onSave({ date, category, description: desc, amount: -Math.abs(Number(amount)), type: 'expense', accountId });
-    toast(initial ? 'Expense updated' : 'Expense recorded');
-    onClose();
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      const desc = note.trim() ? `${description.trim()}\n${note.trim()}` : description.trim();
+      await onSave({ date, category, description: desc, amount: -Math.abs(Number(amount)), type: 'expense', accountId });
+      toast(initial ? 'Expense updated' : 'Expense recorded');
+      onClose();
+    } catch {
+      toast('Failed to save expense. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isEdit = !!initial;
@@ -208,9 +217,9 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
       <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit || saving}
         className="rounded-full bg-rose-500 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50">
-        {isEdit ? 'Update expense' : 'Save expense'}
+        {saving ? 'Saving…' : isEdit ? 'Update expense' : 'Save expense'}
       </button>
     </div>
   );

@@ -41,7 +41,7 @@ export default function TransactionsPage() {
         accounts={accountList}
         onSaveExpense={addTransaction}
         onSaveIncome={addTransaction}
-        onSaveTransfer={(tx1, tx2) => addTransfer(tx1.accountId!, tx2.accountId!, Math.abs(tx1.amount), tx1.date, tx1.description)}
+        onSaveTransfer={addTransfer}
       />
     </div>
   );

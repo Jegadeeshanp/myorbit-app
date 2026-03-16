@@ -10,7 +10,7 @@ const accountTypes: AccountTypeName[] = ['Bank', 'Credit Card', 'Debit Card', 'C
 export type AddAccountProps = {
   open: boolean;
   onClose: () => void;
-  onSave: (payload: { name: string; type: AccountTypeName; balance: number; creditLimit?: number }) => void;
+  onSave: (payload: { name: string; type: AccountTypeName; balance: number; creditLimit?: number }) => Promise<void> | void;
 };
 
 export default function AddAccountModal({ open, onClose, onSave }: AddAccountProps) {
@@ -26,17 +26,26 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
     (!isCredit || (!!creditLimit && !isNaN(Number(creditLimit)) && Number(creditLimit) > 0)),
   [name, balance, creditLimit, isCredit]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    onSave({
-      name: name.trim(),
-      type,
-      balance: isCredit ? -Math.abs(Number(balance)) : Number(balance),
-      creditLimit: isCredit ? Number(creditLimit) : undefined,
-    });
-    toast('Account added successfully');
-    setName(''); setBalance('0'); setCreditLimit('');
-    onClose();
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        name: name.trim(),
+        type,
+        balance: isCredit ? -Math.abs(Number(balance)) : Number(balance),
+        creditLimit: isCredit ? Number(creditLimit) : undefined,
+      });
+      toast('Account added successfully');
+      setName(''); setBalance('0'); setCreditLimit('');
+      onClose();
+    } catch {
+      toast('Failed to save account. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const footer = (
@@ -46,7 +55,7 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
       </button>
       <button type="button" onClick={handleSubmit} disabled={!canSubmit}
         className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-        Save account
+        {saving ? 'Saving…' : 'Save account'}
       </button>
     </div>
   );

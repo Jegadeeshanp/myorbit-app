@@ -9,7 +9,7 @@ import { ASSET_CATEGORIES, AssetCategory } from '@/lib/assetCategories';
 export type AddAssetProps = {
   open: boolean;
   onClose: () => void;
-  onSave: (payload: { name: string; category: AssetCategory; value: number; invested: number }) => void;
+  onSave: (payload: { name: string; category: AssetCategory; value: number; invested: number }) => Promise<void> | void;
   initial?: Asset;
 };
 
@@ -32,11 +32,20 @@ export default function AddAssetModal({ open, onClose, onSave, initial }: AddAss
     !!name.trim() && Number(value) > 0 && Number(invested) > 0,
   [name, value, invested]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    onSave({ name: name.trim(), category, value: Number(value), invested: Number(invested) });
-    toast(initial ? 'Asset updated' : 'Asset added');
-    onClose();
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      await onSave({ name: name.trim(), category, value: Number(value), invested: Number(invested) });
+      toast(initial ? 'Asset updated' : 'Asset added');
+      onClose();
+    } catch {
+      toast('Failed to save asset. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selected = ASSET_CATEGORIES.find(c => c.label === category)!;
@@ -47,9 +56,9 @@ export default function AddAssetModal({ open, onClose, onSave, initial }: AddAss
       <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit || saving}
         className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-        {isEdit ? 'Update asset' : 'Save asset'}
+        {saving ? 'Saving…' : isEdit ? 'Update asset' : 'Save asset'}
       </button>
     </div>
   );
