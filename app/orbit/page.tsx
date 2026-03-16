@@ -92,11 +92,19 @@ export default function Orbit() {
 
   const userName = auth.status === 'authenticated' ? auth.user.name : '';
 
-  const isNew = state.loadState === 'ready' && state.accounts.length === 0 && state.assets.length === 0;
+  // Track onboarding visibility with stable state - only set once when data loads
+  // Don't use reactive check (state.accounts.length === 0) as adding an account would
+  // immediately unmount the wizard before the user completes all steps
+  const [showWizard, setShowWizard] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (state.loadState === 'ready' && showWizard === null) {
+      setShowWizard(state.accounts.length === 0 && state.assets.length === 0);
+    }
+  }, [state.loadState, state.accounts.length, state.assets.length, showWizard]);
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
-      {isNew && <OnboardingWizard />}
+      {showWizard && <OnboardingWizard onDismiss={() => setShowWizard(false)} />}
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
         <div className="text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm">

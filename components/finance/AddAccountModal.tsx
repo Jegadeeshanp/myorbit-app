@@ -39,15 +39,29 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
     onClose();
   };
 
+  const footer = (
+    <div className="flex items-center justify-end gap-3">
+      <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        Cancel
+      </button>
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+        className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+        Save account
+      </button>
+    </div>
+  );
+
   return (
-    <Modal open={open} onClose={onClose} title="Add account" subtitle="Link a bank, card, wallet or cash account">
+    <Modal open={open} onClose={onClose} title="Add account" subtitle="Link a bank, card, wallet or cash account" footer={footer}>
       <div className="space-y-5">
         <div>
           <SectionLabel>Account details</SectionLabel>
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account name</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="HDFC Savings" className={inputCls} />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="HDFC Savings"
+                onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account type</label>
@@ -65,25 +79,19 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 {isCredit ? 'Outstanding amount (₹)' : 'Current balance (₹)'}
               </label>
-              <input value={balance} onChange={e => setBalance(e.target.value)} placeholder="0" type="number" min="0" className={inputCls} />
+              <input value={balance} onChange={e => setBalance(e.target.value)} placeholder="0" type="number" min="0"
+                onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                className={inputCls} />
             </div>
             {isCredit && (
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">Credit limit (₹)</label>
-                <input value={creditLimit} onChange={e => setCreditLimit(e.target.value)} placeholder="150000" type="number" min="1" className={inputCls} />
+                <input value={creditLimit} onChange={e => setCreditLimit(e.target.value)} placeholder="150000" type="number" min="1"
+                  onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                  className={inputCls} />
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-          <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-            className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-            Save account
-          </button>
         </div>
       </div>
     </Modal>

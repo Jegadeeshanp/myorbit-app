@@ -8,6 +8,7 @@ import {
 import { toast } from '@/components/Toast';
 import { Transaction, RecurringConfig } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
+import { addCustomExpenseCategory, getCustomExpenseCategories } from '@/lib/customCategoryStore';
 
 type TabType = 'expense' | 'income' | 'transfer';
 
@@ -24,14 +25,21 @@ function ExpenseCategoryGrid({ value, onChange }: { value: string; onChange: (v:
   const [addMode, setAddMode]       = useState(false);
   const [customName, setCustomName] = useState('');
   const [customIcon, setCustomIcon] = useState<ComponentType<{ className?: string }>>(Package);
-  const [extras, setExtras]         = useState<CategoryDef[]>([]);
+  const [extras, setExtras]         = useState<CategoryDef[]>(() =>
+    getCustomExpenseCategories().map(name => ({
+      name, icon: Package, color: 'text-gray-700', bg: 'bg-gray-100',
+    }))
+  );
 
   const allCats = [...EXPENSE_CATEGORIES, ...extras];
 
   function confirm() {
     if (!customName.trim()) return;
     const cat: CategoryDef = { name: customName.trim(), icon: customIcon, color: 'text-gray-700', bg: 'bg-gray-100' };
-    setExtras(p => [...p, cat]);
+    if (!allCats.some(c => c.name === cat.name)) {
+      setExtras(p => [...p, cat]);
+      addCustomExpenseCategory(cat.name);
+    }
     onChange(cat.name);
     setCustomName(''); setCustomIcon(Package); setAddMode(false);
   }
@@ -421,7 +429,7 @@ export default function AddTransactionSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="relative flex w-full flex-col overflow-hidden bg-white shadow-2xl rounded-t-3xl sm:max-w-lg sm:rounded-2xl max-h-[92vh]">
@@ -476,11 +484,15 @@ export default function AddTransactionSheet({
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-                    <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Lunch at cafe" className={inp} />
+                    <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Lunch at cafe"
+                    onKeyDown={e => { if (e.key === 'Enter' && canExpense) handleSave(); }}
+                    className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                    <input value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="250" type="number" min="0" className={inp} />
+                    <input value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="250" type="number" min="0"
+                      onKeyDown={e => { if (e.key === 'Enter' && canExpense) handleSave(); }}
+                      className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
@@ -515,11 +527,15 @@ export default function AddTransactionSheet({
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-                    <input value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="March paycheck" className={inp} />
+                    <input value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="March paycheck"
+                    onKeyDown={e => { if (e.key === 'Enter' && canIncome) handleSave(); }}
+                    className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                    <input value={incAmt} onChange={e => setIncAmt(e.target.value)} placeholder="85000" type="number" min="0" className={inp} />
+                    <input value={incAmt} onChange={e => setIncAmt(e.target.value)} placeholder="85000" type="number" min="0"
+                      onKeyDown={e => { if (e.key === 'Enter' && canIncome) handleSave(); }}
+                      className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>

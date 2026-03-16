@@ -27,6 +27,15 @@ export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory;
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold text-gray-900">{budget.name}</h3>
           <p className="mt-0.5 text-xs text-gray-400">{formatINR(budget.spent)} spent</p>
+          {budget.category && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {budget.category.split(',').filter(Boolean).map(cat => (
+                <span key={cat} className="rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                  {cat}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-none items-center gap-2">
           <div className="text-right">

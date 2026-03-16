@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Wallet, Target, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
@@ -47,12 +47,17 @@ const STEPS = [
 
 const ACCOUNT_TYPES = ['Bank', 'Credit Card', 'Cash', 'Debit Card', 'Wallet'] as const;
 
-export default function OnboardingWizard() {
+export default function OnboardingWizard({ onDismiss }: { onDismiss?: () => void }) {
   const router = useRouter();
   const { addAccount } = useFinance();
   const [step,      setStep]      = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const [loading,   setLoading]   = useState(false);
+
+  // Notify parent when wizard is dismissed so it can unmount us
+  useEffect(() => {
+    if (dismissed) onDismiss?.();
+  }, [dismissed, onDismiss]);
 
   // Account form state
   const [acctName,    setAcctName]    = useState('');
