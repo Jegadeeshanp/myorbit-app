@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Landmark, ArrowRightLeft, TrendingUp, Wallet } from 'lucide-react';
+import { LayoutDashboard, Landmark, ArrowRightLeft, TrendingUp, Wallet, Home } from 'lucide-react';
 
 const NAV = [
+  { label: 'My Orbit',     href: '/orbit',                      Icon: Home },
   { label: 'Overview',     href: '/orbit/finance',              Icon: LayoutDashboard },
   { label: 'Accounts',     href: '/orbit/finance/accounts',     Icon: Landmark },
   { label: 'Transactions', href: '/orbit/finance/transactions', Icon: ArrowRightLeft },
-  { label: 'Assets',       href: '/orbit/finance/assets',       Icon: TrendingUp },
   { label: 'Budget',       href: '/orbit/finance/budget',       Icon: Wallet },
 ];
 

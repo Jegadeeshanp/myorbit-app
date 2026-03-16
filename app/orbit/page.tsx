@@ -92,15 +92,17 @@ export default function Orbit() {
 
   const userName = auth.status === 'authenticated' ? auth.user.name : '';
 
-  // Track onboarding visibility with stable state - only set once when data loads
-  // Don't use reactive check (state.accounts.length === 0) as adding an account would
-  // immediately unmount the wizard before the user completes all steps
-  const [showWizard, setShowWizard] = useState<boolean | null>(null);
+  // Track onboarding visibility — only evaluated once when data first loads.
+  // Using a ref ensures adding accounts in the wizard doesn't retrigger the check
+  // and accidentally dismiss the wizard mid-flow.
+  const [showWizard, setShowWizard] = useState(false);
+  const wizardInitRef = useRef(false);
   useEffect(() => {
-    if (state.loadState === 'ready' && showWizard === null) {
+    if (state.loadState === 'ready' && !wizardInitRef.current) {
+      wizardInitRef.current = true;
       setShowWizard(state.accounts.length === 0 && state.assets.length === 0);
     }
-  }, [state.loadState, state.accounts.length, state.assets.length, showWizard]);
+  }, [state.loadState, state.accounts.length, state.assets.length]);
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">

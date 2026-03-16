@@ -218,33 +218,38 @@ export default function TransactionList({ transactions }: { transactions: Transa
   // Ensure active tab stays valid
   const safeTab = availableTabs.includes(activeTab) ? activeTab : 'All';
 
-  const filtered = useMemo(() => {
-    let txs = filterByPeriod(transactions, period);
-
-    // Tab filter
+  // Helper: apply tab + search filters (but NOT period filter)
+  const applyTabAndSearch = (txs: Transaction[]) => {
+    let result = txs;
     if (safeTab === 'Income') {
-      txs = txs.filter(t => t.type === 'income');
+      result = result.filter(t => t.type === 'income');
     } else if (safeTab !== 'All') {
-      txs = txs.filter(t => {
+      result = result.filter(t => {
         if (!t.accountId) return false;
         return accountTabMap.get(t.accountId) === safeTab;
       });
     }
-
-    // Search filter
     if (search.trim()) {
       const q = search.toLowerCase();
-      txs = txs.filter(t =>
+      result = result.filter(t =>
         t.description.toLowerCase().includes(q) ||
         t.category.toLowerCase().includes(q)
       );
     }
-    return txs;
-  }, [transactions, period, safeTab, search, accountTabMap]);
+    return result;
+  };
 
-  // Separate future (upcoming) from current transactions
-  const futureTxs  = useMemo(() => filtered.filter(isFuture).sort((a, b) => a.date.localeCompare(b.date)), [filtered]);
-  const currentTxs = useMemo(() => filtered.filter(t => !isFuture(t)), [filtered]);
+  // Future transactions: always shown (not subject to period filter), only tab+search filtered
+  const futureTxs = useMemo(() => {
+    const future = transactions.filter(isFuture);
+    return applyTabAndSearch(future).sort((a, b) => a.date.localeCompare(b.date));
+  }, [transactions, safeTab, search, accountTabMap]);
+
+  // Current transactions: period-filtered, then tab+search filtered
+  const currentTxs = useMemo(() => {
+    const current = transactions.filter(t => !isFuture(t));
+    return applyTabAndSearch(filterByPeriod(current, period));
+  }, [transactions, period, safeTab, search, accountTabMap]);
 
   const groups = useMemo(() => groupByMonth(currentTxs), [currentTxs]);
 

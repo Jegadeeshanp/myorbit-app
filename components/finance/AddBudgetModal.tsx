@@ -47,7 +47,8 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
     if (open) {
       setName(initial?.name ?? '');
       setAmount(initial ? String(initial.budget) : '');
-      setSelectedCats([]); setSelectedAccounts([]);
+      setSelectedCats(initial?.category ? initial.category.split(',').map(c => c.trim()).filter(Boolean) : []);
+      setSelectedAccounts([]);
     }
   }, [open]);
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Account, useFinance } from '@/lib/financeStore';
-import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Account, AccountTypeName, useFinance } from '@/lib/financeStore';
+import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2, Settings2 } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import AddAccountModal from '@/components/finance/AddAccountModal';
 
 function fmt(v: number) {
   return Math.abs(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -74,7 +75,7 @@ function EditableBalance({ account }: { account: Account }) {
       </span>
       <button
         onClick={() => { setInputVal(String(account.balance)); setEditing(true); }}
-        className="opacity-0 group-hover/bal:opacity-100 text-gray-300 hover:text-gray-500 transition"
+        className="text-gray-300 hover:text-gray-500 transition sm:opacity-0 sm:group-hover/bal:opacity-100"
         title="Edit balance"
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -84,10 +85,11 @@ function EditableBalance({ account }: { account: Account }) {
 }
 
 export function StandardCard({ account }: { account: Account }) {
-  const { deleteAccount } = useFinance();
+  const { deleteAccount, updateAccount } = useFinance();
   const cfg   = TYPE_CONFIG[account.type] ?? TYPE_CONFIG['Bank'];
   const label = ACCOUNT_LABEL[account.type];
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showEdit,    setShowEdit]    = useState(false);
 
   return (
     <div className={`group flex items-center justify-between gap-3 rounded-2xl border ${cfg.border} bg-white px-4 py-3.5 shadow-sm transition hover:shadow-md`}>
@@ -103,13 +105,26 @@ export function StandardCard({ account }: { account: Account }) {
       <div className="flex flex-none items-center gap-1.5">
         <EditableBalance account={account} />
         <button
+          onClick={() => setShowEdit(true)}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500 sm:opacity-0 sm:group-hover:opacity-100"
+          title="Edit account"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+        </button>
+        <button
           onClick={() => setShowConfirm(true)}
-          className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
           title="Delete account"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
+      <AddAccountModal
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        initial={account}
+        onSave={async (data) => { await updateAccount({ ...account, ...data }); }}
+      />
       <ConfirmDialog
         open={showConfirm}
         title="Delete account"
@@ -123,7 +138,7 @@ export function StandardCard({ account }: { account: Account }) {
 }
 
 export function CreditCardCard({ account }: { account: Account }) {
-  const { deleteAccount } = useFinance();
+  const { deleteAccount, updateAccount } = useFinance();
   const outstanding  = Math.abs(account.balance);
   // Use stored creditLimit if available, otherwise fall back to 1.5× as a default
   const creditLimit  = account.creditLimit ?? outstanding * 1.5;
@@ -132,6 +147,7 @@ export function CreditCardCard({ account }: { account: Account }) {
   const barColor     = utilization > 70 ? 'bg-rose-500' : utilization > 40 ? 'bg-amber-400' : 'bg-emerald-500';
   const utilColor    = utilization > 70 ? 'text-rose-500' : utilization > 40 ? 'text-amber-500' : 'text-emerald-600';
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showEdit,    setShowEdit]    = useState(false);
 
   return (
     <div className="group rounded-2xl border border-rose-100 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -148,8 +164,15 @@ export function CreditCardCard({ account }: { account: Account }) {
         <div className="flex items-center gap-1.5">
           <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
           <button
+            onClick={() => setShowEdit(true)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500 sm:opacity-0 sm:group-hover:opacity-100"
+            title="Edit account"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+          <button
             onClick={() => setShowConfirm(true)}
-            className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100"
             title="Delete account"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -169,6 +192,12 @@ export function CreditCardCard({ account }: { account: Account }) {
 
       <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
 
+      <AddAccountModal
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        initial={account}
+        onSave={async (data) => { await updateAccount({ ...account, ...data }); }}
+      />
       <ConfirmDialog
         open={showConfirm}
         title="Delete account"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { AccountTypeName } from '@/lib/financeStore';
@@ -11,13 +11,26 @@ export type AddAccountProps = {
   open: boolean;
   onClose: () => void;
   onSave: (payload: { name: string; type: AccountTypeName; balance: number; creditLimit?: number }) => Promise<void> | void;
+  initial?: { name: string; type: AccountTypeName; balance: number; creditLimit?: number };
 };
 
-export default function AddAccountModal({ open, onClose, onSave }: AddAccountProps) {
+export default function AddAccountModal({ open, onClose, onSave, initial }: AddAccountProps) {
+  const isEdit = !!initial;
   const [name, setName]               = useState('');
   const [type, setType]               = useState<AccountTypeName>('Bank');
   const [balance, setBalance]         = useState('0');
   const [creditLimit, setCreditLimit] = useState('');
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (open) {
+      setName(initial?.name ?? '');
+      setType(initial?.type ?? 'Bank');
+      setBalance(initial ? String(Math.abs(initial.balance)) : '0');
+      setCreditLimit(initial?.creditLimit ? String(initial.creditLimit) : '');
+    }
+  }, [open]);
+
   const isCredit = type === 'Credit Card';
 
   const canSubmit = useMemo(() =>
@@ -38,11 +51,11 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
         balance: isCredit ? -Math.abs(Number(balance)) : Number(balance),
         creditLimit: isCredit ? Number(creditLimit) : undefined,
       });
-      toast('Account added successfully');
-      setName(''); setBalance('0'); setCreditLimit('');
+      toast(isEdit ? 'Account updated' : 'Account added successfully');
+      if (!isEdit) { setName(''); setBalance('0'); setCreditLimit(''); }
       onClose();
     } catch {
-      toast('Failed to save account. Please try again.');
+      toast('Failed to save account. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -55,13 +68,16 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
       </button>
       <button type="button" onClick={handleSubmit} disabled={!canSubmit || saving}
         className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-        {saving ? 'Saving…' : 'Save account'}
+        {saving ? 'Saving…' : isEdit ? 'Update account' : 'Save account'}
       </button>
     </div>
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Add account" subtitle="Link a bank, card, wallet or cash account" footer={footer}>
+    <Modal open={open} onClose={onClose}
+      title={isEdit ? 'Edit account' : 'Add account'}
+      subtitle={isEdit ? 'Update account details' : 'Link a bank, card, wallet or cash account'}
+      footer={footer}>
       <div className="space-y-5">
         <div>
           <SectionLabel>Account details</SectionLabel>
