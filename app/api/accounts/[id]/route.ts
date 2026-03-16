@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (data.balance != null) data.balance = await encryptNumber(data.balance);
     if (data.creditLimit != null) data.creditLimit = await encryptNumber(data.creditLimit);
 
-    const row = await prisma.account.update({ where: { id }, data });
+    const row = await prisma.account.update({ where: { id, userId }, data });
     return NextResponse.json(await decryptAccount(row));
   } catch (e: any) {
     if (e.message === 'Unauthorized')
@@ -52,7 +52,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const existing = await prisma.account.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    await prisma.account.delete({ where: { id } });
+    await prisma.account.delete({ where: { id, userId } });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     if (e.message === 'Unauthorized')

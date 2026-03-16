@@ -30,14 +30,12 @@ export async function POST(req: NextRequest) {
     const token     = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    // Store the reset token in the Session table (reusing existing model)
-    // In production, you'd have a dedicated PasswordResetToken model
-    await prisma.session.create({
-      data: {
-        userId:    user.id,
-        token:     `reset_${token}`,
-        expiresAt,
-      },
+    // Invalidate any previous unused tokens for this user
+    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
+
+    // Store token in the dedicated PasswordResetToken model
+    await prisma.passwordResetToken.create({
+      data: { userId: user.id, token, expiresAt },
     });
 
     // In production: send email via Resend/SendGrid

@@ -108,6 +108,7 @@ type FinanceContextValue = {
   addTransaction:         (t: Omit<Transaction, 'id'>)     => Promise<void>;
   updateTransaction:      (t: Transaction)                  => Promise<void>;
   deleteTransaction:      (id: string)                     => Promise<void>;
+  addTransfer:            (fromAccountId: string, toAccountId: string, amount: number, date: string, description: string) => Promise<void>;
   addAsset:               (a: Omit<Asset, 'id'>)           => Promise<void>;
   updateAsset:            (a: Asset)                       => Promise<void>;
   deleteAsset:            (id: string)                     => Promise<void>;
@@ -154,101 +155,181 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     });
   }, [status]);
 
-  const value = useMemo<FinanceContextValue>(() => ({
-    state,
+  const value = useMemo<FinanceContextValue>(() => {
+    // Helper: signed effect of a transaction on its account balance
+    const txEffect = (tx: { type: string; amount: number }) =>
+      tx.type === 'income' ? Math.abs(tx.amount) : -Math.abs(tx.amount);
 
-    addAccount: async (a) => {
-      const created = await api<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(a) });
-      dispatch({ type: 'addAccount', payload: created });
-    },
-    updateAccount: async (a) => {
-      const updated = await api<Account>(`/api/accounts/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
-      dispatch({ type: 'updateAccount', payload: updated });
-    },
-    deleteAccount: async (id) => {
-      await api(`/api/accounts/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteAccount', payload: id });
-    },
+    // Derive budget `spent` live from transactions — never trust the stored field
+    const budgetsWithSpent = state.budgets.map(b => {
+      const cats = b.category
+        ? b.category.split(',').map(c => c.trim()).filter(Boolean)
+        : [];
+      const spent = state.transactions
+        .filter(t => t.type === 'expense' && (cats.length === 0 || cats.includes(t.category)))
+        .reduce((s, t) => s + Math.abs(t.amount), 0);
+      return { ...b, spent: Math.round(spent) };
+    });
 
-    addTransaction: async (t) => {
-      const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
-      dispatch({ type: 'addTransaction', payload: created });
-      // Automatically update the linked account balance
-      if (created.accountId) {
-        const account = state.accounts.find(a => a.id === created.accountId);
-        if (account) {
-          const delta = created.type === 'income'
-            ? Math.abs(created.amount)
-            : -Math.abs(created.amount);
-          const updated = await api<Account>(`/api/accounts/${account.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ balance: account.balance + delta }),
-          });
-          dispatch({ type: 'updateAccount', payload: updated });
+    return {
+      state: { ...state, budgets: budgetsWithSpent },
+
+      addAccount: async (a) => {
+        const created = await api<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(a) });
+        dispatch({ type: 'addAccount', payload: created });
+      },
+      updateAccount: async (a) => {
+        const updated = await api<Account>(`/api/accounts/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
+        dispatch({ type: 'updateAccount', payload: updated });
+      },
+      deleteAccount: async (id) => {
+        await api(`/api/accounts/${id}`, { method: 'DELETE' });
+        dispatch({ type: 'deleteAccount', payload: id });
+      },
+
+      addTransaction: async (t) => {
+        const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
+        dispatch({ type: 'addTransaction', payload: created });
+        // Automatically update the linked account balance
+        if (created.accountId) {
+          const account = state.accounts.find(a => a.id === created.accountId);
+          if (account) {
+            const updated = await api<Account>(`/api/accounts/${account.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ balance: account.balance + txEffect(created) }),
+            });
+            dispatch({ type: 'updateAccount', payload: updated });
+          }
         }
-      }
-    },
-    updateTransaction: async (t) => {
-      const updated = await api<Transaction>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });
-      dispatch({ type: 'updateTransaction', payload: updated });
-    },
-    deleteTransaction: async (id) => {
-      await api(`/api/transactions/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteTransaction', payload: id });
-    },
+      },
 
-    addAsset: async (a) => {
-      const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(a) });
-      dispatch({ type: 'addAsset', payload: created });
-    },
-    updateAsset: async (a) => {
-      const updated = await api<Asset>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
-      dispatch({ type: 'updateAsset', payload: updated });
-    },
-    deleteAsset: async (id) => {
-      await api(`/api/assets/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteAsset', payload: id });
-    },
+      updateTransaction: async (t) => {
+        const old = state.transactions.find(tx => tx.id === t.id);
+        const updated = await api<Transaction>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });
+        dispatch({ type: 'updateTransaction', payload: updated });
 
-    addLiability: async (l) => {
-      const created = await api<Liability>('/api/liabilities', { method: 'POST', body: JSON.stringify(l) });
-      dispatch({ type: 'addLiability', payload: created });
-    },
-    updateLiability: async (l) => {
-      const updated = await api<Liability>(`/api/liabilities/${l.id}`, { method: 'PATCH', body: JSON.stringify(l) });
-      dispatch({ type: 'updateLiability', payload: updated });
-    },
-    deleteLiability: async (id) => {
-      await api(`/api/liabilities/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteLiability', payload: id });
-    },
-    recordLiabilityPayment: async (id, amount) => {
-      const liability = state.liabilities.find(l => l.id === id);
-      if (!liability) return;
-      const updated = await api<Liability>(`/api/liabilities/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          outstanding: Math.max(0, liability.outstanding - amount),
-          totalRepaid: liability.totalRepaid + amount,
-          emisLeft: Math.max(0, liability.emisLeft - 1),
-        }),
-      });
-      dispatch({ type: 'updateLiability', payload: updated });
-    },
+        // Update account balance(s): reverse old effect, apply new effect
+        if (old?.accountId && old.accountId === updated.accountId) {
+          // Same account: apply net delta
+          const account = state.accounts.find(a => a.id === old.accountId);
+          if (account) {
+            const delta = txEffect(updated) - txEffect(old);
+            if (delta !== 0) {
+              const patched = await api<Account>(`/api/accounts/${account.id}`, {
+                method: 'PATCH', body: JSON.stringify({ balance: account.balance + delta }),
+              });
+              dispatch({ type: 'updateAccount', payload: patched });
+            }
+          }
+        } else {
+          // Different accounts: reverse on old, apply on new
+          if (old?.accountId) {
+            const oldAcct = state.accounts.find(a => a.id === old.accountId);
+            if (oldAcct) {
+              const patched = await api<Account>(`/api/accounts/${old.accountId}`, {
+                method: 'PATCH', body: JSON.stringify({ balance: oldAcct.balance - txEffect(old) }),
+              });
+              dispatch({ type: 'updateAccount', payload: patched });
+            }
+          }
+          if (updated.accountId) {
+            const newAcct = state.accounts.find(a => a.id === updated.accountId);
+            if (newAcct) {
+              const patched = await api<Account>(`/api/accounts/${updated.accountId}`, {
+                method: 'PATCH', body: JSON.stringify({ balance: newAcct.balance + txEffect(updated) }),
+              });
+              dispatch({ type: 'updateAccount', payload: patched });
+            }
+          }
+        }
+      },
 
-    addBudget: async (b) => {
-      const created = await api<BudgetCategory>('/api/budgets', { method: 'POST', body: JSON.stringify(b) });
-      dispatch({ type: 'addBudget', payload: created });
-    },
-    updateBudget: async (b) => {
-      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(b) });
-      dispatch({ type: 'updateBudget', payload: updated });
-    },
-    deleteBudget: async (id) => {
-      await api(`/api/budgets/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteBudget', payload: id });
-    },
-  }), [state]);
+      deleteTransaction: async (id) => {
+        const tx = state.transactions.find(t => t.id === id);
+        await api(`/api/transactions/${id}`, { method: 'DELETE' });
+        dispatch({ type: 'deleteTransaction', payload: id });
+        // Reverse the transaction's effect on the linked account
+        if (tx?.accountId) {
+          const account = state.accounts.find(a => a.id === tx.accountId);
+          if (account) {
+            const updated = await api<Account>(`/api/accounts/${account.id}`, {
+              method: 'PATCH', body: JSON.stringify({ balance: account.balance - txEffect(tx) }),
+            });
+            dispatch({ type: 'updateAccount', payload: updated });
+          }
+        }
+      },
+
+      addTransfer: async (fromAccountId, toAccountId, amount, date, description) => {
+        const result = await api<{
+          transactions: [Transaction, Transaction];
+          fromBalance: number;
+          toBalance: number;
+        }>('/api/transfers', {
+          method: 'POST',
+          body: JSON.stringify({ fromAccountId, toAccountId, amount, date, description }),
+        });
+        dispatch({ type: 'addTransaction', payload: result.transactions[0] });
+        dispatch({ type: 'addTransaction', payload: result.transactions[1] });
+        const fromAcct = state.accounts.find(a => a.id === fromAccountId);
+        const toAcct   = state.accounts.find(a => a.id === toAccountId);
+        if (fromAcct) dispatch({ type: 'updateAccount', payload: { ...fromAcct, balance: result.fromBalance } });
+        if (toAcct)   dispatch({ type: 'updateAccount', payload: { ...toAcct,   balance: result.toBalance   } });
+      },
+
+      addAsset: async (a) => {
+        const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(a) });
+        dispatch({ type: 'addAsset', payload: created });
+      },
+      updateAsset: async (a) => {
+        const updated = await api<Asset>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
+        dispatch({ type: 'updateAsset', payload: updated });
+      },
+      deleteAsset: async (id) => {
+        await api(`/api/assets/${id}`, { method: 'DELETE' });
+        dispatch({ type: 'deleteAsset', payload: id });
+      },
+
+      addLiability: async (l) => {
+        const created = await api<Liability>('/api/liabilities', { method: 'POST', body: JSON.stringify(l) });
+        dispatch({ type: 'addLiability', payload: created });
+      },
+      updateLiability: async (l) => {
+        const updated = await api<Liability>(`/api/liabilities/${l.id}`, { method: 'PATCH', body: JSON.stringify(l) });
+        dispatch({ type: 'updateLiability', payload: updated });
+      },
+      deleteLiability: async (id) => {
+        await api(`/api/liabilities/${id}`, { method: 'DELETE' });
+        dispatch({ type: 'deleteLiability', payload: id });
+      },
+      recordLiabilityPayment: async (id, amount) => {
+        const liability = state.liabilities.find(l => l.id === id);
+        if (!liability) return;
+        const updated = await api<Liability>(`/api/liabilities/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            outstanding: Math.max(0, liability.outstanding - amount),
+            totalRepaid: liability.totalRepaid + amount,
+            emisLeft: Math.max(0, liability.emisLeft - 1),
+          }),
+        });
+        dispatch({ type: 'updateLiability', payload: updated });
+      },
+
+      addBudget: async (b) => {
+        const created = await api<BudgetCategory>('/api/budgets', { method: 'POST', body: JSON.stringify(b) });
+        dispatch({ type: 'addBudget', payload: created });
+      },
+      updateBudget: async (b) => {
+        const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(b) });
+        dispatch({ type: 'updateBudget', payload: updated });
+      },
+      deleteBudget: async (id) => {
+        await api(`/api/budgets/${id}`, { method: 'DELETE' });
+        dispatch({ type: 'deleteBudget', payload: id });
+      },
+    };
+  }, [state]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }

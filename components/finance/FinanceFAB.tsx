@@ -6,7 +6,7 @@ import AddTransactionSheet from '@/components/finance/AddTransactionSheet';
 import { useFinance } from '@/lib/financeStore';
 
 export default function FinanceFAB() {
-  const { state, addTransaction } = useFinance();
+  const { state, addTransaction, addTransfer } = useFinance();
   const [open, setOpen] = useState(false);
 
   const accounts = state.accounts.map(a => ({ id: a.id, name: a.name }));
@@ -36,7 +36,7 @@ export default function FinanceFAB() {
         accounts={accounts}
         onSaveExpense={addTransaction}
         onSaveIncome={addTransaction}
-        onSaveTransfer={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
+        onSaveTransfer={(tx1, tx2) => addTransfer(tx1.accountId!, tx2.accountId!, Math.abs(tx1.amount), tx1.date, tx1.description)}
       />
     </>
   );

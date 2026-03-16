@@ -32,6 +32,13 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
     const { accountId, date, category, description, amount, type } = parsed.data;
+
+    // Verify the accountId belongs to this user (prevents spoofing another user's account)
+    if (accountId) {
+      const acct = await prisma.account.findFirst({ where: { id: accountId, userId } });
+      if (!acct) return NextResponse.json({ error: 'Account not found' }, { status: 400 });
+    }
+
     const row = await prisma.transaction.create({
       data: { userId, accountId, date, category, description, amount: await encryptNumber(amount), type },
     });

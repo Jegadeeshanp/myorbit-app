@@ -16,14 +16,15 @@ const settingsSchema = z.object({
 export async function GET() {
   try {
     const userId = await requireUserId();
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, email: true, createdAt: true },
-    });
+    const [user, prefs] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, createdAt: true },
+      }),
+      prisma.userPreferences.findUnique({ where: { userId } }),
+    ]);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Return user data + sensible defaults for preferences
-    // In a future version, store preferences in a separate UserPreferences table
     return NextResponse.json({
       profile: {
         id:        user.id,
@@ -32,9 +33,9 @@ export async function GET() {
         createdAt: user.createdAt,
       },
       preferences: {
-        currency: 'INR',    // Default for Indian users
-        theme:    'system',
-        locale:   'en-IN',
+        currency: prefs?.currency ?? 'INR',
+        theme:    prefs?.theme    ?? 'system',
+        locale:   prefs?.locale   ?? 'en-IN',
       },
     });
   } catch (e: any) {
@@ -56,16 +57,27 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       );
 
-    const updates: Record<string, unknown> = {};
-    if (parsed.data.name) updates.name = parsed.data.name.trim();
+    const { name, currency, theme, locale } = parsed.data;
 
-    // Update name in DB if provided
-    if (Object.keys(updates).length > 0) {
-      await prisma.user.update({ where: { id: userId }, data: updates });
+    // Update display name if provided
+    if (name) {
+      await prisma.user.update({ where: { id: userId }, data: { name: name.trim() } });
     }
 
-    // Preferences (currency, theme, locale) will be stored client-side
-    // until a UserPreferences table is added to the schema
+    // Persist preferences via upsert on UserPreferences table
+    const prefUpdates: Record<string, string> = {};
+    if (currency) prefUpdates.currency = currency;
+    if (theme)    prefUpdates.theme    = theme;
+    if (locale)   prefUpdates.locale   = locale;
+
+    if (Object.keys(prefUpdates).length > 0) {
+      await prisma.userPreferences.upsert({
+        where:  { userId },
+        create: { userId, ...prefUpdates },
+        update: prefUpdates,
+      });
+    }
+
     return NextResponse.json({ ok: true, updated: parsed.data });
   } catch (e: any) {
     if (e.message === 'Unauthorized')

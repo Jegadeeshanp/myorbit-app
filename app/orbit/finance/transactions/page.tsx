@@ -10,7 +10,7 @@ import AddTransactionSheet from '@/components/finance/AddTransactionSheet';
 import { TransactionsSkeleton } from '@/components/finance/SkeletonLoader';
 
 export default function TransactionsPage() {
-  const { state, addTransaction } = useFinance();
+  const { state, addTransaction, addTransfer } = useFinance();
   const { transactions, accounts } = state;
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -41,7 +41,7 @@ export default function TransactionsPage() {
         accounts={accountList}
         onSaveExpense={addTransaction}
         onSaveIncome={addTransaction}
-        onSaveTransfer={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
+        onSaveTransfer={(tx1, tx2) => addTransfer(tx1.accountId!, tx2.accountId!, Math.abs(tx1.amount), tx1.date, tx1.description)}
       />
     </div>
   );

@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const data: any = { ...parsed.data };
     if (data.amount != null) data.amount = await encryptNumber(data.amount);
 
-    const row = await prisma.transaction.update({ where: { id }, data });
+    const row = await prisma.transaction.update({ where: { id, userId }, data });
     return NextResponse.json(await decryptTx(row));
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,7 +41,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const userId = await requireUserId();
     const existing = await prisma.transaction.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    await prisma.transaction.delete({ where: { id } });
+    await prisma.transaction.delete({ where: { id, userId } });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
