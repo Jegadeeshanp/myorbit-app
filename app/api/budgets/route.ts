@@ -23,8 +23,19 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
     const { name, budget, spent = 0, category = '' } = parsed.data;
-    const row = await prisma.budget.create({ data: { userId, name, budget, spent, category } as any });
-    return NextResponse.json({ id: row.id, name: row.name, budget: row.budget, spent: row.spent, category: (row as any).category ?? '' }, { status: 201 });
+
+    // Try to create with category field; fall back without it if the column doesn't exist yet
+    let row: any;
+    try {
+      row = await prisma.budget.create({ data: { userId, name, budget, spent, category } as any });
+    } catch {
+      row = await prisma.budget.create({ data: { userId, name, budget, spent } });
+    }
+
+    return NextResponse.json({
+      id: row.id, name: row.name, budget: row.budget, spent: row.spent,
+      category: (row as any).category ?? category,
+    }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

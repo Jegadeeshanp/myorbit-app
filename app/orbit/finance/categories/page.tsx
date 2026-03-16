@@ -3,15 +3,23 @@
 import { useState } from 'react';
 import { ArrowLeft, Plus, Trash2, Tag, ShoppingCart, Car, ShoppingBag, Zap, Heart, Film, BookOpen, Plane, Package, Briefcase, Code, TrendingUp, Gift, Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import {
+  getCustomExpenseCategories,
+  getCustomIncomeCategories,
+  addCustomExpenseCategory,
+  addCustomIncomeCategory,
+  removeCustomExpenseCategory,
+  removeCustomIncomeCategory,
+} from '@/lib/customCategoryStore';
 
 type CategoryType = 'expense' | 'income';
 
-const DEFAULT_CATEGORIES: Record<CategoryType, string[]> = {
+// Built-in categories (non-deletable)
+const BUILTIN_CATEGORIES: Record<CategoryType, string[]> = {
   expense: ['Groceries', 'Transport', 'Shopping', 'Bills & Utilities', 'Healthcare', 'Entertainment', 'Education', 'Travel', 'Others'],
   income:  ['Salary', 'Freelance', 'Dividends', 'Gifts', 'Rental Income'],
 };
 
-// Subtle icon map using Lucide icons
 const EXPENSE_ICONS: Record<string, React.ElementType> = {
   Groceries: ShoppingCart,
   Transport: Car,
@@ -32,21 +40,36 @@ const INCOME_ICONS: Record<string, React.ElementType> = {
   'Rental Income': Home,
 };
 
+function getAllCategories(type: CategoryType): string[] {
+  const custom = type === 'expense' ? getCustomExpenseCategories() : getCustomIncomeCategories();
+  const all = [...BUILTIN_CATEGORIES[type]];
+  custom.forEach(c => { if (!all.includes(c)) all.push(c); });
+  return all;
+}
+
 export default function CategoriesPage() {
   const router = useRouter();
   const [type, setType] = useState<CategoryType>('expense');
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<Record<CategoryType, string[]>>({
+    expense: getAllCategories('expense'),
+    income:  getAllCategories('income'),
+  });
   const [newName, setNewName] = useState('');
 
   const handleAdd = () => {
     const trimmed = newName.trim();
     if (!trimmed || categories[type].includes(trimmed)) return;
     setCategories(c => ({ ...c, [type]: [...c[type], trimmed] }));
+    if (type === 'expense') addCustomExpenseCategory(trimmed);
+    else addCustomIncomeCategory(trimmed);
     setNewName('');
   };
 
   const handleDelete = (cat: string) => {
+    if (BUILTIN_CATEGORIES[type].includes(cat)) return;
     setCategories(c => ({ ...c, [type]: c[type].filter(x => x !== cat) }));
+    if (type === 'expense') removeCustomExpenseCategory(cat);
+    else removeCustomIncomeCategory(cat);
   };
 
   const iconMap = type === 'expense' ? EXPENSE_ICONS : INCOME_ICONS;
@@ -118,17 +141,22 @@ export default function CategoriesPage() {
             <div className="divide-y divide-gray-50">
               {categories[type].map(cat => {
                 const Icon = iconMap[cat] ?? Tag;
+                const isBuiltin = BUILTIN_CATEGORIES[type].includes(cat);
                 return (
                   <div key={cat} className="flex items-center justify-between px-5 py-3 transition hover:bg-gray-50/50">
                     <div className="flex items-center gap-3">
-                      {/* Subtle icon — small, muted, no colored background */}
                       <Icon className="h-4 w-4 text-gray-400 flex-none" />
                       <span className="text-sm font-medium text-gray-800">{cat}</span>
+                      {isBuiltin && (
+                        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">default</span>
+                      )}
                     </div>
-                    <button onClick={() => handleDelete(cat)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {!isBuiltin && (
+                      <button onClick={() => handleDelete(cat)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
               })}

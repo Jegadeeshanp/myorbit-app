@@ -22,16 +22,16 @@ export default function BudgetPage() {
           <button
             type="button"
             onClick={() => setCatOpen(true)}
-            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            className="rounded-full border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:px-4 sm:py-2 sm:text-sm"
           >
-            + Categories
+            + <span className="hidden sm:inline">Categories</span><span className="sm:hidden">Cats</span>
           </button>
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+            className="rounded-full bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-800 sm:px-5 sm:py-2 sm:text-sm"
           >
-            + Add budget
+            + <span className="hidden sm:inline">Add budget</span><span className="sm:hidden">Budget</span>
           </button>
         </div>
       } />

@@ -13,14 +13,14 @@ const PERIODS = ['Monthly', 'Weekly', 'Yearly'] as const;
 
 function Toggle({ value, onChange, label, sub }: { value: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <div>
+    <div className="flex items-center justify-between gap-4">
+      <div className="min-w-0">
         <p className="text-sm font-medium text-gray-900">{label}</p>
         {sub && <p className="text-xs text-gray-500">{sub}</p>}
       </div>
       <button type="button" onClick={() => onChange(!value)}
-        className={`relative h-6 w-11 flex-none rounded-full transition ${value ? 'bg-emerald-600' : 'bg-gray-200'}`}>
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        className={`relative h-6 w-11 flex-none rounded-full transition-colors ${value ? 'bg-emerald-600' : 'bg-gray-200'}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${value ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
       </button>
     </div>
   );
@@ -59,17 +59,26 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
   const toggleAccount = (id: string) =>
     setSelectedAccounts(as => as.includes(id) ? as.filter(x => x !== id) : [...as, id]);
 
-  const handleSave = () => {
-    if (!canSave) return;
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
     const categoryStr = selectedCats.join(',');
-    if (isEdit) {
-      updateBudget({ ...initial, name: name.trim(), budget: Number(amount), category: categoryStr });
-      toast('Budget updated');
-    } else {
-      addBudget({ name: name.trim(), budget: Number(amount), spent: 0, category: categoryStr });
-      toast('Budget created');
+    try {
+      if (isEdit) {
+        await updateBudget({ ...initial, name: name.trim(), budget: Number(amount), category: categoryStr });
+        toast('Budget updated');
+      } else {
+        await addBudget({ name: name.trim(), budget: Number(amount), spent: 0, category: categoryStr });
+        toast('Budget created');
+      }
+      onClose();
+    } catch {
+      toast('Failed to save budget. Please try again.');
+    } finally {
+      setSaving(false);
     }
-    onClose();
   };
 
   const footer = (
@@ -77,9 +86,9 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
       <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSave} disabled={!canSave}
+      <button type="button" onClick={handleSave} disabled={!canSave || saving}
         className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
-        {isEdit ? 'Update budget' : 'Save budget'}
+        {saving ? 'Saving…' : isEdit ? 'Update budget' : 'Save budget'}
       </button>
     </div>
   );
