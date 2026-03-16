@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Bell } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
+import { toast } from '@/components/Toast';
 
 const ALL_CATEGORIES = ['Food & Dining','Transport','Shopping','Bills & Utilities','Healthcare','Entertainment','Education','Travel','Others'];
 const PERIODS = ['Monthly', 'Weekly', 'Yearly'] as const;
@@ -24,7 +25,7 @@ function Toggle({ value, onChange, label, sub }: { value: boolean; onChange: (v:
 
 export default function AddBudgetPage() {
   const router = useRouter();
-  const { state } = useFinance();
+  const { state, addBudget } = useFinance();
 
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -34,16 +35,25 @@ export default function AddBudgetPage() {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [overspendAlert, setOverspendAlert] = useState(true);
   const [warningAlert, setWarningAlert] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const toggleCat = (c: string) => setSelectedCats(cs => cs.includes(c) ? cs.filter(x => x !== c) : [...cs, c]);
   const toggleAccount = (id: string) => setSelectedAccounts(as => as.includes(id) ? as.filter(x => x !== id) : [...as, id]);
 
   const canSave = name.trim() && Number(amount) > 0;
 
-  const handleSave = () => {
-    if (!canSave) return;
-    // Would dispatch to store — for now navigate back
-    router.back();
+  const handleSave = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      await addBudget({ name: name.trim(), budget: Number(amount), spent: 0, category: selectedCats.join(',') });
+      toast('Budget created');
+      router.back();
+    } catch (err: any) {
+      toast(err.message ?? 'Failed to save budget. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -180,10 +190,10 @@ export default function AddBudgetPage() {
         <div className="mx-auto max-w-lg">
           <button
             onClick={handleSave}
-            disabled={!canSave}
+            disabled={!canSave || saving}
             className="w-full rounded-full bg-emerald-600 py-4 text-base font-bold text-white shadow-lg transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Save Budget
+            {saving ? 'Saving…' : 'Save Budget'}
           </button>
         </div>
       </div>

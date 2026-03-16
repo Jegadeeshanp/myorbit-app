@@ -74,8 +74,8 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
         toast('Budget created');
       }
       onClose();
-    } catch {
-      toast('Failed to save budget. Please try again.');
+    } catch (err: any) {
+      toast(err.message ?? 'Failed to save budget. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
