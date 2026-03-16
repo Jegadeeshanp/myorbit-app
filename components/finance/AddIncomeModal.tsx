@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
-
-const INCOME_SOURCES = ['Salary', 'Freelance', 'Investments', 'Dividends', 'Rental', 'Gifts', 'Other'];
+import { INCOME_CATEGORIES, type CategoryDef } from './CategoryPicker';
 
 export type AddIncomeProps = {
   open: boolean;
@@ -15,30 +14,77 @@ export type AddIncomeProps = {
   initial?: Transaction;
 };
 
+// ── Inline category chip grid (no add-new for income) ─────────────────────
+function IncomeCategoryGrid({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: CategoryDef[];
+  value: string;
+  onChange: (name: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {categories.map(cat => {
+        const Icon = cat.icon;
+        const isActive = cat.name === value;
+        return (
+          <button
+            key={cat.name}
+            type="button"
+            onClick={() => onChange(cat.name)}
+            className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-medium transition ${
+              isActive
+                ? `${cat.bg} ${cat.color} ring-1 ring-current/30`
+                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-lg ${isActive ? 'bg-white/60' : cat.bg}`}>
+              <Icon className={`h-3.5 w-3.5 ${cat.color}`} />
+            </span>
+            <span className="truncate leading-tight">{cat.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
 export default function AddIncomeModal({ open, onClose, accounts, onSave, initial }: AddIncomeProps) {
   const [date,        setDate]      = useState(() => new Date().toISOString().slice(0, 10));
-  const [source,      setSource]    = useState('Salary');
+  const [category,    setCategory]  = useState(INCOME_CATEGORIES[0].name);
   const [description, setDesc]      = useState('');
+  const [note,        setNote]      = useState('');
   const [amount,      setAmount]    = useState('');
   const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
 
   useEffect(() => {
     if (open) {
       setDate(initial?.date ?? new Date().toISOString().slice(0, 10));
-      setSource(initial?.category ?? 'Salary');
-      setDesc(initial?.description ?? '');
+      setCategory(initial?.category ?? INCOME_CATEGORIES[0].name);
+      if (initial?.description) {
+        const parts = initial.description.split('\n');
+        setDesc(parts[0] ?? '');
+        setNote(parts.slice(1).join('\n'));
+      } else {
+        setDesc('');
+        setNote('');
+      }
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
     }
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    !!date && !!source && Number(amount) > 0 && !!accountId,
-  [date, source, amount, accountId]);
+    !!date && !!category && !!description.trim() && Number(amount) > 0 && !!accountId,
+  [date, category, description, amount, accountId]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSave({ date, category: source, description: description.trim() || source, amount: Math.abs(Number(amount)), type: 'income', accountId });
+    const desc = note.trim() ? `${description.trim()}\n${note.trim()}` : description.trim();
+    onSave({ date, category, description: desc, amount: Math.abs(Number(amount)), type: 'income', accountId });
     toast(initial ? 'Income updated' : 'Income recorded');
     onClose();
   };
@@ -60,27 +106,32 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit income' : 'Add income'} subtitle="Record money received" footer={footer}>
       <div className="space-y-5">
+
+        {/* Category */}
         <div>
-          <SectionLabel>Income details</SectionLabel>
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Source</label>
-              <select value={source} onChange={e => setSource(e.target.value)} className={inputCls}>
-                {INCOME_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 flex items-center text-sm font-medium text-gray-700">Description <OptionalBadge /></label>
-              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="March paycheck" className={inputCls} />
-            </div>
-          </div>
+          <SectionLabel>Category</SectionLabel>
+          <IncomeCategoryGrid
+            categories={INCOME_CATEGORIES}
+            value={category}
+            onChange={setCategory}
+          />
         </div>
+
+        {/* Details */}
         <div>
-          <SectionLabel>Amount & account</SectionLabel>
+          <SectionLabel>Details</SectionLabel>
           <div className="space-y-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
+              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="March paycheck"
+                onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                className={inputCls} />
+            </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="85000" type="number" className={inputCls} />
+              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="85000" type="number" min="0"
+                onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
@@ -92,8 +143,15 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Date</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
             </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                Note <OptionalBadge />
+              </label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note…" className={inputCls} />
+            </div>
           </div>
         </div>
+
       </div>
     </Modal>
   );

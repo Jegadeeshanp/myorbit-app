@@ -17,12 +17,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  accounts     Account[]
-  transactions Transaction[]
-  assets       Asset[]
-  liabilities  Liability[]
-  budgets      Budget[]
-  sessions     Session[]
+  accounts            Account[]
+  transactions        Transaction[]
+  assets              Asset[]
+  liabilities         Liability[]
+  budgets             Budget[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  preferences         UserPreferences?
 }
 
 model Session {
@@ -104,9 +106,38 @@ model Budget {
   name      String
   budget    Int
   spent     Int      @default(0)
+  category  String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Dedicated password reset token model — replaces the Session table workaround.
+// Used by /api/auth/forgot-password and /api/auth/reset-password.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique  // raw secure token (not prefixed)
+  expiresAt DateTime
+  usedAt    DateTime?         // null = not yet used
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+// Persisted user preferences (theme, currency, locale).
+// One row per user (optional — created on first save).
+model UserPreferences {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  currency  String   @default("INR")   // ISO 4217 code
+  theme     String   @default("system") // "light" | "dark" | "system"
+  locale    String   @default("en-IN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

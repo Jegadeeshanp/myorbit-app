@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Wallet, Target, HeartPulse, CheckCircle2, ClipboardList, Lightbulb, Sparkles, Clock, Layers } from 'lucide-react';
+import ForceLightMode from '@/components/ForceLightMode';
 
 const NAV_LINKS = [
   { href: '#features', label: 'Features' },
@@ -496,7 +497,8 @@ function Footer() {
 
 export default function Home() {
   return (
-    <main className={`${BACKGROUND} min-h-screen text-gray-900`}>
+    <main className={`${BACKGROUND} min-h-screen text-gray-900`} data-landing>
+      <ForceLightMode />
       <NavBar />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-white pb-24 pt-20">

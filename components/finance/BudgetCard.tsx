@@ -1,15 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { BudgetCategory } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
+import { formatINR } from '@/lib/currency';
 import { Trash2, Pencil } from 'lucide-react';
-
-function fmt(v: number) {
-  return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-}
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory; onEdit?: (b: BudgetCategory) => void }) {
   const { deleteBudget } = useFinance();
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Fix: calculate raw % BEFORE clamping so we can use it for color logic
   const rawProgress  = budget.budget > 0 ? (budget.spent / budget.budget) * 100 : 0;
@@ -26,11 +26,20 @@ export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory;
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold text-gray-900">{budget.name}</h3>
-          <p className="mt-0.5 text-xs text-gray-400">{fmt(budget.spent)} spent</p>
+          <p className="mt-0.5 text-xs text-gray-400">{formatINR(budget.spent)} spent</p>
+          {budget.category && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {budget.category.split(',').filter(Boolean).map(cat => (
+                <span key={cat} className="rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                  {cat}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-none items-center gap-2">
           <div className="text-right">
-            <p className="text-sm font-semibold text-gray-900">{fmt(budget.budget)}</p>
+            <p className="text-sm font-semibold text-gray-900">{formatINR(budget.budget)}</p>
             <p className="text-xs text-gray-400">budget</p>
           </div>
           {onEdit && (
@@ -43,7 +52,7 @@ export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory;
             </button>
           )}
           <button
-            onClick={() => deleteBudget(budget.id)}
+            onClick={() => setShowConfirm(true)}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
             title="Delete budget"
           >
@@ -61,9 +70,18 @@ export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory;
           {isOver ? `₹${Math.abs(remaining).toLocaleString('en-IN')} over budget` : `${Math.round(rawProgress)}% used`}
         </span>
         {!isOver && (
-          <span className="text-xs text-gray-400">{fmt(remaining)} left</span>
+          <span className="text-xs text-gray-400">{formatINR(remaining)} left</span>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete budget category"
+        description={`Are you sure you want to delete "${budget.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { deleteBudget(budget.id); setShowConfirm(false); }}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 }
