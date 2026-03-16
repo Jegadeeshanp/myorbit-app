@@ -53,7 +53,7 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
       <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit || saving}
         className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
         {saving ? 'Saving…' : 'Save account'}
       </button>

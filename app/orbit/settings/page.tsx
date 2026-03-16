@@ -9,7 +9,6 @@ import AccountTab from '@/components/settings/AccountTab';
 import PreferencesTab from '@/components/settings/PreferencesTab';
 import ProfilesTab from '@/components/settings/ProfilesTab';
 import DataPrivacyTab from '@/components/settings/DataPrivacyTab';
-import { FinanceProvider } from '@/lib/financeStore';
 import SubscriptionTab from '@/components/settings/SubscriptionTab';
 
 const TABS = [
@@ -28,7 +27,6 @@ export default function SettingsPage() {
   const handleSignOut = () => { signOut(); router.push('/signin'); };
 
   return (
-    <FinanceProvider>
     <div className="min-h-screen bg-[#F7F7F5]">
       <div className="mx-auto max-w-4xl px-6 py-8">
 
@@ -82,6 +80,5 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
-    </FinanceProvider>
   );
 }
