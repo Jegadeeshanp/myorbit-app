@@ -10,6 +10,7 @@ import {
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
   Smartphone, RefreshCw, Shield, Gift, Package,
   Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2,
+  Clock,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
@@ -165,6 +166,12 @@ function filterByPeriod(txs: Transaction[], period: PeriodValue): Transaction[] 
   });
 }
 
+const TODAY = new Date().toISOString().split('T')[0];
+
+function isFuture(tx: Transaction): boolean {
+  return tx.date > TODAY;
+}
+
 function groupByMonth(txs: Transaction[]) {
   const map = new Map<string, Transaction[]>();
   [...txs].sort((a, b) => b.date.localeCompare(a.date)).forEach(tx => {
@@ -235,16 +242,20 @@ export default function TransactionList({ transactions }: { transactions: Transa
     return txs;
   }, [transactions, period, safeTab, search, accountTabMap]);
 
-  const groups = useMemo(() => groupByMonth(filtered), [filtered]);
+  // Separate future (upcoming) from current transactions
+  const futureTxs  = useMemo(() => filtered.filter(isFuture).sort((a, b) => a.date.localeCompare(b.date)), [filtered]);
+  const currentTxs = useMemo(() => filtered.filter(t => !isFuture(t)), [filtered]);
+
+  const groups = useMemo(() => groupByMonth(currentTxs), [currentTxs]);
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  // Summary for the active view
+  // Summary for the active view — future transactions excluded from balance impact
   const summary = useMemo(() => {
-    const income  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, count: filtered.length };
-  }, [filtered]);
+    const income  = currentTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expense = currentTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, count: currentTxs.length };
+  }, [currentTxs]);
 
   return (
     <div className="space-y-4">
@@ -260,11 +271,13 @@ export default function TransactionList({ transactions }: { transactions: Transa
               const Icon = cfg.icon;
               const isActive = safeTab === tab;
               // Count for this tab
+              // Exclude future transactions from tab counts
+              const periodTxs = filterByPeriod(transactions, period).filter(t => !isFuture(t));
               const count = tab === 'All'
-                ? filterByPeriod(transactions, period).length
+                ? periodTxs.length
                 : tab === 'Income'
-                ? filterByPeriod(transactions, period).filter(t => t.type === 'income').length
-                : filterByPeriod(transactions, period).filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
+                ? periodTxs.filter(t => t.type === 'income').length
+                : periodTxs.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
 
               return (
                 <button
@@ -333,14 +346,72 @@ export default function TransactionList({ transactions }: { transactions: Transa
         </div>
       </div>
 
+      {/* ── Upcoming / Future transactions ── */}
+      {futureTxs.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-blue-50 bg-blue-50/60 px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5 text-blue-500" />
+              <p className="text-xs font-semibold text-blue-700">Upcoming transactions</p>
+            </div>
+            <span className="text-xs text-blue-500">{futureTxs.length} scheduled • doesn't affect current balance</span>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {futureTxs.map(tx => {
+              const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+              const isExp    = tx.type === 'expense';
+              const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+              return (
+                <div key={tx.id} className="group flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-gray-50/50 opacity-75">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TxIcon tx={tx} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
+                        <span className="flex-none rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">Upcoming</span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
+                          {tx.category}
+                        </span>
+                        {account && (
+                          <span className="rounded-full border border-gray-100 bg-gray-50 px-2 py-0.5 text-xs text-gray-400">
+                            {account.name}
+                          </span>
+                        )}
+                        <span className="text-xs text-blue-500 font-medium">
+                          {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-none items-center gap-2">
+                    <p className={`text-sm font-bold ${isExp ? 'text-rose-400' : 'text-emerald-500'}`}>
+                      {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                    </p>
+                    <button
+                      onClick={() => setConfirmTarget(tx.id)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
+                      title="Delete transaction"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Transaction groups ── */}
-      {groups.length === 0 ? (
+      {groups.length === 0 && futureTxs.length === 0 ? (
         <EmptyState
           icon={CreditCard}
           title="No transactions found"
           subtitle="Try a different tab, period, or search term"
         />
-      ) : (
+      ) : groups.length === 0 ? null : (
         groups.map(group => {
           const total = group.transactions.reduce(
             (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0

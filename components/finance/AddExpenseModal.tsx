@@ -5,6 +5,7 @@ import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
+import { addCustomExpenseCategory, getCustomExpenseCategories } from '@/lib/customCategoryStore';
 import { Plus, X, Package, Check } from 'lucide-react';
 
 export type AddExpenseProps = {
@@ -28,7 +29,12 @@ function CategoryGrid({
   const [addMode, setAddMode] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customIcon, setCustomIcon] = useState<ComponentType<{ className?: string }>>(Package);
-  const [extras, setExtras] = useState<CategoryDef[]>([]);
+  // Merge built-in categories with custom ones from shared store
+  const [extras, setExtras] = useState<CategoryDef[]>(() =>
+    getCustomExpenseCategories().map(name => ({
+      name, icon: Package, color: 'text-gray-700', bg: 'bg-gray-100',
+    }))
+  );
 
   const allCats = [...categories, ...extras];
 
@@ -40,7 +46,11 @@ function CategoryGrid({
       color: 'text-gray-700',
       bg: 'bg-gray-100',
     };
-    setExtras(prev => [...prev, newCat]);
+    // Only add if not already in the list
+    if (!allCats.some(c => c.name === newCat.name)) {
+      setExtras(prev => [...prev, newCat]);
+      addCustomExpenseCategory(newCat.name);
+    }
     onChange(newCat.name);
     setCustomName('');
     setCustomIcon(Package);
@@ -225,11 +235,15 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="Lunch at cafe" className={inputCls} />
+              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="Lunch at cafe"
+                onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="250" type="number" min="0" className={inputCls} />
+              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="250" type="number" min="0"
+                onKeyDown={e => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+                className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>

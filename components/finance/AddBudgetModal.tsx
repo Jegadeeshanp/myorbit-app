@@ -6,9 +6,9 @@ import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { useFinance } from '@/lib/financeStore';
 import { BudgetCategory } from '@/lib/financeData';
+import { EXPENSE_CATEGORIES } from './CategoryPicker';
+import { getCustomExpenseCategories } from '@/lib/customCategoryStore';
 
-// Unified category list — matches financeData budgets and AddExpenseModal
-const ALL_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Bills', 'Healthcare', 'Entertainment', 'Education', 'Travel', 'Others'];
 const PERIODS = ['Monthly', 'Weekly', 'Yearly'] as const;
 
 function Toggle({ value, onChange, label, sub }: { value: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) {
@@ -37,6 +37,12 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
   const [overspend, setOverspend]       = useState(true);
   const [warning, setWarning]           = useState(true);
 
+  // Build full category list: built-in + user's custom categories
+  const ALL_CATEGORIES = [
+    ...EXPENSE_CATEGORIES.map(c => c.name),
+    ...getCustomExpenseCategories(),
+  ];
+
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? '');
@@ -55,30 +61,47 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
 
   const handleSave = () => {
     if (!canSave) return;
+    const categoryStr = selectedCats.join(',');
     if (isEdit) {
-      updateBudget({ ...initial, name: name.trim(), budget: Number(amount) });
+      updateBudget({ ...initial, name: name.trim(), budget: Number(amount), category: categoryStr });
       toast('Budget updated');
     } else {
-      addBudget({ name: name.trim(), budget: Number(amount), spent: 0 });
+      addBudget({ name: name.trim(), budget: Number(amount), spent: 0, category: categoryStr });
       toast('Budget created');
     }
     onClose();
   };
 
+  const footer = (
+    <div className="flex items-center justify-end gap-3">
+      <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        Cancel
+      </button>
+      <button type="button" onClick={handleSave} disabled={!canSave}
+        className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+        {isEdit ? 'Update budget' : 'Save budget'}
+      </button>
+    </div>
+  );
+
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit budget' : 'Add budget'} subtitle="Set a spending limit for a category">
-      <div className="max-h-[65vh] overflow-y-auto space-y-5 pr-1">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit budget' : 'Add budget'} subtitle="Set a spending limit for a category" footer={footer}>
+      <div className="space-y-5">
 
         <div>
           <SectionLabel>Budget details</SectionLabel>
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Budget name</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Monthly Groceries" className={inputCls} />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Monthly Groceries"
+                onKeyDown={e => { if (e.key === 'Enter' && canSave) handleSave(); }}
+                className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="12000" type="number" min="1" className={inputCls} />
+              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="12000" type="number" min="1"
+                onKeyDown={e => { if (e.key === 'Enter' && canSave) handleSave(); }}
+                className={inputCls} />
             </div>
           </div>
         </div>
@@ -146,26 +169,19 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
         </div>
 
         <div>
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-3 flex items-center gap-1.5">
             <Bell className="h-3.5 w-3.5 text-gray-400" />
-            <SectionLabel>Notifications</SectionLabel>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Notifications</p>
           </div>
-          <div className="space-y-3">
-            <Toggle value={overspend} onChange={setOverspend} label="Overspend alert" sub="Notified when you exceed the budget" />
-            <div className="border-t border-gray-100" />
-            <Toggle value={warning} onChange={setWarning} label="75% warning" sub="Early heads-up before hitting the limit" />
+          <div className="rounded-xl border border-gray-100 bg-gray-50/50 divide-y divide-gray-100">
+            <div className="px-4 py-3">
+              <Toggle value={overspend} onChange={setOverspend} label="Overspend alert" sub="Notified when you exceed the budget" />
+            </div>
+            <div className="px-4 py-3">
+              <Toggle value={warning} onChange={setWarning} label="75% warning" sub="Early heads-up before hitting the limit" />
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
-        <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-          Cancel
-        </button>
-        <button type="button" onClick={handleSave} disabled={!canSave}
-          className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
-          {isEdit ? 'Update budget' : 'Save budget'}
-        </button>
       </div>
     </Modal>
   );

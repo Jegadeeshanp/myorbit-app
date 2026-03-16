@@ -81,7 +81,7 @@ export default function FinancialHealthScore({ transactions }: { transactions: T
   const { state } = useFinance();
   const totalAssets = useMemo(() => state.assets.reduce((s,a) => s + a.value, 0), [state.assets]);
   const totalLiab   = useMemo(() => state.liabilities.reduce((s,l) => s + l.outstanding, 0), [state.liabilities]);
-  const { score, factors, summary } = useMemo(() => getScore(transactions, totalAssets, totalLiab), [transactions, totalAssets, totalLiab]);
+  const { score, factors, summary, hasData } = useMemo(() => getScore(transactions, totalAssets, totalLiab), [transactions, totalAssets, totalLiab]);
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -89,23 +89,51 @@ export default function FinancialHealthScore({ transactions }: { transactions: T
         <ShieldCheck className="h-4 w-4 text-emerald-600" />
         <h2 className="text-sm font-semibold text-gray-900">Financial Health Score</h2>
       </div>
-      <div className="flex items-center gap-5">
-        <ScoreRing score={score} />
-        <div className="flex-1 space-y-2">
-          {factors.map(f => (
-            <div key={f.label}>
-              <div className="mb-1 flex justify-between text-xs">
-                <span className="text-gray-500">{f.label}</span>
-                <span className="font-semibold text-gray-700">{f.score}/{f.max}</span>
+
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center py-4 text-center gap-3">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <ShieldCheck className="h-7 w-7 text-gray-300" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-700">No data yet</p>
+            <p className="mt-1 text-xs text-gray-400 max-w-[220px] leading-relaxed">
+              Add accounts, transactions, and assets to get your personalised financial health score.
+            </p>
+          </div>
+          <div className="w-full space-y-2 mt-1 opacity-30 pointer-events-none">
+            {factors.map(f => (
+              <div key={f.label}>
+                <div className="mb-1 flex justify-between text-xs">
+                  <span className="text-gray-500">{f.label}</span>
+                  <span className="font-semibold text-gray-400">—/{f.max}</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100" />
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${(f.score/f.max)*100}%` }} />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-      <p className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-xs leading-relaxed text-gray-600">{summary}</p>
+      ) : (
+        <>
+          <div className="flex items-center gap-5">
+            <ScoreRing score={score} />
+            <div className="flex-1 space-y-2">
+              {factors.map(f => (
+                <div key={f.label}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <span className="text-gray-500">{f.label}</span>
+                    <span className="font-semibold text-gray-700">{f.score}/{f.max}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${(f.score/f.max)*100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-xs leading-relaxed text-gray-600">{summary}</p>
+        </>
+      )}
     </div>
   );
 }

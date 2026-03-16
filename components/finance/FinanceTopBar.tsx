@@ -41,9 +41,9 @@ export default function FinanceTopBar({ action }: { action?: React.ReactNode }) 
       <div className="flex flex-none items-center gap-2">
         {action}
         <Link href="/orbit"
-          className="hidden items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:inline-flex">
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
           <ArrowLeft className="h-4 w-4" />
-          My Orbit
+          <span className="hidden sm:inline">My Orbit</span>
         </Link>
       </div>
     </div>
