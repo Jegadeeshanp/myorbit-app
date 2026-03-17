@@ -427,14 +427,6 @@ export default function AddTransactionSheet({
     }
   }, [open]);
 
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [open, onClose]);
-
   // Build recurring config from state
   function buildRecurring(): RecurringConfig | undefined {
     if (!recurring.on) return undefined;
@@ -482,7 +474,6 @@ export default function AddTransactionSheet({
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="relative flex w-full flex-col overflow-hidden bg-white shadow-2xl rounded-t-3xl sm:max-w-lg sm:rounded-2xl max-h-[92vh]">
 

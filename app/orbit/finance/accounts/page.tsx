@@ -77,11 +77,8 @@ export default function AccountsPage() {
 
       {/* ── Primary balance card ── */}
       <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
-        <p className="text-xs font-semibold uppercase tracking-widest text-emerald-200">Total Balance</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-white">Total Balance</p>
         <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
-        <p className="mt-1.5 text-sm text-emerald-200">
-          Bank accounts, wallets &amp; cash
-        </p>
       </div>
 
       {/* ── 3 metric cards ── */}

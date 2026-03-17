@@ -185,6 +185,25 @@ export function FinanceProvider({ children }: PropsWithChildren) {
             dispatch({ type: 'updateAccount', payload: updated });
           } catch { /* non-critical */ }
         }
+        // Auto-update matching budget's spent amount when an expense is recorded
+        if (created.type === 'expense') {
+          const matchingBudget = state.budgets.find(b => {
+            const cats = b.category
+              ? b.category.split(',').map(c => c.trim()).filter(Boolean)
+              : [];
+            return cats.includes(created.category) || b.name === created.category;
+          });
+          if (matchingBudget) {
+            try {
+              const newSpent = matchingBudget.spent + Math.abs(created.amount);
+              const updatedBudget = await api<BudgetCategory>(`/api/budgets/${matchingBudget.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ spent: newSpent }),
+              });
+              dispatch({ type: 'updateBudget', payload: updatedBudget });
+            } catch { /* non-critical */ }
+          }
+        }
       }
     },
     updateTransaction: async (t) => {

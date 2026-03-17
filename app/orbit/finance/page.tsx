@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Wallet, CreditCard, TrendingDown, ChevronRight } from 'lucide-react';
+import { Wallet, CreditCard, Landmark, ChevronRight } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import { formatINR } from '@/lib/currency';
 import Link from 'next/link';
@@ -45,12 +45,7 @@ export default function FinanceOverviewPage() {
     Math.abs(accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + Math.min(0, a.balance), 0)),
   [accounts]);
 
-  const currentMonth = useMemo(() => new Date().getMonth(), []);
-  const currentYear  = useMemo(() => new Date().getFullYear(), []);
 
-  const spentThisMonth = useMemo(() =>
-    Math.abs(transactions.filter(t => t.type === 'expense' && new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear).reduce((s, t) => s + t.amount, 0)),
-  [transactions, currentMonth, currentYear]);
 
   const totalAssets = useMemo(() =>
     state.assets.reduce((s, a) => s + a.value, 0),
@@ -108,15 +103,15 @@ export default function FinanceOverviewPage() {
           <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
         </Link>
 
-        <Link href="/orbit/finance/transactions"
-          className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-orange-200 hover:-translate-y-0.5">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-orange-50">
-            <TrendingDown className="h-5 w-5 text-orange-500" />
+        <Link href="/orbit/finance/accounts"
+          className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50">
+            <Landmark className="h-5 w-5 text-emerald-600" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-gray-400">Spent This Month</p>
-            <p className="text-xl font-bold text-orange-500 truncate">{formatINR(spentThisMonth)}</p>
-            <p className="text-xs text-gray-400">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+            <p className="text-xs text-gray-400">Account Balance</p>
+            <p className="text-xl font-bold text-emerald-600 truncate">{formatINR(availableBalance)}</p>
+            <p className="text-xs text-gray-400">Bank, wallets &amp; cash</p>
           </div>
           <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
         </Link>

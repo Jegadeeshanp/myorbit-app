@@ -34,20 +34,11 @@ export default function Modal({
   onClose: () => void;
   footer?: ReactNode;
 }) {
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4 sm:items-center"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header — always visible */}
