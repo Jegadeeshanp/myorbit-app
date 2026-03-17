@@ -34,9 +34,7 @@ export default function FinanceOverviewPage() {
   const { state } = useFinance();
   const { accounts, transactions } = state;
 
-  // Show skeleton while data is loading on first visit
-  if (state.loadState === 'loading') return <DashboardSkeleton />;
-
+  // All hooks must run unconditionally — before any early returns
   const availableBalance = useMemo(() =>
     accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0),
   [accounts]);
@@ -44,8 +42,6 @@ export default function FinanceOverviewPage() {
   const creditUsed = useMemo(() =>
     Math.abs(accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + Math.min(0, a.balance), 0)),
   [accounts]);
-
-
 
   const totalAssets = useMemo(() =>
     state.assets.reduce((s, a) => s + a.value, 0),
@@ -67,6 +63,9 @@ export default function FinanceOverviewPage() {
     });
     return Array.from(map.values());
   }, [transactions]);
+
+  // Show skeleton while data is loading on first visit
+  if (state.loadState === 'loading') return <DashboardSkeleton />;
 
   return (
     <div className="space-y-5">
