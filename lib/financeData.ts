@@ -52,6 +52,7 @@ export type BudgetCategory = {
   name: string;
   budget: number;
   spent: number;
+  category?: string; // comma-separated expense categories
 };
 
 export type Insight = {

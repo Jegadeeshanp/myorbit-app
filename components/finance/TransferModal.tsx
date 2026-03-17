@@ -86,7 +86,7 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" type="number" min="1" className={inputCls} />
+              <input value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="0" type="number" min="1" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Date</label>

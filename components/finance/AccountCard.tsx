@@ -26,23 +26,15 @@ const TYPE_CONFIG: Record<Account['type'], { icon: React.ReactNode; color: strin
 };
 
 function EditableBalance({ account }: { account: Account }) {
-  const { addTransaction } = useFinance();
+  const { updateAccount } = useFinance();
   const [editing, setEditing]   = useState(false);
   const [inputVal, setInputVal] = useState(String(account.balance));
   const isNegative = account.balance < 0;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newBal = Number(inputVal);
     if (!isNaN(newBal) && newBal !== account.balance) {
-      const diff = newBal - account.balance;
-      addTransaction({
-        date: new Date().toISOString().split('T')[0],
-        category: 'Adjustment',
-        description: `Balance adjustment — ${account.name}`,
-        amount: diff,
-        type: diff > 0 ? 'income' : 'expense',
-        accountId: account.id,
-      });
+      await updateAccount({ ...account, balance: newBal });
     }
     setEditing(false);
   };

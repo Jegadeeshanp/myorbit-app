@@ -46,6 +46,7 @@ type FinanceState = {
 type FinanceAction =
   | { type: 'hydrate'; payload: Omit<FinanceState, 'loadState'> }
   | { type: 'setLoadState'; payload: LoadState }
+  | { type: 'reset' }
   | { type: 'addAccount'; payload: Account }
   | { type: 'updateAccount'; payload: Account }
   | { type: 'deleteAccount'; payload: string }
@@ -71,6 +72,7 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
   switch (action.type) {
     case 'hydrate':      return { ...state, ...action.payload, loadState: 'ready' };
     case 'setLoadState': return { ...state, loadState: action.payload };
+    case 'reset':        return { ...defaultState };
 
     case 'addAccount':    return { ...state, accounts: [...state.accounts, action.payload] };
     case 'updateAccount': return { ...state, accounts: state.accounts.map(a => a.id === action.payload.id ? action.payload : a) };
@@ -126,6 +128,11 @@ export function FinanceProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(financeReducer, defaultState);
   const { status } = useSession();
 
+  // Reset state on logout so stale data never bleeds into next session
+  useEffect(() => {
+    if (status === 'unauthenticated') dispatch({ type: 'reset' });
+  }, [status]);
+
   // Only load data once the session is authenticated
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -164,6 +171,19 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
       dispatch({ type: 'addTransaction', payload: created });
+      // Automatically update linked account balance
+      if (t.accountId && (t.type === 'income' || t.type === 'expense')) {
+        const account = state.accounts.find(a => a.id === t.accountId);
+        if (account) {
+          try {
+            const updated = await api<Account>(`/api/accounts/${account.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ balance: account.balance + created.amount }),
+            });
+            dispatch({ type: 'updateAccount', payload: updated });
+          } catch { /* non-critical */ }
+        }
+      }
     },
     updateTransaction: async (t) => {
       const updated = await api<Transaction>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });

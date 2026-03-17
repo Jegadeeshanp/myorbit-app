@@ -32,8 +32,8 @@ export default function FinanceTopBar({ action }: { action?: React.ReactNode }) 
   return (
     <div className="mb-1 flex items-center justify-between gap-3 border-b border-gray-200 pb-4">
       {/* Left: title + subtitle stacked */}
-      <div>
-        {title && <h1 className="text-xl font-semibold text-gray-900">{title}</h1>}
+      <div className="min-w-0 flex-1">
+        {title && <h1 className="truncate text-xl font-semibold text-gray-900">{title}</h1>}
         {subtitle && <p className="mt-0.5 hidden text-sm text-gray-500 sm:block">{subtitle}</p>}
       </div>
 
@@ -41,9 +41,9 @@ export default function FinanceTopBar({ action }: { action?: React.ReactNode }) 
       <div className="flex flex-none items-center gap-2">
         {action}
         <Link href="/orbit"
-          className="hidden items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 sm:inline-flex">
-          <ArrowLeft className="h-4 w-4" />
-          My Orbit
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+          <ArrowLeft className="h-4 w-4 flex-none" />
+          <span className="hidden sm:inline">My Orbit</span>
         </Link>
       </div>
     </div>

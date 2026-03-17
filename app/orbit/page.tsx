@@ -92,11 +92,18 @@ export default function Orbit() {
 
   const userName = auth.status === 'authenticated' ? auth.user.name : '';
 
-  const isNew = state.loadState === 'ready' && state.accounts.length === 0 && state.assets.length === 0;
+  // Track the "new user" state once, at the moment data first loads.
+  // Without a ref, adding an account would set accounts.length > 0 and unmount
+  // the wizard mid-flow, preventing step advancement.
+  const showWizardRef = useRef<boolean | null>(null);
+  if (state.loadState === 'ready' && showWizardRef.current === null) {
+    showWizardRef.current = state.accounts.length === 0 && state.assets.length === 0;
+  }
+  const showWizard = showWizardRef.current === true;
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
-      {isNew && <OnboardingWizard />}
+      {showWizard && <OnboardingWizard onDismiss={() => { showWizardRef.current = false; }} />}
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
         <div className="text-center">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm">

@@ -225,7 +225,7 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="Lunch at cafe" className={inputCls} />
+              <input value={description} onChange={e => setDesc(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="Lunch at cafe" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>

@@ -84,4 +84,5 @@ export const budgetSchema = z.object({
   name: z.string().min(1).max(100),
   budget: z.number().int().positive('Budget must be a positive number'),
   spent: z.number().int().nonnegative().optional(),
+  category: z.string().max(500).optional(),
 });

@@ -9,7 +9,7 @@ import {
   Plane, MoreHorizontal,
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
   Smartphone, RefreshCw, Shield, Gift, Package,
-  Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2,
+  Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2, Clock,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
@@ -185,6 +185,9 @@ export default function TransactionList({ transactions }: { transactions: Transa
   const [editTarget, setEditTarget]     = useState<Transaction | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
 
+  // Today's date string for upcoming vs past split
+  const today = new Date().toISOString().slice(0, 10);
+
   // Build account lookup: accountId → account type tab key
   const accountTabMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -194,37 +197,35 @@ export default function TransactionList({ transactions }: { transactions: Transa
     return map;
   }, [state.accounts]);
 
-  // Derive which tabs are actually available from the transactions
+  // Split into upcoming (future) and past
+  const { pastTxs, upcomingTxs } = useMemo(() => ({
+    pastTxs:     transactions.filter(tx => tx.date <= today),
+    upcomingTxs: transactions.filter(tx => tx.date >  today),
+  }), [transactions, today]);
+
+  // Derive which tabs are available based on past transactions only
   const availableTabs = useMemo(() => {
     const tabs = new Set<string>(['All', 'Income']);
-    transactions.forEach(tx => {
+    pastTxs.forEach(tx => {
       if (tx.accountId) {
         const tab = accountTabMap.get(tx.accountId);
         if (tab) tabs.add(tab);
       }
     });
-    // Maintain a fixed order
     return ['All', 'Income', 'Bank', 'Credit', 'Debit', 'Wallet', 'Cash']
       .filter(t => tabs.has(t));
-  }, [transactions, accountTabMap]);
+  }, [pastTxs, accountTabMap]);
 
   // Ensure active tab stays valid
   const safeTab = availableTabs.includes(activeTab) ? activeTab : 'All';
 
-  const filtered = useMemo(() => {
-    let txs = filterByPeriod(transactions, period);
-
-    // Tab filter
+  // Apply tab + search filter helper
+  function applyTabSearch(txs: Transaction[]) {
     if (safeTab === 'Income') {
       txs = txs.filter(t => t.type === 'income');
     } else if (safeTab !== 'All') {
-      txs = txs.filter(t => {
-        if (!t.accountId) return false;
-        return accountTabMap.get(t.accountId) === safeTab;
-      });
+      txs = txs.filter(t => t.accountId && accountTabMap.get(t.accountId) === safeTab);
     }
-
-    // Search filter
     if (search.trim()) {
       const q = search.toLowerCase();
       txs = txs.filter(t =>
@@ -233,13 +234,21 @@ export default function TransactionList({ transactions }: { transactions: Transa
       );
     }
     return txs;
-  }, [transactions, period, safeTab, search, accountTabMap]);
+  }
+
+  const filtered = useMemo(() => {
+    return applyTabSearch(filterByPeriod(pastTxs, period));
+  }, [pastTxs, period, safeTab, search, accountTabMap]);
+
+  const filteredUpcoming = useMemo(() => {
+    return applyTabSearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
+  }, [upcomingTxs, safeTab, search, accountTabMap]);
 
   const groups = useMemo(() => groupByMonth(filtered), [filtered]);
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  // Summary for the active view
+  // Summary uses past transactions only (excludes upcoming)
   const summary = useMemo(() => {
     const income  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -259,12 +268,13 @@ export default function TransactionList({ transactions }: { transactions: Transa
               const cfg = TAB_CONFIG[tab];
               const Icon = cfg.icon;
               const isActive = safeTab === tab;
-              // Count for this tab
+              // Count based on past transactions only (excludes upcoming)
+              const periodPast = filterByPeriod(pastTxs, period);
               const count = tab === 'All'
-                ? filterByPeriod(transactions, period).length
+                ? periodPast.length
                 : tab === 'Income'
-                ? filterByPeriod(transactions, period).filter(t => t.type === 'income').length
-                : filterByPeriod(transactions, period).filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
+                ? periodPast.filter(t => t.type === 'income').length
+                : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
 
               return (
                 <button
@@ -332,6 +342,68 @@ export default function TransactionList({ transactions }: { transactions: Transa
           )}
         </div>
       </div>
+
+      {/* ── Upcoming transactions ── */}
+      {filteredUpcoming.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-blue-50 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-blue-100 px-5 py-3">
+            <Clock className="h-3.5 w-3.5 text-blue-500" />
+            <p className="text-xs font-semibold text-blue-700">Upcoming</p>
+            <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+              {filteredUpcoming.length}
+            </span>
+          </div>
+          <div className="divide-y divide-blue-50">
+            {filteredUpcoming.map(tx => {
+              const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+              const isExp    = tx.type === 'expense';
+              const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+              return (
+                <div key={tx.id} className="group flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-blue-50/80">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TxIcon tx={tx} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
+                      <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
+                          {tx.category}
+                        </span>
+                        {account && (
+                          <span className="rounded-full border border-gray-100 bg-white/70 px-2 py-0.5 text-xs text-gray-400">
+                            {account.name}
+                          </span>
+                        )}
+                        <span className="text-xs text-blue-400">
+                          {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-none items-center gap-2">
+                    <p className={`text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
+                      {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                    </p>
+                    <button
+                      onClick={() => setEditTarget(tx)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-blue-300 opacity-0 transition group-hover:opacity-100 hover:bg-blue-100 hover:text-blue-500"
+                      title="Edit transaction"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmTarget(tx.id)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-blue-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
+                      title="Delete transaction"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Transaction groups ── */}
       {groups.length === 0 ? (

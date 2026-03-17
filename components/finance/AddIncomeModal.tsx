@@ -123,7 +123,7 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-              <input value={description} onChange={e => setDesc(e.target.value)} placeholder="March paycheck" className={inputCls} />
+              <input value={description} onChange={e => setDesc(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="March paycheck" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
