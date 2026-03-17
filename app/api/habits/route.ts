@@ -7,11 +7,14 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const userId = await requireUserId();
-    const today = new Date().toISOString().split('T')[0];
+    const d30ago = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const habits = await prisma.habit.findMany({
       where: { userId, isActive: true },
       include: {
-        logs: { where: { logDate: today } },
+        logs: {
+          where: { logDate: { gte: d30ago } },
+          orderBy: { logDate: 'desc' },
+        },
       },
       orderBy: { sortOrder: 'asc' },
     });

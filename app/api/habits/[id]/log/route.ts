@@ -11,14 +11,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const habit = await prisma.habit.findFirst({ where: { id: id, userId } });
     if (!habit) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await req.json();
-    const logDate = body.logDate || new Date().toISOString().split('T')[0];
+    // Accept both `date` and `logDate` for compatibility
+    const logDate = body.date || body.logDate || new Date().toISOString().split('T')[0];
     const value = body.value || 1;
-    const log = await prisma.habitLog.upsert({
+
+    // Toggle: if log exists for this date, remove it; otherwise create
+    const existing = await prisma.habitLog.findUnique({
       where: { habitId_logDate: { habitId: id, logDate } },
-      create: { habitId: id, userId, logDate, value },
-      update: { value },
     });
-    return NextResponse.json(log, { status: 201 });
+    if (existing) {
+      await prisma.habitLog.delete({ where: { id: existing.id } });
+      return NextResponse.json({ removed: true, logDate });
+    }
+
+    const log = await prisma.habitLog.create({
+      data: { habitId: id, userId, logDate, value },
+    });
+    return NextResponse.json({ log, logDate }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

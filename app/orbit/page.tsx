@@ -34,17 +34,19 @@ const MODULES = [
   {
     id: 'health',
     title: 'Health',
-    description: 'Track workouts, wellness, and daily habits.',
+    description: 'Track workouts, sleep, mood and daily wellness metrics.',
     icon: <HeartPulse className="h-6 w-6" />,
-    enabled: false,
-    cta: 'Start Tracking →',
+    href: '/orbit/health',
+    enabled: true,
+    cta: 'Track Wellness →',
   },
   {
     id: 'habits',
     title: 'Habits',
-    description: 'Build positive routines with streaks and reminders.',
+    description: 'Build routines with streaks, focus timer & countdowns.',
     icon: <CheckCircle className="h-6 w-6" />,
-    enabled: false,
+    href: '/orbit/habits',
+    enabled: true,
     cta: 'Build Streaks →',
   },
   {
@@ -59,9 +61,10 @@ const MODULES = [
   {
     id: 'insights',
     title: 'Insights',
-    description: 'Smart summaries that help you stay on track.',
+    description: 'Cross-module Life Score, insights feed & weekly review.',
     icon: <Lightbulb className="h-6 w-6" />,
-    enabled: false,
+    href: '/orbit/insights',
+    enabled: true,
     cta: 'Discover Insights →',
   },
 ];
