@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Flame, CheckCircle2, X, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Plus, Flame, CheckCircle2, X, Trash2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
 type Habit = {
@@ -11,7 +11,7 @@ type Habit = {
   logs: { logDate: string; value: number }[];
 };
 
-const COLORS = ['#F97316','#EF4444','#8B5CF6','#3B82F6','#10B981','#F59E0B','#EC4899','#6366F1'];
+const COLORS = ['#78716C','#6B7280','#7C3AED','#2563EB','#059669','#D97706','#DB2777','#4F46E5'];
 const EMOJIS = ['✅','🔥','💪','📚','🧘','🏃','💧','🥗','😴','🎯','✍️','🎵'];
 
 function getLast7Days() {
@@ -77,7 +77,7 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Habit Name *</label>
             <input
               autoFocus
-              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
               placeholder="e.g. Morning run, Read 30 min..."
               value={name}
               onChange={e => setName(e.target.value)}
@@ -90,7 +90,7 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
             <div className="flex flex-wrap gap-2">
               {EMOJIS.map(e => (
                 <button key={e} onClick={() => setEmoji(e)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${emoji === e ? 'bg-orange-100 ring-2 ring-orange-400' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${emoji === e ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-gray-50 hover:bg-gray-100'}`}>
                   {e}
                 </button>
               ))}
@@ -115,7 +115,7 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition disabled:opacity-50">
+            className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition disabled:opacity-50">
             {saving ? 'Saving...' : 'Create Habit'}
           </button>
         </div>
@@ -147,7 +147,7 @@ function HabitCard({ habit, dates, onLog, onDelete }: {
             <div>
               <p className="font-semibold text-gray-900 text-sm">{habit.name}</p>
               <div className="flex items-center gap-1 mt-0.5">
-                <Flame className="h-3 w-3 text-orange-400" />
+                <Flame className="h-3 w-3 text-amber-400" />
                 <span className="text-xs text-gray-500">{streak} day streak</span>
               </div>
             </div>
@@ -227,7 +227,6 @@ export default function HabitsPage() {
         body: JSON.stringify({ date }),
       });
       const data = await res.json();
-      // Toggle: if removed, data.removed = true
       setHabits(prev => prev.map(h => {
         if (h.id !== habitId) return h;
         if (data.removed) {
@@ -253,20 +252,16 @@ export default function HabitsPage() {
     }
   };
 
-  const totalLogged  = habits.filter(h => h.logs.some(l => l.logDate === today)).length;
-  const totalStreaks  = habits.reduce((s, h) => s + getStreakCount(h.logs), 0);
+  const totalLogged   = habits.filter(h => h.logs.some(l => l.logDate === today)).length;
+  const totalStreaks   = habits.reduce((s, h) => s + getStreakCount(h.logs), 0);
   const longestStreak = Math.max(0, ...habits.map(h => getStreakCount(h.logs)));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Habit Tracker</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Build systems that compound over time</p>
-        </div>
+      {/* Action row — New Habit button (desktop) */}
+      <div className="flex justify-end">
         <button onClick={() => setShowModal(true)}
-          className="hidden md:flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition">
+          className="hidden md:flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 transition">
           <Plus className="h-4 w-4" />
           New Habit
         </button>
@@ -294,13 +289,13 @@ export default function HabitsPage() {
         </div>
       ) : habits.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50">
-            <Flame className="h-8 w-8 text-orange-400" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50">
+            <Flame className="h-8 w-8 text-amber-500" />
           </div>
           <p className="text-base font-semibold text-gray-900">No habits yet</p>
           <p className="mt-1 text-sm text-gray-500">Start building your daily system</p>
           <button onClick={() => setShowModal(true)}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition">
+            className="mt-4 flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition">
             <Plus className="h-4 w-4" />
             Create Habit
           </button>
@@ -315,7 +310,7 @@ export default function HabitsPage() {
 
       {/* Mobile FAB */}
       <button onClick={() => setShowModal(true)}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg hover:bg-orange-600 transition md:hidden">
+        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-amber-600 text-white shadow-lg hover:bg-amber-700 transition md:hidden">
         <Plus className="h-6 w-6" />
       </button>
 

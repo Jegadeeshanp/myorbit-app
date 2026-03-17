@@ -1,14 +1,18 @@
 import HabitsSidebar from '@/components/habits/HabitsSidebar';
+import HabitsTopBar from '@/components/habits/HabitsTopBar';
+import ToastContainer from '@/components/Toast';
 
 export default function HabitsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
+    <div className="flex min-h-screen bg-[#F7F7F5]">
       <HabitsSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex-1 flex flex-col min-w-0">
+        <HabitsTopBar />
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 pb-24 md:pb-6">
           {children}
-        </div>
-      </main>
+        </main>
+      </div>
+      <ToastContainer />
     </div>
   );
 }

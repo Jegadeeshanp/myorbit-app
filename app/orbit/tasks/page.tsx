@@ -193,33 +193,40 @@ export default function TasksPage() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 flex-none">
+        {/* Top bar: title + MyOrbit only */}
+        <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-3 flex-none">
           <button
             onClick={() => setMobileSidebarOpen(true)}
             className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 md:hidden"
           >
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               {SMART_ICONS[selected]}
-              <h1 className="text-lg font-semibold text-gray-900">{listLabel}</h1>
+              <h1 className="truncate text-xl font-semibold text-gray-900">{listLabel}</h1>
             </div>
-            <p className="text-xs text-gray-400">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-gray-400">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</p>
           </div>
+          <a href="/orbit"
+            className="inline-flex flex-none items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 text-white text-sm font-bold leading-none shadow-sm">⭑</div>
+            <span className="text-base font-semibold text-gray-800 hidden sm:inline">MyOrbit</span>
+          </a>
+        </div>
 
-          {/* Tool tabs */}
-          <div className="flex gap-1">
-            {TOOL_TABS.map(({ key, label, Icon }) => (
-              <button key={key}
-                onClick={() => setToolTab(toolTab === key ? null : key)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition ${toolTab === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </div>
+        {/* Tool tabs — below header */}
+        <div className="flex gap-1.5 border-b border-gray-100 bg-white px-4 py-2 flex-none overflow-x-auto">
+          {TOOL_TABS.map(({ key, label, Icon }) => (
+            <button key={key}
+              onClick={() => setToolTab(toolTab === key ? null : key)}
+              className={`flex flex-none items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition ${toolTab === key ? 'bg-sky-50 text-sky-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              <Icon className={`h-3.5 w-3.5 ${toolTab === key ? 'text-sky-600' : ''}`} />
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Content area */}

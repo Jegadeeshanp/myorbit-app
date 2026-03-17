@@ -508,7 +508,7 @@ export default function AddTransactionSheet({
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
     >
-      <div className="relative flex w-full flex-col overflow-hidden bg-white shadow-2xl rounded-t-3xl sm:max-w-lg sm:rounded-2xl max-h-[92vh]">
+      <div className="relative flex w-full flex-col overflow-hidden bg-white shadow-2xl rounded-t-3xl sm:max-w-lg sm:rounded-2xl max-h-[92vh] mb-16 sm:mb-0">
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex flex-none items-center justify-between border-b border-gray-100 px-5 py-4">

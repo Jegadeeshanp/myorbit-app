@@ -41,12 +41,12 @@ export default function FinanceTopBar({ action }: { action?: React.ReactNode }) 
         {action}
         <Link
           href="/orbit"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
         >
-          <div className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-gradient-to-br from-green-400 to-emerald-500 text-white text-[10px] font-bold leading-none">
+          <div className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 text-white text-sm font-bold leading-none shadow-sm">
             ⭑
           </div>
-          <span className="font-semibold text-gray-700">MyOrbit</span>
+          <span className="text-base font-semibold text-gray-800">MyOrbit</span>
         </Link>
       </div>
     </div>

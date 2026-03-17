@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Heart, Footprints, Moon, Droplets, Weight, Smile, Zap, Activity } from 'lucide-react';
+import { Plus, Heart, Footprints, Moon, Droplets, Smile, Zap, Activity } from 'lucide-react';
 import Link from 'next/link';
 
 type HealthEntry = {
@@ -12,10 +12,6 @@ type HealthEntry = {
 type Workout = { id: string; name: string; type: string; durationMins: number; caloriesBurned?: number; date: string };
 
 const MOOD_LABELS = ['', '😞', '😕', '😐', '😊', '😄'];
-const METRIC_COLOR: Record<string, string> = {
-  steps: 'bg-blue-500', sleep: 'bg-indigo-500', water: 'bg-cyan-500',
-  weight: 'bg-amber-500', mood: 'bg-pink-500', energy: 'bg-yellow-500', heart: 'bg-rose-500',
-};
 
 function HealthScoreRing({ score }: { score: number }) {
   const r = 54;
@@ -30,7 +26,7 @@ function HealthScoreRing({ score }: { score: number }) {
         <defs>
           <linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#f43f5e" />
-            <stop offset="100%" stopColor="#ec4899" />
+            <stop offset="100%" stopColor="#fb7185" />
           </linearGradient>
         </defs>
       </svg>
@@ -42,13 +38,13 @@ function HealthScoreRing({ score }: { score: number }) {
   );
 }
 
-function MetricCard({ label, value, unit, icon: Icon, color }: {
-  label: string; value: string | number | undefined; unit: string; icon: any; color: string
+function MetricCard({ label, value, unit, icon: Icon, iconBg, iconColor }: {
+  label: string; value: string | number | undefined; unit: string; icon: any; iconBg: string; iconColor: string;
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${color.replace('bg-', 'bg-').replace('500', '100')} mb-3`}>
-        <Icon className={`h-5 w-5 ${color.replace('bg-', 'text-')}`} />
+      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg} mb-3`}>
+        <Icon className={`h-5 w-5 ${iconColor}`} />
       </div>
       <p className="text-xl font-bold text-gray-900">{value ?? '—'} <span className="text-sm font-normal text-gray-400">{value !== undefined ? unit : ''}</span></p>
       <p className="text-xs text-gray-500 mt-0.5">{label}</p>
@@ -75,7 +71,6 @@ export default function HealthPage() {
 
   const todayEntry = entries.find(e => e.date === today);
 
-  // Simple health score calculation
   let score = 0;
   if (todayEntry) {
     if (todayEntry.steps && todayEntry.steps >= 10000) score += 25;
@@ -92,14 +87,10 @@ export default function HealthPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Health Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track your wellness metrics daily</p>
-        </div>
+      {/* Action row */}
+      <div className="flex justify-end">
         <Link href="/orbit/health/log"
-          className="hidden md:flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-600 transition">
+          className="hidden md:flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition">
           <Plus className="h-4 w-4" />
           Log Today
         </Link>
@@ -110,15 +101,15 @@ export default function HealthPage() {
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col items-center justify-center gap-2">
           <HealthScoreRing score={score} />
           <p className="text-xs text-gray-400">
-            {todayEntry ? 'Based on today\'s data' : 'Log today\'s metrics to see your score'}
+            {todayEntry ? "Based on today's data" : "Log today's metrics to see your score"}
           </p>
         </div>
 
         <div className="flex-1 grid grid-cols-2 gap-3">
-          <MetricCard label="Steps"       value={todayEntry?.steps}       unit="steps" icon={Footprints} color="bg-blue-500" />
-          <MetricCard label="Sleep"       value={todayEntry?.sleepHours}  unit="hrs"   icon={Moon}       color="bg-indigo-500" />
-          <MetricCard label="Water"       value={todayEntry?.waterMl ? Math.round(todayEntry.waterMl / 100) / 10 : undefined}   unit="L"     icon={Droplets}  color="bg-cyan-500" />
-          <MetricCard label="Heart Rate"  value={todayEntry?.heartRate}   unit="bpm"   icon={Heart}      color="bg-rose-500" />
+          <MetricCard label="Steps"      value={todayEntry?.steps}       unit="steps" icon={Footprints} iconBg="bg-blue-50"   iconColor="text-blue-500" />
+          <MetricCard label="Sleep"      value={todayEntry?.sleepHours}  unit="hrs"   icon={Moon}       iconBg="bg-indigo-50" iconColor="text-indigo-500" />
+          <MetricCard label="Water"      value={todayEntry?.waterMl ? Math.round(todayEntry.waterMl / 100) / 10 : undefined} unit="L" icon={Droplets} iconBg="bg-cyan-50" iconColor="text-cyan-500" />
+          <MetricCard label="Heart Rate" value={todayEntry?.heartRate}   unit="bpm"   icon={Heart}      iconBg="bg-rose-50"  iconColor="text-rose-500" />
         </div>
       </div>
 
@@ -131,7 +122,7 @@ export default function HealthPage() {
           </div>
           <div className="flex gap-2">
             {[1,2,3,4,5].map(n => (
-              <div key={n} className={`flex-1 text-center rounded-lg py-2 text-lg transition ${todayEntry?.mood === n ? 'bg-pink-50 ring-2 ring-pink-300' : 'bg-gray-50'}`}>
+              <div key={n} className={`flex-1 text-center rounded-lg py-2 text-lg transition ${todayEntry?.mood === n ? 'bg-rose-50 ring-2 ring-rose-200' : 'bg-gray-50'}`}>
                 {MOOD_LABELS[n]}
               </div>
             ))}
@@ -141,7 +132,7 @@ export default function HealthPage() {
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="h-5 w-5 text-yellow-400" />
+            <Zap className="h-5 w-5 text-amber-400" />
             <p className="text-sm font-medium text-gray-700">Energy Level</p>
           </div>
           {todayEntry?.energyLevel ? (
@@ -151,7 +142,7 @@ export default function HealthPage() {
                 <p className="text-sm text-gray-400 mb-1">/10</p>
               </div>
               <div className="h-2 rounded-full bg-gray-100">
-                <div className="h-2 rounded-full bg-yellow-400 transition-all" style={{ width: `${todayEntry.energyLevel * 10}%` }} />
+                <div className="h-2 rounded-full bg-amber-400 transition-all" style={{ width: `${todayEntry.energyLevel * 10}%` }} />
               </div>
             </div>
           ) : <p className="text-xs text-gray-400 mt-2">Not logged today</p>}
@@ -220,7 +211,7 @@ export default function HealthPage() {
           <p className="text-base font-semibold text-gray-900">Start tracking your health</p>
           <p className="mt-1 text-sm text-gray-500">Log your daily metrics to see your Health Score</p>
           <Link href="/orbit/health/log"
-            className="mt-4 flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition">
+            className="mt-4 flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition">
             <Plus className="h-4 w-4" />
             Log Today's Health
           </Link>
