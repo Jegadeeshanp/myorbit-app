@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -30,20 +29,24 @@ export default function FinanceTopBar({ action }: { action?: React.ReactNode }) 
   const subtitle = PAGE_SUBTITLES[pathname] ?? null;
 
   return (
-    <div className="mb-1 flex items-center justify-between gap-3 border-b border-gray-200 pb-4">
+    <div className="mb-1 flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
       {/* Left: title + subtitle stacked */}
       <div className="min-w-0 flex-1">
         {title && <h1 className="truncate text-xl font-semibold text-gray-900">{title}</h1>}
         {subtitle && <p className="mt-0.5 hidden text-sm text-gray-500 sm:block">{subtitle}</p>}
       </div>
 
-      {/* Right: action + My Orbit */}
+      {/* Right: action + MyOrbit logo badge */}
       <div className="flex flex-none items-center gap-2">
         {action}
-        <Link href="/orbit"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
-          <ArrowLeft className="h-4 w-4 flex-none" />
-          <span className="hidden sm:inline">My Orbit</span>
+        <Link
+          href="/orbit"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-50"
+        >
+          <div className="flex h-5 w-5 flex-none items-center justify-center rounded-md bg-gradient-to-br from-green-400 to-emerald-500 text-white text-[10px] font-bold leading-none">
+            ⭑
+          </div>
+          <span className="font-semibold text-gray-700">MyOrbit</span>
         </Link>
       </div>
     </div>

@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(list, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error('[POST /api/task-lists]', e?.message ?? e);
+    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: 500 });
   }
 }

@@ -84,12 +84,15 @@ function AddGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           processes,
         }),
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || 'Failed to create goal');
+      }
       const goal = await res.json();
       toast('Goal created!');
       onCreated(goal);
-    } catch {
-      toast('Failed to create goal', 'error');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to create goal', 'error');
     } finally {
       setSaving(false);
     }

@@ -38,10 +38,10 @@ export default function ModuleCard({ title, description, icon, href, enabled, ct
       <div className="mt-6">
         <button
           type="button"
-          className={`w-full rounded-full px-4 py-2 text-sm font-semibold transition ${
+          className={`w-full rounded-full border px-4 py-2 text-sm font-medium transition ${
             enabled
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-              : 'cursor-not-allowed bg-gray-100 text-gray-500'
+              ? 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+              : 'cursor-not-allowed border-transparent bg-gray-100 text-gray-400'
           }`}
           disabled={!enabled}
         >

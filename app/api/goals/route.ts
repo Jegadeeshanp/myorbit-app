@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(goal, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error('[POST /api/goals]', e?.message ?? e);
+    return NextResponse.json({ error: e?.message ?? 'Server error' }, { status: 500 });
   }
 }
