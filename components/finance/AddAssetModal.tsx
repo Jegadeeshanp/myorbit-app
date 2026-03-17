@@ -70,13 +70,16 @@ export default function AddAssetModal({ open, onClose, onSave, initial }: AddAss
                   type="button"
                   onClick={() => setCategory(cat.label)}
                   title={cat.label}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center transition ${
+                  className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition active:scale-95 ${
                     isSelected
-                      ? `border-emerald-400 bg-emerald-50 ${cat.color}`
-                      : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200 hover:bg-white'
+                      ? `border-2 ${cat.color.replace('text-', 'border-')} ${cat.bg}`
+                      : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white'
                   }`}
                 >
-                  <Icon className={`h-5 w-5 ${isSelected ? cat.color : 'text-gray-400'}`} />
+                  {/* Icon always on accent background for quick-action feel */}
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${cat.bg}`}>
+                    <Icon className={`h-4 w-4 ${cat.color}`} />
+                  </div>
                   <span className={`text-[10px] font-medium leading-tight ${isSelected ? cat.color : 'text-gray-500'}`}>
                     {cat.label}
                   </span>
@@ -86,6 +89,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial }: AddAss
           </div>
         </div>
 
+        {/* Selected badge */}
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400">Selected:</span>
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${selected.tagBg} ${selected.tagText}`}>
@@ -98,7 +102,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial }: AddAss
           <SectionLabel>Asset details</SectionLabel>
           <div className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Asset name</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-800">Asset name</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
@@ -107,11 +111,11 @@ export default function AddAssetModal({ open, onClose, onSave, initial }: AddAss
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount invested (₹)</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-800">Amount invested (₹)</label>
               <input value={invested} onChange={e => setInvested(e.target.value)} placeholder="0" type="number" min="1" className={inputCls} />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Current value (₹)</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-800">Current value (₹)</label>
               <input value={value} onChange={e => setValue(e.target.value)} placeholder="0" type="number" min="1" className={inputCls} />
             </div>
           </div>

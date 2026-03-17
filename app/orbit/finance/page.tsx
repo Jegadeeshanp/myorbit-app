@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Wallet, CreditCard, TrendingDown, ChevronRight } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
+import { formatINR } from '@/lib/currency';
 import Link from 'next/link';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 
@@ -17,13 +18,9 @@ import TopExpenses         from '@/components/finance/TopExpenses';
 import SavingsRateCard     from '@/components/finance/SavingsRateCard';
 import BudgetStatus        from '@/components/finance/BudgetStatus';
 import UpcomingBills       from '@/components/finance/UpcomingBills';
-import QuickActions        from '@/components/finance/QuickActions';
 import SmartInsights       from '@/components/finance/SmartInsights';
 import FinancialHealthScore from '@/components/finance/FinancialHealthScore';
-
-function fmt(v: number) {
-  return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-}
+import { DashboardSkeleton } from '@/components/finance/SkeletonLoader';
 
 function getLastMonths(n: number) {
   const now = new Date();
@@ -36,6 +33,9 @@ function getLastMonths(n: number) {
 export default function FinanceOverviewPage() {
   const { state } = useFinance();
   const { accounts, transactions } = state;
+
+  // Show skeleton while data is loading on first visit
+  if (state.loadState === 'loading') return <DashboardSkeleton />;
 
   const availableBalance = useMemo(() =>
     accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0),
@@ -89,7 +89,7 @@ export default function FinanceOverviewPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-gray-400">Assets</p>
-            <p className="text-xl font-bold text-emerald-600 truncate">{fmt(totalAssets)}</p>
+            <p className="text-xl font-bold text-emerald-600 truncate">{formatINR(totalAssets)}</p>
             <p className="text-xs text-gray-400">{state.assets.length} assets tracked</p>
           </div>
           <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
@@ -102,7 +102,7 @@ export default function FinanceOverviewPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-gray-400">Liabilities</p>
-            <p className="text-xl font-bold text-rose-600 truncate">{fmt(totalLiabilities)}</p>
+            <p className="text-xl font-bold text-rose-600 truncate">{formatINR(totalLiabilities)}</p>
             <p className="text-xs text-gray-400">{state.liabilities.length} active loans</p>
           </div>
           <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
@@ -115,15 +115,12 @@ export default function FinanceOverviewPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-gray-400">Spent This Month</p>
-            <p className="text-xl font-bold text-orange-500 truncate">{fmt(spentThisMonth)}</p>
+            <p className="text-xl font-bold text-orange-500 truncate">{formatINR(spentThisMonth)}</p>
             <p className="text-xs text-gray-400">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
           </div>
           <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
         </Link>
       </div>
-
-      {/* Quick actions */}
-      <QuickActions />
 
       {/* Health + Insights */}
       <div className="grid gap-5 lg:grid-cols-2">

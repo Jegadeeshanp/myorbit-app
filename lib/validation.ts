@@ -39,14 +39,24 @@ export const accountSchema = accountBaseSchema.refine(
 );
 
 // ── Transaction ───────────────────────────────────────────────────────────────
+const recurringSchema = z.object({
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly', 'custom']),
+  customInterval: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endType: z.enum(['never', 'after', 'on_date']),
+  endAfterTimes: z.number().int().positive().optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+}).optional();
+
 export const transactionSchema = z.object({
   accountId: z.string().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
   category: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
-  // Amount must be positive — zero or negative amounts are invalid
-  amount: z.number().positive('Amount must be greater than 0').finite(),
-  type: z.enum(['expense', 'income']),
+  // Amount may be negative (expenses) or positive (income) — just not zero
+  amount: z.number().finite().refine(v => v !== 0, { message: 'Amount must not be zero' }),
+  type: z.enum(['expense', 'income', 'transfer']),
+  recurring: recurringSchema,
 });
 
 // ── Asset ─────────────────────────────────────────────────────────────────────

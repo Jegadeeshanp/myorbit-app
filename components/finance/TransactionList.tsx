@@ -5,29 +5,112 @@ import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
   Truck, Search, Trash2, ChevronDown, TrendingUp,
   Landmark, Wallet, Banknote, ArrowLeftRight, Pencil,
+  ArrowUpRight, ArrowDownLeft, Stethoscope, GraduationCap,
+  Plane, MoreHorizontal,
+  Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
+  Smartphone, RefreshCw, Shield, Gift, Package,
+  Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
 import AddExpenseModal from '@/components/finance/AddExpenseModal';
 import AddIncomeModal  from '@/components/finance/AddIncomeModal';
+import ConfirmDialog   from '@/components/ConfirmDialog';
 import { Transaction } from '@/lib/financeData';
 
-// ── Category icon + color maps ─────────────────────────────────────────────
-const ICON_MAP: Record<string, React.ComponentType<any>> = {
-  Food: Coffee, Transport: Truck, Shopping: ShoppingBag,
-  Bills: FileText, Entertainment: Film, Default: CreditCard,
+// ── Category icon + color maps (expense categories) ───────────────────────
+const EXPENSE_ICON_MAP: Record<string, React.ComponentType<any>> = {
+  // New expense categories
+  Rent:          Home,
+  Groceries:     ShoppingCart,
+  Restaurants:   Utensils,
+  Fuel:          Fuel,
+  Transport:     Bus,
+  Utilities:     Zap,
+  Internet:      Wifi,
+  Mobile:        Smartphone,
+  Shopping:      ShoppingBag,
+  Subscriptions: RefreshCw,
+  Medical:       Stethoscope,
+  Insurance:     Shield,
+  Travel:        Plane,
+  Education:     GraduationCap,
+  Gifts:         Gift,
+  Miscellaneous: Package,
+  // Legacy fallbacks
+  Food:          Coffee,
+  Bills:         FileText,
+  Healthcare:    Stethoscope,
+  Entertainment: Film,
+  Others:        MoreHorizontal,
+  Default:       CreditCard,
 };
 
 const CAT_COLORS: Record<string, { bg: string; text: string }> = {
-  Food:          { bg: 'bg-orange-100',  text: 'text-orange-700' },
+  // Expense categories
+  Rent:          { bg: 'bg-violet-100',  text: 'text-violet-700' },
+  Groceries:     { bg: 'bg-green-100',   text: 'text-green-700' },
+  Restaurants:   { bg: 'bg-orange-100',  text: 'text-orange-700' },
+  Fuel:          { bg: 'bg-amber-100',   text: 'text-amber-700' },
   Transport:     { bg: 'bg-blue-100',    text: 'text-blue-700' },
-  Shopping:      { bg: 'bg-purple-100',  text: 'text-purple-700' },
+  Utilities:     { bg: 'bg-yellow-100',  text: 'text-yellow-700' },
+  Internet:      { bg: 'bg-sky-100',     text: 'text-sky-700' },
+  Mobile:        { bg: 'bg-cyan-100',    text: 'text-cyan-700' },
+  Shopping:      { bg: 'bg-pink-100',    text: 'text-pink-700' },
+  Subscriptions: { bg: 'bg-indigo-100',  text: 'text-indigo-700' },
+  Medical:       { bg: 'bg-red-100',     text: 'text-red-700' },
+  Insurance:     { bg: 'bg-teal-100',    text: 'text-teal-700' },
+  Travel:        { bg: 'bg-sky-100',     text: 'text-sky-700' },
+  Education:     { bg: 'bg-indigo-100',  text: 'text-indigo-700' },
+  Gifts:         { bg: 'bg-rose-100',    text: 'text-rose-700' },
+  Miscellaneous: { bg: 'bg-gray-100',    text: 'text-gray-600' },
+  // Income categories
+  Salary:        { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  Bonus:         { bg: 'bg-green-100',   text: 'text-green-700' },
+  Freelance:     { bg: 'bg-blue-100',    text: 'text-blue-700' },
+  Business:      { bg: 'bg-violet-100',  text: 'text-violet-700' },
+  Dividends:     { bg: 'bg-teal-100',    text: 'text-teal-700' },
+  Interest:      { bg: 'bg-cyan-100',    text: 'text-cyan-700' },
+  'Rental Income': { bg: 'bg-amber-100', text: 'text-amber-700' },
+  Cashback:      { bg: 'bg-lime-100',    text: 'text-lime-700' },
+  Refund:        { bg: 'bg-slate-100',   text: 'text-slate-600' },
+  'Other Income': { bg: 'bg-gray-100',   text: 'text-gray-600' },
+  // Legacy / misc
+  Food:          { bg: 'bg-orange-100',  text: 'text-orange-700' },
   Bills:         { bg: 'bg-yellow-100',  text: 'text-yellow-700' },
   Entertainment: { bg: 'bg-pink-100',    text: 'text-pink-700' },
-  Salary:        { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  Healthcare:    { bg: 'bg-red-100',     text: 'text-red-700' },
+  Dividend:      { bg: 'bg-teal-100',    text: 'text-teal-700' },
+  Transfer:      { bg: 'bg-blue-100',    text: 'text-blue-700' },
   Adjustment:    { bg: 'bg-gray-100',    text: 'text-gray-600' },
   Default:       { bg: 'bg-gray-100',    text: 'text-gray-600' },
 };
+
+// Returns the correct icon element + wrapper colours for a transaction row
+function TxIcon({ tx }: { tx: { type: string; category: string } }) {
+  if (tx.type === 'income') {
+    return (
+      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-emerald-50">
+        <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+      </div>
+    );
+  }
+  if (tx.category === 'Transfer') {
+    return (
+      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-blue-50">
+        <ArrowLeftRight className="h-4 w-4 text-blue-500" />
+      </div>
+    );
+  }
+  // expense — use category-specific color if available
+  const Icon = EXPENSE_ICON_MAP[tx.category] ?? EXPENSE_ICON_MAP.Default;
+  const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+  return (
+    <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${catColor.bg}`}>
+      <Icon className={`h-4 w-4 ${catColor.text}`} />
+    </div>
+  );
+}
 
 // ── Account type → tab key mapping ────────────────────────────────────────
 const ACCOUNT_TYPE_TAB: Record<string, string> = {
@@ -98,8 +181,9 @@ export default function TransactionList({ transactions }: { transactions: Transa
   const [activeTab, setActiveTab]   = useState('All');
   const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
-  const [dropdownOpen, setDropdown] = useState(false);
-  const [editTarget, setEditTarget] = useState<Transaction | null>(null);
+  const [dropdownOpen, setDropdown]     = useState(false);
+  const [editTarget, setEditTarget]     = useState<Transaction | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
 
   // Build account lookup: accountId → account type tab key
   const accountTabMap = useMemo(() => {
@@ -277,7 +361,6 @@ export default function TransactionList({ transactions }: { transactions: Transa
               {/* Rows */}
               <div className="divide-y divide-gray-50">
                 {group.transactions.map(tx => {
-                  const Icon     = ICON_MAP[tx.category] ?? ICON_MAP.Default;
                   const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
                   const isExp    = tx.type === 'expense';
                   const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
@@ -285,9 +368,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                   return (
                     <div key={tx.id} className="group flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-gray-50/50">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gray-50">
-                          <Icon className="h-4 w-4 text-gray-500" />
-                        </div>
+                        <TxIcon tx={tx} />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
                           <div className="mt-0.5 flex items-center gap-2 flex-wrap">
@@ -317,7 +398,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => deleteTransaction(tx.id)}
+                          onClick={() => setConfirmTarget(tx.id)}
                           className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
                           title="Delete transaction"
                         >
@@ -352,6 +433,16 @@ export default function TransactionList({ transactions }: { transactions: Transa
           onSave={payload => { updateTransaction({ ...payload, id: editTarget.id }); setEditTarget(null); }}
         />
       )}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Delete transaction"
+        description="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => { if (confirmTarget) deleteTransaction(confirmTarget); setConfirmTarget(null); }}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

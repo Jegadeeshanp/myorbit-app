@@ -7,6 +7,15 @@ export type Account = {
   balance: number;
 };
 
+export type RecurringConfig = {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  customInterval?: string;   // e.g. "every 2 weeks" — used when frequency === 'custom'
+  startDate: string;         // YYYY-MM-DD
+  endType: 'never' | 'after' | 'on_date';
+  endAfterTimes?: number;    // used when endType === 'after'
+  endDate?: string;          // used when endType === 'on_date'
+};
+
 export type Transaction = {
   id: string;
   date: string;
@@ -15,6 +24,7 @@ export type Transaction = {
   amount: number;
   type: 'expense' | 'income';
   accountId?: string;
+  recurring?: RecurringConfig;
 };
 
 export type Asset = {

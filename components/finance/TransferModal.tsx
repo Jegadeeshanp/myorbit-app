@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Modal, { SectionLabel, inputCls } from './Modal';
+import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 
@@ -17,7 +17,7 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
   const [toId,   setToId]   = useState(accounts[1]?.id ?? accounts[0]?.id ?? '');
   const [amount, setAmount] = useState('');
   const [date,   setDate]   = useState(() => new Date().toISOString().slice(0, 10));
-  const [notes,  setNotes]  = useState('');
+  const [note,   setNote]   = useState('');
 
   useEffect(() => {
     if (open) {
@@ -25,7 +25,7 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
       setToId(accounts[1]?.id ?? accounts[0]?.id ?? '');
       setAmount('');
       setDate(new Date().toISOString().slice(0, 10));
-      setNotes('');
+      setNote('');
     }
   }, [open]);
 
@@ -35,10 +35,10 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const desc = notes.trim() || 'Transfer';
+    const description = note.trim() || 'Transfer';
     onSave(
-      { date, category: 'Transfer', description: desc, amount: -Number(amount), type: 'expense', accountId: fromId },
-      { date, category: 'Transfer', description: desc, amount:  Number(amount), type: 'income',  accountId: toId  },
+      { date, category: 'Transfer', description, amount: -Number(amount), type: 'expense', accountId: fromId },
+      { date, category: 'Transfer', description, amount:  Number(amount), type: 'income',  accountId: toId  },
     );
     toast('Transfer recorded');
     onClose();
@@ -93,8 +93,8 @@ export default function TransferModal({ open, onClose, accounts, onSave }: Trans
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Notes (optional)</label>
-              <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Monthly savings transfer" className={inputCls} />
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">Note <OptionalBadge /></label>
+              <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Monthly savings transfer" className={inputCls} />
             </div>
           </div>
         </div>
