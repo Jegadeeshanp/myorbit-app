@@ -100,13 +100,14 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Budget name</label>
               <input value={name} onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSave()}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
                 placeholder="Monthly Groceries" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
               <input value={amount} onChange={e => setAmount(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSave()}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
+                onWheel={e => e.currentTarget.blur()}
                 placeholder="12000" type="number" min="1" className={inputCls} />
             </div>
           </div>

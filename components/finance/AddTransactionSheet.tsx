@@ -103,26 +103,86 @@ function ExpenseCategoryGrid({ value, onChange }: { value: string; onChange: (v:
   );
 }
 
-// ── Category chip grid (income, fixed) ───────────────────────────────────
+// ── Category chip grid (income, with add-new) ────────────────────────────
 function IncomeCategoryGrid({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [addMode, setAddMode]       = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customIcon, setCustomIcon] = useState<ComponentType<{ className?: string }>>(Package);
+  const [extras, setExtras]         = useState<CategoryDef[]>([]);
+
+  const allCats = [...INCOME_CATEGORIES, ...extras];
+
+  function confirm() {
+    if (!customName.trim()) return;
+    const cat: CategoryDef = { name: customName.trim(), icon: customIcon, color: 'text-gray-700', bg: 'bg-gray-100' };
+    setExtras(p => [...p, cat]);
+    onChange(cat.name);
+    setCustomName(''); setCustomIcon(Package); setAddMode(false);
+  }
+
   return (
-    <div className="grid grid-cols-3 gap-1.5">
-      {INCOME_CATEGORIES.map(cat => {
-        const Icon = cat.icon;
-        const active = cat.name === value;
-        return (
-          <button key={cat.name} type="button" onClick={() => onChange(cat.name)}
-            className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-medium transition ${
-              active ? `${cat.bg} ${cat.color} ring-1 ring-current/30` : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-lg ${active ? 'bg-white/60' : cat.bg}`}>
-              <Icon className={`h-3.5 w-3.5 ${cat.color}`} />
-            </span>
-            <span className="truncate leading-tight">{cat.name}</span>
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-1.5">
+        {allCats.map(cat => {
+          const Icon = cat.icon;
+          const active = cat.name === value;
+          return (
+            <button key={cat.name} type="button" onClick={() => onChange(cat.name)}
+              className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-medium transition ${
+                active ? `${cat.bg} ${cat.color} ring-1 ring-current/30` : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <span className={`flex h-6 w-6 flex-none items-center justify-center rounded-lg ${active ? 'bg-white/60' : cat.bg}`}>
+                <Icon className={`h-3.5 w-3.5 ${cat.color}`} />
+              </span>
+              <span className="truncate leading-tight">{cat.name}</span>
+            </button>
+          );
+        })}
+        {!addMode && (
+          <button type="button" onClick={() => setAddMode(true)}
+            className="flex items-center gap-2 rounded-xl border border-dashed border-gray-300 px-2.5 py-2 text-xs font-medium text-gray-400 transition hover:border-emerald-400 hover:text-emerald-600">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-gray-100"><Plus className="h-3.5 w-3.5" /></span>
+            <span className="truncate">Add new</span>
           </button>
-        );
-      })}
+        )}
+      </div>
+      {addMode && (
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">New category</p>
+            <button type="button" onClick={() => setAddMode(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-200"><X className="h-3.5 w-3.5" /></button>
+          </div>
+          <input value={customName} onChange={e => setCustomName(e.target.value)} onKeyDown={e => e.key === 'Enter' && confirm()} placeholder="Category name…" autoFocus className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" />
+          <div>
+            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">Icon</p>
+            <div className="grid grid-cols-9 gap-1">
+              {ICON_OPTIONS.map(opt => {
+                const Icon = opt.icon;
+                const sel = customIcon === opt.icon;
+                return (
+                  <button key={opt.name} type="button" onClick={() => setCustomIcon(() => opt.icon)} title={opt.name}
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${sel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : 'text-gray-500 hover:bg-gray-200'}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {customName && (
+              <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
+                {(() => { const I = customIcon; return <I className="h-3 w-3" />; })()}
+                {customName}
+              </div>
+            )}
+            <button type="button" onClick={confirm} disabled={!customName.trim()}
+              className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40">
+              <Check className="h-3 w-3" /> Add
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -480,7 +540,7 @@ export default function AddTransactionSheet({
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                    <input value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="250" type="number" min="0" className={inp} />
+                    <input value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="250" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
@@ -519,7 +579,7 @@ export default function AddTransactionSheet({
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                    <input value={incAmt} onChange={e => setIncAmt(e.target.value)} placeholder="85000" type="number" min="0" className={inp} />
+                    <input value={incAmt} onChange={e => setIncAmt(e.target.value)} placeholder="85000" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
@@ -566,7 +626,7 @@ export default function AddTransactionSheet({
                 )}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                  <input value={trAmt} onChange={e => setTrAmt(e.target.value)} placeholder="0" type="number" min="1" className={inp} />
+                  <input value={trAmt} onChange={e => setTrAmt(e.target.value)} placeholder="0" type="number" min="1" onWheel={e => e.currentTarget.blur()} className={inp} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">Date</label>

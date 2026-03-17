@@ -16,8 +16,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
     const updateData: any = { ...parsed.data };
-    const row = await prisma.budget.update({ where: { id }, data: updateData });
-    return NextResponse.json({ id: row.id, name: row.name, budget: row.budget, spent: row.spent, category: (row as any).category ?? '' });
+    let row: any;
+    try {
+      row = await prisma.budget.update({ where: { id }, data: updateData });
+    } catch (e: any) {
+      // category column may not exist yet — retry without it
+      if (e.message?.includes('category') || e.code === 'P2009' || e.constructor?.name === 'PrismaClientValidationError') {
+        const { category: _c, ...safeData } = updateData;
+        row = await prisma.budget.update({ where: { id }, data: safeData });
+      } else { throw e; }
+    }
+    return NextResponse.json({ id: row.id, name: row.name, budget: row.budget, spent: row.spent, category: row.category ?? '' });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
