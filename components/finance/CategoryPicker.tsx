@@ -1,13 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, type ComponentType } from 'react';
+import {
+  getCustomExpenseCategoryDefs, addCustomExpenseCategory,
+  getCustomIncomeCategoryDefs,  addCustomIncomeCategory,
+} from '@/lib/customCategoryStore';
 import { ChevronDown, Plus, X, Check } from 'lucide-react';
 import {
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi, Smartphone, ShoppingBag,
   RefreshCw, Stethoscope, Shield, Plane, GraduationCap, Gift, Package,
   Briefcase, Award, Laptop, Building2, TrendingUp, Percent, RotateCcw, Undo2,
   Car, Coffee, Heart, Music, BookOpen, Star, Tag, Dumbbell, Camera, Globe,
-  Wrench, Film, Train, Bike, PawPrint, Scissors, Baby, Gauge,
+  Wrench, Film, Train, Bike, PawPrint, Scissors, Baby, Gauge, Receipt, HeartPulse,
+  Landmark, PiggyBank,
 } from 'lucide-react';
 
 export type CategoryDef = {
@@ -35,6 +40,13 @@ export const EXPENSE_CATEGORIES: CategoryDef[] = [
   { name: 'Education',     icon: GraduationCap, color: 'text-indigo-700',  bg: 'bg-indigo-100' },
   { name: 'Gifts',         icon: Gift,          color: 'text-rose-600',    bg: 'bg-rose-100'   },
   { name: 'Miscellaneous', icon: Package,       color: 'text-gray-600',    bg: 'bg-gray-100'   },
+  { name: 'Food',          icon: Coffee,        color: 'text-amber-700',   bg: 'bg-amber-100'  },
+  { name: 'Bills',         icon: Receipt,       color: 'text-slate-600',   bg: 'bg-slate-100'  },
+  { name: 'Healthcare',    icon: HeartPulse,    color: 'text-red-500',     bg: 'bg-red-100'    },
+  { name: 'Entertainment', icon: Film,          color: 'text-purple-600',  bg: 'bg-purple-100' },
+  { name: 'Loan',          icon: Landmark,      color: 'text-orange-700',  bg: 'bg-orange-100' },
+  { name: 'Investment',    icon: PiggyBank,     color: 'text-teal-600',    bg: 'bg-teal-100'   },
+  { name: 'Others',        icon: Tag,           color: 'text-gray-500',    bg: 'bg-gray-100'   },
 ];
 
 // ── Income categories ──────────────────────────────────────────────────────
@@ -52,46 +64,50 @@ export const INCOME_CATEGORIES: CategoryDef[] = [
   { name: 'Other Income',  icon: Package,      color: 'text-gray-600',    bg: 'bg-gray-100'    },
 ];
 
-// ── Icon options for custom category picker ────────────────────────────────
-export const ICON_OPTIONS: { name: string; icon: ComponentType<{ className?: string }> }[] = [
-  { name: 'Home',       icon: Home },
-  { name: 'Cart',       icon: ShoppingCart },
-  { name: 'Food',       icon: Utensils },
-  { name: 'Fuel',       icon: Fuel },
-  { name: 'Car',        icon: Car },
-  { name: 'Bus',        icon: Bus },
-  { name: 'Train',      icon: Train },
-  { name: 'Bike',       icon: Bike },
-  { name: 'Coffee',     icon: Coffee },
-  { name: 'Zap',        icon: Zap },
-  { name: 'Wifi',       icon: Wifi },
-  { name: 'Phone',      icon: Smartphone },
-  { name: 'Bag',        icon: ShoppingBag },
-  { name: 'Gift',       icon: Gift },
-  { name: 'Heart',      icon: Heart },
-  { name: 'Music',      icon: Music },
-  { name: 'Book',       icon: BookOpen },
-  { name: 'Film',       icon: Film },
-  { name: 'Camera',     icon: Camera },
-  { name: 'Dumbbell',   icon: Dumbbell },
-  { name: 'Globe',      icon: Globe },
-  { name: 'Wrench',     icon: Wrench },
-  { name: 'Star',       icon: Star },
-  { name: 'Tag',        icon: Tag },
-  { name: 'Package',    icon: Package },
-  { name: 'Shield',     icon: Shield },
-  { name: 'Plane',      icon: Plane },
-  { name: 'School',     icon: GraduationCap },
-  { name: 'Medical',    icon: Stethoscope },
-  { name: 'Briefcase',  icon: Briefcase },
-  { name: 'Award',      icon: Award },
-  { name: 'Laptop',     icon: Laptop },
-  { name: 'Building',   icon: Building2 },
-  { name: 'Percent',    icon: Percent },
-  { name: 'Scissors',   icon: Scissors },
-  { name: 'Baby',       icon: Baby },
-  { name: 'Paw',        icon: PawPrint },
-  { name: 'Gauge',      icon: Gauge },
+// ── Icon options for custom category picker (with subtle colors) ────────────
+export const ICON_OPTIONS: { name: string; icon: ComponentType<{ className?: string }>; color: string }[] = [
+  { name: 'Home',       icon: Home,          color: 'text-violet-500'  },
+  { name: 'Cart',       icon: ShoppingCart,  color: 'text-green-500'   },
+  { name: 'Food',       icon: Utensils,      color: 'text-orange-500'  },
+  { name: 'Fuel',       icon: Fuel,          color: 'text-amber-500'   },
+  { name: 'Car',        icon: Car,           color: 'text-amber-600'   },
+  { name: 'Bus',        icon: Bus,           color: 'text-blue-500'    },
+  { name: 'Train',      icon: Train,         color: 'text-blue-600'    },
+  { name: 'Bike',       icon: Bike,          color: 'text-lime-600'    },
+  { name: 'Coffee',     icon: Coffee,        color: 'text-amber-700'   },
+  { name: 'Zap',        icon: Zap,           color: 'text-yellow-500'  },
+  { name: 'Wifi',       icon: Wifi,          color: 'text-sky-500'     },
+  { name: 'Phone',      icon: Smartphone,    color: 'text-cyan-600'    },
+  { name: 'Bag',        icon: ShoppingBag,   color: 'text-pink-500'    },
+  { name: 'Gift',       icon: Gift,          color: 'text-rose-500'    },
+  { name: 'Heart',      icon: Heart,         color: 'text-rose-400'    },
+  { name: 'Music',      icon: Music,         color: 'text-purple-500'  },
+  { name: 'Book',       icon: BookOpen,      color: 'text-indigo-500'  },
+  { name: 'Film',       icon: Film,          color: 'text-purple-600'  },
+  { name: 'Camera',     icon: Camera,        color: 'text-slate-500'   },
+  { name: 'Dumbbell',   icon: Dumbbell,      color: 'text-orange-600'  },
+  { name: 'Globe',      icon: Globe,         color: 'text-teal-500'    },
+  { name: 'Wrench',     icon: Wrench,        color: 'text-slate-400'   },
+  { name: 'Star',       icon: Star,          color: 'text-yellow-500'  },
+  { name: 'Tag',        icon: Tag,           color: 'text-gray-500'    },
+  { name: 'Package',    icon: Package,       color: 'text-gray-400'    },
+  { name: 'Shield',     icon: Shield,        color: 'text-teal-600'    },
+  { name: 'Plane',      icon: Plane,         color: 'text-sky-600'     },
+  { name: 'School',     icon: GraduationCap, color: 'text-indigo-600'  },
+  { name: 'Medical',    icon: Stethoscope,   color: 'text-red-500'     },
+  { name: 'Briefcase',  icon: Briefcase,     color: 'text-slate-600'   },
+  { name: 'Award',      icon: Award,         color: 'text-amber-500'   },
+  { name: 'Laptop',     icon: Laptop,        color: 'text-blue-600'    },
+  { name: 'Building',   icon: Building2,     color: 'text-slate-500'   },
+  { name: 'Percent',    icon: Percent,       color: 'text-green-600'   },
+  { name: 'Scissors',   icon: Scissors,      color: 'text-slate-400'   },
+  { name: 'Baby',       icon: Baby,          color: 'text-pink-400'    },
+  { name: 'Paw',        icon: PawPrint,      color: 'text-orange-400'  },
+  { name: 'Gauge',      icon: Gauge,         color: 'text-amber-600'   },
+  { name: 'Receipt',    icon: Receipt,       color: 'text-slate-500'   },
+  { name: 'HeartPulse', icon: HeartPulse,    color: 'text-red-500'     },
+  { name: 'Landmark',   icon: Landmark,      color: 'text-orange-600'  },
+  { name: 'PiggyBank',  icon: PiggyBank,     color: 'text-teal-500'    },
 ];
 
 // Helper used by TransactionList to get color for a category
@@ -109,9 +125,10 @@ type Props = {
   value: string;
   onChange: (name: string) => void;
   allowAdd?: boolean;
+  type?: 'expense' | 'income';
 };
 
-export default function CategoryPicker({ categories, value, onChange, allowAdd = false }: Props) {
+export default function CategoryPicker({ categories, value, onChange, allowAdd = false, type = 'expense' }: Props) {
   const [open, setOpen]           = useState(false);
   const [addMode, setAddMode]     = useState(false);
   const [customName, setCustomName] = useState('');
@@ -119,7 +136,22 @@ export default function CategoryPicker({ categories, value, onChange, allowAdd =
   const [extraCats, setExtraCats] = useState<CategoryDef[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
-  const allCats = [...categories, ...extraCats];
+  // Load persisted custom categories on mount
+  useEffect(() => {
+    const stored = type === 'income'
+      ? getCustomIncomeCategoryDefs()
+      : getCustomExpenseCategoryDefs();
+    const defs: CategoryDef[] = stored.map(s => ({
+      name: s.name,
+      icon: ICON_OPTIONS.find(o => o.name === s.icon)?.icon ?? Package,
+      color: 'text-gray-700',
+      bg: 'bg-gray-100',
+    }));
+    setExtraCats(defs);
+  }, [type]);
+
+  const allCats = [...categories, ...extraCats]
+    .filter((cat, idx, arr) => arr.findIndex(c => c.name === cat.name) === idx);
   const selected = allCats.find(c => c.name === value) ?? allCats[0];
 
   // Close dropdown on outside click
@@ -143,12 +175,20 @@ export default function CategoryPicker({ categories, value, onChange, allowAdd =
 
   function confirmCustom() {
     if (!customName.trim()) return;
+    const name = customName.trim();
+    const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
     const newCat: CategoryDef = {
-      name: customName.trim(),
+      name,
       icon: customIcon,
       color: 'text-gray-700',
       bg: 'bg-gray-100',
     };
+    // Persist to localStorage so the icon survives modal re-opens
+    if (type === 'income') {
+      addCustomIncomeCategory(name, iconName);
+    } else {
+      addCustomExpenseCategory(name, iconName);
+    }
     setExtraCats(prev => [...prev, newCat]);
     onChange(newCat.name);
     setCustomName('');
@@ -238,7 +278,7 @@ export default function CategoryPicker({ categories, value, onChange, allowAdd =
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
               />
 
-              {/* Icon picker */}
+              {/* Icon picker — colored icons */}
               <div>
                 <p className="mb-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wide">Pick an icon</p>
                 <div className="grid grid-cols-8 gap-1 max-h-24 overflow-y-auto pr-0.5">
@@ -254,7 +294,7 @@ export default function CategoryPicker({ categories, value, onChange, allowAdd =
                         className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
                           isSelected
                             ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400'
-                            : 'text-gray-500 hover:bg-gray-100'
+                            : `${opt.color} hover:bg-gray-100`
                         }`}
                       >
                         <Icon className="h-4 w-4" />

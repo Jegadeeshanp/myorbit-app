@@ -16,6 +16,22 @@ export type Transaction = TransactionType;
 export type Asset = AssetType;
 export type Liability = LiabilityType;
 
+// ── Serialization helpers ──────────────────────────────────────────────────
+
+/** Convert an asset payload to API-safe form:
+ *  - sipConfig SipConfig object → JSON string
+ *  - sipConfig null/undefined   → key omitted (z.string().optional() rejects null)
+ */
+function serializeAsset(a: Record<string, any>) {
+  const { sipConfig, ...rest } = a;
+  const out: Record<string, any> = { ...rest };
+  if (sipConfig != null) {
+    out.sipConfig = typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
+  }
+  // null / undefined → key omitted entirely
+  return out;
+}
+
 // ── API helper ─────────────────────────────────────────────────────────────
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -114,7 +130,7 @@ type FinanceContextValue = {
   addLiability:           (l: Omit<Liability, 'id'>)       => Promise<void>;
   updateLiability:        (l: Liability)                   => Promise<void>;
   deleteLiability:        (id: string)                     => Promise<void>;
-  recordLiabilityPayment: (id: string, amount: number)     => Promise<void>;
+  recordLiabilityPayment: (id: string, amount: number, repaymentAccountId?: string) => Promise<void>;
   addBudget:              (b: Omit<BudgetCategory, 'id'>)  => Promise<void>;
   updateBudget:           (b: BudgetCategory)              => Promise<void>;
   deleteBudget:           (id: string)                     => Promise<void>;
@@ -158,10 +174,52 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     addAccount: async (a) => {
       const created = await api<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(a) });
       dispatch({ type: 'addAccount', payload: created });
+      // Record Opening Balance transaction when account has a non-zero starting balance.
+      // We call the API directly (not the store's addTransaction) to avoid double-updating
+      // the balance — the account was already created with the correct balance.
+      if (created.balance !== 0) {
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const tx = await api<Transaction>('/api/transactions', {
+            method: 'POST',
+            body: JSON.stringify({
+              date: today,
+              category: 'Opening Balance',
+              description: 'Opening Balance',
+              amount: created.balance,
+              type: created.balance > 0 ? 'income' : 'expense',
+              accountId: created.id,
+            }),
+          });
+          dispatch({ type: 'addTransaction', payload: tx });
+        } catch { /* non-critical */ }
+      }
     },
     updateAccount: async (a) => {
+      const existing = state.accounts.find(acc => acc.id === a.id);
       const updated = await api<Account>(`/api/accounts/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
       dispatch({ type: 'updateAccount', payload: updated });
+      // Record Balance Adjustment when the balance actually changed.
+      // Direct API call (not store's addTransaction) to skip the balance side-effect —
+      // the account already has the new balance after the PATCH above.
+      if (existing && updated.balance !== existing.balance) {
+        try {
+          const diff = updated.balance - existing.balance;
+          const today = new Date().toISOString().slice(0, 10);
+          const tx = await api<Transaction>('/api/transactions', {
+            method: 'POST',
+            body: JSON.stringify({
+              date: today,
+              category: 'Balance Adjustment',
+              description: 'Balance Adjustment',
+              amount: diff,
+              type: diff > 0 ? 'income' : 'expense',
+              accountId: a.id,
+            }),
+          });
+          dispatch({ type: 'addTransaction', payload: tx });
+        } catch { /* non-critical */ }
+      }
     },
     deleteAccount: async (id) => {
       await api(`/api/accounts/${id}`, { method: 'DELETE' });
@@ -216,11 +274,42 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     },
 
     addAsset: async (a) => {
-      const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(a) });
+      const payload = serializeAsset(a as unknown as Record<string, any>);
+      const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
       dispatch({ type: 'addAsset', payload: created });
+      // When an account is linked, record the investment as an expense transaction and
+      // deduct the invested amount from the account balance.
+      // Direct API call (not store's addTransaction) to control balance update ourselves.
+      if (created.accountId) {
+        const account = state.accounts.find(acc => acc.id === created.accountId);
+        if (account) {
+          try {
+            const today = new Date().toISOString().slice(0, 10);
+            const tx = await api<Transaction>('/api/transactions', {
+              method: 'POST',
+              body: JSON.stringify({
+                date: today,
+                category: 'Investment',
+                description: created.name,
+                amount: -Math.abs(created.invested),
+                type: 'expense',
+                accountId: created.accountId,
+              }),
+            });
+            dispatch({ type: 'addTransaction', payload: tx });
+            // Deduct invested amount from the linked account
+            const updatedAcc = await api<Account>(`/api/accounts/${account.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ balance: account.balance - Math.abs(created.invested) }),
+            });
+            dispatch({ type: 'updateAccount', payload: updatedAcc });
+          } catch { /* non-critical — asset still saved */ }
+        }
+      }
     },
     updateAsset: async (a) => {
-      const updated = await api<Asset>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
+      const payload = serializeAsset(a as unknown as Record<string, any>);
+      const updated = await api<Asset>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       dispatch({ type: 'updateAsset', payload: updated });
     },
     deleteAsset: async (id) => {
@@ -240,18 +329,57 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       await api(`/api/liabilities/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteLiability', payload: id });
     },
-    recordLiabilityPayment: async (id, amount) => {
+    recordLiabilityPayment: async (id, amount, repaymentAccountId) => {
       const liability = state.liabilities.find(l => l.id === id);
       if (!liability) return;
+
+      // Advance next due date by 1 month
+      let nextDueDate = liability.nextDueDate;
+      if (nextDueDate) {
+        const d = new Date(nextDueDate);
+        d.setMonth(d.getMonth() + 1);
+        nextDueDate = d.toISOString().slice(0, 10);
+      }
+
       const updated = await api<Liability>(`/api/liabilities/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           outstanding: Math.max(0, liability.outstanding - amount),
           totalRepaid: liability.totalRepaid + amount,
           emisLeft: Math.max(0, liability.emisLeft - 1),
+          nextDueDate,
         }),
       });
       dispatch({ type: 'updateLiability', payload: updated });
+
+      // Debit the repayment account: create an expense transaction + update account balance
+      const accId = repaymentAccountId ?? liability.repaymentAccountId;
+      if (accId) {
+        const account = state.accounts.find(a => a.id === accId);
+        const today = new Date().toISOString().slice(0, 10);
+        try {
+          const tx = await api<Transaction>('/api/transactions', {
+            method: 'POST',
+            body: JSON.stringify({
+              date: today,
+              category: 'Loan',
+              description: liability.name + ' EMI',
+              amount: -Math.abs(amount),
+              type: 'expense',
+              accountId: accId,
+            }),
+          });
+          dispatch({ type: 'addTransaction', payload: tx });
+          // Update account balance
+          if (account) {
+            const updatedAcc = await api<Account>(`/api/accounts/${accId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ balance: account.balance - Math.abs(amount) }),
+            });
+            dispatch({ type: 'updateAccount', payload: updatedAcc });
+          }
+        } catch { /* non-critical — liability payment still recorded */ }
+      }
     },
 
     addBudget: async (b) => {

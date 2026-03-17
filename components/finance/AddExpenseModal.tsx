@@ -6,11 +6,12 @@ import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
 import { Plus, X, Package, Check } from 'lucide-react';
+import { getCustomExpenseCategoryDefs, addCustomExpenseCategory } from '@/lib/customCategoryStore';
 
 export type AddExpenseProps = {
   open: boolean;
   onClose: () => void;
-  accounts: { id: string; name: string }[];
+  accounts: { id: string; name: string; type?: string }[];
   onSave: (payload: Omit<Transaction, 'id'>) => void;
   initial?: Transaction;
 };
@@ -30,6 +31,16 @@ function CategoryGrid({
   const [customIcon, setCustomIcon] = useState<ComponentType<{ className?: string }>>(Package);
   const [extras, setExtras] = useState<CategoryDef[]>([]);
 
+  // Load persisted custom categories (with their saved icons) on every mount
+  useEffect(() => {
+    const defaultNames = categories.map(c => c.name);
+    const saved = getCustomExpenseCategoryDefs().filter(c => !defaultNames.includes(c.name));
+    setExtras(saved.map(({ name, icon: iconName }) => {
+      const iconDef = ICON_OPTIONS.find(o => o.name === iconName);
+      return { name, icon: iconDef?.icon ?? Package, color: 'text-gray-700', bg: 'bg-gray-100' };
+    }));
+  }, []);
+
   const allCats = [...categories, ...extras];
 
   function confirmCustom() {
@@ -41,6 +52,8 @@ function CategoryGrid({
       bg: 'bg-gray-100',
     };
     setExtras(prev => [...prev, newCat]);
+    const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
+    addCustomExpenseCategory(newCat.name, iconName); // persist name + icon to central store
     onChange(newCat.name);
     setCustomName('');
     setCustomIcon(Package);
@@ -101,7 +114,7 @@ function CategoryGrid({
           <input
             value={customName}
             onChange={e => setCustomName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && confirmCustom()}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmCustom(); } }}
             placeholder="Category name…"
             autoFocus
             className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
@@ -121,7 +134,7 @@ function CategoryGrid({
                     onClick={() => setCustomIcon(() => opt.icon)}
                     title={opt.name}
                     className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
-                      isSel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : 'text-gray-500 hover:bg-gray-200'
+                      isSel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : `${opt.color} hover:bg-gray-200`
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -225,16 +238,16 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-              <input value={description} onChange={e => setDesc(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="Lunch at cafe" className={inputCls} />
+              <input value={description} onChange={e => setDesc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Lunch at cafe" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="250" type="number" min="0" className={inputCls} />
+              <input value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="250" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
               <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputCls}>
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.type ? ` – ${a.type === 'Credit Card' ? 'Credit' : a.type === 'Debit Card' ? 'Debit' : a.type}` : ''}</option>)}
               </select>
             </div>
             <div>

@@ -27,12 +27,23 @@ export type Transaction = {
   recurring?: RecurringConfig;
 };
 
+export type SipConfig = {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  startDate: string;
+  endType: 'forever' | 'after' | 'on_date';
+  endAfterTimes?: number;
+  endDate?: string;
+};
+
 export type Asset = {
   id: string;
   name: string;
   category: AssetCategory;
   value: number;
   invested: number;
+  accountId?: string;
+  investmentType?: 'lump_sum' | 'sip';
+  sipConfig?: SipConfig | null;
 };
 
 export type Liability = {
@@ -45,6 +56,7 @@ export type Liability = {
   nextDueDate?: string;
   emisLeft: number;
   totalRepaid: number;
+  repaymentAccountId?: string; // account debited each time EMI is paid
 };
 
 export type BudgetCategory = {

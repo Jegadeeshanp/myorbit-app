@@ -8,6 +8,7 @@ import {
 import { toast } from '@/components/Toast';
 import { Transaction, RecurringConfig } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
+import { addCustomExpenseCategory, addCustomIncomeCategory, getCustomExpenseCategoryDefs, getCustomIncomeCategoryDefs } from '@/lib/customCategoryStore';
 
 type TabType = 'expense' | 'income' | 'transfer';
 
@@ -26,12 +27,25 @@ function ExpenseCategoryGrid({ value, onChange }: { value: string; onChange: (v:
   const [customIcon, setCustomIcon] = useState<ComponentType<{ className?: string }>>(Package);
   const [extras, setExtras]         = useState<CategoryDef[]>([]);
 
-  const allCats = [...EXPENSE_CATEGORIES, ...extras];
+  // Load persisted custom categories (with their saved icons) on mount
+  useEffect(() => {
+    const defaultNames = EXPENSE_CATEGORIES.map(c => c.name);
+    const saved = getCustomExpenseCategoryDefs().filter(c => !defaultNames.includes(c.name));
+    setExtras(saved.map(({ name, icon: iconName }) => {
+      const iconDef = ICON_OPTIONS.find(o => o.name === iconName);
+      return { name, icon: iconDef?.icon ?? Package, color: 'text-gray-700', bg: 'bg-gray-100' };
+    }));
+  }, []);
+
+  const allCats = [...EXPENSE_CATEGORIES, ...extras]
+    .filter((cat, idx, arr) => arr.findIndex(c => c.name === cat.name) === idx);
 
   function confirm() {
     if (!customName.trim()) return;
     const cat: CategoryDef = { name: customName.trim(), icon: customIcon, color: 'text-gray-700', bg: 'bg-gray-100' };
-    setExtras(p => [...p, cat]);
+    setExtras(p => p.find(c => c.name === cat.name) ? p : [...p, cat]);
+    const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
+    addCustomExpenseCategory(cat.name, iconName);
     onChange(cat.name);
     setCustomName(''); setCustomIcon(Package); setAddMode(false);
   }
@@ -78,7 +92,7 @@ function ExpenseCategoryGrid({ value, onChange }: { value: string; onChange: (v:
                 const sel = customIcon === opt.icon;
                 return (
                   <button key={opt.name} type="button" onClick={() => setCustomIcon(() => opt.icon)} title={opt.name}
-                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${sel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : 'text-gray-500 hover:bg-gray-200'}`}>
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${sel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : `${opt.color} hover:bg-gray-200`}`}>
                     <Icon className="h-3.5 w-3.5" />
                   </button>
                 );
@@ -110,12 +124,25 @@ function IncomeCategoryGrid({ value, onChange }: { value: string; onChange: (v: 
   const [customIcon, setCustomIcon] = useState<ComponentType<{ className?: string }>>(Package);
   const [extras, setExtras]         = useState<CategoryDef[]>([]);
 
-  const allCats = [...INCOME_CATEGORIES, ...extras];
+  // Load persisted custom categories (with their saved icons) on mount
+  useEffect(() => {
+    const defaultNames = INCOME_CATEGORIES.map(c => c.name);
+    const saved = getCustomIncomeCategoryDefs().filter(c => !defaultNames.includes(c.name));
+    setExtras(saved.map(({ name, icon: iconName }) => {
+      const iconDef = ICON_OPTIONS.find(o => o.name === iconName);
+      return { name, icon: iconDef?.icon ?? Package, color: 'text-gray-700', bg: 'bg-gray-100' };
+    }));
+  }, []);
+
+  const allCats = [...INCOME_CATEGORIES, ...extras]
+    .filter((cat, idx, arr) => arr.findIndex(c => c.name === cat.name) === idx);
 
   function confirm() {
     if (!customName.trim()) return;
     const cat: CategoryDef = { name: customName.trim(), icon: customIcon, color: 'text-gray-700', bg: 'bg-gray-100' };
-    setExtras(p => [...p, cat]);
+    setExtras(p => p.find(c => c.name === cat.name) ? p : [...p, cat]);
+    const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
+    addCustomIncomeCategory(cat.name, iconName);
     onChange(cat.name);
     setCustomName(''); setCustomIcon(Package); setAddMode(false);
   }
@@ -162,7 +189,7 @@ function IncomeCategoryGrid({ value, onChange }: { value: string; onChange: (v: 
                 const sel = customIcon === opt.icon;
                 return (
                   <button key={opt.name} type="button" onClick={() => setCustomIcon(() => opt.icon)} title={opt.name}
-                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${sel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : 'text-gray-500 hover:bg-gray-200'}`}>
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${sel ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-400' : `${opt.color} hover:bg-gray-200`}`}>
                     <Icon className="h-3.5 w-3.5" />
                   </button>
                 );
@@ -364,12 +391,18 @@ const TAB_CONFIG: Record<TabType, { label: string; icon: typeof Minus; color: st
 type Props = {
   open: boolean;
   onClose: () => void;
-  accounts: { id: string; name: string }[];
+  accounts: { id: string; name: string; type?: string }[];
   onSaveExpense: (tx: Omit<Transaction, 'id'>) => void;
   onSaveIncome:  (tx: Omit<Transaction, 'id'>) => void;
   onSaveTransfer: (tx1: Omit<Transaction, 'id'>, tx2: Omit<Transaction, 'id'>) => void;
 };
 
+
+function shortAccLabel(a: { name: string; type?: string }) {
+  const t = a.type;
+  const short = t === 'Credit Card' ? 'Credit' : t === 'Debit Card' ? 'Debit' : t ?? '';
+  return short ? a.name + ' – ' + short : a.name;
+}
 // ── Main sheet component ──────────────────────────────────────────────────
 export default function AddTransactionSheet({
   open, onClose, accounts,
@@ -527,16 +560,16 @@ export default function AddTransactionSheet({
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-                    <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Lunch at cafe" className={inp} />
+                    <input value={expDesc} onChange={e => setExpDesc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="Lunch at cafe" className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                    <input value={expAmt} onChange={e => setExpAmt(e.target.value)} placeholder="250" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inp} />
+                    <input value={expAmt} onChange={e => setExpAmt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="250" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
                     <select value={expAcc} onChange={e => setExpAcc(e.target.value)} className={inp}>
-                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      {accounts.map(a => <option key={a.id} value={a.id}>{shortAccLabel(a)}</option>)}
                     </select>
                   </div>
                   <div>
@@ -566,16 +599,16 @@ export default function AddTransactionSheet({
                 <div className="space-y-3">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
-                    <input value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="March paycheck" className={inp} />
+                    <input value={incDesc} onChange={e => setIncDesc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="March paycheck" className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                    <input value={incAmt} onChange={e => setIncAmt(e.target.value)} placeholder="85000" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inp} />
+                    <input value={incAmt} onChange={e => setIncAmt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="85000" type="number" min="0" onWheel={e => e.currentTarget.blur()} className={inp} />
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">Account</label>
                     <select value={incAcc} onChange={e => setIncAcc(e.target.value)} className={inp}>
-                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      {accounts.map(a => <option key={a.id} value={a.id}>{shortAccLabel(a)}</option>)}
                     </select>
                   </div>
                   <div>
@@ -602,13 +635,13 @@ export default function AddTransactionSheet({
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">From account</label>
                     <select value={trFromId} onChange={e => setTrFromId(e.target.value)} className={inp}>
-                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      {accounts.map(a => <option key={a.id} value={a.id}>{shortAccLabel(a)}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">To account</label>
                     <select value={trToId} onChange={e => setTrToId(e.target.value)} className={inp}>
-                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      {accounts.map(a => <option key={a.id} value={a.id}>{shortAccLabel(a)}</option>)}
                     </select>
                   </div>
                 </div>
@@ -617,7 +650,7 @@ export default function AddTransactionSheet({
                 )}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount (₹)</label>
-                  <input value={trAmt} onChange={e => setTrAmt(e.target.value)} placeholder="0" type="number" min="1" onWheel={e => e.currentTarget.blur()} className={inp} />
+                  <input value={trAmt} onChange={e => setTrAmt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="0" type="number" min="1" onWheel={e => e.currentTarget.blur()} className={inp} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">Date</label>

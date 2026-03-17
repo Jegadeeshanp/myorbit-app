@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Modal, { SectionLabel, inputCls } from './Modal';
+import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Liability } from '@/lib/financeData';
 
@@ -10,19 +10,27 @@ export type AddLiabilityProps = {
   onClose: () => void;
   onSave: (payload: Omit<Liability, 'id'>) => void;
   initial?: Liability; // when set → edit mode
+  accounts?: { id: string; name: string; type?: string }[];
 };
 
-export default function AddLiabilityModal({ open, onClose, onSave, initial }: AddLiabilityProps) {
+function shortAccLabel(a: { name: string; type?: string }) {
+  const t = a.type;
+  const short = t === 'Credit Card' ? 'Credit' : t === 'Debit Card' ? 'Debit' : t ?? '';
+  return short ? a.name + ' – ' + short : a.name;
+}
+
+export default function AddLiabilityModal({ open, onClose, onSave, initial, accounts = [] }: AddLiabilityProps) {
   const isEdit = !!initial;
 
-  const [name,        setName]        = useState('');
-  const [lender,      setLender]      = useState('');
-  const [borrowed,    setBorrowed]    = useState('');
-  const [outstanding, setOutstanding] = useState('');
-  const [totalRepaid, setTotalRepaid] = useState('');
-  const [emi,         setEmi]         = useState('');
-  const [emisLeft,    setEmisLeft]    = useState('');
-  const [nextDue,     setNextDue]     = useState('');
+  const [name,               setName]               = useState('');
+  const [lender,             setLender]             = useState('');
+  const [borrowed,           setBorrowed]           = useState('');
+  const [outstanding,        setOutstanding]        = useState('');
+  const [totalRepaid,        setTotalRepaid]        = useState('');
+  const [emi,                setEmi]                = useState('');
+  const [emisLeft,           setEmisLeft]           = useState('');
+  const [nextDue,            setNextDue]            = useState('');
+  const [repaymentAccountId, setRepaymentAccountId] = useState('');
 
   // Populate fields when editing
   useEffect(() => {
@@ -35,9 +43,11 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial }: Ad
       setEmi(String(initial.monthlyEmi));
       setEmisLeft(String(initial.emisLeft ?? ''));
       setNextDue(initial.nextDueDate ?? '');
+      setRepaymentAccountId(initial.repaymentAccountId ?? '');
     } else {
       setName(''); setLender(''); setBorrowed(''); setOutstanding('');
       setTotalRepaid('0'); setEmi(''); setEmisLeft(''); setNextDue('');
+      setRepaymentAccountId('');
     }
   }, [initial, open]);
 
@@ -51,14 +61,15 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial }: Ad
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({
-      name:         name.trim(),
-      lender:       lender.trim(),
-      borrowed:     Number(borrowed),
-      outstanding:  Number(outstanding),
-      totalRepaid:  Number(totalRepaid) || 0,
-      monthlyEmi:   Number(emi),
-      emisLeft:     Number(emisLeft) || 0,
-      nextDueDate:  nextDue,
+      name:               name.trim(),
+      lender:             lender.trim(),
+      borrowed:           Number(borrowed),
+      outstanding:        Number(outstanding),
+      totalRepaid:        Number(totalRepaid) || 0,
+      monthlyEmi:         Number(emi),
+      emisLeft:           Number(emisLeft) || 0,
+      nextDueDate:        nextDue || undefined,
+      repaymentAccountId: repaymentAccountId || undefined,
     });
     toast(isEdit ? 'Liability updated' : 'Liability added');
     onClose();
@@ -109,11 +120,15 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial }: Ad
           <SectionLabel>EMI details</SectionLabel>
           <div className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Monthly EMI (₹)</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                EMI <span className="ml-1 text-xs font-normal text-gray-400">(Monthly EMI)</span> (₹)
+              </label>
               <input value={emi} onChange={e => setEmi(e.target.value)} placeholder="18500" type="number" min="1" className={inputCls} />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">EMIs remaining</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Left <span className="ml-1 text-xs font-normal text-gray-400">(EMIs Left)</span>
+              </label>
               <input value={emisLeft} onChange={e => setEmisLeft(e.target.value)} placeholder="12" type="number" min="0" className={inputCls} />
             </div>
             <div>
@@ -122,6 +137,28 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial }: Ad
             </div>
           </div>
         </div>
+
+        {/* ── Repayment account ── */}
+        {accounts.length > 0 && (
+          <div>
+            <SectionLabel>Repayment</SectionLabel>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                  Repayment account <OptionalBadge />
+                </label>
+                <select value={repaymentAccountId} onChange={e => setRepaymentAccountId(e.target.value)} className={inputCls}>
+                  <option value="">— select account —</option>
+                  {accounts.map(a => (<option key={a.id} value={a.id}>{shortAccLabel(a)}</option>))}
+                </select>
+                <p className="mt-1.5 text-xs text-gray-400">
+                  EMI will be debited from this account each time you record a payment.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       <div className="mt-5 flex items-center justify-end gap-3 border-t border-gray-100 pt-4">

@@ -69,15 +69,18 @@ model Transaction {
 }
 
 model Asset {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  category  String
-  value     String
-  invested  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  category       String
+  value          String
+  invested       String
+  accountId      String?
+  investmentType String   @default("lump_sum")
+  sipConfig      String?  // JSON: { frequency, startDate, endType, endAfterTimes?, endDate? }
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -92,10 +95,11 @@ model Liability {
   monthlyEmi  String
   emisLeft    Int
   totalRepaid String
-  nextDueDate String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nextDueDate        String?
+  repaymentAccountId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

@@ -44,11 +44,11 @@ export async function POST(req: NextRequest) {
 
     const { name, type, balance, creditLimit } = parsed.data;
 
-    // FIX: Reject duplicate account names per user
-    const existing = await prisma.account.findFirst({ where: { userId, name } });
+    // Reject duplicate name only when the same type already exists for this user
+    const existing = await prisma.account.findFirst({ where: { userId, name, type } });
     if (existing)
       return NextResponse.json(
-        { error: `An account named "${name}" already exists` },
+        { error: `A ${type} account named "${name}" already exists` },
         { status: 409 }
       );
 

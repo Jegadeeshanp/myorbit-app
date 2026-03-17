@@ -112,15 +112,32 @@ export function StandardCard({ account }: { account: Account }) {
 }
 
 export function CreditCardCard({ account }: { account: Account }) {
-  const { deleteAccount } = useFinance();
+  const { deleteAccount, updateAccount } = useFinance();
   const outstanding  = Math.abs(account.balance);
-  // Use stored creditLimit if available, otherwise fall back to 1.5× as a default
   const creditLimit  = account.creditLimit ?? outstanding * 1.5;
   const available    = Math.max(0, creditLimit - outstanding);
   const utilization  = creditLimit > 0 ? Math.round((outstanding / creditLimit) * 100) : 0;
   const barColor     = utilization > 70 ? 'bg-rose-500' : utilization > 40 ? 'bg-amber-400' : 'bg-emerald-500';
   const utilColor    = utilization > 70 ? 'text-rose-500' : utilization > 40 ? 'text-amber-500' : 'text-emerald-600';
   const [showConfirm, setShowConfirm] = useState(false);
+  const [editing, setEditing]         = useState(false);
+  const [editBal,  setEditBal]        = useState('');
+  const [editLimit, setEditLimit]     = useState('');
+
+  const startEdit = () => {
+    setEditBal(String(outstanding));
+    setEditLimit(String(Math.round(creditLimit)));
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    const newBal   = Number(editBal);
+    const newLimit = Number(editLimit);
+    if (!isNaN(newBal) && !isNaN(newLimit)) {
+      await updateAccount({ ...account, balance: -Math.abs(newBal), creditLimit: newLimit });
+    }
+    setEditing(false);
+  };
 
   return (
     <div className="group rounded-2xl border border-rose-100 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -134,29 +151,61 @@ export function CreditCardCard({ account }: { account: Account }) {
             <p className="text-xs text-gray-400">Credit Card</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
-            title="Delete account"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+        {!editing && (
+          <div className="flex items-center gap-1.5">
+            <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
+            <button onClick={startEdit}
+              className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500"
+              title="Edit balance & limit">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setShowConfirm(true)}
+              className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+              title="Delete account">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="mt-3 space-y-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Outstanding balance (₹)</label>
+            <input autoFocus value={editBal} onChange={e => setEditBal(e.target.value)} type="number" min="0"
+              onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(false); }}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Credit limit (₹)</label>
+            <input value={editLimit} onChange={e => setEditLimit(e.target.value)} type="number" min="0"
+              onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(false); }}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setEditing(false)}
+              className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button onClick={saveEdit}
+              className="rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600">
+              Save
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-400">
-        <span>Limit {fmt(creditLimit)}</span>
-        <span className="text-gray-200">•</span>
-        <span className={`font-semibold ${utilColor}`}>Used {utilization}%</span>
-      </div>
-
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-        <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(utilization, 100)}%` }} />
-      </div>
-
-      <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
+      ) : (
+        <>
+          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-400">
+            <span>Limit {fmt(creditLimit)}</span>
+            <span className="text-gray-200">•</span>
+            <span className={`font-semibold ${utilColor}`}>Used {utilization}%</span>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(utilization, 100)}%` }} />
+          </div>
+          <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
+        </>
+      )}
 
       <ConfirmDialog
         open={showConfirm}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Smartphone, AlertTriangle } from 'lucide-react';
+import { Download, AlertTriangle } from 'lucide-react';
 
 function DangerCard({ title, description, confirmWord, buttonLabel, onConfirm }: {
   title: string; description: string; confirmWord: string; buttonLabel: string; onConfirm: () => void;
@@ -59,21 +59,6 @@ export default function DataPrivacyTab() {
               Export {fmt.toUpperCase()}
             </button>
           ))}
-        </div>
-      </div>
-
-      {/* App */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-5 text-base font-semibold text-gray-900">App</h2>
-        <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Smartphone className="h-4 w-4 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-900">Install App</p>
-              <p className="text-xs text-gray-500">Add to home screen for quick access</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-gray-200 px-2.5 py-1 text-xs font-medium text-gray-500">PWA</span>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import Modal, { SectionLabel, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { useFinance } from '@/lib/financeStore';
 import { BudgetCategory } from '@/lib/financeData';
+import { EXPENSE_CATEGORIES } from './CategoryPicker';
 import { getAllExpenseCategories } from '@/lib/customCategoryStore';
 
 const PERIODS = ['Monthly', 'Weekly', 'Yearly'] as const;
@@ -40,7 +41,10 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
 
   useEffect(() => {
     if (open) {
-      setAllCategories(getAllExpenseCategories());
+      // Base = expense popup categories + any custom ones saved to store
+      const base = EXPENSE_CATEGORIES.map(c => c.name);
+      const custom = getAllExpenseCategories().filter(n => !base.includes(n));
+      setAllCategories([...base, ...custom]);
       setName(initial?.name ?? '');
       setAmount(initial ? String(initial.budget) : '');
       const initCats = initial?.category ? initial.category.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -66,7 +70,18 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
         await updateBudget({ ...initial, name: name.trim(), budget: Number(amount), category });
         toast('Budget updated');
       } else {
-        await addBudget({ name: name.trim(), budget: Number(amount), spent: 0, category });
+        // Calculate spent from existing transactions this month matching selected categories
+        const now = new Date();
+        const spent = state.transactions
+          .filter(t => {
+            if (t.type !== 'expense') return false;
+            const d = new Date(t.date);
+            if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false;
+            if (d > now) return false; // exclude future-dated
+            return selectedCats.length === 0 || selectedCats.includes(t.category);
+          })
+          .reduce((s, t) => s + Math.abs(t.amount), 0);
+        await addBudget({ name: name.trim(), budget: Number(amount), spent, category });
         toast('Budget created');
       }
       onClose();

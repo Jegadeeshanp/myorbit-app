@@ -65,6 +65,9 @@ export const assetSchema = z.object({
   category: z.string().min(1),
   value: z.number().nonnegative('Asset value cannot be negative').finite(),
   invested: z.number().nonnegative('Invested amount cannot be negative').finite(),
+  accountId: z.string().optional(),
+  investmentType: z.enum(['lump_sum', 'sip']).optional(),
+  sipConfig: z.string().optional(), // JSON string (serialized by financeStore before sending)
 });
 
 // ── Liability ─────────────────────────────────────────────────────────────────
@@ -77,12 +80,13 @@ export const liabilitySchema = z.object({
   emisLeft: z.number().int().nonnegative(),
   totalRepaid: z.number().nonnegative(),
   nextDueDate: z.string().optional(),
+  repaymentAccountId: z.string().optional(),
 });
 
 // ── Budget ────────────────────────────────────────────────────────────────────
 export const budgetSchema = z.object({
   name: z.string().min(1).max(100),
   budget: z.number().int().positive('Budget must be a positive number'),
-  spent: z.number().int().nonnegative().optional(),
+  spent: z.number().nonnegative().optional(),
   category: z.string().max(500).optional(),
 });

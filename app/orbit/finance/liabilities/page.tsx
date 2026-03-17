@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays } from 'lucide-react';
 import Modal, { SectionLabel, inputCls } from '@/components/finance/Modal';
 import AddLiabilityModal from '@/components/finance/AddLiabilityModal';
@@ -33,27 +33,46 @@ function RecordPaymentModal({
   liability,
   open,
   onClose,
+  accounts,
 }: {
   liability: Liability | null;
   open: boolean;
   onClose: () => void;
+  accounts: { id: string; name: string; type?: string }[];
 }) {
   const { recordLiabilityPayment } = useFinance();
-  const [amount, setAmount] = useState('');
+  const [amount,     setAmount]     = useState('');
+  const [accountId,  setAccountId]  = useState('');
 
   const suggested = liability?.monthlyEmi ?? 0;
   const max       = liability?.outstanding ?? 0;
   const canSave   = Number(amount) > 0 && Number(amount) <= max;
 
+  // Pre-fill repayment account when modal opens
+  useEffect(() => {
+    if (liability) {
+      setAmount('');
+      setAccountId(liability.repaymentAccountId ?? '');
+    }
+  }, [liability?.id, open]);
+
+  function shortLabel(a: { name: string; type?: string }) {
+    const t = a.type;
+    const s = t === 'Credit Card' ? 'Credit' : t === 'Debit Card' ? 'Debit' : t ?? '';
+    return s ? a.name + ' – ' + s : a.name;
+  }
+
   const handleSave = () => {
     if (!liability || !canSave) return;
-    recordLiabilityPayment(liability.id, Number(amount));
+    recordLiabilityPayment(liability.id, Number(amount), accountId || undefined);
     toast(`Payment of ${fmt(Number(amount))} recorded`);
     setAmount('');
     onClose();
   };
 
   if (!liability) return null;
+
+  const selectedAcc = accounts.find(a => a.id === accountId);
 
   return (
     <Modal open={open} onClose={onClose} title="Record payment" subtitle={`${liability.name} · ${liability.lender}`}>
@@ -90,9 +109,33 @@ function RecordPaymentModal({
           </div>
         </div>
 
+        {/* Repayment account */}
+        {accounts.length > 0 && (
+          <div>
+            <SectionLabel>Debit from account</SectionLabel>
+            <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputCls}>
+              <option value="">— none / manual —</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{shortLabel(a)}</option>)}
+            </select>
+            {selectedAcc && (
+              <p className="mt-1.5 text-xs text-gray-400">
+                {fmt(Number(amount) || 0)} will be deducted from <span className="font-medium text-gray-600">{selectedAcc.name}</span>
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500 space-y-1">
           <div className="flex justify-between"><span>Outstanding before</span><span className="font-semibold text-rose-600">{fmt(max)}</span></div>
           <div className="flex justify-between"><span>After payment</span><span className="font-semibold text-emerald-600">{fmt(Math.max(0, max - Number(amount || 0)))}</span></div>
+          <div className="flex justify-between"><span>Next due date</span><span className="font-semibold text-gray-600">{
+            (() => {
+              if (!liability.nextDueDate) return '—';
+              const d = new Date(liability.nextDueDate);
+              d.setMonth(d.getMonth() + 1);
+              return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            })()
+          } (after payment)</span></div>
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
@@ -113,8 +156,7 @@ function RecordPaymentModal({
 export default function LiabilitiesPage() {
   const { state, addLiability, updateLiability, deleteLiability } = useFinance();
   const liabilities = state.liabilities;
-
-  if (state.loadState === 'loading') return <LiabilitiesSkeleton />;
+  const accountList = state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
 
   const [addOpen,     setAddOpen]     = useState(false);
   const [editTarget,  setEditTarget]  = useState<Liability | null>(null);
@@ -130,6 +172,8 @@ export default function LiabilitiesPage() {
   const repaidPct = summary.borrowed > 0
     ? Math.round((summary.repaid / summary.borrowed) * 100)
     : 0;
+
+  if (state.loadState === 'loading') return <LiabilitiesSkeleton />;
 
   return (
     <div className="space-y-6">
@@ -203,9 +247,18 @@ export default function LiabilitiesPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
-                {['Loan', 'Lender', 'Borrowed', 'Outstanding', 'Monthly EMI', 'EMIs Left', 'Next Due', 'Actions'].map(h => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap ${['Borrowed','Outstanding','Monthly EMI'].includes(h) ? 'text-right' : ''}`}>
-                    {h}
+                {[
+                  { label: 'Loan',       right: false },
+                  { label: 'Lender',     right: false },
+                  { label: 'Total Loan', right: true  },
+                  { label: 'Outstanding',right: true  },
+                  { label: 'EMI',        right: true  },
+                  { label: 'Left',       right: false },
+                  { label: 'Next Due',   right: false },
+                  { label: 'Actions',    right: false },
+                ].map(h => (
+                  <th key={h.label} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap ${h.right ? 'text-right' : ''}`}>
+                    {h.label}
                   </th>
                 ))}
               </tr>
@@ -300,6 +353,7 @@ export default function LiabilitiesPage() {
       <AddLiabilityModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
+        accounts={accountList}
         onSave={payload => { addLiability(payload); }}
       />
 
@@ -307,6 +361,7 @@ export default function LiabilitiesPage() {
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
         initial={editTarget ?? undefined}
+        accounts={accountList}
         onSave={payload => {
           if (!editTarget) return;
           updateLiability({ ...payload, id: editTarget.id });
@@ -317,6 +372,7 @@ export default function LiabilitiesPage() {
         liability={payTarget}
         open={!!payTarget}
         onClose={() => setPayTarget(null)}
+        accounts={accountList}
       />
     </div>
   );

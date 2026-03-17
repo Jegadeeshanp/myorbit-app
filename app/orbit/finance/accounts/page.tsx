@@ -26,9 +26,8 @@ export default function AccountsPage() {
   const { state, addAccount } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
 
-  if (state.loadState === 'loading') return <AccountsSkeleton />;
-
-  const { totalBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
+  // All hooks must be called before any early return (React rules of hooks)
+  const { totalBalance, liquidBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
     let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;
 
     state.accounts.forEach(a => {
@@ -39,13 +38,22 @@ export default function AccountsPage() {
       if (a.type === 'Debit Card')  debit  += a.balance;
     });
 
-    // Total balance = bank + wallet + cash + debit (no credit cards)
-    const totalBalance = bank + wallet + cash + debit;
-    const creditUsed   = Math.abs(Math.min(credit, 0));
+    const creditUsed    = Math.abs(Math.min(credit, 0));
+    // Liquid = Bank + Debit + Wallets + Cash (no credit)
+    const liquidBalance = bank + wallet + cash + debit;
+    // Total = liquid minus what's owed on credit cards
+    const totalBalance  = liquidBalance - creditUsed;
 
-    // Total expenses from all transactions
+    // Current-month expenses, excluding future-dated transactions (matches Transaction page "Spent")
+    const now2 = new Date();
+    const today2 = now2.toISOString().slice(0, 10);
     const totalExpenses = state.transactions
-      .filter(t => t.type === 'expense')
+      .filter(t => {
+        if (t.type !== 'expense') return false;
+        if (t.date > today2) return false; // exclude upcoming
+        const d = new Date(t.date);
+        return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear();
+      })
       .reduce((s, t) => s + Math.abs(t.amount), 0);
 
     const byType: Record<Account['type'], Account[]> = {
@@ -57,14 +65,16 @@ export default function AccountsPage() {
     };
     state.accounts.forEach(a => byType[a.type].push(a));
 
-    return { totalBalance, creditUsed, totalExpenses, byType };
+    return { totalBalance, liquidBalance, creditUsed, totalExpenses, byType };
   }, [state.accounts, state.transactions]);
 
   const metrics = [
-    { label: 'Balance',     value: fmt(totalBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'Bank + Wallets + Cash' },
-    { label: 'Credit Used', value: fmt(creditUsed),   icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Outstanding balance' },
-    { label: 'Expenses',    value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'All time recorded' },
+    { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'Bank + Wallets + Cash' },
+    { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Outstanding balance' },
+    { label: 'Spent',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month' },
   ];
+
+  if (state.loadState === 'loading') return <AccountsSkeleton />;
 
   return (
     <div className="space-y-6">
@@ -76,9 +86,10 @@ export default function AccountsPage() {
       } />
 
       {/* ── Primary balance card ── */}
-      <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
-        <p className="text-xs font-semibold uppercase tracking-widest text-white">Total Balance</p>
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
+        <p className="text-xs font-semibold uppercase tracking-wider text-white">Total Balance</p>
         <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
+        <p className="mt-1 text-xs text-white/80">Liquid assets minus credit used</p>
       </div>
 
       {/* ── 3 metric cards ── */}

@@ -8,7 +8,7 @@ import {
   ArrowUpRight, ArrowDownLeft, Stethoscope, GraduationCap,
   Plane, MoreHorizontal,
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
-  Smartphone, RefreshCw, Shield, Gift, Package,
+  Smartphone, RefreshCw, Shield, Gift, Package, PiggyBank,
   Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2, Clock,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
@@ -37,6 +37,10 @@ const EXPENSE_ICON_MAP: Record<string, React.ComponentType<any>> = {
   Education:     GraduationCap,
   Gifts:         Gift,
   Miscellaneous: Package,
+  Investment:    PiggyBank,
+  Loan:          Landmark,
+  'Opening Balance':    TrendingUp,
+  'Balance Adjustment': Wallet,
   // Legacy fallbacks
   Food:          Coffee,
   Bills:         FileText,
@@ -64,6 +68,10 @@ const CAT_COLORS: Record<string, { bg: string; text: string }> = {
   Education:     { bg: 'bg-indigo-100',  text: 'text-indigo-700' },
   Gifts:         { bg: 'bg-rose-100',    text: 'text-rose-700' },
   Miscellaneous: { bg: 'bg-gray-100',    text: 'text-gray-600' },
+  Investment:    { bg: 'bg-teal-100',    text: 'text-teal-700' },
+  Loan:          { bg: 'bg-orange-100',  text: 'text-orange-700' },
+  'Opening Balance':    { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  'Balance Adjustment': { bg: 'bg-gray-100',    text: 'text-gray-600' },
   // Income categories
   Salary:        { bg: 'bg-emerald-100', text: 'text-emerald-700' },
   Bonus:         { bg: 'bg-green-100',   text: 'text-green-700' },
@@ -132,6 +140,14 @@ const TAB_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: s
   Cash:   { icon: Banknote,       color: 'text-amber-600',   bg: 'bg-amber-50' },
 };
 
+
+const SHORT_ACCOUNT_TYPE: Record<string, string> = {
+  'Bank': 'Bank', 'Credit Card': 'Credit', 'Debit Card': 'Debit', 'Wallet': 'Wallet', 'Cash': 'Cash',
+};
+function accChip(account: { name: string; type: string }) {
+  const short = SHORT_ACCOUNT_TYPE[account.type] ?? account.type;
+  return account.name + ' · ' + short;
+}
 // ── Period options ─────────────────────────────────────────────────────────
 const PERIODS = [
   { label: 'This Week',   value: 'week' },
@@ -370,7 +386,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                         </span>
                         {account && (
                           <span className="rounded-full border border-gray-100 bg-white/70 px-2 py-0.5 text-xs text-gray-400">
-                            {account.name}
+                            {accChip(account)}
                           </span>
                         )}
                         <span className="text-xs text-blue-400">
@@ -449,7 +465,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
                             </span>
                             {account && (
                               <span className="rounded-full border border-gray-100 bg-gray-50 px-2 py-0.5 text-xs text-gray-400">
-                                {account.name}
+                                {accChip(account)}
                               </span>
                             )}
                             <span className="text-xs text-gray-400">
@@ -491,7 +507,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
         <AddExpenseModal
           open={!!editTarget}
           onClose={() => setEditTarget(null)}
-          accounts={state.accounts.map(a => ({ id: a.id, name: a.name }))}
+          accounts={state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }))}
           initial={editTarget}
           onSave={payload => { updateTransaction({ ...payload, id: editTarget.id }); setEditTarget(null); }}
         />
@@ -500,7 +516,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
         <AddIncomeModal
           open={!!editTarget}
           onClose={() => setEditTarget(null)}
-          accounts={state.accounts.map(a => ({ id: a.id, name: a.name }))}
+          accounts={state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }))}
           initial={editTarget}
           onSave={payload => { updateTransaction({ ...payload, id: editTarget.id }); setEditTarget(null); }}
         />

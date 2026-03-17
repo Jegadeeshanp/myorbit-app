@@ -17,7 +17,7 @@ export default function TransactionsPage() {
 
   if (state.loadState === 'loading') return <TransactionsSkeleton />;
 
-  const accountList = accounts.map(a => ({ id: a.id, name: a.name }));
+  const accountList = accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
 
   return (
     <div className="space-y-5">

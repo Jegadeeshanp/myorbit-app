@@ -21,11 +21,11 @@ function fmt(v: number) {
 export default function AssetsPage() {
   const { state, addAsset, updateAsset } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
-
-  if (state.loadState === 'loading') return <AssetsSkeleton />;
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');
+
+  const accountList = state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
 
   // Derive tabs dynamically from assets present in the store
   const availableTabs = useMemo(() => {
@@ -64,6 +64,8 @@ export default function AssetsPage() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
   }, [state.assets]);
+
+  if (state.loadState === 'loading') return <AssetsSkeleton />;
 
   return (
     <div className="space-y-5">
@@ -194,11 +196,12 @@ export default function AssetsPage() {
         </div>
       )}
 
-      <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} />
+      <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} accounts={accountList} />
       <AddAssetModal
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
         initial={editTarget ?? undefined}
+        accounts={accountList}
         onSave={payload => {
           if (!editTarget) return;
           updateAsset({ ...payload, id: editTarget.id });
