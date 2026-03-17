@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useMemo, useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard, Landmark, ArrowRightLeft,
   TrendingUp, CreditCard, Wallet, BarChart3,
-  Smartphone, Settings, LogOut, User,
+  Smartphone, Settings, User, ArrowLeft,
 } from 'lucide-react';
 
 const menu = [
@@ -22,7 +22,6 @@ const menu = [
 
 export default function FinanceSidebar() {
   const pathname = usePathname();
-  const router   = useRouter();
   const { data: session } = useSession();
   const installPromptRef = useRef<Event & { prompt: () => Promise<void> } | null>(null);
   const [installVisible, setInstallVisible] = useState(false);
@@ -44,11 +43,6 @@ export default function FinanceSidebar() {
     setInstallVisible(false);
   };
 
-  const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push('/signin');
-  };
-
   const active = useMemo(() => {
     if (!pathname) return '';
     const match = menu.find(item => item.href === pathname);
@@ -68,6 +62,15 @@ export default function FinanceSidebar() {
 
   return (
     <aside className="hidden md:flex sticky top-0 h-screen w-56 flex-none flex-col border-r border-white/40 bg-white/50 px-3 py-6 backdrop-blur overflow-y-auto">
+
+      {/* ── Back to My Orbit ─── */}
+      <Link
+        href="/orbit"
+        className="flex items-center gap-2 rounded-xl px-3 py-2 mb-3 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
+      >
+        <ArrowLeft className="h-4 w-4 flex-none" />
+        My Orbit
+      </Link>
 
       {/* ── Brand / section header ─── */}
       <div className="mb-6 px-3">
@@ -122,24 +125,14 @@ export default function FinanceSidebar() {
           </div>
         </div>
 
-        {/* Settings */}
+        {/* Finance Settings */}
         <Link
-          href="/orbit/settings"
+          href="/orbit/finance/settings"
           className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
         >
           <Settings className="h-4 w-4 flex-none text-gray-500" />
-          Settings
+          Finance Settings
         </Link>
-
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-rose-50 hover:text-rose-600"
-        >
-          <LogOut className="h-4 w-4 flex-none text-gray-500" />
-          Logout
-        </button>
 
       </div>
     </aside>

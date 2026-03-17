@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
-import { signOut, useSession } from 'next-auth/react';
-import { LayoutDashboard, Target, CheckCircle2, PauseCircle, ArrowLeft, Settings, LogOut, User } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { LayoutDashboard, Target, CheckCircle2, PauseCircle, ArrowLeft, Settings, User } from 'lucide-react';
 
 const menu = [
   { label: 'Overview',  href: '/orbit/goals',           Icon: LayoutDashboard },
@@ -15,7 +15,6 @@ const menu = [
 
 export default function GoalsSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session } = useSession();
 
   const active = useMemo(() => {
@@ -28,11 +27,6 @@ export default function GoalsSidebar() {
     }
     return '/orbit/goals';
   }, [pathname]);
-
-  const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push('/signin');
-  };
 
   const userName = session?.user?.name ?? 'User';
   const initials = userName
@@ -96,21 +90,12 @@ export default function GoalsSidebar() {
         </div>
 
         <Link
-          href="/orbit/settings"
+          href="/orbit/goals/settings"
           className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
         >
           <Settings className="h-4 w-4 flex-none text-gray-500" />
-          Settings
+          Goals Settings
         </Link>
-
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-rose-50 hover:text-rose-600"
-        >
-          <LogOut className="h-4 w-4 flex-none text-gray-500" />
-          Logout
-        </button>
       </div>
     </aside>
   );

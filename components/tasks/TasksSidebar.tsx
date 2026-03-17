@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import {
   Sun, Inbox, CalendarDays, CheckCircle2, Trash2,
-  Plus, ArrowLeft, Settings, LogOut, User, List,
+  Plus, ArrowLeft, Settings, User,
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
@@ -19,8 +18,6 @@ interface Props {
 }
 
 export default function TasksSidebar({ selected, onSelect, refreshKey }: Props) {
-  const router   = useRouter();
-  const pathname = usePathname();
   const { data: session } = useSession();
   const [lists, setLists]           = useState<TaskList[]>([]);
   const [counts, setCounts]         = useState({ today: 0, inbox: 0, next7: 0, completed: 0, trash: 0 });
@@ -65,11 +62,6 @@ export default function TasksSidebar({ selected, onSelect, refreshKey }: Props) 
     } catch {
       toast('Failed to create list', 'error');
     }
-  };
-
-  const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push('/signin');
   };
 
   const userName = session?.user?.name ?? 'User';
@@ -189,14 +181,10 @@ export default function TasksSidebar({ selected, onSelect, refreshKey }: Props) 
             <p className="truncate text-sm font-semibold text-gray-900 leading-none">{userName}</p>
           </div>
         </div>
-        <Link href="/orbit/settings" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+        <Link href="/orbit/tasks/settings" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
           <Settings className="h-4 w-4 flex-none text-gray-500" />
-          Settings
+          Tasks Settings
         </Link>
-        <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-rose-50 hover:text-rose-600">
-          <LogOut className="h-4 w-4 flex-none text-gray-500" />
-          Logout
-        </button>
       </div>
     </aside>
   );
