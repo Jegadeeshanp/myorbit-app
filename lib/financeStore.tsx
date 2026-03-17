@@ -171,8 +171,10 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
       dispatch({ type: 'addTransaction', payload: created });
-      // Automatically update linked account balance
-      if (t.accountId && (t.type === 'income' || t.type === 'expense')) {
+      // Update linked account balance only if transaction date is today or in the past
+      // Future-dated recurring transactions appear in the list but don't affect balance yet
+      const today = new Date().toISOString().slice(0, 10);
+      if (t.accountId && (t.type === 'income' || t.type === 'expense') && created.date <= today) {
         const account = state.accounts.find(a => a.id === t.accountId);
         if (account) {
           try {
