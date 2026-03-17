@@ -47,12 +47,14 @@ const STEPS = [
 
 const ACCOUNT_TYPES = ['Bank', 'Credit Card', 'Cash', 'Debit Card', 'Wallet'] as const;
 
-export default function OnboardingWizard() {
+export default function OnboardingWizard({ onDismiss }: { onDismiss?: () => void }) {
   const router = useRouter();
   const { addAccount } = useFinance();
   const [step,      setStep]      = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const [loading,   setLoading]   = useState(false);
+
+  const dismiss = () => { dismiss(); onDismiss?.(); };
 
   // Account form state
   const [acctName,    setAcctName]    = useState('');
@@ -85,7 +87,7 @@ export default function OnboardingWizard() {
       return;
     }
     if (step === STEPS.length - 1) {
-      setDismissed(true);
+      dismiss();
       router.push('/orbit/finance/accounts');
       return;
     }

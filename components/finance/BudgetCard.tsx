@@ -52,6 +52,14 @@ export default function BudgetCard({ budget, onEdit }: { budget: BudgetCategory;
         </div>
       </div>
 
+      {budget.category && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {budget.category.split(',').map(c => c.trim()).filter(Boolean).map(c => (
+            <span key={c} className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">{c}</span>
+          ))}
+        </div>
+      )}
+
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
         <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${displayWidth}%` }} />
       </div>

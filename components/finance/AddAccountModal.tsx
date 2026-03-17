@@ -47,7 +47,7 @@ export default function AddAccountModal({ open, onClose, onSave }: AddAccountPro
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account name</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="HDFC Savings" className={inputCls} />
+              <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="HDFC Savings" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Account type</label>
