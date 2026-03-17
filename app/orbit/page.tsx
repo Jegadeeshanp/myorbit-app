@@ -27,7 +27,8 @@ const MODULES = [
     title: 'Goals',
     description: 'Set and track personal targets with progress tracking.',
     icon: <Target className="h-6 w-6" />,
-    enabled: false,
+    href: '/orbit/goals',
+    enabled: true,
     cta: 'Start Achieving →',
   },
   {
@@ -51,7 +52,8 @@ const MODULES = [
     title: 'To-Do',
     description: 'Manage tasks, projects, and quick notes.',
     icon: <ClipboardList className="h-6 w-6" />,
-    enabled: false,
+    href: '/orbit/tasks',
+    enabled: true,
     cta: 'Get Things Done →',
   },
   {

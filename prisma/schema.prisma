@@ -25,6 +25,12 @@ model User {
   sessions            Session[]
   passwordResetTokens PasswordResetToken[]
   preferences         UserPreferences?
+  goals               Goal[]
+  taskLists           TaskList[]
+  tasks               Task[]
+  habits              Habit[]
+  pomodoroSessions    PomodoroSession[]
+  countdowns          Countdown[]
 }
 
 model Session {
@@ -144,4 +150,167 @@ model UserPreferences {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Goals Module ──────────────────────────────────────────────────────────
+
+model Goal {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  category  String   @default("Personal") // Finance | Health | Career | Learning | Personal | Other
+  why       String?
+  metric    String?
+  deadline  String?  // ISO date YYYY-MM-DD
+  status    String   @default("active") // active | completed | paused
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones GoalMilestone[]
+  processes  GoalProcess[]
+
+  @@index([userId])
+}
+
+model GoalMilestone {
+  id          String   @id @default(cuid())
+  goalId      String
+  userId      String
+  title       String
+  horizon     String   @default("1m") // 1m | 3m | 6m
+  isCompleted Boolean  @default(false)
+  dueDate     String?
+  createdAt   DateTime @default(now())
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+}
+
+model GoalProcess {
+  id        String   @id @default(cuid())
+  goalId    String
+  userId    String
+  title     String
+  frequency String   @default("daily") // daily | weekly | monthly
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+}
+
+// ── Tasks Module ──────────────────────────────────────────────────────────
+
+model TaskList {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  emoji     String?
+  color     String?  @default("#3B82F6")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@index([userId])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  listId      String?
+  title       String
+  notes       String?
+  status      String    @default("active") // active | completed | wont_do
+  priority    String    @default("none")   // none | low | medium | high
+  dueDate     String?   // YYYY-MM-DD
+  dueTime     String?   // HH:MM
+  tags        String    @default("[]")     // JSON array of strings
+  sortOrder   Int       @default(0)
+  completedAt DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list        TaskList? @relation(fields: [listId], references: [id], onDelete: SetNull)
+  subtasks    TaskSubtask[]
+
+  @@index([userId])
+}
+
+model TaskSubtask {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  title     String
+  isDone    Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Habit {
+  id           String     @id @default(cuid())
+  userId       String
+  name         String
+  color        String?    @default("#3B82F6")
+  iconEmoji    String?    @default("✅")
+  goalPerDay   Int        @default(1)
+  isCountBased Boolean    @default(false)
+  daysOfWeek   String     @default("[1,2,3,4,5,6,7]") // JSON array
+  sortOrder    Int        @default(0)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs         HabitLog[]
+
+  @@index([userId])
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  userId    String
+  logDate   String   // YYYY-MM-DD
+  value     Int      @default(1)
+  createdAt DateTime @default(now())
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, logDate])
+  @@index([habitId])
+}
+
+model PomodoroSession {
+  id           String    @id @default(cuid())
+  userId       String
+  taskId       String?
+  taskTitle    String?
+  mode         String    @default("pomo") // pomo | stopwatch
+  startedAt    DateTime
+  endedAt      DateTime?
+  durationSecs Int?
+  wasCompleted Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Countdown {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  iconEmoji  String?  @default("🎯")
+  targetDate String   // YYYY-MM-DD
+  direction  String   @default("until") // until | since
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

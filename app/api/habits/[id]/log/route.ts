@@ -1,0 +1,44 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireUserId } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+export const runtime = 'nodejs';
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const userId = await requireUserId();
+    const habit = await prisma.habit.findFirst({ where: { id: id, userId } });
+    if (!habit) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const body = await req.json();
+    const logDate = body.logDate || new Date().toISOString().split('T')[0];
+    const value = body.value || 1;
+    const log = await prisma.habitLog.upsert({
+      where: { habitId_logDate: { habitId: id, logDate } },
+      create: { habitId: id, userId, logDate, value },
+      update: { value },
+    });
+    return NextResponse.json(log, { status: 201 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const userId = await requireUserId();
+    const habit = await prisma.habit.findFirst({ where: { id: id, userId } });
+    if (!habit) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const { searchParams } = new URL(req.url);
+    const logDate = searchParams.get('logDate') || new Date().toISOString().split('T')[0];
+    await prisma.habitLog.deleteMany({
+      where: { habitId: id, logDate },
+    });
+    return NextResponse.json({ deleted: true });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
