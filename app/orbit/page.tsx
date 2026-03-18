@@ -52,7 +52,7 @@ const MODULES = [
   {
     id: 'todo',
     title: 'To-Do',
-    description: 'Manage tasks, projects, and quick notes.',
+    description: 'Manage tasks, projects, and quick notes. Lists, subtasks & calendar.',
     icon: <ClipboardList className="h-6 w-6" />,
     href: '/orbit/tasks',
     enabled: true,

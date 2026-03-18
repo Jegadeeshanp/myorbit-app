@@ -183,7 +183,7 @@ export default function HabitGrid() {
             </div>
           </div>
 
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
             {habits.map(habit => (
               <div key={habit.id} className="group flex items-center px-4 py-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">

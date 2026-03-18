@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Sun, Inbox, CalendarDays, CheckCircle2, Trash2, Timer, Activity, List, Menu, X } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+  Plus, Sun, Inbox, CalendarDays, CheckCircle2, Trash2,
+  Menu, SortAsc, MoreHorizontal, ChevronRight,
+} from 'lucide-react';
 import TasksSidebar from '@/components/tasks/TasksSidebar';
 import TaskItem from '@/components/tasks/TaskItem';
 import TaskDetail from '@/components/tasks/TaskDetail';
-import PomodoroTimer from '@/components/tasks/PomodoroTimer';
-import HabitGrid from '@/components/tasks/HabitGrid';
-import CountdownCards from '@/components/tasks/CountdownCard';
+import TaskCalendar from '@/components/tasks/TaskCalendar';
 import { toast } from '@/components/Toast';
 
 type Subtask  = { id: string; title: string; isDone: boolean };
@@ -19,6 +20,8 @@ type Task = {
   list?: { id: string; name: string; emoji?: string } | null;
 };
 
+type TaskGroup = { label: string; tasks: Task[] };
+
 const SMART_LABELS: Record<string, string> = {
   today: 'Today',
   inbox: 'Inbox',
@@ -27,21 +30,8 @@ const SMART_LABELS: Record<string, string> = {
   trash: 'Trash',
 };
 
-const SMART_ICONS: Record<string, React.ReactNode> = {
-  today:     <Sun className="h-5 w-5 text-amber-500" />,
-  inbox:     <Inbox className="h-5 w-5 text-blue-500" />,
-  next7:     <CalendarDays className="h-5 w-5 text-indigo-500" />,
-  completed: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
-  trash:     <Trash2 className="h-5 w-5 text-rose-400" />,
-};
-
-const TOOL_TABS = [
-  { key: 'pomodoro',   label: 'Pomodoro', Icon: Timer },
-  { key: 'habits',     label: 'Habits',   Icon: Activity },
-  { key: 'countdowns', label: 'Countdowns', Icon: CalendarDays },
-];
-
 export default function TasksPage() {
+  const [view, setView]             = useState<'tasks' | 'calendar'>('tasks');
   const [selected, setSelected]     = useState('today');
   const [tasks, setTasks]           = useState<Task[]>([]);
   const [lists, setLists]           = useState<TaskList[]>([]);
@@ -50,8 +40,8 @@ export default function TasksPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingTask, setAddingTask] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [toolTab, setToolTab]       = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchTasks = useCallback(() => {
@@ -84,14 +74,14 @@ export default function TasksPage() {
     setAddingTask(true);
     try {
       const listId = selected.startsWith('list:') ? selected.replace('list:', '') : null;
-      const today  = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: newTaskTitle.trim(),
           listId: listId || null,
-          dueDate: selected === 'today' ? today : null,
+          dueDate: selected === 'today' ? todayStr : null,
         }),
       });
       if (!res.ok) throw new Error();
@@ -157,12 +147,42 @@ export default function TasksPage() {
     setActiveTask(null);
   };
 
+  const toggleGroup = (label: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
   const isTrash     = selected === 'trash';
   const isCompleted = selected === 'completed';
-  const today       = new Date().toISOString().split('T')[0];
+  const todayStr    = new Date().toISOString().split('T')[0];
 
-  const overdueTasks = tasks.filter(t => t.dueDate && t.dueDate < today && t.status === 'active' && t.isActive);
-  const normalTasks  = tasks.filter(t => !overdueTasks.includes(t));
+  const groupedTasks = useMemo((): TaskGroup[] => {
+    if (isTrash || isCompleted || selected === 'inbox') {
+      const label = isTrash ? 'Trash' : isCompleted ? 'Completed' : 'Inbox';
+      return [{ label, tasks }];
+    }
+    const overdue: Task[]   = [];
+    const todayTasks: Task[] = [];
+    const upcoming: Task[]  = [];
+    const noDate: Task[]    = [];
+    for (const t of tasks) {
+      if (!t.dueDate) { noDate.push(t); }
+      else if (t.dueDate < todayStr) { overdue.push(t); }
+      else if (t.dueDate === todayStr) { todayTasks.push(t); }
+      else { upcoming.push(t); }
+    }
+    const groups: TaskGroup[] = [];
+    if (overdue.length)    groups.push({ label: 'Overdue', tasks: overdue });
+    if (todayTasks.length) groups.push({ label: `Today ${todayTasks.length}`, tasks: todayTasks });
+    if (upcoming.length)   groups.push({ label: 'Upcoming', tasks: upcoming });
+    if (noDate.length)     groups.push({ label: 'No Date', tasks: noDate });
+    if (groups.length === 0) groups.push({ label: 'Tasks', tasks: [] });
+    return groups;
+  }, [tasks, isTrash, isCompleted, selected, todayStr]);
 
   const getListName = (s: string) => {
     if (s.startsWith('list:')) {
@@ -176,158 +196,150 @@ export default function TasksPage() {
   const listLabel = getListName(selected);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#1f1f1f]">
       {/* Desktop sidebar */}
-      <TasksSidebar selected={selected} onSelect={s => { setSelected(s); setToolTab(null); }} refreshKey={refreshKey} />
+      <div className="hidden md:flex">
+        <TasksSidebar
+          selected={selected}
+          onSelect={s => setSelected(s)}
+          refreshKey={refreshKey}
+          view={view}
+          onViewChange={setView}
+        />
+      </div>
 
       {/* Mobile sidebar overlay */}
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileSidebarOpen(false)} />
-          <div className="relative z-10 w-72 h-full bg-white shadow-2xl overflow-y-auto">
-            <TasksSidebar selected={selected} onSelect={s => { setSelected(s); setToolTab(null); setMobileSidebarOpen(false); }} refreshKey={refreshKey} />
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="relative z-10 h-full overflow-y-auto">
+            <TasksSidebar
+              selected={selected}
+              onSelect={s => { setSelected(s); setMobileSidebarOpen(false); }}
+              refreshKey={refreshKey}
+              view={view}
+              onViewChange={v => { setView(v); setMobileSidebarOpen(false); }}
+            />
           </div>
         </div>
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        {/* Top bar: title + MyOrbit only */}
-        <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-3 flex-none">
-          <button
-            onClick={() => setMobileSidebarOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 md:hidden"
-          >
-            <Menu className="h-5 w-5 text-gray-600" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              {SMART_ICONS[selected]}
-              <h1 className="truncate text-xl font-semibold text-gray-900">{listLabel}</h1>
+      <main className="flex-1 flex flex-col overflow-hidden border-l border-white/5 bg-[#252525]">
+        {view === 'calendar' ? (
+          <TaskCalendar tasks={tasks} />
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-white/5 flex-none">
+              <button
+                onClick={() => setMobileSidebarOpen(true)}
+                className="md:hidden h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <h1 className="text-xl font-bold text-white flex-1">{listLabel}</h1>
+              <button className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10">
+                <SortAsc className="h-4 w-4" />
+              </button>
+              <button className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10">
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
             </div>
-            <p className="text-sm text-gray-400">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</p>
-          </div>
-          <a href="/orbit"
-            className="inline-flex flex-none items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 text-white text-sm font-bold leading-none shadow-sm">⭑</div>
-            <span className="text-base font-semibold text-gray-800 hidden sm:inline">MyOrbit</span>
-          </a>
-        </div>
 
-        {/* Tool tabs — below header */}
-        <div className="flex gap-1.5 border-b border-gray-100 bg-white px-4 py-2 flex-none overflow-x-auto">
-          {TOOL_TABS.map(({ key, label, Icon }) => (
-            <button key={key}
-              onClick={() => setToolTab(toolTab === key ? null : key)}
-              className={`flex flex-none items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition ${toolTab === key ? 'bg-sky-50 text-sky-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            >
-              <Icon className={`h-3.5 w-3.5 ${toolTab === key ? 'text-sky-600' : ''}`} />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content area */}
-        <div className="flex-1 overflow-y-auto">
-          {toolTab ? (
-            <div className="max-w-2xl mx-auto px-4 py-6">
-              {toolTab === 'pomodoro'   && <PomodoroTimer />}
-              {toolTab === 'habits'     && <HabitGrid />}
-              {toolTab === 'countdowns' && <CountdownCards />}
-            </div>
-          ) : (
-            <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-              {/* Inline add task */}
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {/* Quick add task */}
               {!isTrash && !isCompleted && (
-                <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                  <div className="h-5 w-5 rounded-full border-2 border-dashed border-blue-300 flex-none" />
+                <div
+                  className="flex items-center gap-3 mb-4 px-3 py-2.5 rounded-lg hover:bg-white/5 cursor-text group"
+                  onClick={() => inputRef.current?.focus()}
+                >
+                  <Plus className="h-5 w-5 text-gray-600 group-hover:text-sky-400 transition flex-none" />
                   <input
                     ref={inputRef}
-                    className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 focus:outline-none"
-                    placeholder="Add a task... (press Enter)"
+                    className="flex-1 bg-transparent text-sm text-gray-400 placeholder-gray-600 focus:outline-none focus:placeholder-gray-400"
+                    placeholder="Add task"
                     value={newTaskTitle}
                     onChange={e => setNewTaskTitle(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddTask()}
                     disabled={addingTask}
                   />
-                  {newTaskTitle.trim() && (
-                    <button
-                      onClick={handleAddTask}
-                      disabled={addingTask}
-                      className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
               )}
 
               {/* Loading */}
               {loading ? (
-                <div className="space-y-2">
-                  {[1,2,3,4,5].map(i => (
-                    <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-3 animate-pulse">
-                      <div className="h-5 w-5 rounded-full bg-gray-200 flex-none" />
-                      <div className="h-4 flex-1 rounded bg-gray-200" />
+                <div className="space-y-1">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
+                      <div className="h-5 w-5 rounded-full bg-white/10 flex-none" />
+                      <div className="h-4 flex-1 rounded bg-white/10" />
                     </div>
                   ))}
                 </div>
-              ) : tasks.length === 0 ? (
+              ) : tasks.length === 0 && !loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
-                    {SMART_ICONS[selected] || <List className="h-8 w-8 text-blue-300" />}
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5">
+                    {selected === 'today' ? (
+                      <Sun className="h-8 w-8 text-amber-400" />
+                    ) : selected === 'inbox' ? (
+                      <Inbox className="h-8 w-8 text-blue-400" />
+                    ) : selected === 'trash' ? (
+                      <Trash2 className="h-8 w-8 text-gray-500" />
+                    ) : selected === 'completed' ? (
+                      <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                    ) : (
+                      <CalendarDays className="h-8 w-8 text-indigo-400" />
+                    )}
                   </div>
-                  <p className="font-semibold text-gray-900">No tasks here</p>
+                  <p className="font-semibold text-gray-300">No tasks here</p>
                   <p className="text-sm text-gray-500 mt-1">
                     {isTrash ? 'Trash is empty' : isCompleted ? 'No completed tasks yet' : 'Add your first task above'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {/* Overdue section */}
-                  {overdueTasks.length > 0 && !isTrash && !isCompleted && (
-                    <div className="mb-3">
-                      <p className="text-xs font-semibold text-rose-500 uppercase tracking-wide px-3 mb-1">
-                        Overdue ({overdueTasks.length})
-                      </p>
-                      <div className="rounded-2xl border border-rose-100 bg-rose-50/50 overflow-hidden">
-                        {overdueTasks.map(task => (
-                          <TaskItem
-                            key={task.id}
-                            task={task}
-                            onComplete={handleComplete}
-                            onDelete={handleDelete}
-                            onClick={() => setActiveTask(task)}
-                          />
-                        ))}
-                      </div>
+                <div className="space-y-4">
+                  {groupedTasks.map(group => (
+                    <div key={group.label}>
+                      <button
+                        onClick={() => toggleGroup(group.label)}
+                        className="flex items-center gap-2 mb-1.5 w-full text-left"
+                      >
+                        <ChevronRight
+                          className={`h-4 w-4 text-gray-500 transition-transform ${
+                            !collapsedGroups.has(group.label) ? 'rotate-90' : ''
+                          }`}
+                        />
+                        <span className="text-sm font-semibold text-gray-300">{group.label}</span>
+                        <span className="text-sm text-gray-500 ml-1">{group.tasks.length}</span>
+                      </button>
+                      {!collapsedGroups.has(group.label) && (
+                        <div className="space-y-0.5">
+                          {group.tasks.map(task => (
+                            <TaskItem
+                              key={task.id}
+                              task={task}
+                              onComplete={!isTrash && !isCompleted ? handleComplete : undefined}
+                              onRestore={isTrash ? handleRestore : undefined}
+                              onDelete={isTrash ? handleDelete : !isCompleted ? handleDelete : undefined}
+                              onClick={() => setActiveTask(task)}
+                              showTrashActions={isTrash}
+                              isActive={activeTask?.id === task.id}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Main task list */}
-                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    {normalTasks.map(task => (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        onComplete={!isTrash && !isCompleted ? handleComplete : undefined}
-                        onRestore={isTrash ? handleRestore : undefined}
-                        onDelete={isTrash ? handleDelete : !isCompleted ? handleDelete : undefined}
-                        onClick={() => setActiveTask(task)}
-                        showTrashActions={isTrash}
-                      />
-                    ))}
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </main>
 
-      {/* Task detail panel */}
+      {/* Right panel — task detail */}
       {activeTask && (
         <TaskDetail
           task={activeTask}
