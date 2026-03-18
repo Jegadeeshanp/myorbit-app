@@ -10,7 +10,7 @@ import {
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
   Smartphone, RefreshCw, Shield, Gift, Package, PiggyBank,
   Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2, Clock,
-  Plus, SlidersHorizontal,
+  Plus,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
@@ -234,6 +234,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   const [editTarget, setEditTarget]       = useState<Transaction | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [upcomingOpen, setUpcomingOpen] = useState(true);
 
   // Today's date string for upcoming vs past split
   const today = new Date().toISOString().slice(0, 10);
@@ -358,16 +359,23 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
       {/* ── Row 1: Search (left) | Add + Filter (right) ── */}
       <div className="flex items-center gap-2">
-        {/* Search — fixed width, left-aligned */}
-        <div className="relative w-44 sm:w-64 flex-none">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search transactions…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
-          />
-        </div>
+        {/* Search — icon only on mobile, full input on sm+ */}
+        <>
+          {/* Mobile: icon only */}
+          <button className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
+            <Search className="h-4 w-4" />
+          </button>
+          {/* Desktop: full input */}
+          <div className="relative hidden sm:flex w-64 flex-none">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search transactions…"
+              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
+            />
+          </div>
+        </>
 
         {/* Spacer pushes buttons to the right */}
         <div className="flex-1" />
@@ -386,8 +394,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             onClick={() => setDropdown(o => !o)}
             className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
-            <SlidersHorizontal className="h-3.5 w-3.5 text-gray-400" />
-            <span className="hidden sm:inline">{selectedPeriodLabel}</span>
+            <span className="inline text-xs">{selectedPeriodLabel}</span>
             <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           {dropdownOpen && (
@@ -434,55 +441,63 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
       {/* ── Upcoming transactions ── */}
       {filteredUpcoming.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-blue-50 shadow-sm">
-          <div className="flex items-center gap-2 border-b border-blue-100 px-5 py-3">
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+          {/* Collapsible header */}
+          <button
+            onClick={() => setUpcomingOpen(v => !v)}
+            className="w-full flex items-center gap-2.5 px-5 py-3 border-b border-blue-100/60 text-left hover:bg-blue-50/40 transition"
+          >
+            <ChevronRight className={`h-3.5 w-3.5 flex-none text-blue-400 transition-transform duration-150 ${upcomingOpen ? 'rotate-90' : ''}`} />
             <Clock className="h-3.5 w-3.5 text-blue-500" />
             <p className="text-xs font-semibold text-blue-700">Upcoming</p>
             <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600">
               {filteredUpcoming.length}
             </span>
-          </div>
-          <div className="divide-y divide-blue-50">
-            {filteredUpcoming.map(tx => {
-              const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-              const isExp    = tx.type === 'expense';
-              const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
-              const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-              return (
-                <div key={tx.id} className="group transition hover:bg-blue-50/80">
-                  {/* Mobile */}
-                  <div className="flex sm:hidden items-center gap-3 px-4 py-3">
-                    <TxIcon tx={tx} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
-                      <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
-                        {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
-                        <span className="text-[11px] text-blue-400">{dateStr}</span>
+          </button>
+
+          {upcomingOpen && (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
+              {filteredUpcoming.map(tx => {
+                const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+                const isExp    = tx.type === 'expense';
+                const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+                const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                return (
+                  <div key={tx.id} className="group transition hover:bg-blue-50/30">
+                    {/* Mobile */}
+                    <div className="flex sm:hidden items-center gap-3 px-4 py-3">
+                      <TxIcon tx={tx} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{tx.description}</p>
+                        <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                          {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
+                          <span className="text-[11px] text-blue-400">{dateStr}</span>
+                        </div>
                       </div>
-                    </div>
-                    <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                      {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
-                    </p>
-                    <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
-                  </div>
-                  {/* Desktop */}
-                  <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 px-5 py-3">
-                    <span className="text-xs text-blue-400 whitespace-nowrap">{dateStr}</span>
-                    <span className="truncate text-sm font-medium text-gray-900">{tx.description}</span>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
-                    <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
-                    <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                      {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
-                    </span>
-                    <div className="flex justify-end">
+                      <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
+                        {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                      </p>
                       <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
                     </div>
+                    {/* Desktop */}
+                    <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 px-5 py-3">
+                      <span className="text-xs text-blue-400 whitespace-nowrap">{dateStr}</span>
+                      <span className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{tx.description}</span>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                      <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
+                      <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
+                        {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                      </span>
+                      <div className="flex justify-end">
+                        <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -543,7 +558,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
               </button>
 
               {!isCollapsed && (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
+              <div className="divide-y divide-gray-50 dark:divide-gray-800/40">
                 {group.transactions.map(tx => {
                   const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
                   const isExp    = tx.type === 'expense';

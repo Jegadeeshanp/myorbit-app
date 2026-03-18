@@ -25,7 +25,11 @@ export default function BudgetPage() {
 
       {/* Search (left) + Add Budget (right) */}
       <div className="flex items-center gap-3">
-        <div className="relative w-44 sm:w-64 flex-none">
+        {/* Search — icon only on mobile, full input on sm+ */}
+        <button className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
+          <Search className="h-4 w-4" />
+        </button>
+        <div className="relative hidden sm:flex w-64 flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
             value={search}

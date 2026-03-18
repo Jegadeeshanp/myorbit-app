@@ -20,7 +20,7 @@ const MORE = [
   { label: 'Accounts',    href: '/orbit/finance/accounts',    Icon: Landmark },
   { label: 'Budget',      href: '/orbit/finance/budget',      Icon: Wallet },
   { label: 'Liabilities', href: '/orbit/finance/liabilities', Icon: CreditCard },
-  { label: 'Insights',    href: '/orbit/finance/insights',    Icon: BarChart3 },
+  { label: 'Vitals',    href: '/orbit/finance/vitals',    Icon: BarChart3 },
 ];
 
 export default function MobileNav() {

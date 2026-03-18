@@ -156,29 +156,28 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
           const pnl  = asset.value - asset.invested;
 
           return (
-            <div key={asset.id} className="flex items-center gap-3 px-4 py-3">
-              {/* Col 1: name + category */}
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-900">{asset.name}</p>
-                <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.tagBg} ${cfg.tagText}`}>
-                  <Icon className="h-2.5 w-2.5" />
-                  {asset.category}
-                </span>
+            <div key={asset.id} className="px-4 py-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 leading-snug">{asset.name}</p>
+                  <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.tagBg} ${cfg.tagText}`}>
+                    <Icon className="h-2.5 w-2.5" />
+                    {asset.category}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 flex-none">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-900">{fmt(asset.value)}</p>
+                    <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {pnl >= 0 ? '+' : ''}{fmt(pnl)}
+                    </p>
+                  </div>
+                  <CardMenu
+                    onEdit={onEdit ? () => onEdit(asset) : undefined}
+                    onDelete={() => setConfirmTarget(asset)}
+                  />
+                </div>
               </div>
-
-              {/* Col 2: current value + P&L */}
-              <div className="text-right flex-none">
-                <p className="text-sm font-semibold text-gray-900">{fmt(asset.value)}</p>
-                <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {pnl >= 0 ? '+' : ''}{fmt(pnl)}
-                </p>
-              </div>
-
-              {/* Col 3: dots menu */}
-              <CardMenu
-                onEdit={onEdit ? () => onEdit(asset) : undefined}
-                onDelete={() => setConfirmTarget(asset)}
-              />
             </div>
           );
         })}

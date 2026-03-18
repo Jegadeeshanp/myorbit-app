@@ -288,7 +288,11 @@ export default function LiabilitiesPage() {
 
       {/* ── Search (left) + Add liability (right) ── */}
       <div className="flex items-center gap-3">
-        <div className="relative w-44 sm:w-64 flex-none">
+        {/* Search — icon only on mobile, full input on sm+ */}
+        <button className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
+          <Search className="h-4 w-4" />
+        </button>
+        <div className="relative hidden sm:flex w-64 flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
@@ -315,7 +319,38 @@ export default function LiabilitiesPage() {
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <>
+        {/* Mobile card list */}
+        <div className="sm:hidden rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100 overflow-hidden">
+          {filteredLiabilities.map(l => (
+            <div key={l.id} className="flex items-center gap-3 px-4 py-3.5">
+              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-rose-50">
+                <CreditCard className="h-4 w-4 text-rose-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 leading-snug">{l.name}</p>
+                {l.lender && <p className="text-xs text-gray-400 mt-0.5">{l.lender}</p>}
+              </div>
+              <div className="text-right flex-none">
+                <p className="text-sm font-bold text-rose-600">{fmt(l.outstanding)}</p>
+                <p className="text-xs text-gray-400">{fmt(l.monthlyEmi)}/mo</p>
+              </div>
+              <LiabilityDotsMenu
+                onPay={() => setPayTarget(l)}
+                onEdit={() => setEditTarget(l)}
+                onDelete={() => { deleteLiability(l.id); toast('Liability removed'); }}
+              />
+            </div>
+          ))}
+          {/* Mobile footer */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50/60">
+            <p className="text-xs font-semibold text-gray-500">{liabilities.length} loan{liabilities.length !== 1 ? 's' : ''}</p>
+            <p className="text-sm font-bold text-rose-600">{fmt(summary.outstanding)}</p>
+          </div>
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
@@ -398,6 +433,7 @@ export default function LiabilitiesPage() {
             </tfoot>
           </table>
         </div>
+        </>
       )}
 
       {/* ── Modals ── */}
