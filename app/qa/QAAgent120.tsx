@@ -380,7 +380,7 @@ export default function QAAgent120() {
     upd(12, "running", "");
     {
       const t = Date.now();
-      const r = await req("/orbit/money/accounts", {}, "omit");
+      const r = await req("/orbit/finance/accounts", {}, "omit");
       const [s, d] = (r.status === 200 || r.status === 302 || r.status === 307)
         ? p(`Auth guard active — HTTP ${r.status} ✓`)
         : f(`HTTP ${r.status}`);
@@ -544,7 +544,7 @@ export default function QAAgent120() {
     upd(34, "running", "");
     {
       const t = Date.now();
-      const r = await req("/orbit/money/accounts");
+      const r = await req("/orbit/finance/accounts");
       const [s, d] = r.status === 200 ? p("Accessible with session ✓") : w(`HTTP ${r.status}`);
       upd(34, s, d, Date.now() - t);
     }
@@ -897,7 +897,7 @@ export default function QAAgent120() {
     setPhase("Phase G — Security");
 
     upd(111, "running", "");
-    { const r = await req("/orbit/money/accounts", {}, "omit"); upd(111, ...((r.status === 200 || r.status === 302 || r.status === 307) ? p(`Auth guard — HTTP ${r.status} ✓`) : f(`HTTP ${r.status}`))); }
+    { const r = await req("/orbit/finance/accounts", {}, "omit"); upd(111, ...((r.status === 200 || r.status === 302 || r.status === 307) ? p(`Auth guard — HTTP ${r.status} ✓`) : f(`HTTP ${r.status}`))); }
 
     for (const [id, path] of [
       [112, "/api/accounts"], [113, "/api/assets"], [114, "/api/liabilities"],

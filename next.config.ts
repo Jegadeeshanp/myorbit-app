@@ -40,17 +40,6 @@ const nextConfig: NextConfig = {
   // Prevent Prisma and bcrypt from being bundled for Edge/browser
   serverExternalPackages: ['@prisma/client', 'prisma', 'bcryptjs'],
 
-  async redirects() {
-    return [
-      { source: '/orbit/finance', destination: '/orbit/money', permanent: true },
-      { source: '/orbit/finance/:path*', destination: '/orbit/money/:path*', permanent: true },
-      { source: '/orbit/health', destination: '/orbit/body', permanent: true },
-      { source: '/orbit/health/:path*', destination: '/orbit/body/:path*', permanent: true },
-      { source: '/orbit/insights', destination: '/orbit/reflect', permanent: true },
-      { source: '/orbit/insights/:path*', destination: '/orbit/reflect/:path*', permanent: true },
-    ];
-  },
-
   async headers() {
     return [
       {

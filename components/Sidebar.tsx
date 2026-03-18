@@ -16,12 +16,12 @@ export default function Sidebar() {
 
   const navItems: NavItem[] = [
     { name: 'Dashboard', icon: <IconDashboard className="w-6 h-6" />, href: '/orbit' },
-    { name: 'Money', icon: <IconDashboard className="w-6 h-6" />, href: '/orbit/money' },
-    { name: 'Accounts', icon: <IconAccounts className="w-6 h-6" />, href: '/orbit/money/accounts' },
-    { name: 'Transactions', icon: <IconExpenses className="w-6 h-6" />, href: '/orbit/money/transactions' },
-    { name: 'Investments', icon: <IconInvestments className="w-6 h-6" />, href: '/orbit/money/investments' },
-    { name: 'Budgets', icon: <IconBudgets className="w-6 h-6" />, href: '/orbit/money/budgets' },
-    { name: 'Liabilities', icon: <IconLiabilities className="w-6 h-6" />, href: '/orbit/money/liabilities' },
+    { name: 'Finance', icon: <IconDashboard className="w-6 h-6" />, href: '/orbit/finance' },
+    { name: 'Accounts', icon: <IconAccounts className="w-6 h-6" />, href: '/orbit/finance/accounts' },
+    { name: 'Transactions', icon: <IconExpenses className="w-6 h-6" />, href: '/orbit/finance/transactions' },
+    { name: 'Investments', icon: <IconInvestments className="w-6 h-6" />, href: '/orbit/finance/investments' },
+    { name: 'Budgets', icon: <IconBudgets className="w-6 h-6" />, href: '/orbit/finance/budgets' },
+    { name: 'Liabilities', icon: <IconLiabilities className="w-6 h-6" />, href: '/orbit/finance/liabilities' },
   ];
 
   return (

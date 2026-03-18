@@ -88,7 +88,7 @@ export default function OnboardingWizard({ onDismiss }: { onDismiss?: () => void
     }
     if (step === STEPS.length - 1) {
       dismiss();
-      router.push('/orbit/money/accounts');
+      router.push('/orbit/finance/accounts');
       return;
     }
     setStep(s => s + 1);
