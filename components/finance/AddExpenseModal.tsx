@@ -155,7 +155,7 @@ function CategoryGrid({
               type="button"
               onClick={confirmCustom}
               disabled={!customName.trim()}
-              className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+              className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-40"
             >
               <Check className="h-3 w-3" /> Add
             </button>

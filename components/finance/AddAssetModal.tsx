@@ -114,7 +114,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
         Cancel
       </button>
       <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-        className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+        className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
         {isEdit ? 'Update asset' : 'Save asset'}
       </button>
     </div>

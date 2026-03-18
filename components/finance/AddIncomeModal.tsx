@@ -155,7 +155,7 @@ function IncomeCategoryGrid({
               type="button"
               onClick={confirmCustom}
               disabled={!customName.trim()}
-              className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40"
+              className="ml-auto flex items-center gap-1.5 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-40"
             >
               <Check className="h-3 w-3" /> Add
             </button>
@@ -212,7 +212,7 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
         Cancel
       </button>
       <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-        className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+        className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
         {isEdit ? 'Update income' : 'Save income'}
       </button>
     </div>

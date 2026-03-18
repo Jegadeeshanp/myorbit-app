@@ -5,8 +5,9 @@ import {
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi, Smartphone,
   RefreshCw, Stethoscope, Shield, Plane, GraduationCap, Gift, Package,
   Landmark, PiggyBank, TrendingUp, Wallet, ArrowLeftRight,
-  ArrowUpRight, MoreHorizontal,
+  ArrowUpRight, MoreHorizontal, ChevronRight,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Transaction } from '@/lib/financeData';
 
 // ── Icon + colour maps (mirrors TransactionList) ───────────────────────────
@@ -116,10 +117,16 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
     .slice(0, 5);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Recent transactions</h2>
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Latest</span>
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Recent Transactions</h2>
+          <p className="text-xs text-gray-400">Latest activity</p>
+        </div>
+        <Link href="/orbit/finance/transactions"
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-gray-300 hover:bg-gray-100 hover:text-gray-500 transition">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
       <div className="mt-6 space-y-4">

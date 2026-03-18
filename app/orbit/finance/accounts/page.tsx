@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Landmark, CreditCard, Wallet, Banknote, PlusCircle, TrendingDown, ArrowDownCircle } from 'lucide-react';
+import { Landmark, CreditCard, Wallet, Banknote, PlusCircle, TrendingDown, Search } from 'lucide-react';
 import { StandardCard, CreditCardCard } from '@/components/finance/AccountCard';
 import AddAccountModal from '@/components/finance/AddAccountModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
@@ -25,6 +25,7 @@ function SectionHeader({ icon: Icon, title, count, color }: { icon: React.Elemen
 export default function AccountsPage() {
   const { state, addAccount } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   // All hooks must be called before any early return (React rules of hooks)
   const { totalBalance, liquidBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
@@ -74,20 +75,25 @@ export default function AccountsPage() {
     { label: 'Spent',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month' },
   ];
 
+  const filteredByType = useMemo(() => {
+    if (!search.trim()) return byType;
+    const q = search.toLowerCase();
+    const filtered: typeof byType = { Bank: [], 'Credit Card': [], 'Debit Card': [], Cash: [], Wallet: [] };
+    (Object.keys(byType) as (keyof typeof byType)[]).forEach(k => {
+      filtered[k] = byType[k].filter(a => a.name.toLowerCase().includes(q));
+    });
+    return filtered;
+  }, [byType, search]);
+
   if (state.loadState === 'loading') return <AccountsSkeleton />;
 
   return (
     <div className="space-y-6">
-      <FinanceTopBar action={
-        <button type="button" onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-          <PlusCircle className="h-4 w-4" /> Add account
-        </button>
-      } />
+      <FinanceTopBar />
 
       {/* ── Primary balance card ── */}
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
-        <p className="text-xs font-semibold uppercase tracking-wider text-white">Total Balance</p>
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 px-7 py-6 shadow-md">
+        <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300/70">Total Balance</p>
         <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
         <p className="mt-1 text-xs text-white/80">Liquid assets minus credit used</p>
       </div>
@@ -108,52 +114,67 @@ export default function AccountsPage() {
         ))}
       </div>
 
+      {/* ── Search (left) + Add (right) ── */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-44 sm:w-64 flex-none">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search accounts…"
+            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
+        </div>
+        <div className="ml-auto">
+          <button type="button" onClick={() => setModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+            <PlusCircle className="h-4 w-4" /> Add account
+          </button>
+        </div>
+      </div>
+
       {/* ── Bank Accounts ── */}
-      {byType['Bank'].length > 0 && (
+      {filteredByType['Bank'].length > 0 && (
         <div className="space-y-2.5">
-          <SectionHeader icon={Landmark} title="Bank Accounts" count={byType['Bank'].length} color="text-emerald-600" />
+          <SectionHeader icon={Landmark} title="Bank Accounts" count={filteredByType['Bank'].length} color="text-emerald-600" />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {byType['Bank'].map(a => <StandardCard key={a.id} account={a} />)}
+            {filteredByType['Bank'].map(a => <StandardCard key={a.id} account={a} />)}
           </div>
         </div>
       )}
 
       {/* ── Credit Cards ── */}
-      {byType['Credit Card'].length > 0 && (
+      {filteredByType['Credit Card'].length > 0 && (
         <div className="space-y-2.5">
-          <SectionHeader icon={CreditCard} title="Credit Cards" count={byType['Credit Card'].length} color="text-rose-600" />
+          <SectionHeader icon={CreditCard} title="Credit Cards" count={filteredByType['Credit Card'].length} color="text-rose-600" />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {byType['Credit Card'].map(a => <CreditCardCard key={a.id} account={a} />)}
+            {filteredByType['Credit Card'].map(a => <CreditCardCard key={a.id} account={a} />)}
           </div>
         </div>
       )}
 
       {/* ── Debit Cards ── */}
-      {byType['Debit Card'].length > 0 && (
+      {filteredByType['Debit Card'].length > 0 && (
         <div className="space-y-2.5">
-          <SectionHeader icon={CreditCard} title="Debit Cards" count={byType['Debit Card'].length} color="text-blue-600" />
+          <SectionHeader icon={CreditCard} title="Debit Cards" count={filteredByType['Debit Card'].length} color="text-blue-600" />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {byType['Debit Card'].map(a => <StandardCard key={a.id} account={a} />)}
+            {filteredByType['Debit Card'].map(a => <StandardCard key={a.id} account={a} />)}
           </div>
         </div>
       )}
 
       {/* ── Wallets ── */}
-      {byType['Wallet'].length > 0 && (
+      {filteredByType['Wallet'].length > 0 && (
         <div className="space-y-2.5">
-          <SectionHeader icon={Wallet} title="Wallets" count={byType['Wallet'].length} color="text-violet-600" />
+          <SectionHeader icon={Wallet} title="Wallets" count={filteredByType['Wallet'].length} color="text-violet-600" />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {byType['Wallet'].map(a => <StandardCard key={a.id} account={a} />)}
+            {filteredByType['Wallet'].map(a => <StandardCard key={a.id} account={a} />)}
           </div>
         </div>
       )}
 
       {/* ── Cash ── */}
-      {byType['Cash'].length > 0 && (
+      {filteredByType['Cash'].length > 0 && (
         <div className="space-y-2.5">
-          <SectionHeader icon={Banknote} title="Cash" count={byType['Cash'].length} color="text-amber-600" />
+          <SectionHeader icon={Banknote} title="Cash" count={filteredByType['Cash'].length} color="text-amber-600" />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {byType['Cash'].map(a => <StandardCard key={a.id} account={a} />)}
+            {filteredByType['Cash'].map(a => <StandardCard key={a.id} account={a} />)}
           </div>
         </div>
       )}

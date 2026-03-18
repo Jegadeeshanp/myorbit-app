@@ -88,7 +88,7 @@ export default function CategoriesModal({ open, onClose }: Props) {
           />
         </div>
         <button onClick={handleAdd} disabled={!newName.trim()}
-          className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40">
+          className="flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-40">
           <Plus className="h-4 w-4" /> Add
         </button>
       </div>
@@ -110,7 +110,7 @@ export default function CategoriesModal({ open, onClose }: Props) {
             <p className="text-sm text-gray-400">No categories yet</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
+          <div className="divide-y divide-gray-100 dark:divide-gray-700/30 max-h-64 overflow-y-auto">
             {categories[type].map(cat => {
               const Icon = iconMap[cat] ?? Tag;
               return (

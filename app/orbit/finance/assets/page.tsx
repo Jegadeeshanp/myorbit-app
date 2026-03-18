@@ -69,19 +69,7 @@ export default function AssetsPage() {
 
   return (
     <div className="space-y-5">
-      <FinanceTopBar action={
-        <div className="flex gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
-              className="w-36 rounded-full border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm focus:border-emerald-400 focus:outline-none sm:w-44" />
-          </div>
-          <button onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-            <PlusCircle className="h-4 w-4" /> Add Asset
-          </button>
-        </div>
-      } />
+      <FinanceTopBar />
 
       {/* Summary metrics */}
       <div className="grid grid-cols-3 gap-3">
@@ -103,6 +91,21 @@ export default function AssetsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── Search (left) + Add (right) ── */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-44 sm:w-64 flex-none">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
+            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
+        </div>
+        <div className="ml-auto">
+          <button onClick={() => setModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+            <PlusCircle className="h-4 w-4" /> Add Asset
+          </button>
+        </div>
       </div>
 
       {/* Dynamic category tabs */}
@@ -149,45 +152,36 @@ export default function AssetsPage() {
 
       {/* Allocation breakdown — shown when All tab or more than 1 category */}
       {safeTab === 'All' && allocationData.length > 1 && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-1 text-sm font-semibold text-gray-900">Allocation</h2>
-            <p className="mb-4 text-xs text-gray-400">Distribution across asset classes</p>
-            <div className="h-[200px]">
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold text-gray-900">Allocation</h2>
+          <p className="mb-4 text-xs text-gray-400">Distribution across asset classes</p>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            {/* Donut */}
+            <div className="h-[180px] w-[180px] flex-none">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={allocationData} dataKey="value" innerRadius={55} outerRadius={90} paddingAngle={3} strokeWidth={0}>
+                  <Pie data={allocationData} dataKey="value" innerRadius={50} outerRadius={82} paddingAngle={3} strokeWidth={0}>
                     {allocationData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </div>
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-gray-900">Breakdown</h2>
-            <div className="space-y-3">
+            {/* Legend — icon + name + value + % only, NO progress bars */}
+            <div className="flex-1 w-full space-y-2.5">
               {allocationData.map((d, i) => {
                 const pct = allAssetsValue > 0 ? Math.round((d.value / allAssetsValue) * 100) : 0;
                 const cfg = getCategoryConfig(d.name);
                 const Icon = cfg.icon;
                 return (
-                  <div key={d.name}>
-                    <div className="mb-1.5 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-5 w-5 items-center justify-center rounded-md" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] + '20' }}>
-                          <Icon className="h-3 w-3" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                        </div>
-                        <span className="font-medium text-gray-700">{d.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{fmt(d.value)}</span>
-                        <span className="w-8 text-right text-gray-400">{pct}%</span>
-                      </div>
+                  <div key={d.name} className="flex items-center gap-2.5 text-xs">
+                    <div className="flex h-5 w-5 flex-none items-center justify-center rounded-md"
+                      style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] + '22' }}>
+                      <Icon className="h-3 w-3" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                      <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                    </div>
+                    <span className="flex-1 font-medium text-gray-700 truncate">{d.name}</span>
+                    <span className="font-semibold text-gray-900">{fmt(d.value)}</span>
+                    <span className="w-9 text-right font-medium" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }}>{pct}%</span>
                   </div>
                 );
               })}

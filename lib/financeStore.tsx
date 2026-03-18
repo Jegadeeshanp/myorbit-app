@@ -244,7 +244,11 @@ export function FinanceProvider({ children }: PropsWithChildren) {
           } catch { /* non-critical */ }
         }
         // Auto-update matching budget's spent amount when an expense is recorded
-        if (created.type === 'expense') {
+        // Only update if the transaction is in the current calendar month (budgets are month-isolated)
+        const txDate = new Date(created.date);
+        const nowDate = new Date();
+        const isCurrentMonth = txDate.getMonth() === nowDate.getMonth() && txDate.getFullYear() === nowDate.getFullYear();
+        if (created.type === 'expense' && isCurrentMonth) {
           const matchingBudget = state.budgets.find(b => {
             const cats = b.category
               ? b.category.split(',').map(c => c.trim()).filter(Boolean)

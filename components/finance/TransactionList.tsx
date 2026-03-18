@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
-  Truck, Search, Trash2, ChevronDown, TrendingUp,
+  Truck, Search, Trash2, ChevronDown, ChevronRight, TrendingUp,
   Landmark, Wallet, Banknote, ArrowLeftRight, Pencil,
   ArrowUpRight, ArrowDownLeft, Stethoscope, GraduationCap,
   Plane, MoreHorizontal,
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
   Smartphone, RefreshCw, Shield, Gift, Package, PiggyBank,
   Briefcase, Award, Laptop, Building2, Percent, RotateCcw, Undo2, Clock,
+  Plus, SlidersHorizontal,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import EmptyState from '@/components/finance/EmptyState';
@@ -191,18 +192,74 @@ function groupByMonth(txs: Transaction[]) {
   return Array.from(map.entries()).map(([label, transactions]) => ({ label, transactions }));
 }
 
+// ── Dots menu per row (works for both mobile and desktop) ─────────────────
+function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative flex-none">
+      <button onClick={() => setOpen(v => !v)}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition">
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-30 w-32 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1">
+          <button onClick={() => { onEdit(); setOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+            <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-400" /> Edit
+          </button>
+          <button onClick={() => { onDelete(); setOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
-export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
+export default function TransactionList({ transactions, onAdd }: { transactions: Transaction[]; onAdd?: () => void }) {
   const { state, deleteTransaction, updateTransaction } = useFinance();
   const [activeTab, setActiveTab]   = useState('All');
   const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
   const [dropdownOpen, setDropdown]     = useState(false);
-  const [editTarget, setEditTarget]     = useState<Transaction | null>(null);
+  const [editTarget, setEditTarget]       = useState<Transaction | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // Today's date string for upcoming vs past split
   const today = new Date().toISOString().slice(0, 10);
+
+  // Label for current month, to show "NOW" badge
+  const currentMonthLabel = useMemo(
+    () => new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
+    []
+  );
+
+  function toggleGroup(label: string) {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return next;
+    });
+  }
+
+  // Abbreviate large numbers for group header (e.g. ₹2.1L, ₹94.8K)
+  function fmtShort(v: number) {
+    const abs = Math.abs(v);
+    if (abs >= 10000000) return `₹${(abs / 10000000).toFixed(1)}Cr`;
+    if (abs >= 100000)   return `₹${(abs / 100000).toFixed(1)}L`;
+    if (abs >= 1000)     return `₹${(abs / 1000).toFixed(1)}K`;
+    return `₹${abs.toLocaleString('en-IN')}`;
+  }
 
   // Build account lookup: accountId → account type tab key
   const accountTabMap = useMemo(() => {
@@ -274,89 +331,105 @@ export default function TransactionList({ transactions }: { transactions: Transa
   return (
     <div className="space-y-4">
 
-      {/* ── Top controls: tabs + period dropdown + search ── */}
-      <div className="space-y-3">
-
-        {/* Tab row */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {availableTabs.map(tab => {
-              const cfg = TAB_CONFIG[tab];
-              const Icon = cfg.icon;
-              const isActive = safeTab === tab;
-              // Count based on past transactions only (excludes upcoming)
-              const periodPast = filterByPeriod(pastTxs, period);
-              const count = tab === 'All'
-                ? periodPast.length
-                : tab === 'Income'
-                ? periodPast.filter(t => t.type === 'income').length
-                : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
-
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
-                    isActive
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
-                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-                  {tab}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Income',   value: summary.income,   positive: true,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: ArrowUpRight },
+          { label: 'Expenses', value: summary.expense,  positive: false, color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    icon: ArrowDownLeft },
+          { label: 'Net Balance', value: summary.income - summary.expense, positive: summary.income >= summary.expense,
+            color: summary.income >= summary.expense ? 'text-emerald-600' : 'text-rose-600',
+            bg:    summary.income >= summary.expense ? 'bg-emerald-50'    : 'bg-rose-50',
+            border:summary.income >= summary.expense ? 'border-emerald-100' : 'border-rose-100',
+            icon: TrendingUp },
+        ].map(m => (
+          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white p-4 shadow-sm`}>
+            <div className={`hidden sm:flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
+              <m.icon className={`h-4 w-4 ${m.color}`} />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs text-gray-400">{m.label}</p>
+              <p className={`truncate text-sm font-bold ${m.color}`}>
+                {m.label === 'Net Balance' && m.value < 0 ? '-' : ''}₹{Math.abs(m.value).toLocaleString('en-IN')}
+              </p>
+            </div>
           </div>
+        ))}
+      </div>
 
-          {/* Period dropdown */}
-          <div className="relative flex-none">
-            <button
-              onClick={() => setDropdown(o => !o)}
-              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
-            >
-              {selectedPeriodLabel}
-              <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition ${dropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {dropdownOpen && (
-              <div className="absolute right-0 top-full z-20 mt-1.5 w-40 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
-                {PERIODS.map(p => (
-                  <button
-                    key={p.value}
-                    onClick={() => { setPeriod(p.value); setDropdown(false); }}
-                    className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-xs font-medium transition hover:bg-gray-50 ${period === p.value ? 'text-emerald-600 bg-emerald-50/60' : 'text-gray-700'}`}
-                  >
-                    {p.label}
-                    {period === p.value && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* ── Row 1: Search (left) | Add + Filter (right) ── */}
+      <div className="flex items-center gap-2">
+        {/* Search — fixed width, left-aligned */}
+        <div className="relative w-44 sm:w-64 flex-none">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search transactions…"
+            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
+          />
         </div>
 
-        {/* Search + summary */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search transactions…"
-              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </div>
-          {summary.count > 0 && (
-            <div className="flex items-center gap-3 text-xs text-gray-400">
-              <span className="text-emerald-600 font-semibold">+₹{summary.income.toLocaleString('en-IN')}</span>
-              <span className="text-rose-500 font-semibold">-₹{summary.expense.toLocaleString('en-IN')}</span>
-              <span>{summary.count} txns</span>
+        {/* Spacer pushes buttons to the right */}
+        <div className="flex-1" />
+
+        {/* Add button */}
+        {onAdd && (
+          <button onClick={onAdd}
+            className="flex flex-none items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 active:scale-95">
+            <Plus className="h-4 w-4" />
+            Add transaction
+          </button>
+        )}
+        {/* Filter / period dropdown */}
+        <div className="relative flex-none">
+          <button
+            onClick={() => setDropdown(o => !o)}
+            className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-gray-400" />
+            <span className="hidden sm:inline">{selectedPeriodLabel}</span>
+            <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {dropdownOpen && (
+            <div className="absolute right-0 top-full z-20 mt-1.5 w-40 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+              {PERIODS.map(p => (
+                <button
+                  key={p.value}
+                  onClick={() => { setPeriod(p.value); setDropdown(false); }}
+                  className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-xs font-medium transition hover:bg-gray-50 ${period === p.value ? 'text-emerald-600 bg-emerald-50/60' : 'text-gray-700'}`}
+                >
+                  {p.label}
+                  {period === p.value && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                </button>
+              ))}
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Row 2: Tabs ── */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+        {availableTabs.map(tab => {
+          const cfg = TAB_CONFIG[tab];
+          const Icon = cfg.icon;
+          const isActive = safeTab === tab;
+          const periodPast = filterByPeriod(pastTxs, period);
+          const count = tab === 'All'
+            ? periodPast.length
+            : tab === 'Income'
+            ? periodPast.filter(t => t.type === 'income').length
+            : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
+          return (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
+                isActive ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}>
+              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
+              {tab}
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Upcoming transactions ── */}
@@ -374,45 +447,37 @@ export default function TransactionList({ transactions }: { transactions: Transa
               const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
               const isExp    = tx.type === 'expense';
               const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+              const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
               return (
-                <div key={tx.id} className="group flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-blue-50/80">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div key={tx.id} className="group transition hover:bg-blue-50/80">
+                  {/* Mobile */}
+                  <div className="flex sm:hidden items-center gap-3 px-4 py-3">
                     <TxIcon tx={tx} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
-                      <div className="mt-0.5 flex items-center gap-2 flex-wrap">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
-                          {tx.category}
-                        </span>
-                        {account && (
-                          <span className="rounded-full border border-gray-100 bg-white/70 px-2 py-0.5 text-xs text-gray-400">
-                            {accChip(account)}
-                          </span>
-                        )}
-                        <span className="text-xs text-blue-400">
-                          {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                        </span>
+                      <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                        {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
+                        <span className="text-[11px] text-blue-400">{dateStr}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex flex-none items-center gap-2">
-                    <p className={`text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
+                    <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
                       {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                     </p>
-                    <button
-                      onClick={() => setEditTarget(tx)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-blue-300 opacity-0 transition group-hover:opacity-100 hover:bg-blue-100 hover:text-blue-500"
-                      title="Edit transaction"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setConfirmTarget(tx.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-blue-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
-                      title="Delete transaction"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
+                  </div>
+                  {/* Desktop */}
+                  <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 px-5 py-3">
+                    <span className="text-xs text-blue-400 whitespace-nowrap">{dateStr}</span>
+                    <span className="truncate text-sm font-medium text-gray-900">{tx.description}</span>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                    <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
+                    <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
+                      {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                    </span>
+                    <div className="flex justify-end">
+                      <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
+                    </div>
                   </div>
                 </div>
               );
@@ -421,7 +486,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
         </div>
       )}
 
-      {/* ── Transaction groups ── */}
+      {/* ── Transaction table (single card, headers inside) ── */}
       {groups.length === 0 ? (
         <EmptyState
           icon={CreditCard}
@@ -429,77 +494,105 @@ export default function TransactionList({ transactions }: { transactions: Transa
           subtitle="Try a different tab, period, or search term"
         />
       ) : (
-        groups.map(group => {
-          const total = group.transactions.reduce(
-            (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
-          );
-          return (
-            <div key={group.label} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-              {/* Month header */}
-              <div className="flex items-center justify-between border-b border-gray-50 bg-gray-50/50 px-5 py-3">
-                <p className="text-xs font-semibold text-gray-700">{group.label}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span>{group.transactions.length} transactions</span>
-                  <span className={`font-semibold ${total >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {total >= 0 ? '+' : ''}₹{Math.abs(total).toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
-              {/* Rows */}
-              <div className="divide-y divide-gray-50">
+          {/* Column headers — desktop only */}
+          <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 border-b border-gray-100 bg-transparent px-5 py-2.5">
+            {['Date', 'Description', 'Category', 'Account', 'Amount', ''].map((h, i) => (
+              <span key={i} className={`text-xs font-semibold uppercase tracking-wide text-gray-400 ${h === 'Amount' ? 'text-right' : ''}`}>{h}</span>
+            ))}
+          </div>
+
+          {groups.map((group, gi) => {
+            const isCollapsed = collapsedGroups.has(group.label);
+            const isNow       = group.label === currentMonthLabel;
+            const groupNet    = group.transactions.reduce(
+              (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
+            );
+
+            return (
+            <div key={group.label}>
+
+              {/* ── Month group header — clickable, collapsible ── */}
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className={`w-full flex items-center gap-2.5 px-5 py-2.5 text-left transition hover:bg-gray-50/60 dark:hover:bg-gray-800/30 ${gi > 0 ? 'border-t border-gray-100 dark:border-gray-700/40' : ''}`}
+              >
+                {/* Chevron */}
+                <ChevronRight className={`h-3.5 w-3.5 flex-none text-gray-400 transition-transform duration-150 ${isCollapsed ? '' : 'rotate-90'}`} />
+
+                {/* Month name */}
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{group.label}</span>
+
+                {/* NOW badge */}
+                {isNow && (
+                  <span className="rounded-full bg-emerald-800 px-2 py-0.5 text-[10px] font-bold text-emerald-100 leading-none">NOW</span>
+                )}
+
+                {/* Spacer */}
+                <span className="flex-1" />
+
+                {/* Entry count · net amount — right aligned */}
+                <span className="text-xs text-gray-400">
+                  {group.transactions.length} {group.transactions.length === 1 ? 'entry' : 'entries'}
+                </span>
+                <span className="text-gray-300 dark:text-gray-600 select-none">·</span>
+                <span className={`text-xs font-semibold ${groupNet >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                  {groupNet >= 0 ? '+' : '-'}{fmtShort(groupNet)}
+                </span>
+              </button>
+
+              {!isCollapsed && (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
                 {group.transactions.map(tx => {
                   const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
                   const isExp    = tx.type === 'expense';
                   const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+                  const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
                   return (
-                    <div key={tx.id} className="group flex items-center justify-between gap-4 px-5 py-3 transition hover:bg-gray-50/50">
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div key={tx.id} className="group transition hover:bg-gray-50/50">
+                      {/* Mobile layout */}
+                      <div className="flex sm:hidden items-center gap-3 px-4 py-3">
                         <TxIcon tx={tx} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
-                          <div className="mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
-                              {tx.category}
-                            </span>
-                            {account && (
-                              <span className="rounded-full border border-gray-100 bg-gray-50 px-2 py-0.5 text-xs text-gray-400">
-                                {accChip(account)}
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-400">
-                              {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                            </span>
+                          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                            {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
+                            <span className="text-[11px] text-gray-400">{dateStr}</span>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex flex-none items-center gap-2">
-                        <p className={`text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
                           {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </p>
-                        <button
-                          onClick={() => setEditTarget(tx)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-500"
-                          title="Edit transaction"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmTarget(tx.id)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
-                          title="Delete transaction"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
+                      </div>
+
+                      {/* Desktop layout */}
+                      <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 px-5 py-3">
+                        <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
+                        <span className="truncate text-sm font-medium text-gray-900">{tx.description}</span>
+                        <span className="justify-self-start inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium truncate max-w-full">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                        </span>
+                        <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
+                        <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        </span>
+                        <div className="flex justify-end">
+                          <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
+              )}
             </div>
-          );
-        })
+            );
+          })}
+        </div>
       )}
 
       {/* Edit modals */}

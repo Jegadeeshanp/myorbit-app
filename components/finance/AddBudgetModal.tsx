@@ -99,7 +99,7 @@ export default function AddBudgetModal({ open, onClose, initial }: { open: boole
         Cancel
       </button>
       <button type="button" onClick={handleSave} disabled={!canSave}
-        className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+        className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed">
         {saving ? 'Saving…' : isEdit ? 'Update budget' : 'Save budget'}
       </button>
     </div>

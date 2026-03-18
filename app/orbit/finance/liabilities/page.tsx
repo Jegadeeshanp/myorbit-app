@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays, Search, MoreHorizontal } from 'lucide-react';
 import Modal, { SectionLabel, inputCls } from '@/components/finance/Modal';
 import AddLiabilityModal from '@/components/finance/AddLiabilityModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
@@ -143,12 +143,62 @@ function RecordPaymentModal({
             Cancel
           </button>
           <button type="button" onClick={handleSave} disabled={!canSave}
-            className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed">
             Record payment
           </button>
         </div>
       </div>
     </Modal>
+  );
+}
+
+// ── Per-row dots menu ──────────────────────────────────────────────────────
+function LiabilityDotsMenu({
+  onPay, onEdit, onDelete,
+}: { onPay: () => void; onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-30 w-36 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1">
+          <button
+            onClick={() => { onPay(); setOpen(false); }}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" /> Pay
+          </button>
+          <button
+            onClick={() => { onEdit(); setOpen(false); }}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+          >
+            <Pencil className="h-3.5 w-3.5 text-gray-400" /> Edit
+          </button>
+          <button
+            onClick={() => { onDelete(); setOpen(false); }}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -161,6 +211,7 @@ export default function LiabilitiesPage() {
   const [addOpen,     setAddOpen]     = useState(false);
   const [editTarget,  setEditTarget]  = useState<Liability | null>(null);
   const [payTarget,   setPayTarget]   = useState<Liability | null>(null);
+  const [search,      setSearch]      = useState('');
 
   const summary = useMemo(() => {
     const borrowed    = liabilities.reduce((s, l) => s + l.borrowed, 0);
@@ -175,14 +226,16 @@ export default function LiabilitiesPage() {
 
   if (state.loadState === 'loading') return <LiabilitiesSkeleton />;
 
+  const filteredLiabilities = search.trim()
+    ? liabilities.filter(l =>
+        l.name.toLowerCase().includes(search.toLowerCase()) ||
+        l.lender?.toLowerCase().includes(search.toLowerCase())
+      )
+    : liabilities;
+
   return (
     <div className="space-y-6">
-      <FinanceTopBar action={
-        <button type="button" onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-          <PlusCircle className="h-4 w-4" /> Add liability
-        </button>
-      } />
+      <FinanceTopBar />
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -233,6 +286,25 @@ export default function LiabilitiesPage() {
         </div>
       )}
 
+      {/* ── Search (left) + Add liability (right) ── */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-44 sm:w-64 flex-none">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search liabilities…"
+            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
+          />
+        </div>
+        <div className="ml-auto">
+          <button type="button" onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+            <PlusCircle className="h-4 w-4" /> Add liability
+          </button>
+        </div>
+      </div>
+
       {/* ── Table ── */}
       {liabilities.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-14 text-center">
@@ -255,7 +327,7 @@ export default function LiabilitiesPage() {
                   { label: 'EMI',        right: true  },
                   { label: 'Left',       right: false },
                   { label: 'Next Due',   right: false },
-                  { label: 'Actions',    right: false },
+                  { label: '',           right: false },
                 ].map(h => (
                   <th key={h.label} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap ${h.right ? 'text-right' : ''}`}>
                     {h.label}
@@ -263,8 +335,8 @@ export default function LiabilitiesPage() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {liabilities.map(l => {
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
+              {filteredLiabilities.map(l => {
                 const days        = daysUntil(l.nextDueDate);
                 const dueSoon     = days !== null && days <= 7 && days >= 0;
                 const overdue     = days !== null && days < 0;
@@ -305,32 +377,11 @@ export default function LiabilitiesPage() {
 
                     {/* Actions */}
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1">
-                        {/* Record payment */}
-                        <button
-                          onClick={() => { setPayTarget(l); }}
-                          title="Record payment"
-                          className="flex h-7 items-center gap-1 rounded-lg bg-emerald-50 px-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Pay
-                        </button>
-                        {/* Edit */}
-                        <button
-                          onClick={() => setEditTarget(l)}
-                          title="Edit"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        {/* Delete */}
-                        <button
-                          onClick={() => { deleteLiability(l.id); toast('Liability removed'); }}
-                          title="Delete"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <LiabilityDotsMenu
+                        onPay={() => setPayTarget(l)}
+                        onEdit={() => setEditTarget(l)}
+                        onDelete={() => { deleteLiability(l.id); toast('Liability removed'); }}
+                      />
                     </td>
                   </tr>
                 );

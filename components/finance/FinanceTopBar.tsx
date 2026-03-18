@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/orbit/finance/liabilities':  'Liabilities',
   '/orbit/finance/budget':       'Budget',
   '/orbit/finance/insights':     'Insights',
+  '/orbit/finance/vitals':       'Vitals',
 };
 
 const PAGE_SUBTITLES: Record<string, string> = {
@@ -21,6 +22,7 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/orbit/finance/liabilities':  'Keep an eye on loans, credit, and monthly obligations.',
   '/orbit/finance/budget':       'Follow your monthly spending plan and stay on track.',
   '/orbit/finance/insights':     'Financial insights based on your activity and trends.',
+  '/orbit/finance/vitals':       'Financial health check — score your money habits across 5 dimensions.',
 };
 
 export default function FinanceTopBar({ action }: { action?: React.ReactNode }) {

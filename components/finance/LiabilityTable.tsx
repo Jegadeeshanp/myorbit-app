@@ -28,7 +28,7 @@ export default function LiabilityTable({ liabilities }: { liabilities: Liability
               <th className="px-3 py-3 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
             {liabilities.map(l => (
               <tr key={l.id} className="group transition hover:bg-gray-50/50">
                 <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">{l.name}</td>

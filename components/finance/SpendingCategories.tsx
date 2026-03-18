@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import { Transaction } from '@/lib/financeData';
 
 const BAR_COLORS = ['#10b981','#3b82f6','#f97316','#eab308','#8b5cf6'];
@@ -9,14 +11,23 @@ export default function SpendingCategories({ transactions }: { transactions: Tra
   transactions.filter(t => t.type === 'expense').forEach(t => {
     map.set(t.category, (map.get(t.category) ?? 0) + Math.abs(t.amount));
   });
-  const rows = Array.from(map.entries()).map(([cat, val]) => ({ cat, val })).sort((a,b) => b.val - a.val);
+  const rows = Array.from(map.entries())
+    .map(([cat, val]) => ({ cat, val }))
+    .sort((a, b) => b.val - a.val)
+    .slice(0, 5);
   const max = Math.max(...rows.map(r => r.val), 1);
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900">Spending by Category</h2>
-        <p className="text-xs text-gray-400">All time expense breakdown</p>
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Spending by Category</h2>
+          <p className="text-xs text-gray-400">Top 5 expense categories</p>
+        </div>
+        <Link href="/orbit/finance/transactions"
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-gray-300 hover:bg-gray-100 hover:text-gray-500 transition">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
       {rows.length === 0 ? (
         <p className="py-6 text-center text-xs text-gray-300">No expenses recorded yet</p>

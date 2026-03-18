@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard, Landmark, ArrowRightLeft,
-  TrendingUp, CreditCard, Wallet, BarChart3,
+  TrendingUp, CreditCard, Wallet, Activity,
   Settings, User,
 } from 'lucide-react';
 
@@ -17,7 +17,7 @@ const menu = [
   { label: 'Assets',       href: '/orbit/finance/assets',       Icon: TrendingUp },
   { label: 'Liabilities',  href: '/orbit/finance/liabilities',  Icon: CreditCard },
   { label: 'Budget',       href: '/orbit/finance/budget',       Icon: Wallet },
-  { label: 'Insights',     href: '/orbit/finance/insights',     Icon: BarChart3 },
+  { label: 'Vitals',       href: '/orbit/finance/vitals',       Icon: Activity },
 ];
 
 export default function FinanceSidebar() {

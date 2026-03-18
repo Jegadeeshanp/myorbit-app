@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Asset } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig } from '@/lib/assetCategories';
-import { Trash2, Pencil, MoreVertical } from 'lucide-react';
+import { Trash2, Pencil, MoreHorizontal } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
@@ -37,7 +37,7 @@ function CardMenu({ onEdit, onDelete }: { onEdit?: () => void; onDelete: () => v
         onClick={() => setOpen(v => !v)}
         className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 transition"
       >
-        <MoreVertical className="h-4 w-4" />
+        <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-20 w-36 rounded-xl border border-gray-100 bg-white shadow-lg py-1">
@@ -78,20 +78,20 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/60">
-              {['Asset', 'Category', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => (
-                <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 ${['Invested','Current Value','P&L','Allocation'].includes(h) ? 'text-right' : ''}`}>
+              {['Asset', 'Category', 'Units', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => (
+                <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 ${['Units','Invested','Current Value','P&L','Allocation'].includes(h) ? 'text-right' : ''}`}>
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
             {assets.map(asset => {
               const cfg      = getCategoryConfig(asset.category);
               const Icon     = cfg.icon;
               const invested = asset.invested;
               const pnl      = asset.value - invested;
-              const pnlPct   = invested > 0 ? Math.round((pnl / invested) * 100) : 0;
+              // Use the full portfolio base for allocation so all assets always sum to 100%
               const allocPct = allocBase > 0 ? Math.round((asset.value / allocBase) * 100) : 0;
 
               return (
@@ -103,43 +103,22 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
                       {asset.category}
                     </span>
                   </td>
+                  <td className="px-5 py-3.5 text-right text-sm text-gray-400">
+                    {(asset as any).units != null ? (asset as any).units : '—'}
+                  </td>
                   <td className="px-5 py-3.5 text-right text-sm text-gray-500">{fmt(invested)}</td>
                   <td className="px-5 py-3.5 text-right text-sm font-semibold text-gray-900">{fmt(asset.value)}</td>
                   <td className="px-5 py-3.5 text-right">
                     <p className={`text-sm font-bold ${pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {pnl >= 0 ? '+' : ''}{fmt(pnl)}
                     </p>
-                    <p className={`text-xs ${pnl >= 0 ? 'text-emerald-500' : 'text-rose-400'}`}>
-                      {pnl >= 0 ? '+' : ''}{pnlPct}%
-                    </p>
                   </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
-                        <div className={`h-1.5 rounded-full ${cfg.color.replace('text-', 'bg-')}`} style={{ width: `${allocPct}%` }} />
-                      </div>
-                      <span className="w-8 text-right text-xs text-gray-500">{allocPct}%</span>
-                    </div>
-                  </td>
+                  <td className="px-5 py-3.5 text-right text-sm text-gray-500">{allocPct}%</td>
                   <td className="px-3 py-3.5">
-                    <div className="flex items-center gap-1">
-                      {onEdit && (
-                        <button
-                          onClick={() => onEdit(asset)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-500"
-                          title="Edit asset"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setConfirmTarget(asset)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-400"
-                        title="Delete asset"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    <CardMenu
+                      onEdit={onEdit ? () => onEdit(asset) : undefined}
+                      onDelete={() => setConfirmTarget(asset)}
+                    />
                   </td>
                 </tr>
               );
@@ -148,6 +127,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
           <tfoot>
             <tr className="border-t border-gray-100 bg-gray-50/60">
               <td colSpan={2} className="px-5 py-3 text-xs font-semibold text-gray-500">{assets.length} asset{assets.length !== 1 ? 's' : ''}</td>
+              <td className="px-5 py-3" />
               <td className="px-5 py-3 text-right text-xs font-semibold text-gray-500">
                 {fmt(assets.reduce((s, a) => s + a.invested, 0))}
               </td>
@@ -169,12 +149,11 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
       </div>
 
       {/* ── Mobile cards (hidden on sm+) ───────────────────────────────── */}
-      <div className="sm:hidden rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden divide-y divide-gray-50">
+      <div className="sm:hidden rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/30">
         {assets.map(asset => {
-          const cfg    = getCategoryConfig(asset.category);
-          const Icon   = cfg.icon;
-          const pnl    = asset.value - asset.invested;
-          const pnlPct = asset.invested > 0 ? Math.round((pnl / asset.invested) * 100) : 0;
+          const cfg  = getCategoryConfig(asset.category);
+          const Icon = cfg.icon;
+          const pnl  = asset.value - asset.invested;
 
           return (
             <div key={asset.id} className="flex items-center gap-3 px-4 py-3">
@@ -191,8 +170,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
               <div className="text-right flex-none">
                 <p className="text-sm font-semibold text-gray-900">{fmt(asset.value)}</p>
                 <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {pnl >= 0 ? '+' : ''}{fmt(pnl)}&nbsp;
-                  <span className="text-[10px]">({pnl >= 0 ? '+' : ''}{pnlPct}%)</span>
+                  {pnl >= 0 ? '+' : ''}{fmt(pnl)}
                 </p>
               </div>
 

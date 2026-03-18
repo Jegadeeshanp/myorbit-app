@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { useFinance } from '@/lib/financeStore';
 import { Transaction } from '@/lib/financeData';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, ChevronRight } from 'lucide-react';
 
 function getScore(transactions: Transaction[], totalAssets: number, totalLiab: number): { score: number; factors: { label: string; score: number; max: number }[]; summary: string; hasData: boolean } {
   const hasData = transactions.length > 0 || totalAssets > 0 || totalLiab > 0;
@@ -85,7 +86,11 @@ export default function FinancialHealthScore({ transactions }: { transactions: T
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-emerald-600" />
-        <h2 className="text-sm font-semibold text-gray-900">Financial Health Score</h2>
+        <h2 className="text-sm font-semibold text-gray-900 flex-1">Financial Health Score</h2>
+        <Link href="/orbit/finance/vitals"
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-gray-300 hover:bg-gray-100 hover:text-gray-500 transition">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
       {!result.hasData ? (
         <div className="flex flex-col items-center justify-center py-6 text-center">

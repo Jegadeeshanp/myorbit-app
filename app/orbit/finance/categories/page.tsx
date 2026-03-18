@@ -145,7 +145,7 @@ export default function CategoriesPage() {
               <p className="text-sm text-gray-400">No categories yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
               {categories.map(cat => {
                 const Icon      = iconMap[cat] ?? Tag;
                 const isDefault = defaultSet.has(cat);
