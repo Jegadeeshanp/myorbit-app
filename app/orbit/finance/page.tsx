@@ -116,25 +116,20 @@ export default function FinanceOverviewPage() {
         </Link>
       </div>
 
-      {/* Health + Insights */}
+      {/* Health Score + Smart Insights */}
       <div className="grid gap-5 lg:grid-cols-2">
         <FinancialHealthScore transactions={transactions} />
         <SmartInsights transactions={transactions} />
       </div>
 
-      {/* Cash Flow */}
-      <CashFlowChart data={monthData} />
-
-      {/* Asset Allocation + Spending */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <AssetAllocationChart />
+      {/* Top widgets: Spending + Budget + Savings */}
+      <div className="grid gap-5 lg:grid-cols-3">
         <SpendingCategories transactions={transactions} />
+        <BudgetStatus />
+        <SavingsRateCard transactions={transactions} />
       </div>
 
-      {/* Net Worth Trend */}
-      <NetWorthTrend />
-
-      {/* Recent Transactions + Top Expenses */}
+      {/* Recent Transactions (top 5) + Top Expenses (top 5) */}
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <RecentTransactions transactions={transactions} />
@@ -142,18 +137,17 @@ export default function FinanceOverviewPage() {
         <TopExpenses transactions={transactions} />
       </div>
 
-      {/* Budget Status + Savings Rate + Upcoming Bills */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <SavingsRateCard transactions={transactions} />
-        </div>
-        <div className="lg:col-span-1">
-          <BudgetStatus />
-        </div>
-        <div className="lg:col-span-1">
-          <UpcomingBills />
-        </div>
+      {/* Asset Allocation + Upcoming Bills */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <AssetAllocationChart />
+        <UpcomingBills />
       </div>
+
+      {/* Cash Flow — moved to bottom */}
+      <CashFlowChart data={monthData} />
+
+      {/* Net Worth Trend — moved to bottom */}
+      <NetWorthTrend />
     </div>
   );
 }

@@ -78,8 +78,8 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/60">
-              {['Asset', 'Category', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => (
-                <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 ${['Invested','Current Value','P&L','Allocation'].includes(h) ? 'text-right' : ''}`}>
+              {['Asset', 'Category', 'Units', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => (
+                <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 ${['Units','Invested','Current Value','P&L','Allocation'].includes(h) ? 'text-right' : ''}`}>
                   {h}
                 </th>
               ))}
@@ -92,6 +92,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
               const invested = asset.invested;
               const pnl      = asset.value - invested;
               const pnlPct   = invested > 0 ? Math.round((pnl / invested) * 100) : 0;
+              // Use the full portfolio base for allocation so all assets always sum to 100%
               const allocPct = allocBase > 0 ? Math.round((asset.value / allocBase) * 100) : 0;
 
               return (
@@ -102,6 +103,9 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
                       <Icon className="h-3 w-3" />
                       {asset.category}
                     </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-right text-sm text-gray-400">
+                    {(asset as any).units != null ? (asset as any).units : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right text-sm text-gray-500">{fmt(invested)}</td>
                   <td className="px-5 py-3.5 text-right text-sm font-semibold text-gray-900">{fmt(asset.value)}</td>
@@ -148,6 +152,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
           <tfoot>
             <tr className="border-t border-gray-100 bg-gray-50/60">
               <td colSpan={2} className="px-5 py-3 text-xs font-semibold text-gray-500">{assets.length} asset{assets.length !== 1 ? 's' : ''}</td>
+              <td className="px-5 py-3" />
               <td className="px-5 py-3 text-right text-xs font-semibold text-gray-500">
                 {fmt(assets.reduce((s, a) => s + a.invested, 0))}
               </td>

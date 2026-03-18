@@ -54,7 +54,7 @@ export default function OnboardingWizard({ onDismiss }: { onDismiss?: () => void
   const [dismissed, setDismissed] = useState(false);
   const [loading,   setLoading]   = useState(false);
 
-  const dismiss = () => { dismiss(); onDismiss?.(); };
+  const dismiss = () => { setDismissed(true); onDismiss?.(); };
 
   // Account form state
   const [acctName,    setAcctName]    = useState('');
