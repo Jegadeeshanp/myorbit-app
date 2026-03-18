@@ -6,11 +6,11 @@ const BASE = "";
 const CREDS = { email: "testuser@myorbit.app", password: "Test12345" };
 
 const ROUTES = [
-  "/orbit", "/orbit/finance", "/orbit/finance/accounts", "/orbit/finance/assets",
-  "/orbit/finance/liabilities", "/orbit/finance/transactions", "/orbit/finance/transactions/add",
-  "/orbit/finance/investments", "/orbit/finance/loans", "/orbit/finance/budget",
-  "/orbit/finance/budgets", "/orbit/finance/budgets/add", "/orbit/finance/categories",
-  "/orbit/finance/insights", "/orbit/settings", "/dashboard", "/coming-soon",
+  "/orbit", "/orbit/money", "/orbit/money/accounts", "/orbit/money/assets",
+  "/orbit/money/liabilities", "/orbit/money/transactions", "/orbit/money/transactions/add",
+  "/orbit/money/investments", "/orbit/money/loans", "/orbit/money/budget",
+  "/orbit/money/budgets", "/orbit/money/budgets/add", "/orbit/money/categories",
+  "/orbit/money/insights", "/orbit/settings", "/dashboard", "/coming-soon",
   "/signin", "/signup", "/privacy", "/terms", "/contact",
 ];
 
@@ -333,7 +333,7 @@ export default function QAAgent() {
       { url: `${BASE}/`,                         label: "Landing",           threshold: 1500 },
       { url: `${BASE}/signin`,                   label: "Sign in",           threshold: 1000 },
       { url: `${BASE}/privacy`,                  label: "Privacy page",      threshold: 1000 },
-      { url: `${BASE}/orbit/finance/accounts`,   label: "Accounts page",     threshold: 2000 },
+      { url: `${BASE}/orbit/money/accounts`,   label: "Accounts page",     threshold: 2000 },
       { url: `${BASE}/api/accounts`,             label: "GET /api/accounts",      threshold: 500  },
       { url: `${BASE}/api/assets`,               label: "GET /api/assets",        threshold: 500  },
       { url: `${BASE}/api/transactions`,         label: "GET /api/transactions",  threshold: 500  },
