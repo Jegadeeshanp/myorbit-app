@@ -79,7 +79,7 @@ export default function TaskItem({
       <div
         onClick={onClick}
         className={`group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition ${
-          isActive ? 'bg-white/8' : 'hover:bg-white/5'
+          isActive ? 'bg-emerald-50 dark:bg-white/8' : 'hover:bg-gray-50 dark:hover:bg-white/5'
         }`}
       >
         {hasSubtasks && subtasksMode === 'toggle' ? (
@@ -102,17 +102,17 @@ export default function TaskItem({
             </div>
           ) : (
             <div
-              className={`h-5 w-5 rounded-md border-2 bg-[#12161D] transition ${PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.none} ${completing ? 'opacity-50' : ''}`}
+              className={`h-5 w-5 rounded-md border-2 bg-white dark:bg-[#12161D] transition ${PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.none} ${completing ? 'opacity-50' : ''}`}
               style={{ borderColor: accentColor }}
             />
           )}
         </button>
 
-        <span className={`min-w-0 flex-1 truncate text-sm ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-100'}`}>
+        <span className={`min-w-0 flex-1 truncate text-sm ${isCompleted ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-900 dark:text-slate-100'}`}>
           {task.title}
         </span>
 
-        <div className="flex flex-none items-center gap-2 text-slate-400">
+        <div className="flex flex-none items-center gap-2 text-gray-400 dark:text-slate-400">
           {hasRepeat ? <RotateCcw className="h-3.5 w-3.5" /> : null}
           {task.dueTime ? (
             <>
@@ -122,7 +122,7 @@ export default function TaskItem({
           ) : null}
           <Flag className={`h-3.5 w-3.5 ${task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : task.priority === 'low' ? 'text-blue-500' : 'text-slate-600'}`} />
           {task.list ? (
-            <span className="hidden max-w-[96px] truncate text-xs text-slate-500 lg:inline">
+            <span className="hidden max-w-[96px] truncate text-xs text-gray-500 dark:text-slate-500 lg:inline">
               {task.list.emoji || '📋'} {task.list.name.slice(0, 8)}
             </span>
           ) : null}
@@ -155,14 +155,16 @@ export default function TaskItem({
           {task.subtasks.map(subtask => (
             <div
               key={subtask.id}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-white/5"
+              className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/5"
             >
               <div
-                className={`h-4 w-4 flex-none rounded-full border-2 ${
-                  subtask.isDone ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-600'
+                className={`flex h-4 w-4 flex-none items-center justify-center rounded-md border-2 ${
+                  subtask.isDone ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-300 dark:border-slate-600'
                 }`}
-              />
-              <span className={`text-xs ${subtask.isDone ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+              >
+                {subtask.isDone ? <Check className="h-3 w-3 text-emerald-600" /> : null}
+              </div>
+              <span className={`text-xs ${subtask.isDone ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-600 dark:text-slate-300'}`}>
                 {subtask.title}
               </span>
             </div>

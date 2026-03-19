@@ -280,7 +280,7 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#12161D] text-white">
+    <div className="flex h-screen overflow-hidden bg-[#F6F8FB] text-gray-900">
       <div className="hidden md:flex">
         <TasksSidebar
           selected={selected}
@@ -306,30 +306,30 @@ export default function TasksPage() {
         </div>
       ) : null}
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#12161D] p-4 md:p-6">
-        <div className="mb-5 flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F6F8FB] p-4 md:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3 border-b border-gray-200 pb-4">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <button
               onClick={() => setMobileSidebarOpen(true)}
-              className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white/5 hover:text-white md:hidden"
+              className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition hover:bg-white hover:text-gray-900 md:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-xl font-semibold text-white">{view === 'calendar' ? 'Calendar' : listLabel}</h1>
-              <p className="mt-0.5 hidden text-sm text-slate-400 sm:block">
+              <h1 className="truncate text-xl font-semibold text-gray-900">{view === 'calendar' ? 'Calendar' : listLabel}</h1>
+              <p className="mt-0.5 hidden text-sm text-gray-500 sm:block">
                 {view === 'calendar' ? 'Plan and review tasks across calendar views.' : listSubtitle}
               </p>
             </div>
           </div>
           <Link
             href="/orbit"
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-white hover:text-gray-900"
           >
             <div className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 text-sm font-bold leading-none text-white shadow-sm">
               ★
             </div>
-            <span className="text-base font-semibold text-white">MyOrbit</span>
+            <span className="text-base font-semibold text-gray-900">MyOrbit</span>
           </Link>
         </div>
 
@@ -342,17 +342,17 @@ export default function TasksPage() {
             />
           </div>
         ) : (
-          <div className="min-h-0 flex flex-1 gap-3">
-            <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1A2029] shadow-sm xl:basis-[60%] xl:flex-none">
+          <div className="min-h-0 flex flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <section className="flex min-w-0 flex-1 flex-col overflow-hidden xl:basis-[60%] xl:flex-none xl:border-r xl:border-gray-200">
               <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
                 <div
-                  className="group mb-5 flex cursor-text items-center gap-3 rounded-xl border border-white/10 bg-[#12161D] px-4 py-3 transition hover:border-white/20 hover:bg-[#161B23]"
+                  className="group mb-5 flex cursor-text items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition hover:border-gray-300 hover:bg-white"
                   onClick={() => inputRef.current?.focus()}
                 >
-                  <Plus className="h-5 w-5 flex-none text-slate-500 transition group-hover:text-emerald-400" />
+                  <Plus className="h-5 w-5 flex-none text-gray-400 transition group-hover:text-emerald-500" />
                   <input
                     ref={inputRef}
-                    className="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 focus:outline-none"
+                    className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
                     placeholder="Add task"
                     value={newTaskTitle}
                     onChange={e => setNewTaskTitle(e.target.value)}
@@ -364,35 +364,35 @@ export default function TasksPage() {
                 {loading ? (
                   <div className="space-y-2">
                     {[1, 2, 3, 4, 5].map(index => (
-                      <div key={index} className="flex animate-pulse items-center gap-3 rounded-2xl border border-white/10 px-4 py-3">
-                        <div className="h-5 w-5 flex-none rounded-full bg-white/10" />
-                        <div className="h-4 flex-1 rounded bg-white/10" />
+                      <div key={index} className="flex animate-pulse items-center gap-3 rounded-xl border border-gray-200 px-4 py-3">
+                        <div className="h-5 w-5 flex-none rounded-md bg-gray-200" />
+                        <div className="h-4 flex-1 rounded bg-gray-200" />
                       </div>
                     ))}
                   </div>
                 ) : tasks.length === 0 && completedTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#12161D] py-20 text-center">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 shadow-sm">
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 py-20 text-center">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm">
                       {selected === 'today' ? <Sun className="h-8 w-8 text-amber-500" /> : null}
                       {selected === 'inbox' ? <Inbox className="h-8 w-8 text-sky-500" /> : null}
                       {!['today', 'inbox'].includes(selected) ? <CalendarDays className="h-8 w-8 text-indigo-500" /> : null}
                     </div>
-                    <p className="font-semibold text-white">No tasks here</p>
-                    <p className="mt-1 text-sm text-slate-400">Add your first task above</p>
+                    <p className="font-semibold text-gray-900">No tasks here</p>
+                    <p className="mt-1 text-sm text-gray-500">Add your first task above</p>
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-white/10 bg-[#12161D]">
+                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                     {groupedTasks.map((group, index) => (
-                      <div key={group.label} className={index > 0 ? 'border-t border-white/10' : ''}>
+                      <div key={group.label} className={index > 0 ? 'border-t border-gray-200' : ''}>
                         <button
                           onClick={() => toggleGroup(group.label)}
                           className="flex w-full items-center gap-2 px-4 py-3 text-left"
                         >
                           <ChevronRight
-                            className={`h-4 w-4 text-slate-500 transition-transform ${!collapsedGroups.has(group.label) ? 'rotate-90' : ''}`}
+                            className={`h-4 w-4 text-gray-400 transition-transform ${!collapsedGroups.has(group.label) ? 'rotate-90' : ''}`}
                           />
-                          <span className="text-sm font-semibold text-white">{group.label}</span>
-                          <span className="ml-1 text-sm text-slate-500">{group.tasks.length}</span>
+                          <span className="text-sm font-semibold text-gray-900">{group.label}</span>
+                          <span className="ml-1 text-sm text-gray-400">{group.tasks.length}</span>
                         </button>
 
                         {!collapsedGroups.has(group.label) ? (
@@ -413,14 +413,14 @@ export default function TasksPage() {
                     ))}
 
                     {completedTasks.length > 0 ? (
-                      <div className="border-t border-white/10">
+                      <div className="border-t border-gray-200">
                         <button
                           onClick={() => setCompletedOpen(open => !open)}
                           className="flex w-full items-center gap-2 px-4 py-3 text-left"
                         >
-                          <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${completedOpen ? 'rotate-90' : ''}`} />
-                          <span className="text-sm font-semibold text-white">Completed</span>
-                          <span className="ml-1 text-sm text-slate-500">{completedTasks.length}</span>
+                          <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${completedOpen ? 'rotate-90' : ''}`} />
+                          <span className="text-sm font-semibold text-gray-900">Completed</span>
+                          <span className="ml-1 text-sm text-gray-400">{completedTasks.length}</span>
                         </button>
 
                         {completedOpen ? (
@@ -454,7 +454,7 @@ export default function TasksPage() {
                   onCompleted={handleTaskCompleted}
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#1A2029] px-8 text-center text-sm text-slate-400 shadow-sm">
+                <div className="flex h-full w-full items-center justify-center px-8 text-center text-sm text-gray-500">
                   Select a task from the list to edit its details here.
                 </div>
               )}
