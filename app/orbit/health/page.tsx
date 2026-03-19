@@ -164,7 +164,7 @@ export default function HealthPage() {
                   <th className="text-right text-gray-500 font-medium pb-2 px-2">Energy</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
                 {entries.map(e => (
                   <tr key={e.id}>
                     <td className="py-2 pr-4 text-gray-600 font-medium">{e.date === today ? 'Today' : e.date}</td>

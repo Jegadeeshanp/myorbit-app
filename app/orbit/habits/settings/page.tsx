@@ -40,7 +40,7 @@ export default function HabitsSettingsPage() {
             <p className="text-sm text-gray-500">No habits yet</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
             {habits.map(h => (
               <div key={h.id} className="flex items-center gap-3 px-5 py-3">
                 <span className="text-xl">{h.iconEmoji}</span>

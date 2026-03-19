@@ -13,6 +13,7 @@ export default function BudgetPage() {
   const { budgets } = state;
   const [isModalOpen, setModalOpen] = useState(false);
   const [editTarget,  setEditTarget] = useState<BudgetCategory | null>(null);
+  const [mobileSearch, setMobileSearch] = useState(false);
   const [search, setSearch] = useState('');
 
   const filtered = search.trim()
@@ -24,11 +25,21 @@ export default function BudgetPage() {
       <FinanceTopBar />
 
       {/* Search (left) + Add Budget (right) */}
-      <div className="flex items-center gap-3">
-        {/* Search — icon only on mobile, full input on sm+ */}
-        <button className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
-          <Search className="h-4 w-4" />
-        </button>
+      <div className="flex items-center gap-2">
+        {mobileSearch ? (
+          <div className="flex sm:hidden flex-1 relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+              onBlur={() => { if (!search) setMobileSearch(false); }}
+              placeholder="Search budgets…"
+              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
+          </div>
+        ) : (
+          <button onClick={() => setMobileSearch(true)}
+            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
+            <Search className="h-4 w-4" />
+          </button>
+        )}
         <div className="relative hidden sm:flex w-64 flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input

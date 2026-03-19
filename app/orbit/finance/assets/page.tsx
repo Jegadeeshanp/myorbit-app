@@ -24,6 +24,7 @@ export default function AssetsPage() {
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');
+  const [mobileSearch, setMobileSearch] = useState(false);
 
   const accountList = state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
 
@@ -81,8 +82,8 @@ export default function AssetsPage() {
             bg:    pnlPositive ? 'bg-emerald-50'    : 'bg-rose-50',
             border:pnlPositive ? 'border-emerald-100' : 'border-rose-100' },
         ].map(m => (
-          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white p-4 shadow-sm`}>
-            <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
+          <div key={m.label} className={`flex items-center gap-2 sm:gap-3 rounded-2xl border ${m.border} bg-white p-3 sm:p-4 shadow-sm`}>
+            <div className={`hidden sm:flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
               <m.icon className={`h-4 w-4 ${m.color}`} />
             </div>
             <div className="min-w-0">
@@ -94,11 +95,23 @@ export default function AssetsPage() {
       </div>
 
       {/* ── Search (left) + Add (right) ── */}
-      <div className="flex items-center gap-3">
-        {/* Search — icon only on mobile, full input on sm+ */}
-        <button className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
-          <Search className="h-4 w-4" />
-        </button>
+      <div className="flex items-center gap-2">
+        {/* Mobile: tap icon to expand search */}
+        {mobileSearch ? (
+          <div className="flex sm:hidden flex-1 relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+              onBlur={() => { if (!search) setMobileSearch(false); }}
+              placeholder="Search assets…"
+              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
+          </div>
+        ) : (
+          <button onClick={() => setMobileSearch(true)}
+            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
+            <Search className="h-4 w-4" />
+          </button>
+        )}
+        {/* Desktop: always visible */}
         <div className="relative hidden sm:flex w-64 flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"

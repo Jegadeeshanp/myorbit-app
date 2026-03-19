@@ -388,7 +388,7 @@ export default function GoalDetailPage() {
                   <p className="text-sm font-semibold text-gray-900">{HORIZON_LABELS[hz]}</p>
                   <span className="ml-auto text-xs text-gray-400">{msList.filter(m => m.isCompleted).length}/{msList.length}</span>
                 </div>
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
                   {msList.length === 0 && (
                     <p className="px-4 py-3 text-sm text-gray-400 italic">No milestones for this horizon</p>
                   )}
@@ -458,7 +458,7 @@ export default function GoalDetailPage() {
                 <p className="text-xs text-gray-400 mt-0.5">Processes are recurring habits that drive your goal</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
                 {goal.processes.map(p => (
                   <div key={p.id} className="flex items-center gap-3 px-4 py-3 group">
                     <div className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-indigo-50">

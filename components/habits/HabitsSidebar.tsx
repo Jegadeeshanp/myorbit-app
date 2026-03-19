@@ -30,29 +30,33 @@ export default function HabitsSidebar() {
   const initials = userName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <aside className="hidden md:flex sticky top-0 h-screen w-56 flex-none flex-col border-r border-gray-100 bg-white px-3 py-6 overflow-y-auto">
-      {/* Brand */}
-      <div className="mb-6 px-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100">
+    <aside className="sticky top-0 hidden h-screen w-56 flex-none flex-col overflow-y-auto border-r border-gray-100 bg-white px-3 py-5 md:flex">
+      <div className="mb-5 px-2">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
             <Activity className="h-4 w-4 text-amber-600" />
           </div>
-          <div className="text-base font-semibold text-gray-900">Habits</div>
+          <div>
+            <div className="text-sm font-semibold text-gray-900">Habits</div>
+            <div className="text-[11px] text-gray-400">Behavioral engine</div>
+          </div>
         </div>
-        <div className="mt-0.5 text-xs text-gray-400 pl-9">Behavioral engine</div>
       </div>
 
       <nav className="flex-1 space-y-0.5">
         {menu.map(({ label, href, Icon }) => {
           const isActive = active === href;
           return (
-            <Link key={href} href={href}
+            <Link
+              key={href}
+              href={href}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                 isActive
-                  ? 'bg-amber-50 text-amber-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}>
-              <Icon className={`h-4 w-4 flex-none ${isActive ? 'text-amber-600' : 'text-gray-400'}`} />
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <Icon className={`h-4 w-4 flex-none ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
               {label}
             </Link>
           );
@@ -63,16 +67,21 @@ export default function HabitsSidebar() {
 
       <div className="mt-3 space-y-0.5">
         <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-          <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-amber-600 text-[11px] font-bold text-white select-none">
+          <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white select-none">
             {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-gray-900 leading-none">{userName}</p>
+            <p className="truncate text-sm font-medium text-gray-900 leading-none">{userName}</p>
+            <p className="mt-0.5 truncate text-[11px] text-gray-400">Personal account</p>
           </div>
         </div>
-        <Link href="/orbit/habits/settings" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 hover:text-gray-900">
+
+        <Link
+          href="/orbit/habits/settings"
+          className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+        >
           <Settings className="h-4 w-4 flex-none text-gray-400" />
-          Habits Settings
+          Settings
         </Link>
       </div>
     </aside>

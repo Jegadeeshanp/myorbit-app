@@ -12,6 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/orbit/finance/budget':       'Budget',
   '/orbit/finance/insights':     'Insights',
   '/orbit/finance/vitals':       'Vitals',
+  '/orbit/finance/settings':     'Finance Settings',
 };
 
 const PAGE_SUBTITLES: Record<string, string> = {
@@ -23,12 +24,18 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/orbit/finance/budget':       'Follow your monthly spending plan and stay on track.',
   '/orbit/finance/insights':     'Financial insights based on your activity and trends.',
   '/orbit/finance/vitals':       'Financial health check — score your money habits across 5 dimensions.',
+  '/orbit/finance/settings':     'Currency, recurring transactions and data export preferences.',
 };
 
 export default function FinanceTopBar({ action }: { action?: React.ReactNode }) {
   const pathname = usePathname() ?? '';
-  const title    = PAGE_TITLES[pathname] ?? null;
-  const subtitle = PAGE_SUBTITLES[pathname] ?? null;
+  const segments = pathname.split('/').filter(Boolean);
+  const fallbackTitle = segments[1] === 'finance'
+    ? (segments[2] ? segments[2].replace(/-/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) : 'Finance')
+    : null;
+  const title    = PAGE_TITLES[pathname] ?? fallbackTitle;
+  const subtitle = PAGE_SUBTITLES[pathname]
+    ?? (segments[2] === 'settings' ? 'Manage your finance workspace defaults and preferences.' : null);
 
   return (
     <div className="mb-1 flex items-center justify-between gap-3 border-b border-gray-100 pb-4">

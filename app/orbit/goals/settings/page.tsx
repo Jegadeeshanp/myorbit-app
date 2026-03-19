@@ -53,7 +53,7 @@ export default function GoalsSettingsPage() {
             {[1,2,3].map(i => <div key={i} className="h-10 rounded-xl bg-gray-100 animate-pulse" />)}
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
             {categoryStats.map(cat => (
               <div key={cat.name} className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
