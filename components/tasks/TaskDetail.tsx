@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   X, Plus, Trash2, CheckCircle2, Circle, Flag, Calendar, Bell,
-  RotateCcw, Clock, ChevronRight, Tag, ChevronLeft, Check,
+  RotateCcw, Clock, ChevronRight, Tag, ChevronLeft, Check, List as ListIcon,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
@@ -206,13 +206,14 @@ interface PanelProps {
   onComplete?: () => void;
   onSubtaskClick?: (st: Subtask) => void;
   onAddSubtask?: (title: string) => Promise<void>;
+  onClose: () => void;
 }
 
 function TaskPanel({
   id, isSubtask, title, notes, priority, dueDate, dueTime, status, tags,
   lists, listId, subtasks, saving,
   onTitleChange, onNotesChange, onPriorityChange, onDueDateChange, onDueTimeChange,
-  onTagsChange, onListChange, onSave, onDelete, onComplete, onSubtaskClick, onAddSubtask,
+  onTagsChange, onListChange, onSave, onDelete, onComplete, onSubtaskClick, onAddSubtask, onClose,
 }: PanelProps) {
   const vTags = useMemo(() => visibleTags(tags), [tags]);
   const reminder = useMemo(() => extractTag(tags, 'reminder', 'on-time'), [tags]);
@@ -224,6 +225,7 @@ function TaskPanel({
   const [localDueTime,  setLocalDueTime]  = useState(dueTime);
   const [showDate,    setShowDate]    = useState(false);
   const [showPri,     setShowPri]     = useState(false);
+  const [showList,    setShowList]    = useState(false);
   const [openAction,  setOpenAction]  = useState<null|'subtask'|'tag'|'delete'|'moveto'>(null);
   const [newStTitle,  setNewStTitle]  = useState('');
   const [tagInput,    setTagInput]    = useState('');
@@ -231,6 +233,8 @@ function TaskPanel({
   const dateBtnRef = useRef<HTMLButtonElement>(null);
   const priRef     = useRef<HTMLDivElement>(null);
   const priBtnRef  = useRef<HTMLButtonElement>(null);
+  const listRef    = useRef<HTMLDivElement>(null);
+  const listBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setLocalReminder(extractTag(tags,'reminder','on-time'));
@@ -248,6 +252,16 @@ function TaskPanel({
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [showPri]);
+
+  // Close list picker on outside click
+  useEffect(() => {
+    if (!showList) return;
+    const h = (e: MouseEvent) => {
+      if (listRef.current && !listRef.current.contains(e.target as Node) && listBtnRef.current && !listBtnRef.current.contains(e.target as Node)) setShowList(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showList]);
 
   const buildFull = useCallback(() => {
     const next = [...vTags];
@@ -296,11 +310,11 @@ function TaskPanel({
         />
       )}
 
-      {/* ── Top bar: date + priority + close ── */}
+      {/* ── Top bar: status + date + priority + close ── */}
       <div className="flex flex-none items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700/60">
         {status === 'completed'
-          ? <CheckCircle2 className="h-4 w-4 text-emerald-500"/>
-          : <Circle className="h-4 w-4 text-gray-400 dark:text-gray-500"/>
+          ? <CheckCircle2 className="h-4 w-4 flex-none text-emerald-500"/>
+          : <Circle className="h-4 w-4 flex-none text-gray-400 dark:text-gray-500"/>
         }
         <button ref={dateBtnRef} onClick={() => setShowDate(v=>!v)}
           className={`flex flex-1 items-center gap-1.5 truncate text-xs transition ${hasDate?'text-sky-500 hover:text-sky-400':'text-gray-400 hover:text-gray-600 dark:text-gray-500'}`}
@@ -332,6 +346,11 @@ function TaskPanel({
             </div>
           )}
         </div>
+
+        {/* Close button — right next to priority */}
+        <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
+          <X className="h-4 w-4"/>
+        </button>
       </div>
 
       {/* ── Scrollable body ── */}
@@ -440,30 +459,6 @@ function TaskPanel({
           </div>
         )}
 
-        {openAction === 'moveto' && (
-          <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-700/60">
-            <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Move to list</p>
-            <div className="space-y-1">
-              <button onClick={() => { onListChange?.(''); setOpenAction(null); }}
-                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-gray-50 dark:hover:bg-white/5 ${!listId?'text-emerald-600':'text-gray-600 dark:text-gray-400'}`}
-              >
-                <span>📥</span><span className="flex-1">Inbox</span>
-                {!listId && <Check className="h-3.5 w-3.5 text-emerald-500"/>}
-              </button>
-              {lists.map(l => (
-                <button key={l.id} onClick={() => { onListChange?.(l.id); setOpenAction(null); }}
-                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-gray-50 dark:hover:bg-white/5 ${listId===l.id?'text-emerald-600':'text-gray-600 dark:text-gray-400'}`}
-                >
-                  <span>{l.emoji||'📋'}</span>
-                  <span className="flex-1 truncate">{l.name}</span>
-                  {listId===l.id && <Check className="h-3.5 w-3.5 text-emerald-500"/>}
-                  {l.color && <span className="h-2 w-2 rounded-full flex-none" style={{backgroundColor:l.color}}/>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {openAction === 'delete' && (
           <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-700/60">
             <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
@@ -478,24 +473,49 @@ function TaskPanel({
 
         {/* Icon row */}
         <div className="flex items-center gap-1 px-3 py-2">
-          {/* FIX: Done replaced with Move To for main task */}
-          {!isSubtask ? (
-            <button onClick={() => setOpenAction(v => v==='moveto' ? null : 'moveto')}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${openAction==='moveto'?'bg-sky-100 text-sky-600 dark:bg-sky-900/40':'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
-            >
-              <Calendar className="h-4 w-4"/>
-              <span>Move to</span>
-            </button>
-          ) : (
-            // Complete button only on subtask panel
-            status !== 'completed' && onComplete && (
-              <button onClick={onComplete}
-                className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+          {/* List picker — bottom left */}
+          {!isSubtask && (
+            <div className="relative">
+              <button ref={listBtnRef} onClick={() => setShowList(v=>!v)}
+                className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${showList ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : listId ? 'text-blue-500 hover:bg-gray-100 dark:hover:bg-white/5' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+                title="Move to list"
               >
-                <CheckCircle2 className="h-4 w-4"/>
-                <span>Done</span>
+                <ListIcon className="h-4 w-4"/>
               </button>
-            )
+              {showList && (
+                <div ref={listRef} className="absolute left-0 bottom-full z-50 mb-1.5 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
+                  <button type="button"
+                    onClick={() => { onListChange?.(''); void onSave({listId:''}); setShowList(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  >
+                    <span>📥</span>
+                    <span className="flex-1 text-gray-700 dark:text-gray-200">Inbox</span>
+                    {!listId && <Check className="h-3.5 w-3.5 text-sky-500"/>}
+                  </button>
+                  {lists.map(l => (
+                    <button key={l.id} type="button"
+                      onClick={() => { onListChange?.(l.id); void onSave({listId:l.id}); setShowList(false); }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <span>{l.emoji||'📋'}</span>
+                      <span className="flex-1 truncate text-gray-700 dark:text-gray-200">{l.name}</span>
+                      {listId===l.id && <Check className="h-3.5 w-3.5 text-sky-500"/>}
+                      {l.color && <span className="h-2 w-2 flex-none rounded-full" style={{backgroundColor:l.color}}/>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Complete button for subtask */}
+          {isSubtask && status !== 'completed' && onComplete && (
+            <button onClick={onComplete}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+            >
+              <CheckCircle2 className="h-4 w-4"/>
+              <span>Done</span>
+            </button>
           )}
 
           <div className="flex-1"/>
@@ -627,11 +647,6 @@ export default function TaskDetail({ task, lists, onClose, onUpdated, onDeleted,
       {!activeSt ? (
         /* ── Main task — full width ── */
         <div className="flex w-full flex-col">
-          <div className="flex justify-end px-3 pt-2">
-            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-              <X className="h-4 w-4"/>
-            </button>
-          </div>
           <TaskPanel
             id={task.id} title={title} notes={notes} priority={priority}
             dueDate={dueDate} dueTime={dueTime} status={task.status}
@@ -645,6 +660,7 @@ export default function TaskDetail({ task, lists, onClose, onUpdated, onDeleted,
             onComplete={()=>onCompleted(task.id)}
             onSubtaskClick={st=>setActiveSt(st)}
             onAddSubtask={handleAddSubtask}
+            onClose={onClose}
           />
         </div>
       ) : (
@@ -656,10 +672,6 @@ export default function TaskDetail({ task, lists, onClose, onUpdated, onDeleted,
             >
               <ChevronLeft className="h-3.5 w-3.5"/>
               <span className="max-w-[120px] truncate">{task.title}</span>
-            </button>
-            <div className="flex-1"/>
-            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-              <X className="h-4 w-4"/>
             </button>
           </div>
           <TaskPanel
@@ -675,6 +687,7 @@ export default function TaskDetail({ task, lists, onClose, onUpdated, onDeleted,
             onSave={handleStSave}
             onDelete={handleDeleteSubtask}
             onComplete={()=>handleToggleSt(activeSt)}
+            onClose={onClose}
           />
         </div>
       )}

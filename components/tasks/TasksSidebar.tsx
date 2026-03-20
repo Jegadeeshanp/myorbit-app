@@ -190,7 +190,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
 
         {/* Lists header — only + button, no global ... */}
         <div className="mb-2 flex items-center justify-between px-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Lists ({lists.length})</p>
+          <p className="text-xs font-semibold text-gray-400">Lists ({lists.length})</p>
           <button onClick={openCreateModal} className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10">
             <Plus className="h-4 w-4" />
           </button>
