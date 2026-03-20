@@ -455,16 +455,16 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
       {/* ── Upcoming transactions ── */}
       {filteredUpcoming.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm dark:border-blue-900/30 dark:bg-[#1C1F26]">
           {/* Collapsible header */}
           <button
             onClick={() => setUpcomingOpen(v => !v)}
-            className="flex w-full items-center gap-2.5 border-b border-blue-100/60 bg-blue-50/70 px-5 py-3 text-left transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 active:bg-blue-50"
+            className="flex w-full items-center gap-2.5 border-b border-blue-100/60 bg-blue-50/70 px-5 py-3 text-left transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 active:bg-blue-50 dark:border-blue-900/30 dark:bg-blue-900/20 dark:hover:bg-blue-900/30"
           >
             <ChevronRight className={`h-3.5 w-3.5 flex-none text-blue-400 transition-transform duration-150 ${upcomingOpen ? 'rotate-90' : ''}`} />
             <Clock className="h-3.5 w-3.5 text-blue-500" />
-            <p className="text-xs font-semibold text-blue-700">Upcoming</p>
-            <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+            <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Upcoming</p>
+            <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
               {filteredUpcoming.length}
             </span>
           </button>
