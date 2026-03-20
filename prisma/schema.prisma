@@ -247,7 +247,11 @@ model TaskSubtask {
   taskId    String
   userId    String
   title     String
+  notes     String?
   isDone    Boolean  @default(false)
+  dueDate   String?
+  dueTime   String?
+  tags      String   @default("[]")
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
