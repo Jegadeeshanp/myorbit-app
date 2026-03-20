@@ -6,7 +6,7 @@ import {
   Sun, Inbox, CalendarDays, Plus, Settings, Calendar, User,
   MoreHorizontal, Pencil, Pin, Copy, Share2, Trash2, X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 
 type TaskList = {
@@ -40,7 +40,6 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const [listName, setListName] = useState('');
   const [listIcon, setListIcon] = useState('📋');
   const [listColor, setListColor] = useState('#10B981');
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const fetchLists = useCallback(() => {
     fetch('/api/task-lists')
@@ -57,11 +56,13 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
 
   useEffect(() => { fetchLists(); fetchCounts(); }, [fetchLists, fetchCounts, refreshKey]);
 
-  // FIX: close menu on outside click
+  // Close menu on outside click — no ref needed, just close on any click outside the sidebar
   useEffect(() => {
     if (!openMenuListId) return;
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Element;
+      // Close if clicking outside a menu dropdown or its trigger button
+      if (!target.closest('[data-menu-dropdown]') && !target.closest('[data-menu-trigger]')) {
         setOpenMenuListId(null);
       }
     };
@@ -189,14 +190,14 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
 
         {/* Lists header — only + button, no global ... */}
         <div className="mb-2 flex items-center justify-between px-2">
-          <p className="text-xs font-semibold text-gray-400">Lists ({lists.length})</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Lists ({lists.length})</p>
           <button onClick={openCreateModal} className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-white/10">
             <Plus className="h-4 w-4" />
           </button>
         </div>
 
         {/* FIX: list rows with per-row ... button */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-visible">
           {lists.map(list => {
             const count = list._count?.tasks ?? 0;
             const key = `list:${list.id}`;
@@ -238,6 +239,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
 
                 {/* Per-row ... edit button — appears on hover */}
                 <button
+                  data-menu-trigger
                   onClick={e => { e.stopPropagation(); setOpenMenuListId(isMenuOpen ? null : list.id); }}
                   className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md transition ${
                     isMenuOpen
@@ -251,8 +253,8 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                 {/* Per-row dropdown menu — closes on outside click */}
                 {isMenuOpen && (
                   <div
-                    ref={menuRef}
-                    className="absolute right-0 top-full z-40 mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]"
+                    data-menu-dropdown
+                    className="absolute right-0 top-full z-[100] mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]"
                   >
                     <button onClick={() => openEditModal(list)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
                       <Pencil className="h-3.5 w-3.5 text-gray-400" />Edit

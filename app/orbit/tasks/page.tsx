@@ -168,7 +168,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden p-4 md:p-5">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden p-4 pb-20 md:p-5 md:pb-5">
         {/* Page header */}
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-gray-200 pb-4 dark:border-gray-700/60">
           <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -180,7 +180,7 @@ export default function TasksPage() {
               <p className="mt-0.5 hidden text-sm text-gray-500 dark:text-gray-400 sm:block">{view === 'calendar' ? 'Plan and review tasks across calendar views.' : listSubtitle}</p>
             </div>
           </div>
-          <Link href="/orbit" className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800">
+          <Link href="/orbit" className="hidden md:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800">
             <div className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 text-sm font-bold leading-none text-white shadow-sm">★</div>
             <span className="text-base font-semibold text-gray-900 dark:text-white">MyOrbit</span>
           </Link>
@@ -300,6 +300,33 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* Mobile bottom nav */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur-md dark:border-gray-700 dark:bg-[#1C1F26]/95 md:hidden">
+        <div className="flex items-center justify-around px-1 py-1.5">
+          <button onClick={() => { setView('tasks'); setSelected('today'); setMobileSidebarOpen(false); }} className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition ${view === 'tasks' && selected === 'today' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
+            <Sun className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Today</span>
+          </button>
+          <button onClick={() => { setView('tasks'); setSelected('inbox'); setMobileSidebarOpen(false); }} className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition ${view === 'tasks' && selected === 'inbox' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
+            <Inbox className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Inbox</span>
+          </button>
+          <button onClick={focusCreateTask} className="flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-gray-400 dark:text-gray-500">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <Plus className="h-4 w-4" />
+            </div>
+            <span className="text-[10px] font-medium">Add</span>
+          </button>
+          <button onClick={() => { setView('tasks'); setSelected('next7'); setMobileSidebarOpen(false); }} className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition ${view === 'tasks' && selected === 'next7' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
+            <CalendarDays className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Next 7</span>
+          </button>
+          <button onClick={() => setMobileSidebarOpen(true)} className="flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-gray-400 dark:text-gray-500">
+            <Menu className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Lists</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

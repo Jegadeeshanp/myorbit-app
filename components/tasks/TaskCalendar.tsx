@@ -284,9 +284,9 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
       </div>
 
       {panelMode === 'calendar' ? (
-        <div className="flex-1 overflow-auto bg-[#12161D] p-2.5">
+        <div className="flex-1 overflow-auto bg-[#12161D]">
           {(calendarView === 'week' || calendarView === '3days' || calendarView === 'day') ? (
-            <div className="overflow-hidden rounded-xl border border-white/8 bg-[#161B23]">
+            <div className="overflow-hidden border-0 bg-[#161B23]">
               <div
                 className="grid border-b border-white/8"
                 style={{ gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
@@ -385,7 +385,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
           ) : null}
 
           {calendarView === 'month' ? (
-            <div className="overflow-hidden rounded-xl border border-white/8 bg-[#161B23]">
+            <div className="overflow-hidden border-0 bg-[#161B23]">
               <div className="grid grid-cols-7 border-b border-white/8">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(label => (
                   <p key={label} className="border-r border-white/8 px-3 py-2 text-xs text-slate-400 last:border-r-0">
@@ -402,11 +402,13 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                   const isCurrentMonth = day.getMonth() === referenceDate.getMonth();
 
                   return (
-                    <button
+                    <div
                       key={dayKey}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => selectDate(day)}
-                      className={`min-h-[120px] border-r border-t border-white/8 px-2 py-2 text-left align-top transition last:border-r-0 ${
+                      onKeyDown={e => e.key === 'Enter' && selectDate(day)}
+                      className={`min-h-[120px] cursor-pointer border-r border-t border-white/8 px-2 py-2 text-left align-top transition last:border-r-0 ${
                         isSelected ? 'bg-white/5' : 'hover:bg-white/[0.03]'
                       } ${!isCurrentMonth ? 'opacity-45' : ''}`}
                     >
@@ -419,7 +421,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                         ))}
                         {dayTasks.length > 2 ? <p className="text-[11px] text-slate-500">+{dayTasks.length - 2} more</p> : null}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -541,17 +543,15 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
           </div>
 
           {activeTasks.length > 0 ? (
-            <div className="rounded-2xl border border-white/8 bg-[#161B23] p-3">
-              <div className="space-y-1">
-                {activeTasks.map(task => (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    onClick={() => onTaskClick?.(task)}
-                    subtasksMode="expanded"
-                  />
-                ))}
-              </div>
+            <div className="space-y-1">
+              {activeTasks.map(task => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onClick={() => onTaskClick?.(task)}
+                  subtasksMode="expanded"
+                />
+              ))}
             </div>
           ) : null}
 
@@ -568,17 +568,15 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
               </button>
 
               {completedOpen ? (
-                <div className="rounded-2xl border border-white/8 bg-[#161B23] p-3">
-                  <div className="space-y-1">
-                    {completedTasks.map(task => (
-                      <TaskItem
-                        key={task.id}
-                        task={task}
-                        onClick={() => onTaskClick?.(task)}
-                        subtasksMode="expanded"
-                      />
-                    ))}
-                  </div>
+                <div className="space-y-1">
+                  {completedTasks.map(task => (
+                    <TaskItem
+                      key={task.id}
+                      task={task}
+                      onClick={() => onTaskClick?.(task)}
+                      subtasksMode="expanded"
+                    />
+                  ))}
                 </div>
               ) : null}
             </div>

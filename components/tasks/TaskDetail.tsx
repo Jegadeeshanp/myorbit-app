@@ -363,11 +363,12 @@ function TaskPanel({
               const stTags = parseTags(st.tags);
               const stRepeat = extractTag(stTags, 'repeat', 'none');
               return (
-                <button key={st.id} onClick={() => onSubtaskClick?.(st)}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition hover:bg-gray-50 dark:hover:bg-white/5"
+                <div key={st.id} role="button" tabIndex={0}
+                  onClick={() => onSubtaskClick?.(st)}
+                  onKeyDown={e => e.key==='Enter' && onSubtaskClick?.(st)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left transition hover:bg-gray-50 dark:hover:bg-white/5"
                 >
                   <div
-                    onClick={e => { e.stopPropagation(); /* toggle handled in parent */ }}
                     className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${st.isDone?'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30':'border-gray-300 dark:border-gray-600'}`}
                   >
                     {st.isDone && <Check className="h-3 w-3 text-emerald-600"/>}
@@ -380,7 +381,7 @@ function TaskPanel({
                       {stRepeat!=='none' && <RotateCcw className="h-2.5 w-2.5 text-emerald-400"/>}
                     </span>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -440,22 +441,26 @@ function TaskPanel({
         )}
 
         {openAction === 'moveto' && (
-          <div className="absolute bottom-[52px] left-3 z-50 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
-            <button onClick={() => { onListChange?.(''); setOpenAction(null); }}
-              className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50 ${!listId?'text-emerald-600 font-medium':'text-gray-700 dark:text-gray-200'}`}
-            >
-              <span className="text-base">📥</span><span className="flex-1">Inbox</span>
-              {!listId && <Check className="h-3.5 w-3.5 text-emerald-500"/>}
-            </button>
-            {lists.map(l => (
-              <button key={l.id} onClick={() => { onListChange?.(l.id); setOpenAction(null); }}
-                className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50 ${listId===l.id?'text-emerald-600 font-medium':'text-gray-700 dark:text-gray-200'}`}
+          <div className="border-b border-gray-100 px-4 py-3 dark:border-gray-700/60">
+            <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">Move to list</p>
+            <div className="space-y-1">
+              <button onClick={() => { onListChange?.(''); setOpenAction(null); }}
+                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-gray-50 dark:hover:bg-white/5 ${!listId?'text-emerald-600':'text-gray-600 dark:text-gray-400'}`}
               >
-                <span className="text-base">{l.emoji||'📋'}</span>
-                <span className="flex-1 truncate">{l.name}</span>
-                {listId===l.id && <Check className="h-3.5 w-3.5 text-emerald-500"/>}
+                <span>📥</span><span className="flex-1">Inbox</span>
+                {!listId && <Check className="h-3.5 w-3.5 text-emerald-500"/>}
               </button>
-            ))}
+              {lists.map(l => (
+                <button key={l.id} onClick={() => { onListChange?.(l.id); setOpenAction(null); }}
+                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:bg-gray-50 dark:hover:bg-white/5 ${listId===l.id?'text-emerald-600':'text-gray-600 dark:text-gray-400'}`}
+                >
+                  <span>{l.emoji||'📋'}</span>
+                  <span className="flex-1 truncate">{l.name}</span>
+                  {listId===l.id && <Check className="h-3.5 w-3.5 text-emerald-500"/>}
+                  {l.color && <span className="h-2 w-2 rounded-full flex-none" style={{backgroundColor:l.color}}/>}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -616,42 +621,44 @@ export default function TaskDetail({ task, lists, onClose, onUpdated, onDeleted,
     } catch { toast('Failed to update','error'); }
   };
 
-  const splitView = !!activeSt;
-
   return (
     <div className="relative flex h-full w-full overflow-hidden rounded-2xl border border-gray-200 bg-white text-gray-900 dark:border-gray-700/60 dark:bg-[#1C1F26] dark:text-gray-100">
 
-      {/* Left — main task */}
-      <div className={`flex flex-col ${splitView?'w-[55%] border-r border-gray-200 dark:border-gray-700/60':'w-full'}`}>
-        {/* FIX: removed "TASK" label, X next to priority is in the top bar of TaskPanel */}
-        {/* Close button floats top-right */}
-        <div className="flex justify-end px-3 pt-2">
-          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-            <X className="h-4 w-4"/>
-          </button>
-        </div>
-        <TaskPanel
-          id={task.id} title={title} notes={notes} priority={priority}
-          dueDate={dueDate} dueTime={dueTime} status={task.status}
-          tags={tags} lists={lists} listId={listId} subtasks={subtasks} saving={saving}
-          onTitleChange={setTitle} onNotesChange={setNotes} onPriorityChange={setPriority}
-          onDueDateChange={setDueDate} onDueTimeChange={setDueTime}
-          onTagsChange={setTags}
-          onListChange={id=>{setListId(id);void handleSave({listId:id});}}
-          onSave={handleSave}
-          onDelete={()=>onDeleted(task.id)}
-          onComplete={()=>onCompleted(task.id)}
-          onSubtaskClick={st=>setActiveSt(prev=>prev?.id===st.id?null:st)}
-          onAddSubtask={handleAddSubtask}
-        />
-      </div>
-
-      {/* Right — subtask detail panel (same as TaskPanel but for subtask) */}
-      {splitView && activeSt && (
-        <div className="flex w-[45%] flex-col border-l border-gray-200 dark:border-gray-700/60">
-          {/* Header with close */}
+      {!activeSt ? (
+        /* ── Main task — full width ── */
+        <div className="flex w-full flex-col">
           <div className="flex justify-end px-3 pt-2">
-            <button onClick={()=>setActiveSt(null)} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
+              <X className="h-4 w-4"/>
+            </button>
+          </div>
+          <TaskPanel
+            id={task.id} title={title} notes={notes} priority={priority}
+            dueDate={dueDate} dueTime={dueTime} status={task.status}
+            tags={tags} lists={lists} listId={listId} subtasks={subtasks} saving={saving}
+            onTitleChange={setTitle} onNotesChange={setNotes} onPriorityChange={setPriority}
+            onDueDateChange={setDueDate} onDueTimeChange={setDueTime}
+            onTagsChange={setTags}
+            onListChange={id=>{setListId(id);void handleSave({listId:id});}}
+            onSave={handleSave}
+            onDelete={()=>onDeleted(task.id)}
+            onComplete={()=>onCompleted(task.id)}
+            onSubtaskClick={st=>setActiveSt(st)}
+            onAddSubtask={handleAddSubtask}
+          />
+        </div>
+      ) : (
+        /* ── Subtask — full width, back chevron returns to task ── */
+        <div className="flex w-full flex-col">
+          <div className="flex items-center px-3 pt-2">
+            <button onClick={()=>setActiveSt(null)}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            >
+              <ChevronLeft className="h-3.5 w-3.5"/>
+              <span className="max-w-[120px] truncate">{task.title}</span>
+            </button>
+            <div className="flex-1"/>
+            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="h-4 w-4"/>
             </button>
           </div>
