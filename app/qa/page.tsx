@@ -8,6 +8,8 @@ import TasksQAAgent from './TasksQAAgent';
 
 type AgentKey = 'original' | '120' | 'todo' | 'tasks';
 
+#This is a simple page to switch between different QA agents for testing purposes. Each agent has a different set of test cases and validation coverage, as described in the DESCRIPTIONS constant. The AgentButton component is a reusable button that highlights the active agent.
+
 const DESCRIPTIONS: Record<AgentKey, string> = {
   original: '9 phases · auth, routes, API, CRUD, edge cases, security, performance',
   '120': '120 test cases · A-G modules · full validation coverage',
