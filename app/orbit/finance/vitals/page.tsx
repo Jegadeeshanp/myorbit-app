@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronDown, ChevronRight, Shield, TrendingUp, Zap,
-  CheckCircle2, AlertCircle, PiggyBank, Activity,
+  Activity,
 } from 'lucide-react';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
@@ -40,7 +40,6 @@ function getStatus(score: number) {
 }
 
 function barColor(score2: number) {
-  // score is out of 2
   if (score2 >= 1.5) return '#10b981';
   if (score2 >= 1)   return '#f59e0b';
   return '#ef4444';
@@ -149,26 +148,54 @@ function MetricCard({
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────
-const PROFILE_KEY = 'orbit_vitals_profile';
+
+type Profile = { age: number; termCover: number; healthCover: number; dependents: number };
+const DEFAULT_PROFILE: Profile = { age: 0, termCover: 0, healthCover: 0, dependents: 0 };
 
 export default function VitalsPage() {
   const { state } = useFinance();
 
-  // ── localStorage-persisted profile ──
-  const [profile, setProfile] = useState({ age: 0, termCover: 0, healthCover: 0, dependents: 0 });
+  const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(true);
+  const [saving, setSaving] = useState(false);
 
+  // Debounce timer ref for auto-save
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Load profile from API on mount ──
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(PROFILE_KEY);
-      if (saved) setProfile(JSON.parse(saved));
-    } catch {}
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        const p = data?.preferences ?? {};
+        setProfile({
+          age:         typeof p.age         === 'number' ? p.age         : 0,
+          dependents:  typeof p.dependents  === 'number' ? p.dependents  : 0,
+          termCover:   typeof p.termCover   === 'number' ? p.termCover   : 0,
+          healthCover: typeof p.healthCover === 'number' ? p.healthCover : 0,
+        });
+        setProfileLoaded(true);
+      })
+      .catch(() => setProfileLoaded(true)); // still show page on error
   }, []);
 
-  const updateProfile = useCallback((key: keyof typeof profile, val: number) => {
+  // ── Auto-save a single field with 600ms debounce ──
+  const updateProfile = useCallback((key: keyof Profile, val: number) => {
     setProfile(prev => {
       const next = { ...prev, [key]: val };
-      try { localStorage.setItem(PROFILE_KEY, JSON.stringify(next)); } catch {}
+
+      // Debounce the API call
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        setSaving(true);
+        fetch('/api/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [key]: val === 0 ? null : val }),
+        }).finally(() => setSaving(false));
+      }, 600);
+
       return next;
     });
   }, []);
@@ -214,7 +241,6 @@ export default function VitalsPage() {
   const totalScore = Math.round((sEF + sSR + sDR + sTerm + sHealth) * 10) / 10;
   const status = getStatus(totalScore);
 
-  // ── Insight text (weakest metric drives the headline) ──
   const weakest = [
     { name: 'emergency fund', score: sEF },
     { name: 'savings rate',   score: sSR },
@@ -226,20 +252,18 @@ export default function VitalsPage() {
     ? 'Your finances are in excellent shape. Keep maintaining these habits.'
     : `Focus on improving your ${weakest.name} to boost your Vital score.`;
 
-  // ── Profile completeness ──
   const completeness = Math.round(
     ([profile.age > 0, profile.termCover > 0, profile.healthCover > 0, profile.dependents >= 0,
       monthlyIncome > 0, monthlyExpense > 0, liquidAssets > 0]
       .filter(Boolean).length / 7) * 100
   );
 
-  // ── Top 3 actions ──
   const actions = [
-    { score: sEF,   label: 'Build emergency fund',    detail: runwayMonths < 6 ? `Need ${fmt(Math.max(0, monthlyExpense * (6 - runwayMonths)))} more for a 6-month safety net` : '', cond: runwayMonths < 6 },
-    { score: sSR,   label: 'Increase savings rate',   detail: `Aim for 25%+ — currently at ${Math.round(savingsRate * 100)}%`, cond: savingsRate < 0.25 },
-    { score: sTerm, label: 'Increase term insurance', detail: `Ideal cover is ${fmt(idealTerm)}; enter your policy in Financial Profile`, cond: sTerm < 2 },
-    { score: sHealth,label:'Improve health insurance',detail: `Recommended cover: ${fmt(healthRec)}`, cond: sHealth < 2 },
-    { score: sDR,   label: 'Reduce debt',             detail: `Debt ratio is ${Math.round(debtRatio * 100)}% — target below 20%`, cond: debtRatio >= 0.2 },
+    { score: sEF,    label: 'Build emergency fund',     detail: runwayMonths < 6 ? `Need ${fmt(Math.max(0, monthlyExpense * (6 - runwayMonths)))} more for a 6-month safety net` : '', cond: runwayMonths < 6 },
+    { score: sSR,    label: 'Increase savings rate',    detail: `Aim for 25%+ — currently at ${Math.round(savingsRate * 100)}%`, cond: savingsRate < 0.25 },
+    { score: sTerm,  label: 'Increase term insurance',  detail: `Ideal cover is ${fmt(idealTerm)}; enter your policy in Financial Profile`, cond: sTerm < 2 },
+    { score: sHealth,label: 'Improve health insurance', detail: `Recommended cover: ${fmt(healthRec)}`, cond: sHealth < 2 },
+    { score: sDR,    label: 'Reduce debt',              detail: `Debt ratio is ${Math.round(debtRatio * 100)}% — target below 20%`, cond: debtRatio >= 0.2 },
   ].filter(a => a.cond).sort((a, b) => a.score - b.score).slice(0, 3);
 
   const metrics = [
@@ -312,15 +336,21 @@ export default function VitalsPage() {
               ))}
             </div>
 
-            {/* User inputs */}
+            {/* User inputs — disabled until loaded to prevent flash-reset */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <VInput label="Age" value={profile.age} onChange={v => updateProfile('age', v)} placeholder="30" suffix="yrs" />
-              <VInput label="Dependents" value={profile.dependents} onChange={v => updateProfile('dependents', v)} placeholder="0" />
-              <VInput label="Term Cover" value={profile.termCover} onChange={v => updateProfile('termCover', v)} placeholder="1,00,00,000" suffix="₹" />
-              <VInput label="Health Cover" value={profile.healthCover} onChange={v => updateProfile('healthCover', v)} placeholder="15,00,000" suffix="₹" />
+              <VInput label="Age"          value={profile.age}         onChange={v => updateProfile('age', v)}         placeholder="30"          suffix="yrs" />
+              <VInput label="Dependents"   value={profile.dependents}  onChange={v => updateProfile('dependents', v)}  placeholder="0" />
+              <VInput label="Term Cover"   value={profile.termCover}   onChange={v => updateProfile('termCover', v)}   placeholder="1,00,00,000" suffix="₹" />
+              <VInput label="Health Cover" value={profile.healthCover} onChange={v => updateProfile('healthCover', v)} placeholder="15,00,000"   suffix="₹" />
             </div>
 
-            <p className="text-[11px] text-gray-400">All changes auto-saved to your device.</p>
+            <p className="text-[11px] text-gray-400">
+              {!profileLoaded
+                ? 'Loading your profile…'
+                : saving
+                  ? 'Saving…'
+                  : 'All changes auto-saved to your account.'}
+            </p>
           </div>
         )}
       </div>

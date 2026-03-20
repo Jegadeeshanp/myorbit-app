@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import {
-  Sun, Inbox, CalendarDays, List, MoreHorizontal,
-  X, Settings, User, CalendarCheck, ArrowUpDown,
+  Sun, Inbox, CalendarDays, Plus, MoreHorizontal,
+  X, Settings, CalendarCheck, ArrowUpDown,
 } from 'lucide-react';
 
 interface Props {
@@ -13,10 +13,10 @@ interface Props {
   view: 'tasks' | 'calendar';
   onSelect: (key: string) => void;
   onViewChange: (v: 'tasks' | 'calendar') => void;
-  onOpenLists: () => void;
+  focusAdd: () => void;
 }
 
-export default function TasksMobileNav({ selected, view, onSelect, onViewChange, onOpenLists }: Props) {
+export default function TasksMobileNav({ selected, view, onSelect, onViewChange, focusAdd }: Props) {
   const { data: session } = useSession();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -43,9 +43,12 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
             <div className={iconBox(isActive('inbox'))}><Inbox className="h-5 w-5" /></div>
             <span className="text-[10px] font-medium">Inbox</span>
           </button>
-          <button onClick={onOpenLists} className={tab(false)}>
-            <div className={iconBox(false)}><List className="h-5 w-5" /></div>
-            <span className="text-[10px] font-medium">Lists</span>
+          {/* Centre add button — taps the task input */}
+          <button onClick={focusAdd} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-emerald-600 dark:text-emerald-400">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600">
+              <Plus className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-[10px] font-medium">Add</span>
           </button>
           <button onClick={() => onViewChange('calendar')} className={tab(calActive)}>
             <div className={iconBox(calActive)}><CalendarDays className="h-5 w-5" /></div>
