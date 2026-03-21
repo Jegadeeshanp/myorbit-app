@@ -14,13 +14,13 @@ const PRIMARY = [
   { label: 'Overview',     href: '/orbit/finance',              Icon: LayoutDashboard },
   { label: 'Transactions', href: '/orbit/finance/transactions', Icon: ArrowRightLeft },
   { label: 'Assets',       href: '/orbit/finance/assets',       Icon: TrendingUp },
+  { label: 'Liabilities',  href: '/orbit/finance/liabilities',  Icon: CreditCard },
 ];
 
 const MORE = [
-  { label: 'Accounts',    href: '/orbit/finance/accounts',    Icon: Landmark },
-  { label: 'Budget',      href: '/orbit/finance/budget',      Icon: Wallet },
-  { label: 'Liabilities', href: '/orbit/finance/liabilities', Icon: CreditCard },
-  { label: 'Vitals',    href: '/orbit/finance/vitals',    Icon: BarChart3 },
+  { label: 'Accounts', href: '/orbit/finance/accounts', Icon: Landmark },
+  { label: 'Budget',   href: '/orbit/finance/budget',   Icon: Wallet },
+  { label: 'Vitals',   href: '/orbit/finance/vitals',   Icon: BarChart3 },
 ];
 
 export default function MobileNav() {

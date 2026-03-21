@@ -126,20 +126,22 @@ model Budget {
   @@index([userId])
 }
 
+// Dedicated password reset token model — replaces the Session table workaround.
+// Used by /api/auth/forgot-password and /api/auth/reset-password.
 model PasswordResetToken {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  token     String    @unique
+  token     String   @unique  // raw secure token (not prefixed)
   expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt    DateTime?         // null = not yet used
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
 }
 
-// Persisted user preferences (theme, currency, locale) + Financial Profile vitals.
+// Persisted user preferences (theme, currency, locale).
 // One row per user (optional — created on first save).
 model UserPreferences {
   id        String   @id @default(cuid())
@@ -147,13 +149,11 @@ model UserPreferences {
   currency  String   @default("INR")   // ISO 4217 code
   theme     String   @default("system") // "light" | "dark" | "system"
   locale    String   @default("en-IN")
-
-  // Financial Profile / Vitals — persisted per user
+  // Financial Profile / Vitals
   age         Int?
   dependents  Int?
   termCover   Float?
   healthCover Float?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -115,7 +115,28 @@ export default function TasksPage() {
   const [showFab, setShowFab]         = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen]   = useState(false);
+  const [panelWidth, setPanelWidth]   = useState(42); // % for right panel
+  const [dragging, setDragging]       = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Resizable panel drag
+  const handleDividerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setDragging(true);
+    const startX = e.clientX;
+    const startWidth = panelWidth;
+    const onMove = (ev: MouseEvent) => {
+      const container = document.getElementById('task-panels');
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const delta = ev.clientX - startX;
+      const newRight = Math.max(25, Math.min(60, startWidth - (delta / rect.width) * 100));
+      setPanelWidth(newRight);
+    };
+    const onUp = () => { setDragging(false); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   const fetchTasks = useCallback(() => {
     setLoading(true);
@@ -251,11 +272,19 @@ export default function TasksPage() {
             </div>
           ) : (
             <>
-              <section className="flex min-w-0 flex-1 flex-col overflow-hidden xl:basis-[58%] xl:flex-none">
+              <div id="task-panels" className="flex min-h-0 w-full gap-0 overflow-hidden">
+              <section className="flex min-w-0 flex-1 flex-col overflow-hidden" style={{ flexBasis: activeTask ? `${100 - panelWidth}%` : '100%' }}>
                 <div className="flex-1 space-y-2 overflow-y-auto">
-                  <div className="group hidden md:flex cursor-text items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:border-gray-300 dark:border-gray-700/60 dark:bg-[#1C1F26]" onClick={() => inputRef.current?.focus()}>
-                    <Plus className="h-5 w-5 flex-none text-gray-400 transition group-hover:text-emerald-500" />
+                  {/* Desktop add task — with date icon + dropdown arrow */}
+                  <div className="group hidden md:flex cursor-text items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:border-gray-300 dark:border-gray-700/60 dark:bg-[#1C1F26]">
+                    <Plus className="h-5 w-5 flex-none text-gray-400 transition group-hover:text-emerald-500" onClick={() => inputRef.current?.focus()} />
                     <input ref={inputRef} className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-600" placeholder="Add task" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddTask()} disabled={addingTask} />
+                    <button title="Set due date" className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition">
+                      <CalendarDays className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setShowFab(true)} title="More options" className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition">
+                      <ChevronRight className="h-4 w-4 rotate-90" />
+                    </button>
                   </div>
                   {loading ? (
                     <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700/60 dark:bg-[#1C1F26]"><div className="h-5 w-5 flex-none rounded-md bg-gray-200 dark:bg-gray-700" /><div className="h-4 flex-1 rounded bg-gray-200 dark:bg-gray-700" /></div>)}</div>
@@ -293,19 +322,30 @@ export default function TasksPage() {
                   )}
                 </div>
               </section>
-              <section className="hidden min-w-0 xl:flex xl:basis-[42%]">
-                {activeTask ? <TaskDetail task={activeTask} lists={lists} onClose={() => setActiveTask(null)} onUpdated={handleTaskUpdated} onDeleted={handleTaskDeleted} onCompleted={handleTaskCompleted} /> : <div className="flex h-full w-full items-center justify-center rounded-2xl border border-gray-200 bg-white px-8 text-center text-sm text-gray-400 dark:border-gray-700/60 dark:bg-[#1C1F26] dark:text-gray-500">Select a task to edit its details</div>}
+              {/* Drag divider */}
+              {activeTask && (
+                <div
+                  onMouseDown={handleDividerMouseDown}
+                  className={`hidden xl:flex w-1.5 flex-none cursor-col-resize items-center justify-center hover:bg-emerald-200 dark:hover:bg-emerald-800 transition ${dragging ? 'bg-emerald-300 dark:bg-emerald-700' : 'bg-gray-200 dark:bg-gray-700'}`}
+                >
+                  <div className="h-8 w-0.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                </div>
+              )}
+              {/* Desktop right panel */}
+              <section className="hidden min-w-0 xl:flex" style={{ flexBasis: `${panelWidth}%` }}>
+                {activeTask ? <TaskDetail task={activeTask} lists={lists} onClose={() => setActiveTask(null)} onUpdated={handleTaskUpdated} onDeleted={handleTaskDeleted} onCompleted={handleTaskCompleted} /> : null}
               </section>
+              </div>
             </>
           )}
         </div>
       </main>
 
-      {/* Mobile task detail bottom sheet */}
+      {/* Mobile task detail bottom sheet — half page */}
       {activeTask && (
         <div className="xl:hidden">
           <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setActiveTask(null)} />
-          <div className="fixed inset-x-0 bottom-0 z-[65] rounded-t-2xl bg-white dark:bg-[#1C1F26] border-t border-gray-200 dark:border-gray-700 shadow-2xl" style={{ maxHeight: '90vh' }}>
+          <div className="fixed inset-x-0 bottom-0 z-[65] rounded-t-2xl bg-white dark:bg-[#1C1F26] border-t border-gray-200 dark:border-gray-700 shadow-2xl" style={{ height: '55vh' }}>
             <div className="flex justify-center pt-3 pb-1"><div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" /></div>
             <TaskDetail task={activeTask} lists={lists} onClose={() => setActiveTask(null)} onUpdated={handleTaskUpdated} onDeleted={handleTaskDeleted} onCompleted={handleTaskCompleted} />
           </div>
