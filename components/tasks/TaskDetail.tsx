@@ -232,6 +232,7 @@ function TaskPanel({
   const [localDueDate,  setLocalDueDate]  = useState(dueDate);
   const [localDueTime,  setLocalDueTime]  = useState(dueTime);
   const [showDate,    setShowDate]    = useState(false);
+  const [calPos,      setCalPos]      = useState<{ top: number; left: number; width: number } | null>(null);
   const [showPri,     setShowPri]     = useState(false);
   const [showList,    setShowList]    = useState(false);
   const [openAction,  setOpenAction]  = useState<null|'subtask'|'tag'|'delete'|'moveto'>(null);
@@ -300,14 +301,14 @@ function TaskPanel({
   };
 
   return (
-    <div className="relative flex h-full flex-col">
+    <div data-task-panel className="relative flex h-full flex-col">
 
-      {/* Date popup — fixed to escape any overflow constraints */}
-      {showDate && (
+      {/* Date popup — positioned over the right panel */}
+      {showDate && calPos && (
         <>
-          <div className="fixed inset-0 z-[199]" onClick={() => setShowDate(false)} />
-          <div className="fixed z-[200] w-72 rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] flex flex-col"
-            style={{ top: '10vh', left: '50%', transform: 'translateX(-50%)', maxHeight: '80vh' }}
+          <div className="fixed inset-0 z-[199]" onClick={() => { setShowDate(false); setCalPos(null); }} />
+          <div className="fixed z-[200] rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] flex flex-col"
+            style={{ top: calPos.top, left: calPos.left, width: Math.max(calPos.width, 288), maxHeight: `calc(100vh - ${calPos.top + 16}px)` }}
             onClick={e => e.stopPropagation()}
           >
           <CompactDatePicker
@@ -320,7 +321,7 @@ function TaskPanel({
             const full = buildFull(); onTagsChange(full);
             void onSave({dueDate:localDueDate, dueTime:localDueTime, tags:full});
           }}
-          onClose={() => setShowDate(false)}
+          onClose={() => { setShowDate(false); setCalPos(null); }}
         />
           </div>
         </>
@@ -332,7 +333,14 @@ function TaskPanel({
           ? <CheckCircle2 className="h-4 w-4 flex-none text-emerald-500"/>
           : <Circle className="h-4 w-4 flex-none text-gray-400 dark:text-gray-500"/>
         }
-        <button ref={dateBtnRef} onClick={() => setShowDate(v=>!v)}
+        <button ref={dateBtnRef} onClick={() => {
+            if (dateBtnRef.current) {
+              const rect = dateBtnRef.current.closest('[data-task-panel]')?.getBoundingClientRect()
+                        ?? dateBtnRef.current.getBoundingClientRect();
+              setCalPos({ top: rect.top + 52, left: rect.left, width: rect.width });
+            }
+            setShowDate(v => !v);
+          }}
           className={`flex flex-1 items-center gap-1.5 truncate text-xs transition ${hasDate?'text-sky-500 hover:text-sky-400':'text-gray-400 hover:text-gray-600 dark:text-gray-500'}`}
         >
           <Calendar className="h-3.5 w-3.5 flex-none"/>

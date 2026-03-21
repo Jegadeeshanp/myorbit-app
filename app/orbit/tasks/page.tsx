@@ -793,13 +793,13 @@ export default function TasksPage() {
               {activeTask && (
                 <div
                   onMouseDown={handleDividerMouseDown}
-                  className={`hidden xl:flex w-1.5 flex-none cursor-col-resize items-center justify-center hover:bg-emerald-200 dark:hover:bg-emerald-800 transition ${dragging ? 'bg-emerald-300 dark:bg-emerald-700' : 'bg-gray-200 dark:bg-gray-700'}`}
+                  className={`hidden lg:flex w-1.5 flex-none cursor-col-resize items-center justify-center hover:bg-emerald-200 dark:hover:bg-emerald-800 transition ${dragging ? 'bg-emerald-300 dark:bg-emerald-700' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   <div className="h-8 w-0.5 rounded-full bg-gray-400 dark:bg-gray-500" />
                 </div>
               )}
               {/* Desktop right panel */}
-              <section className="hidden min-w-0 xl:flex" style={{ flexBasis: `${panelWidth}%` }}>
+              <section className="hidden min-w-0 lg:flex" style={{ flexBasis: `${panelWidth}%` }}>
                 {activeTask ? <TaskDetail task={activeTask} lists={lists} onClose={() => setActiveTask(null)} onUpdated={handleTaskUpdated} onDeleted={handleTaskDeleted} onCompleted={handleTaskCompleted} /> : null}
               </section>
               </div>
@@ -810,7 +810,7 @@ export default function TasksPage() {
 
       {/* Mobile task detail bottom sheet — half page, above bottom nav */}
       {activeTask && (
-        <div className="xl:hidden">
+        <div className="lg:hidden">
           <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setActiveTask(null)} />
           <div className="fixed inset-x-2 z-[65] rounded-2xl bg-white dark:bg-[#1C1F26] border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col" style={{ bottom: '76px', height: '56vh' }}>
             <div className="flex justify-center pt-3 pb-1 flex-none"><div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" /></div>
