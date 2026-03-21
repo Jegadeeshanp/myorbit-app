@@ -442,3 +442,12 @@ html.dark [data-landing] header * { color: inherit; }
 /* Hover states */
 html.dark [data-landing] .hover\:bg-gray-100:hover { background-color: #f3f4f6 !important; }
 html.dark [data-landing] .hover\:text-gray-900:hover { color: #111827 !important; }
+
+/* Slide-in from left animation for mobile sidebar */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}

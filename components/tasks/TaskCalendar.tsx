@@ -308,8 +308,9 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                         isSelected ? 'bg-white/5' : 'hover:bg-white/[0.03]'
                       }`}
                     >
-                      <p className={`truncate text-sm font-medium ${isToday ? 'text-emerald-400' : 'text-slate-200'}`}>
-                        {day.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      <p className={`text-sm font-medium leading-tight ${isToday ? 'text-emerald-400' : 'text-slate-200'}`}>
+                        <span className="block text-[10px] uppercase tracking-wide opacity-70">{day.toLocaleDateString('en-IN', { weekday: 'short' })}</span>
+                        <span className="block text-sm font-bold">{day.getDate()}</span>
                       </p>
                     </button>
                   );

@@ -187,9 +187,10 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
                 const isMenuOpen = menuListId === list.id;
                 return (
                   <div key={list.id} className="relative">
-                    <button
+                    <div
+                      role="button"
                       onClick={() => { onSelect(`list:${list.id}`); onViewChange('tasks'); setListsOpen(false); setMenuListId(null); }}
-                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 transition ${selected === `list:${list.id}` ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20' : 'border-gray-200 bg-white dark:border-gray-700/60 dark:bg-[#1C1F26]'}`}
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3.5 transition ${selected === `list:${list.id}` ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20' : 'border-gray-200 bg-white dark:border-gray-700/60 dark:bg-[#1C1F26]'}`}
                     >
                       {/* Emoji icon with color bg */}
                       <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl text-xl" style={{ backgroundColor: `${list.color || '#10B981'}22` }}>
@@ -207,7 +208,7 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
                       >
                         <MoreH className="h-4 w-4" />
                       </button>
-                    </button>
+                    </div>
 
                     {/* Per-list dropdown */}
                     {isMenuOpen && (

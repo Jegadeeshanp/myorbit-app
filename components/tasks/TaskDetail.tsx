@@ -71,121 +71,129 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
   );
 }
 
-// ── MiniCalendar ──────────────────────────────────────────────────────────────
-function MiniCalendar({ selectedDate, onChange }: { selectedDate: string; onChange: (d: string) => void }) {
+// ── Compact Date Picker ────────────────────────────────────────────────────────
+function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
+  setDueDate, setDueTime, setReminder, setRepeat, onSave, onClose, inline }: {
+  dueDate: string; dueTime: string; reminder: string; repeat: string;
+  setDueDate: (v:string)=>void; setDueTime: (v:string)=>void;
+  setReminder: (v:string)=>void; setRepeat: (v:string)=>void;
+  onSave: ()=>void; onClose: ()=>void; inline?: boolean;
+}) {
   const today = new Date();
-  const [viewDate, setViewDate] = useState(() => {
-    if (selectedDate) { const [y,m] = selectedDate.split('-').map(Number); return new Date(y, m-1, 1); }
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
-  useEffect(() => {
-    if (!selectedDate) return;
-    const [y,m] = selectedDate.split('-').map(Number); setViewDate(new Date(y, m-1, 1));
-  }, [selectedDate]);
-  const year = viewDate.getFullYear(); const month = viewDate.getMonth();
   const pad = (n: number) => String(n).padStart(2,'0');
   const todayStr = today.toISOString().split('T')[0];
-  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const [vYear, setVYear] = useState(() => dueDate ? parseInt(dueDate.split('-')[0]) : today.getFullYear());
+  const [vMonth, setVMonth] = useState(() => dueDate ? parseInt(dueDate.split('-')[1])-1 : today.getMonth());
+  const [showTime, setShowTime] = useState(false);
+  const [showRemind, setShowRemind] = useState(false);
+  const [showRepeat, setShowRepeat] = useState(false);
+
+  const firstDow = (new Date(vYear, vMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(vYear, vMonth+1, 0).getDate();
   const cells: (number|null)[] = [];
   for (let i=0; i<firstDow; i++) cells.push(null);
   for (let d=1; d<=daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <button type="button" onClick={() => setViewDate(new Date(year,month-1,1))} className="rounded p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><ChevronLeft className="h-3.5 w-3.5"/></button>
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{viewDate.toLocaleString('default',{month:'short',year:'numeric'})}</span>
-        <button type="button" onClick={() => setViewDate(new Date(year,month+1,1))} className="rounded p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"><ChevronRight className="h-3.5 w-3.5"/></button>
-      </div>
-      <div className="mb-1 grid grid-cols-7 gap-0.5">
-        {['M','T','W','T','F','S','S'].map((l,i) => <div key={`${l}-${i}`} className="text-center text-[9px] font-medium text-gray-400">{l}</div>)}
-      </div>
-      <div className="grid grid-cols-7 gap-0.5">
-        {cells.map((day, idx) => {
-          if (!day) return <div key={idx} className="h-7"/>;
-          const ds = `${year}-${pad(month+1)}-${pad(day)}`;
-          const isSel = ds === selectedDate; const isTod = ds === todayStr;
-          return (
-            <button key={ds} type="button" onClick={() => onChange(ds)}
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] transition ${isSel?'bg-emerald-500 text-white':isTod?'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400':'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'}`}
-            >{day}</button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
-// ── Date popup ────────────────────────────────────────────────────────────────
-function DatePopup({ btnRef, dueDate, dueTime, reminder, repeat, visibleTagList,
-  setDueDate, setDueTime, setReminder, setRepeat, onSave, onClose }: {
-  btnRef: React.RefObject<HTMLButtonElement | null>;
-  dueDate: string; dueTime: string; reminder: string; repeat: string; visibleTagList: string[];
-  setDueDate: (v:string)=>void; setDueTime: (v:string)=>void;
-  setReminder: (v:string)=>void; setRepeat: (v:string)=>void;
-  onSave: ()=>void; onClose: ()=>void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [showRem, setShowRem] = useState(false);
-  const [showRep, setShowRep] = useState(false);
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node) && btnRef.current && !btnRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [btnRef, onClose]);
+  const QUICK = [
+    { label: 'Today',    v: todayStr },
+    { label: 'Tomorrow', v: (() => { const d=new Date(today); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })() },
+    { label: 'Next Mon', v: (() => { const d=new Date(today); const day=d.getDay(); d.setDate(d.getDate()+(day===0?1:8-day)); return d.toISOString().split('T')[0]; })() },
+    { label: 'No Date',  v: '' },
+  ];
 
-  const remLabel = REMINDER_OPTIONS.find(o=>o.value===reminder)?.label ?? 'On time';
-  const repLabel = repeat === 'none' ? 'No repeat' : REPEAT_OPTIONS.find(o=>o.value===repeat)?.label ?? 'Custom';
+  const REMIND_OPTS = [
+    {v:'none',l:'None'},{v:'on-time',l:'On time'},{v:'5m',l:'5 min early'},
+    {v:'30m',l:'30 min early'},{v:'1h',l:'1 hour early'},{v:'1d',l:'1 day early'},
+  ];
+  const REPEAT_OPTS = ['none','daily','weekly','monthly','yearly'];
+  const remLabel = REMIND_OPTS.find(o=>o.v===reminder)?.l ?? 'None';
+  const repLabel = repeat === 'none' ? 'None' : repeat.charAt(0).toUpperCase()+repeat.slice(1);
 
   return (
-    <div ref={ref} className="absolute left-4 right-4 top-[52px] z-50 flex flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830]" style={{maxHeight:'calc(100% - 64px)'}}>
-      <div className="flex-1 overflow-y-auto p-4">
-        <MiniCalendar selectedDate={dueDate || new Date().toISOString().split('T')[0]} onChange={setDueDate}/>
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
-          <Clock className="h-3.5 w-3.5 text-sky-500"/>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Time</span>
-          <input type="time" value={dueTime} onChange={e=>setDueTime(e.target.value)} className="ml-auto bg-transparent text-xs text-sky-500 focus:outline-none"/>
+    <div className="flex flex-col w-full" style={{ maxHeight: '80vh' }}>
+      {/* Scrollable content */}
+      <div className="overflow-y-auto flex-1">
+      {/* Quick chips */}
+      <div className="flex gap-1 p-2 border-b border-gray-100 dark:border-gray-700/60">
+        {QUICK.map(q => (
+          <button key={q.label} type="button" onClick={() => { setDueDate(q.v); if (!q.v) onClose(); }}
+            className={`flex-1 whitespace-nowrap rounded-full border py-1 text-[11px] font-medium transition text-center ${dueDate===q.v||(q.v===''&&!dueDate)?'border-emerald-500 bg-emerald-500 text-white':'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400'}`}
+          >{q.label}</button>
+        ))}
+      </div>
+
+      {/* Month nav */}
+      <div className="flex items-center justify-between px-3 py-2">
+        <button type="button" onClick={() => { if(vMonth===0){setVMonth(11);setVYear(y=>y-1);}else setVMonth(m=>m-1); }} className="h-6 w-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 text-base">‹</button>
+        <span className="text-sm font-semibold text-gray-800 dark:text-white">{new Date(vYear,vMonth).toLocaleString('default',{month:'long',year:'numeric'})}</span>
+        <button type="button" onClick={() => { if(vMonth===11){setVMonth(0);setVYear(y=>y+1);}else setVMonth(m=>m+1); }} className="h-6 w-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 text-base">›</button>
+      </div>
+
+      {/* Day grid */}
+      <div className="px-2 pb-2">
+        <div className="grid grid-cols-7 gap-0.5 mb-1">
+          {['M','T','W','T','F','S','S'].map((l,i)=><div key={i} className="text-center text-[10px] font-medium text-gray-400 py-0.5">{l}</div>)}
         </div>
-        <button type="button" onClick={()=>setShowRem(v=>!v)} className="mt-2 flex w-full items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-left hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60">
-          <Bell className="h-3.5 w-3.5 text-sky-500"/>
-          <span className="flex-1 text-xs text-gray-600 dark:text-gray-300">Reminder</span>
-          <span className="text-xs text-gray-400">{remLabel}</span>
-          <ChevronRight className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showRem?'rotate-90':''}`}/>
-        </button>
-        {showRem && <div className="mt-1 overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-gray-700 dark:bg-[#252830]">
-          {REMINDER_OPTIONS.map(o=>(
-            <button key={o.value} type="button" onClick={()=>{setReminder(o.value);setShowRem(false);}} className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition ${reminder===o.value?'text-sky-500':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700/40'}`}>
-              {o.label}{reminder===o.value&&<Check className="ml-auto h-3 w-3 text-sky-500"/>}
-            </button>
-          ))}
-        </div>}
-        <button type="button" onClick={()=>setShowRep(v=>!v)} className="mt-2 flex w-full items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-left hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60">
-          <RotateCcw className="h-3.5 w-3.5 text-sky-500"/>
-          <span className="flex-1 text-xs text-gray-600 dark:text-gray-300">Repeat</span>
-          <span className="text-xs text-gray-400">{repLabel}</span>
-          <ChevronRight className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showRep?'rotate-90':''}`}/>
-        </button>
-        {showRep && <div className="mt-1 overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-gray-700 dark:bg-[#252830]">
-          <button type="button" onClick={()=>{setRepeat('none');setShowRep(false);}} className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition ${repeat==='none'?'text-sky-500':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700/40'}`}>
-            No repeat{repeat==='none'&&<Check className="ml-auto h-3 w-3 text-sky-500"/>}
-          </button>
-          {REPEAT_OPTIONS.map(o=>(
-            <button key={o.value} type="button" onClick={()=>{setRepeat(o.value);setShowRep(false);}} className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition ${repeat===o.value?'text-sky-500':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700/40'}`}>
-              {o.label}{repeat===o.value&&<Check className="ml-auto h-3 w-3 text-sky-500"/>}
-            </button>
-          ))}
-        </div>}
+        <div className="grid grid-cols-7 gap-0.5">
+          {cells.map((day,idx) => {
+            if(!day) return <div key={idx} className="h-8"/>;
+            const ds=`${vYear}-${pad(vMonth+1)}-${pad(day)}`;
+            const isSel=ds===dueDate; const isTod=ds===todayStr;
+            return <button key={ds} type="button" onClick={()=>setDueDate(ds)}
+              className={`flex h-8 w-full items-center justify-center rounded-full text-xs transition ${isSel?'bg-emerald-500 text-white font-bold':isTod?'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 font-semibold':'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'}`}
+            >{day}</button>;
+          })}
+        </div>
       </div>
-      <div className="flex gap-2 border-t border-gray-100 p-3 dark:border-gray-700">
-        <button type="button" onClick={()=>{setDueDate('');setDueTime('');setReminder('on-time');setRepeat('none');onClose();}} className="flex-1 rounded-xl border border-gray-200 py-2 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400">Clear</button>
-        <button type="button" onClick={()=>{onSave();onClose();}} className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-500">OK</button>
+
+      {/* Time / Reminder / Repeat */}
+      <div className="relative border-t border-gray-100 dark:border-gray-700/60">
+        {/* Overlay for sub-menus */}
+        {(showTime||showRemind||showRepeat) && (
+          <div className="absolute inset-x-0 bottom-full z-10 rounded-t-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-[#1E2128]">
+            {showTime && <div className="p-3"><p className="text-xs font-semibold text-gray-400 mb-2">Set Time</p>
+              <input type="time" value={dueTime} onChange={e=>setDueTime(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+              /></div>}
+            {showRemind && <div className="py-1"><p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400">Reminder</p>
+              {REMIND_OPTS.map(o=><button key={o.v} type="button" onClick={()=>{setReminder(o.v);setShowRemind(false);}}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${reminder===o.v?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
+              >{o.l}{reminder===o.v&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}</div>}
+            {showRepeat && <div className="py-1"><p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400">Repeat</p>
+              {REPEAT_OPTS.map(o=><button key={o} type="button" onClick={()=>{setRepeat(o);setShowRepeat(false);}}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${repeat===o?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
+              >{o==='none'?'No repeat':o.charAt(0).toUpperCase()+o.slice(1)}{repeat===o&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}</div>}
+          </div>
+        )}
+        <button type="button" onClick={()=>{setShowTime(v=>!v);setShowRemind(false);setShowRepeat(false);}}
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition">
+          <Clock className="h-4 w-4 text-gray-400 flex-none"/><span className="flex-1 text-left text-gray-700 dark:text-gray-300">Time</span>
+          <span className="text-xs text-gray-400">{dueTime||'None'}</span><ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showTime?'rotate-90':''}`}/>
+        </button>
+        <button type="button" onClick={()=>{setShowRemind(v=>!v);setShowTime(false);setShowRepeat(false);}}
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-50 dark:border-gray-700/40">
+          <Bell className="h-4 w-4 text-gray-400 flex-none"/><span className="flex-1 text-left text-gray-700 dark:text-gray-300">Reminder</span>
+          <span className="text-xs text-gray-400">{remLabel}</span><ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRemind?'rotate-90':''}`}/>
+        </button>
+        <button type="button" onClick={()=>{setShowRepeat(v=>!v);setShowTime(false);setShowRemind(false);}}
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-50 dark:border-gray-700/40">
+          <RotateCcw className="h-4 w-4 text-gray-400 flex-none"/><span className="flex-1 text-left text-gray-700 dark:text-gray-300">Repeat</span>
+          <span className="text-xs text-gray-400">{repLabel}</span><ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRepeat?'rotate-90':''}`}/>
+        </button>
+      </div>
+      </div>{/* end scrollable */}
+
+      {/* OK / Clear — always visible at bottom */}
+      <div className="flex-none flex gap-2 border-t border-gray-100 p-2 dark:border-gray-700">
+        <button type="button" onClick={()=>{setDueDate('');setDueTime('');setReminder('on-time');setRepeat('none');onClose();}}
+          className="flex-1 rounded-xl border border-gray-200 py-2 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400">Clear</button>
+        <button type="button" onClick={()=>{onSave();onClose();}}
+          className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-500">OK</button>
       </div>
     </div>
   );
 }
+
 
 // ── Single panel (used for both main task and subtask) ────────────────────────
 interface PanelProps {
@@ -292,13 +300,19 @@ function TaskPanel({
   };
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
+    <div className="relative flex h-full flex-col">
 
-      {/* Date popup */}
+      {/* Date popup — fixed to escape any overflow constraints */}
       {showDate && (
-        <DatePopup btnRef={dateBtnRef}
+        <>
+          <div className="fixed inset-0 z-[199]" onClick={() => setShowDate(false)} />
+          <div className="fixed z-[200] w-72 rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] flex flex-col"
+            style={{ top: '10vh', left: '50%', transform: 'translateX(-50%)', maxHeight: '80vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+          <CompactDatePicker
           dueDate={localDueDate} dueTime={localDueTime}
-          reminder={localReminder} repeat={localRepeat} visibleTagList={vTags}
+          reminder={localReminder} repeat={localRepeat}
           setDueDate={setLocalDueDate} setDueTime={setLocalDueTime}
           setReminder={setLocalReminder} setRepeat={setLocalRepeat}
           onSave={() => {
@@ -308,6 +322,8 @@ function TaskPanel({
           }}
           onClose={() => setShowDate(false)}
         />
+          </div>
+        </>
       )}
 
       {/* ── Top bar: status + date + priority + close ── */}
@@ -471,16 +487,16 @@ function TaskPanel({
           </div>
         )}
 
-        {/* Icon row */}
-        <div className="flex items-center gap-1 px-3 py-2">
+        {/* Icon row — bigger icons for mobile */}
+        <div className="flex items-center gap-0.5 px-2 py-2.5">
           {/* List picker — bottom left */}
           {!isSubtask && (
             <div className="relative">
               <button ref={listBtnRef} onClick={() => setShowList(v=>!v)}
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${showList ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : listId ? 'text-blue-500 hover:bg-gray-100 dark:hover:bg-white/5' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${showList ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : listId ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'} hover:bg-gray-100 dark:hover:bg-white/5`}
                 title="Move to list"
               >
-                <ListIcon className="h-4 w-4"/>
+                <ListIcon className="h-5 w-5"/>
               </button>
               {showList && (
                 <div ref={listRef} className="absolute left-0 bottom-full z-50 mb-1.5 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
@@ -508,13 +524,18 @@ function TaskPanel({
             </div>
           )}
 
+          {/* Tag */}
+          <button onClick={() => setOpenAction(v => v==='tag' ? null : 'tag')}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${openAction==='tag' ? 'bg-sky-100 text-sky-600 dark:bg-sky-900/40' : 'text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-white/5'}`}
+            title="Add tag"
+          ><Tag className="h-5 w-5"/></button>
+
           {/* Complete button for subtask */}
           {isSubtask && status !== 'completed' && onComplete && (
             <button onClick={onComplete}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-emerald-600 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
             >
-              <CheckCircle2 className="h-4 w-4"/>
-              <span>Done</span>
+              <CheckCircle2 className="h-5 w-5"/>
             </button>
           )}
 
@@ -523,22 +544,16 @@ function TaskPanel({
           {/* Add subtask — main task only */}
           {!isSubtask && (
             <button onClick={() => setOpenAction(v => v==='subtask' ? null : 'subtask')}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${openAction==='subtask'?'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40':'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${openAction==='subtask' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40' : 'text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-white/5'}`}
               title="Add subtask"
-            ><Plus className="h-4 w-4"/></button>
+            ><Plus className="h-5 w-5"/></button>
           )}
-
-          {/* Tag */}
-          <button onClick={() => setOpenAction(v => v==='tag' ? null : 'tag')}
-            className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${openAction==='tag'?'bg-sky-100 text-sky-600 dark:bg-sky-900/40':'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
-            title="Add tag"
-          ><Tag className="h-4 w-4"/></button>
 
           {/* Delete */}
           <button onClick={() => setOpenAction(v => v==='delete' ? null : 'delete')}
-            className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${openAction==='delete'?'bg-rose-100 text-rose-600 dark:bg-rose-900/40':'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${openAction==='delete' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40' : 'text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-white/5'}`}
             title="Delete"
-          ><Trash2 className="h-4 w-4"/></button>
+          ><Trash2 className="h-5 w-5"/></button>
         </div>
       </div>
     </div>

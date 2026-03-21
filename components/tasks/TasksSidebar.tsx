@@ -24,12 +24,13 @@ interface Props {
   refreshKey?: number;
   view?: 'tasks' | 'calendar';
   onViewChange?: (v: 'tasks' | 'calendar') => void;
+  mobile?: boolean;
 }
 
 const LIST_ICONS = ['📋', '📝', '✅', '📌', '💼', '🏠', '🛒', '🎯', '📚', '💡', '💻', '🧾'];
 const LIST_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#64748B'];
 
-export default function TasksSidebar({ selected, onSelect, refreshKey, view, onViewChange }: Props) {
+export default function TasksSidebar({ selected, onSelect, refreshKey, view, onViewChange, mobile }: Props) {
   const { data: session } = useSession();
   const [lists, setLists] = useState<TaskList[]>([]);
   const [counts, setCounts] = useState({ today: 0, inbox: 0, next7: 0 });
@@ -153,7 +154,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
 
   return (
     <>
-      <aside className="sticky top-0 hidden h-screen w-56 flex-none flex-col overflow-y-auto border-r border-gray-100 bg-white px-3 py-5 dark:border-gray-700/60 dark:bg-[#161920] md:flex">
+      <aside className={`sticky top-0 h-screen flex-none flex-col overflow-y-auto border-r border-gray-100 bg-white px-3 py-5 dark:border-gray-700/60 dark:bg-[#161920] ${mobile ? 'flex w-full' : 'hidden w-56 md:flex'}`}>
         {/* Header */}
         <div className="mb-5 px-2">
           <div className="flex items-center gap-2.5">
@@ -320,25 +321,23 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
             />
 
             <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">Choose icon</p>
-            <div className="mt-2 grid grid-cols-4 gap-2.5">
+            <div className="mt-2 grid grid-cols-6 gap-2">
               {LIST_ICONS.map(icon => (
                 <button key={icon} type="button" onClick={() => setListIcon(icon)}
-                  className={`flex h-11 w-full items-center justify-center rounded-xl border text-xl transition ${
-                    listIcon === icon ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' : 'border-gray-200 bg-gray-50 hover:bg-white dark:border-gray-700 dark:bg-gray-800'
+                  className={`flex h-9 w-full items-center justify-center rounded-xl text-lg transition ${
+                    listIcon === icon ? 'bg-emerald-100 dark:bg-emerald-900/40 ring-1 ring-emerald-400' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700'
                   }`}
                 >{icon}</button>
               ))}
             </div>
 
             <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">Choose color</p>
-            <div className="mt-2 grid grid-cols-4 gap-2.5">
+            <div className="mt-2 flex gap-2.5 flex-wrap">
               {LIST_COLORS.map(color => (
                 <button key={color} type="button" onClick={() => setListColor(color)}
-                  className={`flex h-10 w-full items-center justify-center rounded-xl border transition ${listColor === color ? 'border-gray-900 shadow-sm dark:border-white' : 'border-transparent hover:border-gray-300'}`}
+                  className={`h-7 w-7 flex-none rounded-full transition ${listColor === color ? 'ring-2 ring-offset-2 ring-gray-500 dark:ring-offset-gray-900' : 'opacity-80 hover:opacity-100'}`}
                   style={{ backgroundColor: color }}
-                >
-                  {listColor === color && <span className="h-2.5 w-2.5 rounded-full bg-white" />}
-                </button>
+                />
               ))}
             </div>
 
