@@ -185,10 +185,10 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
 
       {/* ── Modal backdrop ─────────────────────────────────────────────── */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
-          <div className="relative z-10 w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[#1a1a2e] border border-white/10 shadow-2xl overflow-hidden">
+          <div className="relative z-10 w-full max-w-md rounded-3xl bg-[#1a1a2e] border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
             {/* Header */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
@@ -204,7 +204,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
               </button>
             </div>
 
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
 
               {/* Input row */}
               <div className="flex items-center gap-2">
