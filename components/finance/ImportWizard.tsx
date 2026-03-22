@@ -124,7 +124,7 @@ function parseCreditCard(wb: any): MappedTransaction[] {
       date: parseDate(r[9]),
       description: String(r[12] || '').trim(),
       amount: cleanNum(r[20] ?? r[21] ?? 0),
-      type: String(r[24] || '').toLowerCase() === 'cr' ? 'credit' : 'debit',
+      type: (String(r[24] || '').toLowerCase() === 'cr' ? 'credit' : 'debit') as 'credit' | 'debit',
       category: mapTxCategory(String(r[12] || '')),  // maps to valid transaction category
     }))
     .filter(t => t.amount > 0);
