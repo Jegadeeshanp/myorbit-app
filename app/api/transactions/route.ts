@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 async function decryptTx(row: any) {
   return {
     id: row.id, accountId: row.accountId, date: row.date,
-    category: row.category, description: row.description,
+    category: row.category, description: row.description, notes: row.notes ?? undefined,
     amount: await decryptNumber(row.amount), type: row.type,
   };
 }
@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
     const parsed = transactionSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { accountId, date, category, description, amount, type } = parsed.data;
+    const { accountId, date, category, description, notes, amount, type } = parsed.data as any;
     const row = await prisma.transaction.create({
-      data: { userId, accountId, date, category, description, amount: await encryptNumber(amount), type },
+      data: { userId, accountId, date, category, description, notes: notes ?? null, amount: await encryptNumber(amount), type },
     });
     return NextResponse.json(await decryptTx(row), { status: 201 });
   } catch (e: any) {

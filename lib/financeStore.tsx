@@ -406,7 +406,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       // Recalculate spent from current-month transactions after category update
       const nowDate = new Date();
       const cats = b.category
-        ? b.category.split(',').map((c: string) => c.trim()).filter(Boolean)
+        ? b.category.split(',').map(c => c.trim()).filter(Boolean)
         : [];
       const recalcSpent = state.transactions
         .filter(t => {

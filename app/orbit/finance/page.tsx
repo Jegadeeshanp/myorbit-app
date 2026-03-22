@@ -11,11 +11,10 @@ import NetWorthCard        from '@/components/finance/NetWorthCard';
 import SummaryCard         from '@/components/finance/SummaryCard';
 import CashFlowChart       from '@/components/finance/CashFlowChart';
 import AssetAllocationChart from '@/components/finance/AssetAllocationChart';
-import SpendingCategories  from '@/components/finance/SpendingCategories';
+import ExpenseSplitChart   from '@/components/finance/ExpenseSplitChart';
 import NetWorthTrend       from '@/components/finance/NetWorthTrend';
 import RecentTransactions  from '@/components/finance/RecentTransactions';
 import TopExpenses         from '@/components/finance/TopExpenses';
-import SavingsRateCard     from '@/components/finance/SavingsRateCard';
 import BudgetStatus        from '@/components/finance/BudgetStatus';
 import UpcomingBills       from '@/components/finance/UpcomingBills';
 import SmartInsights       from '@/components/finance/SmartInsights';
@@ -122,11 +121,12 @@ export default function FinanceOverviewPage() {
         <SmartInsights transactions={transactions} />
       </div>
 
-      {/* Top widgets: Spending + Budget + Savings */}
+      {/* Top widgets: Budget + Expense Split */}
       <div className="grid gap-5 lg:grid-cols-3">
-        <SpendingCategories transactions={transactions} />
         <BudgetStatus />
-        <SavingsRateCard transactions={transactions} />
+        <div className="lg:col-span-2">
+          <ExpenseSplitChart transactions={transactions} />
+        </div>
       </div>
 
       {/* Recent Transactions (top 5) + Top Expenses (top 5) */}

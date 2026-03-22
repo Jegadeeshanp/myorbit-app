@@ -51,7 +51,8 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
     if (!open) return;
     if (initial) {
       setName(initial.name);
-      setCategory(initial.category);
+      const validCat = ASSET_CATEGORIES.find(c => c.label === initial.category);
+      setCategory(validCat ? (initial.category as AssetCategory) : 'Other');
       setValue(initial.value > 0 ? String(initial.value) : '');
       setInvested(String(initial.invested));
       setAccountId(initial.accountId ?? '');

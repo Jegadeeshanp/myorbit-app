@@ -348,7 +348,7 @@ function TaskPanel({
                 style.top = rect.bottom + 8;
                 style.maxHeight = `${Math.min(spaceBelow, calH)}px`;
               }
-              setCalPos(style as any);
+              setCalPos(style as React.CSSProperties);
             }
             setShowDate(v => !v);
           }}

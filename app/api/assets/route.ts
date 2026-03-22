@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null }) {
   return {
     id: row.id, name: row.name, category: row.category,
-    units: row.units ?? null,
+    units: (extra as any)?.units ?? (row as any).units ?? null,
     value: await decryptNumber(row.value),
     invested: await decryptNumber(row.invested),
     accountId: extra?.accountId ?? undefined,
@@ -23,10 +23,17 @@ export async function GET() {
     const userId = await requireUserId();
     const rows = await prisma.asset.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 
-    // Fetch new fields via raw SQL (stale Prisma Client doesn't know them yet)
-    const extras = await prisma.$queryRaw<{ id: string; accountId: string | null; investmentType: string; sipConfig: string | null }[]>`
-      SELECT id, "accountId", "investmentType", "sipConfig" FROM "Asset" WHERE "userId" = ${userId}
-    `;
+    // Fetch new fields via raw SQL — safely handle units column that may not exist yet
+    let extras: { id: string; accountId: string | null; investmentType: string; sipConfig: string | null; units?: number | null }[] = [];
+    try {
+      extras = await prisma.$queryRaw`
+        SELECT id, "accountId", "investmentType", "sipConfig", "units" FROM "Asset" WHERE "userId" = ${userId}
+      `;
+    } catch {
+      extras = await prisma.$queryRaw`
+        SELECT id, "accountId", "investmentType", "sipConfig" FROM "Asset" WHERE "userId" = ${userId}
+      `;
+    }
     const extraMap = Object.fromEntries(extras.map(e => [e.id, e]));
 
     const decrypted = await Promise.all(rows.map(r => decryptAsset(r, extraMap[r.id])));

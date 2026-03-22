@@ -66,6 +66,7 @@ model Transaction {
   date        String
   category    String
   description String
+  notes       String?
   amount      String
   type        String
   createdAt   DateTime @default(now())

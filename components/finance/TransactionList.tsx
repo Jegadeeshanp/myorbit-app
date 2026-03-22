@@ -305,7 +305,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
       const q = search.toLowerCase();
       txs = txs.filter(t =>
         t.description.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q)
+        t.category.toLowerCase().includes(q) ||
+        (t.notes ?? '').toLowerCase().includes(q)
       );
     }
     return txs;
@@ -495,9 +496,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                       <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
                     </div>
                     {/* Desktop */}
-                    <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 px-5 py-3">
+                    <div className="hidden sm:grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-start gap-x-3 px-5 py-3">
                       <span className="text-xs text-blue-400 whitespace-nowrap">{dateStr}</span>
                       <span className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{tx.description}</span>
+                      <span className="truncate text-xs text-gray-400 self-center">{tx.notes ?? '—'}</span>
                       <span className={`inline-flex w-fit items-center justify-self-start rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
                         {tx.category}
                       </span>
@@ -528,8 +530,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
           {/* Column headers — desktop only */}
-          <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 border-b border-gray-100 bg-transparent px-5 py-2.5">
-            {['Date', 'Description', 'Category', 'Account', 'Amount', ''].map((h, i) => (
+          <div className="hidden sm:grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 border-b border-gray-100 bg-transparent px-5 py-2.5">
+            {['Date', 'Description', 'Notes', 'Category', 'Account', 'Amount', ''].map((h, i) => (
               <span key={i} className={`text-xs font-semibold uppercase tracking-wide text-gray-400 ${h === 'Amount' ? 'text-right' : ''}`}>{h}</span>
             ))}
           </div>
@@ -601,9 +603,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                       </div>
 
                       {/* Desktop layout */}
-                      <div className="hidden sm:grid grid-cols-[90px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 px-5 py-3">
+                      <div className="hidden sm:grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-start gap-x-3 px-5 py-3">
                         <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                         <span className="truncate text-sm font-medium text-gray-900">{tx.description}</span>
+                        <span className="truncate text-xs text-gray-400 self-center">{tx.notes ?? '—'}</span>
                         <span className="justify-self-start inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium truncate max-w-full">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
                         </span>

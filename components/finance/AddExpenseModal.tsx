@@ -179,14 +179,8 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
     if (open) {
       setDate(initial?.date ?? new Date().toISOString().slice(0, 10));
       setCategory(initial?.category ?? EXPENSE_CATEGORIES[0].name);
-      if (initial?.description) {
-        const parts = initial.description.split('\n');
-        setDesc(parts[0] ?? '');
-        setNote(parts.slice(1).join('\n'));
-      } else {
-        setDesc('');
-        setNote('');
-      }
+      setDesc(initial?.description ?? '');
+      setNote(initial?.notes ?? '');
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
     }
@@ -198,8 +192,7 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const desc = note.trim() ? `${description.trim()}\n${note.trim()}` : description.trim();
-    onSave({ date, category, description: desc, amount: -Math.abs(Number(amount)), type: 'expense', accountId });
+    onSave({ date, category, description: description.trim(), notes: note.trim() || undefined, amount: -Math.abs(Number(amount)), type: 'expense', accountId });
     toast(initial ? 'Expense updated' : 'Expense recorded');
     onClose();
   };

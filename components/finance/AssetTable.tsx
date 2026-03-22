@@ -104,7 +104,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-right text-sm text-gray-400">
-                    {(asset as any).units != null ? (asset as any).units : '—'}
+                    {asset.units != null ? Number(asset.units).toLocaleString('en-IN', { maximumFractionDigits: 3 }) : '—'}
                   </td>
                   <td className="px-5 py-3.5 text-right text-sm text-gray-500">{fmt(invested)}</td>
                   <td className="px-5 py-3.5 text-right text-sm font-semibold text-gray-900">{fmt(asset.value)}</td>

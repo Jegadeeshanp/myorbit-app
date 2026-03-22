@@ -21,6 +21,7 @@ export type Transaction = {
   date: string;
   category: string;
   description: string;
+  notes?: string;
   amount: number;
   type: 'expense' | 'income';
   accountId?: string;
@@ -41,6 +42,7 @@ export type Asset = {
   category: AssetCategory;
   value: number;
   invested: number;
+  units?: number | null;
   accountId?: string;
   investmentType?: 'lump_sum' | 'sip';
   sipConfig?: SipConfig | null;

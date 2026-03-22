@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 async function decryptTx(row: any) {
   return {
     id: row.id, accountId: row.accountId, date: row.date,
-    category: row.category, description: row.description,
+    category: row.category, description: row.description, notes: row.notes ?? undefined,
     amount: await decryptNumber(row.amount), type: row.type,
   };
 }
