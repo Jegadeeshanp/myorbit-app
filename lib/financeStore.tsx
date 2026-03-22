@@ -243,27 +243,39 @@ export function FinanceProvider({ children }: PropsWithChildren) {
             dispatch({ type: 'updateAccount', payload: updated });
           } catch { /* non-critical */ }
         }
-        // Auto-update matching budget's spent amount when an expense is recorded
-        // Only update if the transaction is in the current calendar month (budgets are month-isolated)
+        // Recalculate spent for ALL budgets from scratch using current-month transactions
+        // This ensures category changes are always reflected correctly
         const txDate = new Date(created.date);
         const nowDate = new Date();
         const isCurrentMonth = txDate.getMonth() === nowDate.getMonth() && txDate.getFullYear() === nowDate.getFullYear();
         if (created.type === 'expense' && isCurrentMonth) {
-          const matchingBudget = state.budgets.find(b => {
-            const cats = b.category
-              ? b.category.split(',').map(c => c.trim()).filter(Boolean)
-              : [];
-            return cats.includes(created.category) || b.name === created.category;
+          // Get all current-month expense transactions (including the newly created one)
+          const allTx = [...state.transactions, created];
+          const monthTx = allTx.filter(t => {
+            const d = new Date(t.date);
+            return t.type === 'expense'
+              && d.getMonth() === nowDate.getMonth()
+              && d.getFullYear() === nowDate.getFullYear();
           });
-          if (matchingBudget) {
-            try {
-              const newSpent = matchingBudget.spent + Math.abs(created.amount);
-              const updatedBudget = await api<BudgetCategory>(`/api/budgets/${matchingBudget.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ spent: newSpent }),
-              });
-              dispatch({ type: 'updateBudget', payload: updatedBudget });
-            } catch { /* non-critical */ }
+
+          // For each budget, recalculate spent from transactions
+          for (const budget of state.budgets) {
+            const cats = budget.category
+              ? budget.category.split(',').map(c => c.trim()).filter(Boolean)
+              : [];
+            const recalcSpent = monthTx
+              .filter(t => cats.includes(t.category) || budget.name === t.category)
+              .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+            if (recalcSpent !== budget.spent) {
+              try {
+                const updatedBudget = await api<BudgetCategory>(`/api/budgets/${budget.id}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ spent: recalcSpent }),
+                });
+                dispatch({ type: 'updateBudget', payload: updatedBudget });
+              } catch { /* non-critical */ }
+            }
           }
         }
       }
@@ -391,7 +403,23 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       dispatch({ type: 'addBudget', payload: created });
     },
     updateBudget: async (b) => {
-      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(b) });
+      // Recalculate spent from current-month transactions after category update
+      const nowDate = new Date();
+      const cats = b.category
+        ? b.category.split(',').map((c: string) => c.trim()).filter(Boolean)
+        : [];
+      const recalcSpent = state.transactions
+        .filter(t => {
+          const d = new Date(t.date);
+          return t.type === 'expense'
+            && d.getMonth() === nowDate.getMonth()
+            && d.getFullYear() === nowDate.getFullYear()
+            && (cats.includes(t.category) || b.name === t.category);
+        })
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const payload = { ...b, spent: recalcSpent };
+      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       dispatch({ type: 'updateBudget', payload: updated });
     },
     deleteBudget: async (id) => {

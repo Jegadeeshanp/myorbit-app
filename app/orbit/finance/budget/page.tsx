@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, PlusCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
 import BudgetCard from '@/components/finance/BudgetCard';
 import AddBudgetModal from '@/components/finance/AddBudgetModal';
 import { useFinance } from '@/lib/financeStore';
@@ -10,7 +10,7 @@ import { BudgetCategory } from '@/lib/financeData';
 
 export default function BudgetPage() {
   const { state } = useFinance();
-  const { budgets } = state;
+  const { budgets, transactions } = state;
   const [isModalOpen, setModalOpen] = useState(false);
   const [editTarget,  setEditTarget] = useState<BudgetCategory | null>(null);
   const [mobileSearch, setMobileSearch] = useState(false);
@@ -20,11 +20,80 @@ export default function BudgetPage() {
     ? budgets.filter(b => b.category?.toLowerCase().includes(search.toLowerCase()))
     : budgets;
 
+  // ── Summary figures ──────────────────────────────────────────────────────
+  const summary = useMemo(() => {
+    const now = new Date();
+    // Total income this month from transactions
+    const moneyIn = transactions
+      .filter(t => {
+        const d = new Date(t.date);
+        return t.type === 'income'
+          && d.getMonth() === now.getMonth()
+          && d.getFullYear() === now.getFullYear();
+      })
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    // Total planned = sum of all budget limits
+    const planned = budgets.reduce((sum, b) => sum + (b.budget ?? 0), 0);
+
+    return { moneyIn, planned, net: moneyIn - planned };
+  }, [transactions, budgets]);
+
+  const netPositive = summary.net >= 0;
+
+  const cards = [
+    {
+      label: 'Money In',
+      sub: 'Total income this month',
+      value: summary.moneyIn,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-100',
+      icon: ArrowUpRight,
+    },
+    {
+      label: 'Planned',
+      sub: 'Total budget limit',
+      value: summary.planned,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-100',
+      icon: ArrowDownLeft,
+    },
+    {
+      label: 'Net Balance',
+      sub: netPositive ? 'Surplus' : 'Deficit',
+      value: summary.net,
+      color: netPositive ? 'text-emerald-600' : 'text-rose-600',
+      bg: netPositive ? 'bg-emerald-50' : 'bg-rose-50',
+      border: netPositive ? 'border-emerald-100' : 'border-rose-100',
+      icon: TrendingUp,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <FinanceTopBar />
 
-      {/* Search (left) + Add Budget (right) */}
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-3 gap-3">
+        {cards.map(c => (
+          <div key={c.label} className={`flex items-center gap-3 rounded-2xl border ${c.border} bg-white p-4 shadow-sm`}>
+            <div className={`hidden sm:flex h-9 w-9 flex-none items-center justify-center rounded-xl ${c.bg}`}>
+              <c.icon className={`h-4 w-4 ${c.color}`} />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs text-gray-400">{c.label}</p>
+              <p className={`truncate text-sm font-bold ${c.color}`}>
+                {c.label === 'Net Balance' && c.value < 0 ? '-' : ''}₹{Math.abs(c.value).toLocaleString('en-IN')}
+              </p>
+              <p className="text-[10px] text-gray-400">{c.sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search + Add Budget */}
       <div className="flex items-center gap-2">
         {mobileSearch ? (
           <div className="flex sm:hidden flex-1 relative">
