@@ -149,6 +149,16 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     if (status === 'unauthenticated') dispatch({ type: 'reset' });
   }, [status]);
 
+  // Pick up transactions added via AiTransactionButton (which bypasses the store)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tx = (e as CustomEvent).detail;
+      if (tx?.id) dispatch({ type: 'addTransaction', payload: tx });
+    };
+    window.addEventListener('orbit:transaction-added', handler);
+    return () => window.removeEventListener('orbit:transaction-added', handler);
+  }, []);
+
   // Only load data once the session is authenticated
   useEffect(() => {
     if (status !== 'authenticated') return;

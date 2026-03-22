@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Sparkles, X, Check, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from '@/components/Toast';
-import { parseTransaction, ACCOUNT_MAP } from '@/lib/transactionParser';
-import { useFinance } from '@/lib/financeStore';
 
 type Parsed = {
   amount: number;
@@ -26,37 +24,23 @@ declare global {
   }
 }
 
-const CATEGORIES = [
-  'Food','Groceries','Restaurants','Rent','Fuel','Transport','Utilities',
-  'Internet','Mobile','Shopping','Subscriptions','Medical','Insurance',
-  'Travel','Education','Gifts','Miscellaneous','Investment','Loan',
-  'Salary','Bonus','Freelance','Business','Dividends','Interest',
-  'Rental Income','Cashback','Refund','Other Income',
-];
-
-const INCOME_CATEGORIES = new Set([
-  'Salary','Bonus','Freelance','Business','Dividends','Interest',
-  'Rental Income','Cashback','Refund','Other Income',
-]);
-
-export default function AiTransactionButton({ fabClassName }: { fabClassName?: string }) {
-  const { state } = useFinance();
-
-  const [open,      setOpen]      = useState(false);
-  const [text,      setText]      = useState('');
-  const [listening, setListening] = useState(false);
-  const [parsing,   setParsing]   = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [parsed,    setParsed]    = useState<Parsed | null>(null);
-  const [editAmt,   setEditAmt]   = useState('');
-  const [editDesc,  setEditDesc]  = useState('');
-  const [editCat,   setEditCat]   = useState('');
-  const [editAccId, setEditAccId] = useState<string | null>(null);
-  const [editType,  setEditType]  = useState<'expense' | 'income'>('expense');
+export default function AiTransactionButton() {
+  const [open,       setOpen]       = useState(false);
+  const [text,       setText]       = useState('');
+  const [listening,  setListening]  = useState(false);
+  const [parsing,    setParsing]    = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [parsed,     setParsed]     = useState<Parsed | null>(null);
+  const [editAmt,    setEditAmt]    = useState('');
+  const [editDesc,   setEditDesc]   = useState('');
+  const [editCat,    setEditCat]    = useState('');
+  const [editAccId,  setEditAccId]  = useState<string | null>(null);
+  const [editType,   setEditType]   = useState<'expense'|'income'>('expense');
 
   const inputRef = useRef<HTMLInputElement>(null);
   const recogRef = useRef<any>(null);
 
+  // Focus input when modal opens
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 80);
@@ -65,6 +49,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
     return () => stopListening();
   }, [open]);
 
+  // Populate editable fields when parsed result arrives
   useEffect(() => {
     if (!parsed) return;
     setEditAmt(String(parsed.amount));
@@ -77,16 +62,17 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
   function startListening() {
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!SR) { toast('Speech recognition not supported in this browser', 'error'); return; }
+
     const r = new SR();
     r.lang = 'en-IN';
     r.continuous = false;
     r.interimResults = false;
-    r.onresult = (e: any) => {
+    r.onresult  = (e: any) => {
       const transcript = e.results[0][0].transcript;
       setText(prev => (prev ? prev + ' ' + transcript : transcript).trim());
     };
-    r.onerror = () => setListening(false);
-    r.onend   = () => setListening(false);
+    r.onerror   = () => { setListening(false); };
+    r.onend     = () => { setListening(false); };
     r.start();
     recogRef.current = r;
     setListening(true);
@@ -97,43 +83,20 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
     setListening(false);
   }
 
-  function handleParse() {
+  async function handleParse() {
     if (!text.trim()) return;
     setParsing(true);
     setParsed(null);
     try {
-      // Build category list from known categories
-      const categories = CATEGORIES.map((name, i) => ({
-        id: `cat-${i}`,
-        name,
-        type: INCOME_CATEGORIES.has(name) ? 'income' as const : 'expense' as const,
-      }));
-
-      const result = parseTransaction(text, categories);
-
-      // Match parsed account name to a real user account
-      const accountKws = Object.entries(ACCOUNT_MAP);
-      const accountMatch = state.accounts.find(a => {
-        const nameLower = a.name.toLowerCase();
-        return accountKws.some(([label, kws]) =>
-          label === result.account && kws.some(kw => nameLower.includes(kw))
-        ) || nameLower.includes(result.account.toLowerCase());
-      }) ?? null;
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      setParsed({
-        amount:      result.amount,
-        type:        result.type,
-        category:    result.category,
-        description: result.note || result.category,
-        accountId:   accountMatch?.id ?? null,
-        accountName: accountMatch?.name ?? null,
-        date:        today,
-        confidence:  result.confidence,
-        accounts:    state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type })),
+      const res = await fetch('/api/ai-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
       });
-    } catch {
+      if (!res.ok) throw new Error(await res.text());
+      const data: Parsed = await res.json();
+      setParsed(data);
+    } catch (e: any) {
       toast('Could not parse — try rephrasing', 'error');
     } finally {
       setParsing(false);
@@ -157,27 +120,33 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? 'Save failed');
-      }
+      if (!res.ok) throw new Error();
       const saved = await res.json();
       toast('Transaction added!');
       setOpen(false);
+      // Notify financeStore to add the transaction to in-memory state
       window.dispatchEvent(new CustomEvent('orbit:transaction-added', { detail: saved }));
-    } catch (e: any) {
-      toast(e?.message ?? 'Failed to save transaction', 'error');
+    } catch {
+      toast('Failed to save transaction', 'error');
     } finally {
       setSaving(false);
     }
   }
+
+  const CATEGORIES = [
+    'Food','Groceries','Restaurants','Rent','Fuel','Transport','Utilities',
+    'Internet','Mobile','Shopping','Subscriptions','Medical','Insurance',
+    'Travel','Education','Gifts','Miscellaneous','Investment','Loan',
+    'Salary','Bonus','Freelance','Business','Dividends','Interest',
+    'Rental Income','Cashback','Refund','Other Income',
+  ];
 
   return (
     <>
       {/* ── Floating AI button ─────────────────────────────────────────── */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 shadow-2xl shadow-violet-900/40 transition hover:scale-105 hover:shadow-violet-700/50 active:scale-95 ${fabClassName ?? 'bottom-24 right-5 sm:bottom-8 sm:right-8'}`}
+        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 shadow-2xl shadow-violet-900/40 transition hover:scale-105 hover:shadow-violet-700/50 active:scale-95 sm:bottom-8 sm:right-8"
         title="Add transaction with AI"
       >
         <Sparkles className="h-6 w-6 text-white" />
@@ -186,8 +155,10 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
       {/* ── Modal backdrop ─────────────────────────────────────────────── */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
+          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
+          {/* Panel */}
           <div className="relative z-10 w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[#1a1a2e] border border-white/10 shadow-2xl overflow-hidden">
 
             {/* Header */}
@@ -196,7 +167,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-white">Smart Transaction</p>
+                <p className="text-sm font-semibold text-white">AI Transaction</p>
                 <p className="text-xs text-gray-400">Type or speak to add a transaction</p>
               </div>
               <button onClick={() => setOpen(false)} className="h-8 w-8 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition">
@@ -208,14 +179,16 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
 
               {/* Input row */}
               <div className="flex items-center gap-2">
-                <input
-                  ref={inputRef}
-                  value={text}
-                  onChange={e => { setText(e.target.value); setParsed(null); }}
-                  onKeyDown={e => e.key === 'Enter' && !parsing && handleParse()}
-                  placeholder="e.g. 50 rupees office food sbi rupay card"
-                  className="flex-1 rounded-2xl bg-white/8 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/60 focus:bg-white/10 transition"
-                />
+                <div className="relative flex-1">
+                  <input
+                    ref={inputRef}
+                    value={text}
+                    onChange={e => { setText(e.target.value); setParsed(null); }}
+                    onKeyDown={e => e.key === 'Enter' && !parsing && handleParse()}
+                    placeholder="e.g. 50 rupees office food sbi rupay card"
+                    className="w-full rounded-2xl bg-white/8 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/60 focus:bg-white/10 transition"
+                  />
+                </div>
                 {/* Mic button */}
                 <button
                   onPointerDown={startListening}
@@ -252,6 +225,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
               {/* Parsed result — editable confirmation card */}
               {parsed && (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                  {/* Confidence */}
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Parsed result</p>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -265,7 +239,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
 
                   {/* Type toggle */}
                   <div className="flex gap-2">
-                    {(['expense', 'income'] as const).map(t => (
+                    {(['expense','income'] as const).map(t => (
                       <button key={t} onClick={() => setEditType(t)}
                         className={`flex-1 rounded-xl py-2 text-xs font-semibold transition ${
                           editType === t
