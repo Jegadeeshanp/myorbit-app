@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null }) {
   return {
     id: row.id, name: row.name, category: row.category,
+    units: row.units ?? null,
     value: await decryptNumber(row.value),
     invested: await decryptNumber(row.invested),
     accountId: extra?.accountId ?? undefined,
@@ -45,8 +46,9 @@ export async function POST(req: NextRequest) {
     const { name, category, value, invested, accountId, investmentType, sipConfig } = parsed.data;
 
     // Create without new fields (old Prisma client doesn't know them)
+    const { units } = parsed.data as any;
     const row = await prisma.asset.create({
-      data: { userId, name, category, value: await encryptNumber(value), invested: await encryptNumber(invested) },
+      data: { userId, name, category, value: await encryptNumber(value), invested: await encryptNumber(invested), units: units ?? null },
     });
 
     // Set new fields via raw SQL

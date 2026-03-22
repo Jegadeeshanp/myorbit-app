@@ -46,14 +46,14 @@ export default function DataPrivacyTab() {
   return (
     <div className="space-y-5">
       {/* Export */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-5 text-base font-semibold text-gray-900">Export Data</h2>
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-[#1C1F26]">
+        <h2 className="mb-5 text-base font-semibold text-gray-900 dark:text-white">Export Data</h2>
         <div className="flex gap-3">
           {(['csv', 'json'] as const).map(fmt => (
             <button
               key={fmt}
               onClick={() => exportData(fmt)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               <Download className="h-4 w-4" />
               Export {fmt.toUpperCase()}
@@ -82,6 +82,7 @@ export default function DataPrivacyTab() {
           />
         </div>
       </div>
+
     </div>
   );
 }

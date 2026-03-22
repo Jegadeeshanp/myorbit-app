@@ -324,9 +324,32 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
   const [showList, setShowList]   = useState(false);
   const [showTag, setShowTag]     = useState(false);
   const [showMore, setShowMore]   = useState(false);
+  const [calStyle, setCalStyle]   = useState<React.CSSProperties>({});
+  const calBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 80); }, []);
+
+  const openCalendar = () => {
+    if (calBtnRef.current) {
+      const rect = calBtnRef.current.getBoundingClientRect();
+      const calH = 480; // approx calendar height
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const style: React.CSSProperties = { position: 'fixed', zIndex: 90, width: '320px' };
+      // Position horizontally — align left edge with button, clamp to viewport
+      const left = Math.min(Math.max(rect.left, 8), window.innerWidth - 328);
+      style.left = `${left}px`;
+      if (spaceAbove > calH || spaceAbove > spaceBelow) {
+        style.bottom = `${window.innerHeight - rect.top + 8}px`; // above button
+      } else {
+        style.top = `${rect.bottom + 8}px`; // below button
+      }
+      setCalStyle(style);
+    }
+    closeAll();
+    setShowDate(v => !v);
+  };
 
   const submit = async () => {
     if (!title.trim() || adding) return;
@@ -358,49 +381,78 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
   return (
     <>
       <div className="fixed inset-0 z-[75] bg-black/40 md:hidden" onClick={onClose} />
-      <div className="fixed inset-x-0 z-[80] bg-white dark:bg-[#1E2128] md:hidden" style={{ bottom: '64px' }}>
 
-        {/* Priority picker — compact horizontal */}
+      {/* Calendar popup — single card, positioned near button */}
+      {showDate && (
+        <>
+          <div className="fixed inset-0 z-[85]" onClick={() => setShowDate(false)} />
+          <div style={calStyle} onClick={e => e.stopPropagation()}>
+            <MiniCalendarPopup dueDate={dueDate} onSelect={v => { setDueDate(v); if (!v) setShowDate(false); }} onClose={() => setShowDate(false)} />
+          </div>
+        </>
+      )}
+
+      {/* AddTask sheet — rounded top corners, keyboard-aware */}
+      <div className="fixed inset-x-0 z-[80] md:hidden rounded-t-3xl bg-white dark:bg-[#1E2128] shadow-2xl border-t border-gray-200 dark:border-gray-700"
+        style={{ bottom: 0, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" />
+        </div>
+
+        {/* Priority picker — floating popup above the toolbar */}
         {showPri && (
-          <div className="border-t border-gray-100 dark:border-gray-700/60 px-4 py-3">
-            <div className="flex items-center gap-2">
+          <>
+            <div className="fixed inset-0 z-[84]" onClick={() => setShowPri(false)} />
+            <div className="absolute bottom-full left-12 z-[85] mb-2 w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830]"
+              onClick={e => e.stopPropagation()}>
               {PRI_OPTS.map(p => (
                 <button key={p.v} onClick={() => { setPriority(p.v); setShowPri(false); }}
-                  className={`flex flex-1 items-center justify-center gap-1 rounded-xl border py-2 text-xs font-medium transition ${priority === p.v ? 'border-current' : 'border-gray-200 dark:border-gray-700'}`}
-                  style={{ color: priority === p.v ? p.color : undefined }}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${priority === p.v ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
                 >
-                  <Flag className="h-3.5 w-3.5 flex-none" style={{ color: p.color }} />
-                  {p.label}
+                  <Flag className="h-4 w-4 flex-none" style={{ color: p.color }} />
+                  <span className="flex-1 text-left text-gray-700 dark:text-gray-300">{p.label}</span>
+                  {priority === p.v && <Check className="h-3.5 w-3.5 text-emerald-500" />}
                 </button>
               ))}
             </div>
-          </div>
+          </>
         )}
 
-        {/* List picker — compact */}
+        {/* List picker — floating popup */}
         {showList && (
-          <div className="border-t border-gray-100 dark:border-gray-700/60 px-4 py-2 max-h-40 overflow-y-auto">
-            <button onClick={() => { setListId(''); setShowList(false); }}
-              className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${!listId ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}`}
-            ><span>📥</span><span className="flex-1 text-left">Inbox</span></button>
-            {lists.map(l => (
-              <button key={l.id} onClick={() => { setListId(l.id); setShowList(false); }}
-                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${listId === l.id ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}`}
+          <>
+            <div className="fixed inset-0 z-[84]" onClick={() => setShowList(false)} />
+            <div className="absolute bottom-full left-24 z-[85] mb-2 w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830] max-h-60 overflow-y-auto"
+              onClick={e => e.stopPropagation()}>
+              <button onClick={() => { setListId(''); setShowList(false); }}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${!listId ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
               >
-                <span>{l.emoji || '📋'}</span>
-                <span className="flex-1 truncate text-left">{l.name}</span>
-                {l.color && <span className="h-2 w-2 flex-none rounded-full" style={{ backgroundColor: l.color }} />}
+                <span>📥</span>
+                <span className="flex-1 text-left text-gray-700 dark:text-gray-300">Inbox</span>
+                {!listId && <Check className="h-3.5 w-3.5 text-emerald-500" />}
               </button>
-            ))}
-          </div>
+              {lists.map(l => (
+                <button key={l.id} onClick={() => { setListId(l.id); setShowList(false); }}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${listId === l.id ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                >
+                  <span>{l.emoji || '📋'}</span>
+                  <span className="flex-1 truncate text-left text-gray-700 dark:text-gray-300">{l.name}</span>
+                  {l.color && <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: l.color }} />}
+                  {listId === l.id && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
-        {/* Tag input — compact */}
+        {/* Tag input row */}
         {showTag && (
           <div className="border-t border-gray-100 dark:border-gray-700/60 px-4 py-2">
             <div className="flex items-center gap-2">
               <input autoFocus
-                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-600"
+                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm placeholder-gray-400 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 placeholder="Tag name..."
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
@@ -420,7 +472,7 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
           </div>
         )}
 
-        {/* More options — compact */}
+        {/* More options */}
         {showMore && (
           <div className="border-t border-gray-100 dark:border-gray-700/60">
             <button onClick={() => setShowMore(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
@@ -432,86 +484,50 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
           </div>
         )}
 
-        {/* Main input + toolbar */}
-        <div className="relative border-t border-gray-200 dark:border-gray-700">
-          {/* Calendar popup — small, positioned above the toolbar */}
-          {showDate && (
-            <>
-              <div className="fixed inset-0 z-[85]" onClick={() => setShowDate(false)} />
-              <div className="absolute bottom-full left-2 z-[90] mb-2">
-                <MiniCalendarPopup
-                  dueDate={dueDate}
-                  onSelect={setDueDate}
-                  onClose={() => setShowDate(false)}
-                />
-              </div>
-            </>
-          )}
+        {/* Title input */}
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="h-5 w-5 flex-none rounded-full border-2 border-gray-300 dark:border-gray-600" />
+          <input
+            ref={inputRef}
+            className="flex-1 bg-transparent text-base text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-500"
+            placeholder="New task"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void submit(); if (e.key === 'Escape') onClose(); }}
+          />
+        </div>
 
-          {/* Title input row */}
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="h-5 w-5 flex-none rounded border-2 border-gray-300 dark:border-gray-600" />
-            <input
-              ref={inputRef}
-              className="flex-1 bg-transparent text-base text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-500"
-              placeholder="New task"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') void submit(); if (e.key === 'Escape') onClose(); }}
-            />
-          </div>
-
-          {/* Toolbar row */}
-          <div className="flex items-center gap-1 px-3 pb-3">
-            {/* Date */}
-            <button onClick={() => { closeAll(); setShowDate(v => !v); }}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition ${showDate || dueDate ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'}`}
-            >
-              <CalendarDays className="h-5 w-5" />
-              {dateLabel && <span className="text-xs font-medium">{dateLabel}</span>}
-            </button>
-
-            {/* Priority */}
-            <button onClick={() => { closeAll(); setShowPri(v => !v); }}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showPri ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
-              style={{ color: priority !== 'none' ? priColor : undefined }}
-            >
-              <Flag className={`h-5 w-5 ${priority === 'none' ? 'text-gray-500 dark:text-gray-400' : ''}`} />
-            </button>
-
-            {/* List */}
-            <button onClick={() => { closeAll(); setShowList(v => !v); }}
-              className={`flex items-center gap-1.5 rounded-xl px-2 py-2 text-sm transition ${showList || listId ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
-            >
-              {selectedList ? <span className="text-base">{selectedList.emoji || '📋'}</span> : <ListIcon className="h-5 w-5" />}
-              {selectedList && <span className="text-xs font-medium max-w-[60px] truncate">{selectedList.name}</span>}
-            </button>
-
-            {/* Tag */}
-            <button onClick={() => { closeAll(); setShowTag(v => !v); }}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showTag || tags.length > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}
-            >
-              <Tag className="h-5 w-5" />
-            </button>
-
-            {/* More (...) */}
-            <button onClick={() => { closeAll(); setShowMore(v => !v); }}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showMore ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'}`}
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
-
-            <div className="flex-1" />
-
-            {/* Send */}
-            <button
-              onClick={() => void submit()}
-              disabled={!title.trim() || adding}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white disabled:opacity-40 active:scale-95 transition"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-          </div>
+        {/* Toolbar */}
+        <div className="flex items-center gap-1 px-3 pb-4">
+          <button ref={calBtnRef} onClick={openCalendar}
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition ${showDate || dueDate ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'}`}>
+            <CalendarDays className="h-5 w-5" />
+            {dateLabel && <span className="text-xs font-medium">{dateLabel}</span>}
+          </button>
+          <button onClick={() => { closeAll(); setShowPri(v => !v); }}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl transition`}
+            style={{ color: priority !== 'none' ? priColor : undefined }}
+          >
+            <Flag className={`h-5 w-5 ${priority === 'none' ? 'text-gray-500 dark:text-gray-400' : ''}`} />
+          </button>
+          <button onClick={() => { closeAll(); setShowList(v => !v); }}
+            className={`flex items-center gap-1.5 rounded-xl px-2 py-2 text-sm transition ${showList || listId ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+            {selectedList ? <span className="text-base">{selectedList.emoji || '📋'}</span> : <ListIcon className="h-5 w-5" />}
+            {selectedList && <span className="text-xs font-medium max-w-[60px] truncate">{selectedList.name}</span>}
+          </button>
+          <button onClick={() => { closeAll(); setShowTag(v => !v); }}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showTag || tags.length > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>
+            <Tag className="h-5 w-5" />
+          </button>
+          <button onClick={() => { closeAll(); setShowMore(v => !v); }}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showMore ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'}`}>
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          <div className="flex-1" />
+          <button onClick={() => void submit()} disabled={!title.trim() || adding}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white disabled:opacity-40 active:scale-95 transition">
+            <Plus className="h-5 w-5" />
+          </button>
         </div>
       </div>
     </>
@@ -772,7 +788,7 @@ export default function TasksPage() {
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">{group.label}</span>
                             <span className="ml-1 text-sm text-gray-400">{group.tasks.length}</span>
                           </button>
-                          {!collapsedGroups.has(group.label) && <div className="space-y-0.5 px-2 pb-2">{group.tasks.map(task => <TaskItem key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onClick={() => setActiveTask(task)} isActive={activeTask?.id === task.id} />)}</div>}
+                          {!collapsedGroups.has(group.label) && <div className="space-y-0.5 px-2 pb-2">{group.tasks.map(task => <TaskItem key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} />)}</div>}
                         </div>
                       ))}
                       {completedTasks.length > 0 && (
@@ -782,7 +798,7 @@ export default function TasksPage() {
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">Completed</span>
                             <span className="ml-1 text-sm text-gray-400">{completedTasks.length}</span>
                           </button>
-                          {completedOpen && <div className="space-y-0.5 px-2 pb-2">{completedTasks.map(task => <TaskItem key={task.id} task={task} onDelete={handleDelete} onClick={() => setActiveTask(task)} isActive={activeTask?.id === task.id} />)}</div>}
+                          {completedOpen && <div className="space-y-0.5 px-2 pb-2">{completedTasks.map(task => <TaskItem key={task.id} task={task} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} />)}</div>}
                         </div>
                       )}
                     </div>
@@ -824,7 +840,7 @@ export default function TasksPage() {
       {showFab && <AddTaskOverlay onClose={() => setShowFab(false)} onAdd={handleAddTask} lists={lists} />}
 
       {!showFab && !activeTask && (
-        <button onClick={() => setShowFab(true)} className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg active:scale-95 transition md:hidden">
+        <button onClick={() => { setActiveTask(null); setShowFab(true); }} className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg active:scale-95 transition md:hidden">
           <Plus className="h-6 w-6" />
         </button>
       )}

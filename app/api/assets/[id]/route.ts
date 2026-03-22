@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null }) {
   return {
     id: row.id, name: row.name, category: row.category,
+    units: row.units ?? null,
     value: await decryptNumber(row.value),
     invested: await decryptNumber(row.invested),
     accountId: extra?.accountId ?? undefined,
@@ -33,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const data: any = { ...coreData };
     if (data.value != null) data.value = await encryptNumber(data.value);
     if (data.invested != null) data.invested = await encryptNumber(data.invested);
+    if ('units' in coreData) data.units = coreData.units ?? null;
 
     const row = await prisma.asset.update({ where: { id }, data });
 

@@ -110,9 +110,9 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
   const repLabel = repeat === 'none' ? 'None' : repeat.charAt(0).toUpperCase()+repeat.slice(1);
 
   return (
-    <div className="flex flex-col w-full" style={{ maxHeight: '80vh' }}>
+    <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] w-72 flex flex-col overflow-hidden h-full">
       {/* Scrollable content */}
-      <div className="overflow-y-auto flex-1">
+      <div className="overflow-y-auto flex-1 min-h-0">
       {/* Quick chips */}
       <div className="flex gap-1 p-2 border-b border-gray-100 dark:border-gray-700/60">
         {QUICK.map(q => (
@@ -150,7 +150,7 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
       <div className="relative border-t border-gray-100 dark:border-gray-700/60">
         {/* Overlay for sub-menus */}
         {(showTime||showRemind||showRepeat) && (
-          <div className="absolute inset-x-0 bottom-full z-10 rounded-t-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-[#1E2128]">
+          <div className="fixed inset-x-4 z-[210] bottom-auto rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128]" style={{ bottom: 'auto', top: '15vh' }}>
             {showTime && <div className="p-3"><p className="text-xs font-semibold text-gray-400 mb-2">Set Time</p>
               <input type="time" value={dueTime} onChange={e=>setDueTime(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
@@ -232,7 +232,7 @@ function TaskPanel({
   const [localDueDate,  setLocalDueDate]  = useState(dueDate);
   const [localDueTime,  setLocalDueTime]  = useState(dueTime);
   const [showDate,    setShowDate]    = useState(false);
-  const [calPos,      setCalPos]      = useState<{ top: number; left: number; width: number } | null>(null);
+  const [calPos,      setCalPos]      = useState<React.CSSProperties | null>(null);
   const [showPri,     setShowPri]     = useState(false);
   const [showList,    setShowList]    = useState(false);
   const [openAction,  setOpenAction]  = useState<null|'subtask'|'tag'|'delete'|'moveto'>(null);
@@ -303,26 +303,23 @@ function TaskPanel({
   return (
     <div data-task-panel className="relative flex h-full flex-col">
 
-      {/* Date popup — positioned over the right panel */}
+      {/* Date popup — same MiniCalendar style as AddTask, smart positioned */}
       {showDate && calPos && (
         <>
           <div className="fixed inset-0 z-[199]" onClick={() => { setShowDate(false); setCalPos(null); }} />
-          <div className="fixed z-[200] rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] flex flex-col"
-            style={{ top: calPos.top, left: calPos.left, width: Math.max(calPos.width, 288), maxHeight: `calc(100vh - ${calPos.top + 16}px)` }}
-            onClick={e => e.stopPropagation()}
-          >
-          <CompactDatePicker
-          dueDate={localDueDate} dueTime={localDueTime}
-          reminder={localReminder} repeat={localRepeat}
-          setDueDate={setLocalDueDate} setDueTime={setLocalDueTime}
-          setReminder={setLocalReminder} setRepeat={setLocalRepeat}
-          onSave={() => {
-            onDueDateChange(localDueDate); onDueTimeChange(localDueTime);
-            const full = buildFull(); onTagsChange(full);
-            void onSave({dueDate:localDueDate, dueTime:localDueTime, tags:full});
-          }}
-          onClose={() => { setShowDate(false); setCalPos(null); }}
-        />
+          <div className="fixed z-[200]" style={calPos} onClick={e => e.stopPropagation()}>
+            <CompactDatePicker
+              dueDate={localDueDate} dueTime={localDueTime}
+              reminder={localReminder} repeat={localRepeat}
+              setDueDate={setLocalDueDate} setDueTime={setLocalDueTime}
+              setReminder={setLocalReminder} setRepeat={setLocalRepeat}
+              onSave={() => {
+                onDueDateChange(localDueDate); onDueTimeChange(localDueTime);
+                const full = buildFull(); onTagsChange(full);
+                void onSave({dueDate:localDueDate, dueTime:localDueTime, tags:full});
+              }}
+              onClose={() => { setShowDate(false); setCalPos(null); }}
+            />
           </div>
         </>
       )}
@@ -337,7 +334,21 @@ function TaskPanel({
             if (dateBtnRef.current) {
               const rect = dateBtnRef.current.closest('[data-task-panel]')?.getBoundingClientRect()
                         ?? dateBtnRef.current.getBoundingClientRect();
-              setCalPos({ top: rect.top + 52, left: rect.left, width: rect.width });
+              const calH = 520;
+              const spaceAbove = rect.top - 16;
+              const spaceBelow = window.innerHeight - rect.bottom - 16;
+              const left = Math.min(Math.max(rect.left - 8, 8), window.innerWidth - 328);
+              const style: React.CSSProperties = { width: '320px', left };
+              if (spaceAbove > spaceBelow) {
+                // Show above button
+                style.bottom = window.innerHeight - rect.top + 8;
+                style.maxHeight = `${Math.min(spaceAbove, calH)}px`;
+              } else {
+                // Show below button
+                style.top = rect.bottom + 8;
+                style.maxHeight = `${Math.min(spaceBelow, calH)}px`;
+              }
+              setCalPos(style as any);
             }
             setShowDate(v => !v);
           }}

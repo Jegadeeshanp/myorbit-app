@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
+import dynamic from 'next/dynamic';
+const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
 const TABS = ['Preferences', 'Recurring', 'Data'] as const;
 type Tab = typeof TABS[number];
@@ -33,6 +35,7 @@ const DEFAULT_VIEWS = [
 export default function FinanceSettingsPage() {
   const { state } = useFinance();
   const [activeTab, setActiveTab] = useState<Tab>('Preferences');
+  const [showImport, setShowImport] = useState(false);
 
   // Preferences state
   const [currency,    setCurrency]    = useState('INR');
@@ -255,6 +258,21 @@ export default function FinanceSettingsPage() {
       {/* ── Data ── */}
       {activeTab === 'Data' && (
         <div className="space-y-4">
+          {/* Import */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900">Import Data</h3>
+            <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+              Import assets and transactions from Excel or CSV files. Supports Zerodha/Groww stock holdings, mutual fund statements, HDFC/SBI/ICICI credit card statements, and custom spreadsheets.
+            </p>
+            <button
+              onClick={() => setShowImport(true)}
+              className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            >
+              <Upload className="h-4 w-4" />
+              Import from Excel / CSV
+            </button>
+          </div>
+          {/* Export */}
           <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-gray-900">Export Data</h3>
             <p className="mt-1 text-sm text-gray-500 leading-relaxed">
@@ -286,6 +304,7 @@ export default function FinanceSettingsPage() {
           </div>
         </div>
       )}
+      {showImport && <ImportWizard onClose={() => setShowImport(false)} onSuccess={() => { setShowImport(false); window.location.reload(); }} />}
     </div>
   );
 }

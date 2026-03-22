@@ -105,7 +105,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
     onClose();
   };
 
-  const selected = ASSET_CATEGORIES.find(c => c.label === category)!;
+  const selected = ASSET_CATEGORIES.find(c => c.label === category) ?? ASSET_CATEGORIES[ASSET_CATEGORIES.length - 1];
   const isEdit = !!initial;
 
   const footer = (

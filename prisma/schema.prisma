@@ -83,6 +83,7 @@ model Asset {
   category       String
   value          String
   invested       String
+  units          Float?
   accountId      String?
   investmentType String   @default("lump_sum")
   sipConfig      String?  // JSON: { frequency, startDate, endType, endAfterTimes?, endDate? }
