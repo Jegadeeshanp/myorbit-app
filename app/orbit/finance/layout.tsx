@@ -4,6 +4,7 @@ import MobileNav from '@/components/finance/MobileNav';
 import ToastContainer from '@/components/Toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import FinanceFAB from '@/components/finance/FinanceFAB';
+import AiTransactionButton from '@/components/AiTransactionButton';
 // FinanceProvider is already provided by app/orbit/layout.tsx → OrbitClientWrapper
 // Do NOT add another FinanceProvider here — it would create a nested duplicate
 // causing double API calls on every finance page load.
@@ -22,6 +23,9 @@ export default function FinanceLayout({ children }: { children: ReactNode }) {
           </ErrorBoundary>
         </div>
       </div>
+
+      {/* AI Transaction Button — stacked above FinanceFAB */}
+      <AiTransactionButton fabClassName="bottom-40 right-5 md:bottom-24 md:right-8" />
 
       {/* Floating Action Button — all finance pages */}
       <FinanceFAB />
