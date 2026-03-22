@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import ModuleCard from '@/components/ModuleCard';
+import AiTransactionButton from '@/components/AiTransactionButton';
 import { useAuth } from '@/lib/authStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -203,6 +204,7 @@ export default function Orbit() {
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
       {showWizard && <OnboardingWizard onDismiss={() => { showWizardRef.current = false; }} />}
+      <AiTransactionButton />
 
       {installOpen && (
         <InstallModal
