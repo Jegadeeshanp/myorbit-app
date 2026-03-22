@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Transaction } from '@/lib/financeData';
 import { formatINR } from '@/lib/currency';
 
@@ -13,29 +13,19 @@ const COLORS = [
 
 const EXCLUDED = ['Opening Balance', 'Balance Adjustment', 'Transfer', 'Investment', 'Loan'];
 
-function renderActiveShape(props: any) {
-  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+function CustomTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const { name, value } = payload[0].payload;
   return (
-    <g>
-      <text x={cx} y={cy - 16} textAnchor="middle" fill="#e5e7eb" fontSize={12} fontWeight={600}>
-        {payload.name}
-      </text>
-      <text x={cx} y={cy + 4} textAnchor="middle" fill="#f9fafb" fontSize={15} fontWeight={700}>
-        {formatINR(value)}
-      </text>
-      <text x={cx} y={cy + 22} textAnchor="middle" fill="#9ca3af" fontSize={11}>
-        {(percent * 100).toFixed(1)}%
-      </text>
-      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 6}
-        startAngle={startAngle} endAngle={endAngle} fill={fill} />
-      <Sector cx={cx} cy={cy} innerRadius={outerRadius + 10} outerRadius={outerRadius + 13}
-        startAngle={startAngle} endAngle={endAngle} fill={fill} />
-    </g>
+    <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] px-3 py-2 shadow-lg text-xs">
+      <p className="font-semibold text-gray-800 dark:text-white">{name}</p>
+      <p className="text-emerald-600 font-bold mt-0.5">{formatINR(value)}</p>
+    </div>
   );
 }
 
 export default function ExpenseSplitChart({ transactions }: { transactions: Transaction[] }) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const now = new Date();
   const data = useMemo(() => {
@@ -55,6 +45,7 @@ export default function ExpenseSplitChart({ transactions }: { transactions: Tran
   }, [transactions]);
 
   const total = data.reduce((s, d) => s + d.value, 0);
+  const active = activeIndex !== null ? data[activeIndex] : null;
 
   if (data.length === 0) {
     return (
@@ -72,8 +63,8 @@ export default function ExpenseSplitChart({ transactions }: { transactions: Tran
       </div>
 
       <div className="flex items-center gap-6">
-        {/* Donut */}
-        <div className="flex-none" style={{ width: 200, height: 200 }}>
+        {/* Donut with centre label */}
+        <div className="relative flex-none" style={{ width: 200, height: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -83,17 +74,38 @@ export default function ExpenseSplitChart({ transactions }: { transactions: Tran
                 innerRadius={62}
                 outerRadius={86}
                 dataKey="value"
-                activeIndex={activeIndex}
-                activeShape={renderActiveShape}
-                onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
                 stroke="none"
+                onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
               >
                 {data.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell
+                    key={i}
+                    fill={COLORS[i % COLORS.length]}
+                    opacity={activeIndex === null || activeIndex === i ? 1 : 0.4}
+                    style={{ cursor: 'pointer', transition: 'opacity 0.15s' }}
+                  />
                 ))}
               </Pie>
+              <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
+
+          {/* Centre label */}
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            {active ? (
+              <>
+                <p className="text-[11px] text-gray-400 leading-tight truncate max-w-[100px]">{active.name}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{formatINR(active.value)}</p>
+                <p className="text-[11px] text-gray-400">{((active.value / total) * 100).toFixed(1)}%</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] text-gray-400">Total</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{formatINR(total)}</p>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Legend */}
@@ -102,7 +114,8 @@ export default function ExpenseSplitChart({ transactions }: { transactions: Tran
             <button
               key={item.name}
               onMouseEnter={() => setActiveIndex(i)}
-              onClick={() => setActiveIndex(i)}
+              onMouseLeave={() => setActiveIndex(null)}
+              onClick={() => setActiveIndex(i === activeIndex ? null : i)}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition ${
                 activeIndex === i ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-50 dark:hover:bg-white/5'
               }`}
