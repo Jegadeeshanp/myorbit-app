@@ -312,8 +312,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     return txs;
   }
 
+  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
+
   const filtered = useMemo(() => {
-    return applyTabSearch(filterByPeriod(pastTxs, period));
+    return applyTabSearch(filterByPeriod(pastTxs, period)).filter(t => !SYSTEM_CATS.includes(t.category));
   }, [pastTxs, period, safeTab, search, accountTabMap]);
 
   const filteredUpcoming = useMemo(() => {
@@ -324,11 +326,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  // Summary uses past transactions only (excludes upcoming)
-  const SYSTEM_CATEGORIES = ['Opening Balance', 'Balance Adjustment'];
+  // Summary uses past transactions only (system categories already excluded via filtered)
   const summary = useMemo(() => {
-    const income  = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATEGORIES.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-    const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATEGORIES.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const income  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
     return { income, expense, count: filtered.length };
   }, [filtered]);
 
@@ -542,7 +543,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             const isCollapsed = collapsedGroups.has(group.label);
             const isNow       = group.label === currentMonthLabel;
             const groupNet    = group.transactions.reduce(
-              (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
+              (s, tx) => SYSTEM_CATS.includes(tx.category) ? s : tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
             );
 
             return (
