@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
@@ -48,13 +48,21 @@ export default function FinanceSettingsPage() {
   const [defaultView, setDefaultView] = useState('overview');
 
   // Expense category exclusions
-  const [allExpenseCats,      setAllExpenseCats]          = useState<string[]>([]);
-  const [excludedExpenseCats, setExcludedExpenseCatsState] = useState<string[]>([]);
+  // Combine stored categories + categories used in actual transactions
+  const allExpenseCats = useMemo(() => {
+    const stored = getAllExpenseCategories();
+    const SYSTEM = ['Opening Balance', 'Balance Adjustment'];
+    const fromTxns = state.transactions
+      .filter(t => t.type === 'expense' && !SYSTEM.includes(t.category))
+      .map(t => t.category);
+    const merged = [...stored, ...fromTxns];
+    const seen = new Set<string>();
+    return merged.filter(c => seen.has(c) ? false : (seen.add(c), true));
+  }, [state.transactions]);
 
-  useEffect(() => {
-    setAllExpenseCats(getAllExpenseCategories());
-    setExcludedExpenseCatsState(getExcludedExpenseCategories());
-  }, []);
+  const [excludedExpenseCats, setExcludedExpenseCatsState] = useState<string[]>(() =>
+    getExcludedExpenseCategories()
+  );
 
   function toggleExcludedCat(cat: string) {
     setExcludedExpenseCatsState(prev => {
@@ -203,36 +211,42 @@ export default function FinanceSettingsPage() {
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Expense Tracking</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Uncheck categories to exclude them from expense totals and vitals (e.g. Investment, SIP)
+                Check a category to exempt it from expense totals and vitals (e.g. Investment, SIP)
               </p>
             </div>
             <div className="space-y-1.5">
               {allExpenseCats.map(cat => {
-                const excluded = excludedExpenseCats.includes(cat);
+                const exempted = excludedExpenseCats.includes(cat);
                 return (
                   <label
                     key={cat}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 cursor-pointer transition ${excluded ? 'border-gray-200 bg-gray-50' : 'border-emerald-100 bg-emerald-50/40'}`}
+                    onClick={() => toggleExcludedCat(cat)}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 cursor-pointer transition ${
+                      exempted
+                        ? 'border-amber-200 bg-amber-50/60 dark:border-amber-800/40 dark:bg-amber-900/20'
+                        : 'border-gray-100 bg-white hover:border-gray-200 dark:border-gray-700 dark:bg-gray-800/40'
+                    }`}
                   >
-                    <div
-                      onClick={() => toggleExcludedCat(cat)}
-                      className={`h-4 w-4 flex-none rounded border-2 flex items-center justify-center transition ${!excluded ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300 bg-white'}`}
-                    >
-                      {!excluded && (
+                    <div className={`h-4 w-4 flex-none rounded border-2 flex items-center justify-center transition ${
+                      exempted ? 'border-amber-500 bg-amber-500' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-700'
+                    }`}>
+                      {exempted && (
                         <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 12 12">
                           <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </div>
-                    <span className={`text-sm font-medium ${excluded ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{cat}</span>
-                    {excluded && <span className="ml-auto text-[10px] text-gray-400 font-medium">excluded</span>}
+                    <span className={`flex-1 text-sm font-medium ${exempted ? 'text-amber-700 dark:text-amber-400' : 'text-gray-800 dark:text-gray-200'}`}>{cat}</span>
+                    {exempted && (
+                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">exempt</span>
+                    )}
                   </label>
                 );
               })}
             </div>
             {excludedExpenseCats.length > 0 && (
-              <p className="text-[11px] text-amber-600">
-                {excludedExpenseCats.length} {excludedExpenseCats.length === 1 ? 'category' : 'categories'} excluded from expense calculations
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                {excludedExpenseCats.length} {excludedExpenseCats.length === 1 ? 'category' : 'categories'} exempt from expense calculations
               </p>
             )}
           </div>
