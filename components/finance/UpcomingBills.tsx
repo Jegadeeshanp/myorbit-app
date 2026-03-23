@@ -8,14 +8,19 @@ export default function UpcomingBills() {
   const { state } = useFinance();
 
   const bills = useMemo(() => {
-    return state.liabilities.map((l, i) => {
-      const dueDay = 5 + i * 7;
-      const now = new Date();
-      const due = new Date(now.getFullYear(), now.getMonth(), dueDay);
-      if (due < now) due.setMonth(due.getMonth() + 1);
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    return state.liabilities.map(l => {
+      let due: Date;
+      if (l.nextDueDate) {
+        due = new Date(`${l.nextDueDate}T00:00:00`);
+      } else {
+        // Fallback: 5th of current/next month
+        due = new Date(now.getFullYear(), now.getMonth(), 5);
+        if (due <= now) due.setMonth(due.getMonth() + 1);
+      }
       const daysLeft = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return { name: l.name, amount: l.monthlyEmi, due: due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), daysLeft };
-    }).sort((a,b) => a.daysLeft - b.daysLeft);
+    }).filter(b => b.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft);
   }, [state.liabilities]);
 
   return (

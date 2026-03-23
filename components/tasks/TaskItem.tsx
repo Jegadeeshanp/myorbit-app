@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Clock, RotateCcw, Trash2, ChevronRight, Flag } from 'lucide-react';
+import { Check, Clock, RotateCcw, Trash2, ChevronRight, Flag, Calendar } from 'lucide-react';
 
 type Task = {
   id: string;
@@ -11,7 +11,7 @@ type Task = {
   dueDate?: string;
   dueTime?: string;
   tags: string;
-  subtasks: { id: string; title: string; isDone: boolean }[];
+  subtasks: { id: string; title: string; isDone: boolean; dueTime?: string }[];
   list?: { name: string; color?: string; emoji?: string } | null;
   isActive?: boolean;
 };
@@ -30,6 +30,32 @@ const PRIORITY_COLOR: Record<string, string> = {
   none: '#64748B',
 };
 
+/** Smart date label: today → just time (or "Today"), tomorrow → "Tomorrow", etc. */
+function smartDateLabel(dueDate?: string, dueTime?: string): { label: string; isTime: boolean } | null {
+  if (!dueDate) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const date  = new Date(`${dueDate}T00:00:00`);
+  const diffDays = Math.round((date.getTime() - today.getTime()) / 86400000);
+
+  if (diffDays === 0) {
+    // Today — show time if available, else "Today"
+    return dueTime
+      ? { label: dueTime, isTime: true }
+      : { label: 'Today', isTime: false };
+  }
+  if (diffDays === 1) return { label: 'Tomorrow', isTime: false };
+  if (diffDays === -1) return { label: 'Yesterday', isTime: false };
+  if (diffDays > 1 && diffDays <= 6) {
+    // This week — day name
+    return { label: date.toLocaleDateString('en-IN', { weekday: 'short' }), isTime: false };
+  }
+  const thisYear = today.getFullYear();
+  if (date.getFullYear() === thisYear) {
+    return { label: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), isTime: false };
+  }
+  return { label: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), isTime: false };
+}
+
 interface Props {
   task: Task;
   onComplete?: (id: string) => void;
@@ -39,6 +65,8 @@ interface Props {
   showTrashActions?: boolean;
   isActive?: boolean;
   subtasksMode?: 'toggle' | 'expanded';
+  /** Show the list chip (disable on list pages where it's redundant) */
+  showList?: boolean;
 }
 
 export default function TaskItem({
@@ -50,6 +78,7 @@ export default function TaskItem({
   showTrashActions,
   isActive,
   subtasksMode = 'toggle',
+  showList = true,
 }: Props) {
   const [completing, setCompleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -58,8 +87,12 @@ export default function TaskItem({
   const isOverdue = task.dueDate && task.dueDate < todayStr && !isCompleted;
   const showExpandedSubtasks = subtasksMode === 'expanded' || expanded;
   const hasSubtasks = task.subtasks.length > 0;
-  const hasRepeat = task.tags.toLowerCase().includes('recurr');
+  const hasRepeat = task.tags.toLowerCase().includes('recurr') || task.tags.includes('repeat:');
   const accentColor = task.list?.color || PRIORITY_COLOR[task.priority] || PRIORITY_COLOR.none;
+
+  const dateInfo = smartDateLabel(task.dueDate, task.dueTime);
+  // On non-today dates, also show time separately if available
+  const showSeparateTime = dateInfo && !dateInfo.isTime && task.dueTime && task.dueDate === todayStr;
 
   const handleComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -112,20 +145,26 @@ export default function TaskItem({
           {task.title}
         </span>
 
-        <div className="flex flex-none items-center gap-2 text-gray-400 dark:text-slate-400">
-          {hasRepeat ? <RotateCcw className="h-3.5 w-3.5" /> : null}
-          {task.dueTime ? (
-            <>
-              <Clock className="h-3.5 w-3.5" />
-              <span className={`text-xs ${isOverdue ? 'text-rose-400' : 'text-sky-400'}`}>{task.dueTime}</span>
-            </>
-          ) : null}
-          <Flag className={`h-3.5 w-3.5 ${task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : task.priority === 'low' ? 'text-blue-500' : 'text-slate-600'}`} />
-          {task.list ? (
+        <div className="flex flex-none items-center gap-1.5 text-gray-400 dark:text-slate-400">
+          {hasRepeat && <RotateCcw className="h-3.5 w-3.5 text-emerald-500" />}
+
+          {/* Date/time label */}
+          {dateInfo && (
+            <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-400' : dateInfo.isTime ? 'text-sky-400' : 'text-gray-400 dark:text-slate-500'}`}>
+              {dateInfo.isTime ? <Clock className="h-3.5 w-3.5" /> : <Calendar className="h-3 w-3" />}
+              {dateInfo.label}
+            </span>
+          )}
+
+          {/* Priority flag — always show (dimmed for none) */}
+          <Flag className={`h-3.5 w-3.5 ${task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : task.priority === 'low' ? 'text-blue-500' : 'text-slate-500/40 dark:text-slate-600'}`} />
+
+          {/* List chip — only when showList=true and task belongs to a list */}
+          {showList && task.list && (
             <span className="hidden max-w-[96px] truncate text-xs text-gray-500 dark:text-slate-500 lg:inline">
               {task.list.emoji || '📋'} {task.list.name.slice(0, 8)}
             </span>
-          ) : null}
+          )}
         </div>
 
         {showTrashActions ? (
@@ -164,9 +203,14 @@ export default function TaskItem({
               >
                 {subtask.isDone ? <Check className="h-3 w-3 text-emerald-600" /> : null}
               </div>
-              <span className={`text-xs ${subtask.isDone ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-600 dark:text-slate-300'}`}>
+              <span className={`flex-1 text-xs ${subtask.isDone ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-600 dark:text-slate-300'}`}>
                 {subtask.title}
               </span>
+              {subtask.dueTime && (
+                <span className="flex items-center gap-1 text-[10px] text-sky-400">
+                  <Clock className="h-3 w-3" />{subtask.dueTime}
+                </span>
+              )}
             </div>
           ))}
         </div>

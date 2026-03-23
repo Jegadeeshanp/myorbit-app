@@ -370,7 +370,7 @@ function TaskPanel({
             <div ref={priRef} className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
               {(['high','medium','low','none'] as const).map(level => (
                 <button key={level} type="button"
-                  onClick={() => { onPriorityChange(level); void onSave({priority:level}); setShowPri(false); }}
+                  onClick={() => { onPriorityChange(level); void onSave({priority:level, dueDate:localDueDate, dueTime:localDueTime}); setShowPri(false); }}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 >
                   <Flag className={`h-3.5 w-3.5 ${PRIORITY_FLAG_COLOR[level]}`}/>
