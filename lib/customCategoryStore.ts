@@ -93,3 +93,22 @@ export function addCustomIncomeCategory(name: string, iconName: string = 'Packag
 export function removeCustomIncomeCategory(name: string): void {
   write(INCOME_KEY, read(INCOME_KEY).filter(c => c.name !== name));
 }
+
+// ── Excluded Expense Categories ─────────────────────────────────────────────
+// Categories whose transactions are hidden from expense totals (e.g. Investment)
+
+const EXCLUDED_EXPENSE_KEY = 'myorbit:excluded_expense_categories';
+
+export function getExcludedExpenseCategories(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    return JSON.parse(localStorage.getItem(EXCLUDED_EXPENSE_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function setExcludedExpenseCategories(cats: string[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(EXCLUDED_EXPENSE_KEY, JSON.stringify(cats));
+}

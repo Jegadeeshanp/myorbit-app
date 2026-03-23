@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
+import {
+  getAllExpenseCategories,
+  getExcludedExpenseCategories,
+  setExcludedExpenseCategories,
+} from '@/lib/customCategoryStore';
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
 const TABS = ['Preferences', 'Recurring', 'Data'] as const;
@@ -41,6 +46,23 @@ export default function FinanceSettingsPage() {
   const [currency,    setCurrency]    = useState('INR');
   const [numFormat,   setNumFormat]   = useState('en-IN');
   const [defaultView, setDefaultView] = useState('overview');
+
+  // Expense category exclusions
+  const [allExpenseCats,      setAllExpenseCats]          = useState<string[]>([]);
+  const [excludedExpenseCats, setExcludedExpenseCatsState] = useState<string[]>([]);
+
+  useEffect(() => {
+    setAllExpenseCats(getAllExpenseCategories());
+    setExcludedExpenseCatsState(getExcludedExpenseCategories());
+  }, []);
+
+  function toggleExcludedCat(cat: string) {
+    setExcludedExpenseCatsState(prev => {
+      const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+      setExcludedExpenseCategories(next);
+      return next;
+    });
+  }
 
   // Mock recurring transactions
   const [recurring] = useState([
@@ -174,6 +196,45 @@ export default function FinanceSettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Expense Category Exclusions */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Expense Tracking</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Uncheck categories to exclude them from expense totals and vitals (e.g. Investment, SIP)
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              {allExpenseCats.map(cat => {
+                const excluded = excludedExpenseCats.includes(cat);
+                return (
+                  <label
+                    key={cat}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 cursor-pointer transition ${excluded ? 'border-gray-200 bg-gray-50' : 'border-emerald-100 bg-emerald-50/40'}`}
+                  >
+                    <div
+                      onClick={() => toggleExcludedCat(cat)}
+                      className={`h-4 w-4 flex-none rounded border-2 flex items-center justify-center transition ${!excluded ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300 bg-white'}`}
+                    >
+                      {!excluded && (
+                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 12 12">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium ${excluded ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{cat}</span>
+                    {excluded && <span className="ml-auto text-[10px] text-gray-400 font-medium">excluded</span>}
+                  </label>
+                );
+              })}
+            </div>
+            {excludedExpenseCats.length > 0 && (
+              <p className="text-[11px] text-amber-600">
+                {excludedExpenseCats.length} {excludedExpenseCats.length === 1 ? 'category' : 'categories'} excluded from expense calculations
+              </p>
+            )}
           </div>
         </div>
       )}

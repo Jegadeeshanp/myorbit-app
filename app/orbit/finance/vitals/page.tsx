@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
+import { getExcludedExpenseCategories } from '@/lib/customCategoryStore';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function fmt(v: number) {
@@ -202,13 +203,25 @@ export default function VitalsPage() {
     [state.transactions, todayStr, today]
   );
 
-  const monthlyExpense = useMemo(
-    () => state.transactions
-      .filter(t => { const d = new Date(t.date); return t.type === 'expense' && t.date <= todayStr && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear(); })
-      .reduce((s, t) => s + Math.abs(t.amount), 0),
-    [state.transactions, todayStr, today]
-  );
+  const monthlyExpense = useMemo(() => {
+    const excluded = getExcludedExpenseCategories();
+    return state.transactions
+      .filter(t => {
+        const d = new Date(t.date);
+        return t.type === 'expense'
+          && t.date <= todayStr
+          && d.getMonth() === today.getMonth()
+          && d.getFullYear() === today.getFullYear()
+          && !excluded.includes(t.category);
+      })
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+  }, [state.transactions, todayStr, today]);
 
+  // Emergency fund = Cash + Bank (savings) accounts only
+  const emergencyFundBalance = useMemo(
+    () => state.accounts.filter(a => a.type === 'Cash' || a.type === 'Bank').reduce((s, a) => s + Math.max(0, a.balance), 0),
+    [state.accounts]
+  );
   const liquidAssets    = useMemo(() => state.accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + Math.max(0, a.balance), 0), [state.accounts]);
   const investedAssets  = useMemo(() => state.assets.reduce((s, a) => s + a.value, 0), [state.assets]);
   const totalAssets     = liquidAssets + investedAssets;
@@ -217,7 +230,7 @@ export default function VitalsPage() {
   const savings      = Math.max(0, monthlyIncome - monthlyExpense);
   const netWorth     = totalAssets - totalLiabilities;
   const savingsRate  = monthlyIncome > 0 ? savings / monthlyIncome : 0;
-  const runwayMonths = monthlyExpense > 0 ? liquidAssets / monthlyExpense : 0;
+  const runwayMonths = monthlyExpense > 0 ? emergencyFundBalance / monthlyExpense : 0;
   const debtRatio    = totalAssets > 0 ? totalLiabilities / totalAssets : 0;
   const fiYears      = savings > 0 ? Math.round((monthlyExpense * 12 * 25) / (savings * 12)) : null;
   const idealTerm    = Math.max(0, (monthlyExpense * 12 * 25) - netWorth);
@@ -354,7 +367,7 @@ export default function VitalsPage() {
             score={sEF}
             detail={
               <>
-                <p>Liquid assets: <span className="font-semibold text-gray-700">{fmt(liquidAssets)}</span></p>
+                <p>Cash &amp; Savings: <span className="font-semibold text-gray-700">{fmt(emergencyFundBalance)}</span></p>
                 <p>Monthly runway: <span className={`font-semibold ${runwayMonths >= 6 ? 'text-emerald-700' : runwayMonths >= 3 ? 'text-amber-600' : 'text-rose-600'}`}>{runwayMonths.toFixed(1)} months</span></p>
               </>
             }
