@@ -330,9 +330,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   // Summary uses past transactions only (system categories already excluded via filtered)
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
-    const income  = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expense = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, count: filtered.length };
+    const income       = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expense      = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const allExpense   = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, net: income - allExpense, count: filtered.length };
   }, [filtered]);
 
   return (
@@ -343,10 +344,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
         {[
           { label: 'Income',   value: summary.income,   positive: true,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: ArrowUpRight },
           { label: 'Expenses', value: summary.expense,  positive: false, color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    icon: ArrowDownLeft },
-          { label: 'Net Balance', value: summary.income - summary.expense, positive: summary.income >= summary.expense,
-            color: summary.income >= summary.expense ? 'text-emerald-600' : 'text-rose-600',
-            bg:    summary.income >= summary.expense ? 'bg-emerald-50'    : 'bg-rose-50',
-            border:summary.income >= summary.expense ? 'border-emerald-100' : 'border-rose-100',
+          { label: 'Net Balance', value: summary.net, positive: summary.net >= 0,
+            color: summary.net >= 0 ? 'text-emerald-600' : 'text-rose-600',
+            bg:    summary.net >= 0 ? 'bg-emerald-50'    : 'bg-rose-50',
+            border:summary.net >= 0 ? 'border-emerald-100' : 'border-rose-100',
             icon: TrendingUp },
         ].map(m => (
           <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white p-4 shadow-sm`}>
