@@ -65,7 +65,7 @@ export default function ExpenseSplitChart({ transactions }: { transactions: Tran
       <div className="flex items-center gap-6">
         {/* Donut with centre label */}
         <div className="relative flex-none" style={{ width: 200, height: 200 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
               <Pie
                 data={data}

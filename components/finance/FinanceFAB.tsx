@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import AddTransactionSheet from '@/components/finance/AddTransactionSheet';
 import { useFinance } from '@/lib/financeStore';
+import { useDraggableFab } from '@/lib/useDraggableFab';
 
 export default function FinanceFAB() {
   const { state, addTransaction } = useFinance();
   const [open, setOpen] = useState(false);
 
-  const accounts = state.accounts.map(a => ({ id: a.id, name: a.name }));
+  const accounts = state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
+
+  const { pos, dragging, hasMoved, pointerHandlers } = useDraggableFab('fab-position', { right: 20, bottom: 96 });
 
   // Close on Escape
   useEffect(() => {
@@ -20,12 +23,14 @@ export default function FinanceFAB() {
 
   return (
     <>
-      {/* Fixed bottom-right FAB */}
+      {/* Fixed bottom-right FAB — draggable */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { if (!hasMoved.current) setOpen(true); }}
         aria-label="Add transaction"
-        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl shadow-emerald-300/40 transition-all duration-200 hover:bg-emerald-700 active:scale-90 md:bottom-8 md:right-8"
+        {...pointerHandlers}
+        style={{ right: pos.right, bottom: pos.bottom }}
+        className={`fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl shadow-emerald-300/40 transition-shadow duration-200 hover:bg-emerald-700 ${dragging ? 'cursor-grabbing scale-110' : 'cursor-grab active:scale-90'}`}
       >
         <Plus className="h-6 w-6" />
       </button>

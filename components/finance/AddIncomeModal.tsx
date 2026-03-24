@@ -251,7 +251,7 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
               <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
                 Note <OptionalBadge />
               </label>
-              <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note…" className={inputCls} />
+              <input value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Add a note…" className={inputCls} />
             </div>
           </div>
         </div>

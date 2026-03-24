@@ -5,6 +5,7 @@ import { Mic, MicOff, Sparkles, X, Check, Loader2, ChevronDown } from 'lucide-re
 import { toast } from '@/components/Toast';
 import { parseTransaction, ACCOUNT_MAP } from '@/lib/transactionParser';
 import { useFinance } from '@/lib/financeStore';
+import { useDraggableFab } from '@/lib/useDraggableFab';
 
 type Parsed = {
   amount: number;
@@ -41,6 +42,8 @@ const INCOME_CATEGORIES = new Set([
 
 export default function AiTransactionButton({ fabClassName }: { fabClassName?: string }) {
   const { state } = useFinance();
+
+  const { pos, dragging, hasMoved, pointerHandlers } = useDraggableFab('ai-fab-position', { right: 80, bottom: 96 });
 
   const [open,      setOpen]      = useState(false);
   const [text,      setText]      = useState('');
@@ -174,10 +177,12 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
 
   return (
     <>
-      {/* ── Floating AI button ─────────────────────────────────────────── */}
+      {/* ── Floating AI button — draggable ─────────────────────────── */}
       <button
-        onClick={() => setOpen(true)}
-        className={`fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 shadow-2xl shadow-violet-900/40 transition hover:scale-105 hover:shadow-violet-700/50 active:scale-95 ${fabClassName ?? 'bottom-24 right-5 sm:bottom-8 sm:right-8'}`}
+        onClick={() => { if (!hasMoved.current) setOpen(true); }}
+        {...pointerHandlers}
+        style={{ right: pos.right, bottom: pos.bottom }}
+        className={`fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 shadow-2xl shadow-violet-900/40 transition-shadow hover:shadow-violet-700/50 ${dragging ? 'cursor-grabbing scale-110' : 'cursor-grab active:scale-95'}`}
         title="Add transaction with AI"
       >
         <Sparkles className="h-6 w-6 text-white" />

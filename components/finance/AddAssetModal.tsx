@@ -37,6 +37,8 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
   const [category,      setCategory]      = useState<AssetCategory>('Stocks & Equity');
   const [value,         setValue]         = useState('');
   const [invested,      setInvested]      = useState('');
+  const [units,         setUnits]         = useState('');
+  const [perUnit,       setPerUnit]       = useState('');
   const [accountId,     setAccountId]     = useState('');
   const [invType,       setInvType]       = useState<InvestmentType>('lump_sum');
 
@@ -55,6 +57,8 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
       setCategory(validCat ? (initial.category as AssetCategory) : 'Other');
       setValue(initial.value > 0 ? String(initial.value) : '');
       setInvested(String(initial.invested));
+      setUnits(initial.units != null ? String(initial.units) : '');
+      setPerUnit(initial.units && initial.units > 0 && initial.value > 0 ? String(Math.round((initial.value / initial.units) * 100) / 100) : '');
       setAccountId(initial.accountId ?? '');
       setInvType(initial.investmentType ?? 'lump_sum');
       if (initial.sipConfig) {
@@ -72,6 +76,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
       }
     } else {
       setName(''); setCategory('Stocks & Equity'); setValue(''); setInvested('');
+      setUnits(''); setPerUnit('');
       setAccountId(''); setInvType('lump_sum');
       setSipFreq('monthly'); setSipStart(new Date().toISOString().slice(0, 10));
       setSipEndType('forever'); setSipEndAfter(''); setSipEndDate('');
@@ -84,7 +89,10 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const currentValue = Number(value) > 0 ? Number(value) : Number(invested);
+    const numUnits = Number(units) > 0 ? Number(units) : undefined;
+    const numPerUnit = Number(perUnit) > 0 ? Number(perUnit) : undefined;
+    // If per-unit price is given with units, compute total value
+    const computedValue = numUnits && numPerUnit ? numUnits * numPerUnit : Number(value) > 0 ? Number(value) : Number(invested);
     const sipCfg: SipConfig | null = invType === 'sip' ? {
       frequency: sipFreq,
       startDate: sipStart,
@@ -96,8 +104,9 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
     onSave({
       name: name.trim(),
       category,
-      value: currentValue,
+      value: computedValue,
       invested: Number(invested),
+      units: numUnits ?? null,
       accountId: accountId || undefined,
       investmentType: invType,
       sipConfig: sipCfg,
@@ -173,6 +182,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
                 placeholder={`e.g. ${category === 'Stocks & Equity' ? 'Reliance Industries' : category === 'Real Estate' ? 'Mumbai Apartment' : 'My ' + category}`}
                 className={inputCls}
               />
@@ -193,13 +203,27 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Amount invested (₹)</label>
-              <input value={invested} onChange={e => setInvested(e.target.value)} placeholder="0" type="number" min="1" className={inputCls} />
+              <input value={invested} onChange={e => setInvested(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="0" type="number" min="1" className={inputCls} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                  Units <OptionalBadge />
+                </label>
+                <input value={units} onChange={e => setUnits(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="e.g. 50" type="number" min="0" step="any" className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                  Per Unit (₹) <OptionalBadge />
+                </label>
+                <input value={perUnit} onChange={e => { setPerUnit(e.target.value); if (Number(units) > 0 && Number(e.target.value) > 0) setValue(String(Number(units) * Number(e.target.value))); }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="e.g. 2500" type="number" min="0" step="any" className={inputCls} />
+              </div>
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
                 Current value (₹) <OptionalBadge />
               </label>
-              <input value={value} onChange={e => setValue(e.target.value)} placeholder="Defaults to invested if blank" type="number" min="0" className={inputCls} />
+              <input value={value} onChange={e => { setValue(e.target.value); if (Number(units) > 0 && Number(e.target.value) > 0) setPerUnit(String(Math.round((Number(e.target.value) / Number(units)) * 100) / 100)); }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Auto-computed from units × per unit, or enter directly" type="number" min="0" className={inputCls} />
             </div>
           </div>
         </div>

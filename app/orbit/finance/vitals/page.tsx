@@ -196,11 +196,9 @@ export default function VitalsPage() {
   const today = useMemo(() => new Date(), []);
   const todayStr = today.toISOString().slice(0, 10);
 
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
-
   const monthlyIncome = useMemo(
     () => state.transactions
-      .filter(t => { const d = new Date(t.date); return t.type === 'income' && !SYSTEM_CATS.includes(t.category) && t.date <= todayStr && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear(); })
+      .filter(t => { const d = new Date(t.date); return t.type === 'income' && t.date <= todayStr && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear(); })
       .reduce((s, t) => s + t.amount, 0),
     [state.transactions, todayStr, today]
   );
@@ -211,7 +209,6 @@ export default function VitalsPage() {
       .filter(t => {
         const d = new Date(t.date);
         return t.type === 'expense'
-          && !SYSTEM_CATS.includes(t.category)
           && t.date <= todayStr
           && d.getMonth() === today.getMonth()
           && d.getFullYear() === today.getFullYear()

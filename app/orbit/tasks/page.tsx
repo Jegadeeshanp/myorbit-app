@@ -130,47 +130,9 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
         </div>
       </div>
 
-      {/* Time / Reminder / Repeat as overlay panel */}
-      <div className="relative border-t border-gray-100 dark:border-gray-700/60">
-        {/* Overlay panel when any row is open */}
-        {(showTime || showRemind || showRepeat) && (
-          <div className="absolute inset-x-0 bottom-full z-10 rounded-t-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-[#1E2128] mb-0">
-            {showTime && (
-              <div className="p-3">
-                <p className="text-xs font-semibold text-gray-400 mb-2">Set Time</p>
-                <input type="time" value={localTime} onChange={e => { setLocalTime(e.target.value); onTimeChange?.(e.target.value); }}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
-                />
-              </div>
-            )}
-            {showRemind && (
-              <div className="py-1">
-                <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400">Reminder</p>
-                {REMIND_OPTS.map(o => (
-                  <button key={o.v} onClick={() => { setLocalRemind(o.v); onReminderChange?.(o.v); setShowRemind(false); }}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${localRemind === o.v ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
-                  >
-                    {o.label}
-                    {localRemind === o.v && <Check className="ml-auto h-3.5 w-3.5" />}
-                  </button>
-                ))}
-              </div>
-            )}
-            {showRepeat && (
-              <div className="py-1">
-                <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400">Repeat</p>
-                {REPEAT_OPTS.map(o => (
-                  <button key={o} onClick={() => { setLocalRepeat(o); onRepeatChange?.(o); setShowRepeat(false); }}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${localRepeat === o ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
-                  >
-                    {o === 'none' ? 'No repeat' : o.charAt(0).toUpperCase() + o.slice(1)}
-                    {localRepeat === o && <Check className="ml-auto h-3.5 w-3.5" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+      {/* Time / Reminder / Repeat as inline accordion rows */}
+      <div className="border-t border-gray-100 dark:border-gray-700/60">
+        {/* Time row */}
         <button onClick={() => { setShowTime(v => !v); setShowRepeat(false); setShowRemind(false); }}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition">
           <Clock className="h-4 w-4 text-gray-400 flex-none" />
@@ -178,20 +140,53 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
           <span className="text-xs text-gray-400">{timeLabel}</span>
           <ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showTime ? 'rotate-90' : ''}`} />
         </button>
+        {showTime && (
+          <div className="px-3 pb-3 pt-1 bg-gray-50/60 dark:bg-white/5">
+            <input type="time" value={localTime} onChange={e => { setLocalTime(e.target.value); onTimeChange?.(e.target.value); }}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+            />
+          </div>
+        )}
+        {/* Reminder row */}
         <button onClick={() => { setShowRemind(v => !v); setShowTime(false); setShowRepeat(false); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-50 dark:border-gray-700/40">
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/40">
           <Bell className="h-4 w-4 text-gray-400 flex-none" />
           <span className="flex-1 text-left text-gray-700 dark:text-gray-300">Reminder</span>
           <span className="text-xs text-gray-400">{remindLabel}</span>
           <ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRemind ? 'rotate-90' : ''}`} />
         </button>
+        {showRemind && (
+          <div className="bg-gray-50/60 dark:bg-white/5 py-1">
+            {REMIND_OPTS.map(o => (
+              <button key={o.v} onClick={() => { setLocalRemind(o.v); onReminderChange?.(o.v); setShowRemind(false); }}
+                className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${localRemind === o.v ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+              >
+                {o.label}
+                {localRemind === o.v && <Check className="ml-auto h-3.5 w-3.5" />}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Repeat row */}
         <button onClick={() => { setShowRepeat(v => !v); setShowTime(false); setShowRemind(false); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-50 dark:border-gray-700/40">
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/40">
           <RotateCcw className="h-4 w-4 text-gray-400 flex-none" />
           <span className="flex-1 text-left text-gray-700 dark:text-gray-300">Repeat</span>
           <span className="text-xs text-gray-400">{repeatLabel}</span>
           <ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRepeat ? 'rotate-90' : ''}`} />
         </button>
+        {showRepeat && (
+          <div className="bg-gray-50/60 dark:bg-white/5 py-1">
+            {REPEAT_OPTS.map(o => (
+              <button key={o} onClick={() => { setLocalRepeat(o); onRepeatChange?.(o); setShowRepeat(false); }}
+                className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${localRepeat === o ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+              >
+                {o === 'none' ? 'No repeat' : o.charAt(0).toUpperCase() + o.slice(1)}
+                {localRepeat === o && <Check className="ml-auto h-3.5 w-3.5" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -558,6 +553,9 @@ export default function TasksPage() {
   const [showDesktopCal, setShowDesktopCal]   = useState(false);
   const [showDesktopMore, setShowDesktopMore] = useState(false);
   const [desktopDueDate, setDesktopDueDate]   = useState('');
+  const [desktopDueTime, setDesktopDueTime]   = useState('');
+  const [desktopReminder, setDesktopReminder] = useState('none');
+  const [desktopRepeat, setDesktopRepeat]     = useState('none');
   const [desktopPriority, setDesktopPriority] = useState('none');
   const [desktopListId, setDesktopListId]     = useState('');
   const [desktopTags, setDesktopTags]         = useState<string[]>([]);
@@ -594,13 +592,19 @@ export default function TasksPage() {
   useEffect(() => { fetchTasks(); fetchLists(); }, [fetchTasks, fetchLists]);
   useEffect(() => { if (searchParams.get('create') === '1') setShowFab(true); }, [searchParams]);
 
-  const handleAddTask = async (titleArg?: string, opts?: { dueDate?: string; priority?: string; tags?: string[]; listId?: string }) => {
+  const handleAddTask = async (titleArg?: string, opts?: { dueDate?: string; dueTime?: string; reminder?: string; repeat?: string; priority?: string; tags?: string[]; listId?: string }) => {
     const t = (titleArg ?? newTaskTitle).trim(); if (!t) return;
     setAddingTask(true);
     try {
       const listId = opts?.listId ?? (selected.startsWith('list:') ? selected.replace('list:', '') : null);
       const dueDate = opts?.dueDate ?? (selected === 'today' ? todayString() : null);
-      const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, listId: listId || null, dueDate, priority: opts?.priority ?? 'none', tags: JSON.stringify(opts?.tags ?? []) }) });
+      // Build tags including reminder/repeat if provided
+      const baseTags = opts?.tags ?? [];
+      const extraTags: string[] = [];
+      if (opts?.reminder && opts.reminder !== 'none') extraTags.push(`reminder:${opts.reminder}`);
+      if (opts?.repeat && opts.repeat !== 'none') extraTags.push(`repeat:${opts.repeat}`);
+      const allTags = [...baseTags, ...extraTags];
+      const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, listId: listId || null, dueDate, dueTime: opts?.dueTime || null, priority: opts?.priority ?? 'none', tags: JSON.stringify(allTags) }) });
       if (!res.ok) throw new Error();
       const task = await res.json();
       setTasks(prev => [task, ...prev]); setNewTaskTitle(''); setRefreshKey(k => k + 1); setActiveTask(task);
@@ -726,8 +730,9 @@ export default function TasksPage() {
                       <input ref={inputRef} className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-600" placeholder="Add task" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
                         onKeyDown={e => {
                           if (e.key === 'Enter') {
-                            void handleAddTask(undefined, { dueDate: desktopDueDate || undefined, priority: desktopPriority, listId: desktopListId || undefined, tags: desktopTags });
-                            setDesktopDueDate(''); setDesktopPriority('none'); setDesktopListId(''); setDesktopTags([]);
+                            void handleAddTask(undefined, { dueDate: desktopDueDate || undefined, dueTime: desktopDueTime || undefined, reminder: desktopReminder, repeat: desktopRepeat, priority: desktopPriority, listId: desktopListId || undefined, tags: desktopTags });
+                            setDesktopDueDate(''); setDesktopDueTime(''); setDesktopReminder('none'); setDesktopRepeat('none');
+                            setDesktopPriority('none'); setDesktopListId(''); setDesktopTags([]);
                             setShowDesktopCal(false); setShowDesktopMore(false);
                           }
                         }}
@@ -751,7 +756,12 @@ export default function TasksPage() {
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowDesktopCal(false)} />
                         <div className="absolute left-0 top-full z-50 mt-1 w-72">
-                          <MiniCalendarPopup dueDate={desktopDueDate} onSelect={setDesktopDueDate} onClose={() => setShowDesktopCal(false)} />
+                          <MiniCalendarPopup
+                            dueDate={desktopDueDate} dueTime={desktopDueTime}
+                            reminder={desktopReminder} repeat={desktopRepeat}
+                            onSelect={setDesktopDueDate} onClose={() => setShowDesktopCal(false)}
+                            onTimeChange={setDesktopDueTime} onReminderChange={setDesktopReminder} onRepeatChange={setDesktopRepeat}
+                          />
                         </div>
                       </>
                     )}

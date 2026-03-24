@@ -60,9 +60,11 @@ export default function FinanceSettingsPage() {
     return merged.filter(c => seen.has(c) ? false : (seen.add(c), true));
   }, [state.transactions]);
 
-  const [excludedExpenseCats, setExcludedExpenseCatsState] = useState<string[]>(() =>
-    getExcludedExpenseCategories()
-  );
+  const [excludedExpenseCats, setExcludedExpenseCatsState] = useState<string[]>([]);
+
+  useEffect(() => {
+    setExcludedExpenseCatsState(getExcludedExpenseCategories());
+  }, []);
 
   function toggleExcludedCat(cat: string) {
     setExcludedExpenseCatsState(prev => {

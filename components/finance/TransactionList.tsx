@@ -304,19 +304,24 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      txs = txs.filter(t =>
-        t.description.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q) ||
-        (t.notes ?? '').toLowerCase().includes(q)
-      );
+      txs = txs.filter(t => {
+        const account = t.accountId ? state.accounts.find(a => a.id === t.accountId) : null;
+        return (
+          t.description.toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q) ||
+          (t.notes ?? '').toLowerCase().includes(q) ||
+          String(Math.abs(t.amount)).includes(q) ||
+          t.date.includes(q) ||
+          (account?.name.toLowerCase().includes(q) ?? false) ||
+          (account?.type.toLowerCase().includes(q) ?? false)
+        );
+      });
     }
     return txs;
   }
 
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
-
   const filtered = useMemo(() => {
-    return applyTabSearch(filterByPeriod(pastTxs, period)).filter(t => !SYSTEM_CATS.includes(t.category));
+    return applyTabSearch(filterByPeriod(pastTxs, period));
   }, [pastTxs, period, safeTab, search, accountTabMap]);
 
   const filteredUpcoming = useMemo(() => {
@@ -327,16 +332,17 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  // Summary — system categories already stripped from `filtered` above
+  const SYSTEM_CATS_NET = ['Opening Balance', 'Balance Adjustment'];
+
   const summary = useMemo(() => {
-    const excluded   = getExcludedExpenseCategories();
-    // Real income (system cats already excluded by `filtered`)
-    const income     = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    // Expenses card = real spending minus user-exempted categories (e.g. Investment)
-    const expense    = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    // Net balance = income − ALL expenses (including user-exempted, but NOT system categories)
-    const allExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, net: income - allExpense, count: filtered.length };
+    const excluded = getExcludedExpenseCategories();
+    const income   = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    // Expenses card excludes user-exempted categories (e.g. Investment)
+    const expense  = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Net balance excludes Opening Balance & Balance Adjustment (setup transactions, not real cash flow)
+    const netIncome  = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATS_NET.includes(t.category)).reduce((s, t) => s + t.amount, 0);
+    const netExpense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS_NET.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, net: income - netExpense, count: filtered.length };
   }, [filtered]);
 
   return (
@@ -549,7 +555,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             const isCollapsed = collapsedGroups.has(group.label);
             const isNow       = group.label === currentMonthLabel;
             const groupNet    = group.transactions.reduce(
-              (s, tx) => SYSTEM_CATS.includes(tx.category) ? s : tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
+              (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
             );
 
             return (

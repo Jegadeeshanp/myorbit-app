@@ -11,7 +11,7 @@ type Task = {
   dueDate?: string;
   dueTime?: string;
   tags: string;
-  subtasks: { id: string; title: string; isDone: boolean; dueTime?: string }[];
+  subtasks: { id: string; title: string; isDone: boolean; dueDate?: string; dueTime?: string; tags?: string }[];
   list?: { name: string; color?: string; emoji?: string } | null;
   isActive?: boolean;
 };
@@ -191,28 +191,34 @@ export default function TaskItem({
 
       {showExpandedSubtasks && hasSubtasks ? (
         <div className="space-y-0.5 pb-1 pl-12">
-          {task.subtasks.map(subtask => (
-            <div
-              key={subtask.id}
-              className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/5"
-            >
-              <div
-                className={`flex h-4 w-4 flex-none items-center justify-center rounded-md border-2 ${
-                  subtask.isDone ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-300 dark:border-slate-600'
-                }`}
-              >
-                {subtask.isDone ? <Check className="h-3 w-3 text-emerald-600" /> : null}
-              </div>
-              <span className={`flex-1 text-xs ${subtask.isDone ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-600 dark:text-slate-300'}`}>
-                {subtask.title}
-              </span>
-              {subtask.dueTime && (
-                <span className="flex items-center gap-1 text-[10px] text-sky-400">
-                  <Clock className="h-3 w-3" />{subtask.dueTime}
+          {task.subtasks.map(subtask => {
+            const stTags = typeof subtask.tags === 'string'
+              ? (() => { try { return JSON.parse(subtask.tags); } catch { return []; } })()
+              : (subtask.tags ?? []);
+            const stRepeat = stTags.find((t: string) => t.startsWith('repeat:'))?.replace('repeat:', '');
+            const stDate = smartDateLabel(subtask.dueDate, subtask.dueTime);
+            const todayS = new Date().toISOString().split('T')[0];
+            const stOverdue = subtask.dueDate && subtask.dueDate < todayS && !subtask.isDone;
+            return (
+              <div key={subtask.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/5">
+                <div className={`flex h-4 w-4 flex-none items-center justify-center rounded-md border-2 ${subtask.isDone ? 'border-emerald-500 bg-emerald-500/10' : 'border-gray-300 dark:border-slate-600'}`}>
+                  {subtask.isDone ? <Check className="h-3 w-3 text-emerald-600" /> : null}
+                </div>
+                <span className={`flex-1 truncate text-xs ${subtask.isDone ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-600 dark:text-slate-300'}`}>
+                  {subtask.title}
                 </span>
-              )}
-            </div>
-          ))}
+                <div className="flex flex-none items-center gap-1">
+                  {stRepeat && stRepeat !== 'none' && <RotateCcw className="h-3 w-3 text-emerald-500" />}
+                  {stDate && (
+                    <span className={`flex items-center gap-0.5 text-[10px] ${stOverdue ? 'text-rose-400' : stDate.isTime ? 'text-sky-400' : 'text-gray-400'}`}>
+                      {stDate.isTime ? <Clock className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+                      {stDate.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>

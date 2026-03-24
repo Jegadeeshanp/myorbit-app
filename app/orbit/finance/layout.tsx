@@ -24,8 +24,8 @@ export default function FinanceLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      {/* AI Transaction Button — stacked above FinanceFAB */}
-      <AiTransactionButton fabClassName="bottom-40 right-5 md:bottom-24 md:right-8" />
+      {/* AI Transaction Button — draggable, default position left of FinanceFAB */}
+      <AiTransactionButton />
 
       {/* Floating Action Button — all finance pages */}
       <FinanceFAB />

@@ -89,11 +89,11 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Loan name</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Home Loan" className={inputCls} />
+              <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Home Loan" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Lender / Bank</label>
-              <input value={lender} onChange={e => setLender(e.target.value)} placeholder="SBI Bank" className={inputCls} />
+              <input value={lender} onChange={e => setLender(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="SBI Bank" className={inputCls} />
             </div>
           </div>
         </div>
@@ -103,15 +103,15 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Total borrowed (₹)</label>
-              <input value={borrowed} onChange={e => setBorrowed(e.target.value)} placeholder="2500000" type="number" min="1" className={inputCls} />
+              <input value={borrowed} onChange={e => setBorrowed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="2500000" type="number" min="1" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Outstanding balance (₹)</label>
-              <input value={outstanding} onChange={e => setOutstanding(e.target.value)} placeholder="210000" type="number" min="0" className={inputCls} />
+              <input value={outstanding} onChange={e => setOutstanding(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="210000" type="number" min="0" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Total repaid (₹)</label>
-              <input value={totalRepaid} onChange={e => setTotalRepaid(e.target.value)} placeholder="0" type="number" min="0" className={inputCls} />
+              <input value={totalRepaid} onChange={e => setTotalRepaid(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="0" type="number" min="0" className={inputCls} />
             </div>
           </div>
         </div>
@@ -123,13 +123,13 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 EMI <span className="ml-1 text-xs font-normal text-gray-400">(Monthly EMI)</span> (₹)
               </label>
-              <input value={emi} onChange={e => setEmi(e.target.value)} placeholder="18500" type="number" min="1" className={inputCls} />
+              <input value={emi} onChange={e => setEmi(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="18500" type="number" min="1" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Left <span className="ml-1 text-xs font-normal text-gray-400">(EMIs Left)</span>
               </label>
-              <input value={emisLeft} onChange={e => setEmisLeft(e.target.value)} placeholder="12" type="number" min="0" className={inputCls} />
+              <input value={emisLeft} onChange={e => setEmisLeft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="12" type="number" min="0" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Next due date</label>

@@ -34,7 +34,7 @@ export default function AssetAllocationChart() {
       </div>
       <div className="flex items-center gap-4">
         <div className="h-[140px] w-[140px] flex-none">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
               <Pie data={data} dataKey="value" innerRadius={40} outerRadius={65} paddingAngle={3} strokeWidth={0}>
                 {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}

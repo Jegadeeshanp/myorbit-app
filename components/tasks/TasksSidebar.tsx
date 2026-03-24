@@ -37,6 +37,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const [showListModal, setShowListModal] = useState(false);
   // FIX: per-list menu — stores the list id whose menu is open (not a boolean)
   const [openMenuListId, setOpenMenuListId] = useState<string | null>(null);
+  const [menuDirection, setMenuDirection] = useState<'up' | 'down'>('down');
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [listName, setListName] = useState('');
   const [listIcon, setListIcon] = useState('📋');
@@ -241,7 +242,15 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                 {/* Per-row ... edit button — appears on hover */}
                 <button
                   data-menu-trigger
-                  onClick={e => { e.stopPropagation(); setOpenMenuListId(isMenuOpen ? null : list.id); }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (!isMenuOpen) {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const spaceBelow = window.innerHeight - rect.bottom;
+                      setMenuDirection(spaceBelow < 200 ? 'up' : 'down');
+                    }
+                    setOpenMenuListId(isMenuOpen ? null : list.id);
+                  }}
                   className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md transition ${
                     isMenuOpen
                       ? 'bg-gray-200 text-gray-700 opacity-100 dark:bg-gray-700 dark:text-gray-200'

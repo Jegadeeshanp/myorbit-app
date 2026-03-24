@@ -482,12 +482,10 @@ export default function AddTransactionSheet({
   function handleSave() {
     const rec = buildRecurring();
     if (tab === 'expense' && canExpense) {
-      const desc = expNote.trim() ? `${expDesc.trim()}\n${expNote.trim()}` : expDesc.trim();
-      onSaveExpense({ date: expDate, category: expCat, description: desc, amount: -Math.abs(Number(expAmt)), type: 'expense', accountId: expAcc, recurring: rec });
+      onSaveExpense({ date: expDate, category: expCat, description: expDesc.trim(), notes: expNote.trim() || undefined, amount: -Math.abs(Number(expAmt)), type: 'expense', accountId: expAcc, recurring: rec });
       toast('Expense recorded');
     } else if (tab === 'income' && canIncome) {
-      const desc = incNote.trim() ? `${incDesc.trim()}\n${incNote.trim()}` : incDesc.trim();
-      onSaveIncome({ date: incDate, category: incCat, description: desc, amount: Math.abs(Number(incAmt)), type: 'income', accountId: incAcc, recurring: rec });
+      onSaveIncome({ date: incDate, category: incCat, description: incDesc.trim(), notes: incNote.trim() || undefined, amount: Math.abs(Number(incAmt)), type: 'income', accountId: incAcc, recurring: rec });
       toast('Income recorded');
     } else if (tab === 'transfer' && canTransfer) {
       const desc = trNote.trim() || 'Transfer';
