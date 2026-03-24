@@ -9,15 +9,17 @@ export type FabPosition = { right: number; bottom: number };
  * Returns `isDragging` so you can suppress click events while dragging.
  */
 export function useDraggableFab(key: string, defaultPos: FabPosition) {
-  const [pos, setPos] = useState<FabPosition>(() => {
-    if (typeof window === 'undefined') return defaultPos;
+  // Always start with defaultPos to match SSR output, then hydrate from
+  // localStorage after mount — prevents the server/client hydration mismatch.
+  const [pos, setPos] = useState<FabPosition>(defaultPos);
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : defaultPos;
-    } catch {
-      return defaultPos;
-    }
-  });
+      if (saved) setPos(JSON.parse(saved));
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isDragging = useRef(false);
   const hasMoved   = useRef(false);

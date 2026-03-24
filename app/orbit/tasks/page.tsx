@@ -387,9 +387,9 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
         </>
       )}
 
-      {/* AddTask sheet — rounded top corners, keyboard-aware */}
+      {/* AddTask sheet — anchored above bottom nav, rounded top corners */}
       <div className="fixed inset-x-0 z-[80] md:hidden rounded-t-3xl bg-white dark:bg-[#1E2128] shadow-2xl border-t border-gray-200 dark:border-gray-700"
-        style={{ bottom: 0, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ bottom: '64px', maxHeight: '55vh', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
@@ -473,8 +473,12 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
             <button onClick={() => setShowMore(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
               <Paperclip className="h-4 w-4 text-gray-400" /><span>Attach file</span>
             </button>
-            <button onClick={() => setShowMore(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-              <Maximize2 className="h-4 w-4 text-gray-400" /><span>Full screen</span>
+            <button
+              onClick={async () => { setShowMore(false); await submit(); }}
+              disabled={!title.trim() || adding}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition disabled:opacity-40"
+            >
+              <Maximize2 className="h-4 w-4 text-gray-400" /><span>Open full detail</span>
             </button>
           </div>
         )}
@@ -495,9 +499,9 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-3 pb-4">
           <button ref={calBtnRef} onClick={openCalendar}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition ${showDate || dueDate ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'}`}>
-            <CalendarDays className="h-5 w-5" />
-            {dateLabel && <span className="text-xs font-medium">{dateLabel}</span>}
+            className={`flex min-w-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition ${showDate || dueDate ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'}`}>
+            <CalendarDays className="h-5 w-5 flex-none" />
+            {dateLabel && <span className="max-w-[72px] truncate text-xs font-medium">{dateLabel}</span>}
           </button>
           <button onClick={() => { closeAll(); setShowPri(v => !v); }}
             className={`flex h-9 w-9 items-center justify-center rounded-xl transition`}
@@ -798,7 +802,7 @@ export default function TasksPage() {
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">{group.label}</span>
                             <span className="ml-1 text-sm text-gray-400">{group.tasks.length}</span>
                           </button>
-                          {!collapsedGroups.has(group.label) && <div className="space-y-0.5 px-2 pb-2">{group.tasks.map(task => <TaskItem key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} />)}</div>}
+                          {!collapsedGroups.has(group.label) && <div className="space-y-0.5 px-2 pb-2">{group.tasks.map(task => <TaskItem key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} showList={!selected.startsWith('list:')} />)}</div>}
                         </div>
                       ))}
                       {completedTasks.length > 0 && (
@@ -808,7 +812,7 @@ export default function TasksPage() {
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">Completed</span>
                             <span className="ml-1 text-sm text-gray-400">{completedTasks.length}</span>
                           </button>
-                          {completedOpen && <div className="space-y-0.5 px-2 pb-2">{completedTasks.map(task => <TaskItem key={task.id} task={task} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} />)}</div>}
+                          {completedOpen && <div className="space-y-0.5 px-2 pb-2">{completedTasks.map(task => <TaskItem key={task.id} task={task} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} showList={!selected.startsWith('list:')} />)}</div>}
                         </div>
                       )}
                     </div>

@@ -342,17 +342,16 @@ function TaskPanel({
         <button ref={dateBtnRef} onClick={() => {
             if (dateBtnRef.current) {
               const rect = dateBtnRef.current.getBoundingClientRect();
-              const calH = 520;
+              const calH = 560;
               const spaceAbove = rect.top - 16;
               const spaceBelow = window.innerHeight - rect.bottom - 16;
               const left = Math.min(Math.max(rect.left - 8, 8), window.innerWidth - 328);
               const style: React.CSSProperties = { width: '320px', left };
-              if (spaceAbove > spaceBelow) {
-                // Show above button
+              // Always prefer opening above if there's meaningful space, otherwise below
+              if (spaceAbove >= 320) {
                 style.bottom = window.innerHeight - rect.top + 8;
                 style.maxHeight = `${Math.min(spaceAbove, calH)}px`;
               } else {
-                // Show below button
                 style.top = rect.bottom + 8;
                 style.maxHeight = `${Math.min(spaceBelow, calH)}px`;
               }

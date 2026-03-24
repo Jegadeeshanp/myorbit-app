@@ -161,7 +161,7 @@ export default function TaskItem({
 
           {/* List chip — only when showList=true and task belongs to a list */}
           {showList && task.list && (
-            <span className="hidden max-w-[96px] truncate text-xs text-gray-500 dark:text-slate-500 lg:inline">
+            <span className="max-w-[96px] truncate text-xs text-gray-500 dark:text-slate-500">
               {task.list.emoji || '📋'} {task.list.name.slice(0, 8)}
             </span>
           )}

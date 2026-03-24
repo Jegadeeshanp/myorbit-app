@@ -578,7 +578,7 @@ export default function AddTransactionSheet({
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
                       Note <span className="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">Optional</span>
                     </label>
-                    <input value={expNote} onChange={e => setExpNote(e.target.value)} placeholder="Add a note…" className={inp} />
+                    <input value={expNote} onChange={e => setExpNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="Add a note…" className={inp} />
                   </div>
                 </div>
               </div>
@@ -617,7 +617,7 @@ export default function AddTransactionSheet({
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
                       Note <span className="ml-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">Optional</span>
                     </label>
-                    <input value={incNote} onChange={e => setIncNote(e.target.value)} placeholder="Add a note…" className={inp} />
+                    <input value={incNote} onChange={e => setIncNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }} placeholder="Add a note…" className={inp} />
                   </div>
                 </div>
               </div>

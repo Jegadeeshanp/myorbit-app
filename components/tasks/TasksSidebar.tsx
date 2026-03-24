@@ -37,7 +37,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const [showListModal, setShowListModal] = useState(false);
   // FIX: per-list menu — stores the list id whose menu is open (not a boolean)
   const [openMenuListId, setOpenMenuListId] = useState<string | null>(null);
-  const [menuDirection, setMenuDirection] = useState<'up' | 'down'>('down');
+  const [menuDirections, setMenuDirections] = useState<Map<string, 'up' | 'down'>>(new Map());
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [listName, setListName] = useState('');
   const [listIcon, setListIcon] = useState('📋');
@@ -247,7 +247,8 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                     if (!isMenuOpen) {
                       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                       const spaceBelow = window.innerHeight - rect.bottom;
-                      setMenuDirection(spaceBelow < 200 ? 'up' : 'down');
+                      const dir: 'up' | 'down' = spaceBelow < 200 ? 'up' : 'down';
+                      setMenuDirections(prev => new Map(prev).set(list.id, dir));
                     }
                     setOpenMenuListId(isMenuOpen ? null : list.id);
                   }}
@@ -264,7 +265,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                 {isMenuOpen && (
                   <div
                     data-menu-dropdown
-                    className="absolute right-0 top-full z-[100] mt-1 w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]"
+                    className={`absolute right-0 z-[100] w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830] ${(menuDirections.get(list.id) ?? 'down') === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}
                   >
                     <button onClick={() => openEditModal(list)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
                       <Pencil className="h-3.5 w-3.5 text-gray-400" />Edit
