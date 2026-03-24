@@ -146,51 +146,56 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
         </div>
       </div>
 
-      {/* Time / Reminder / Repeat — inline accordion, no overlay */}
-      <div className="border-t border-gray-100 dark:border-gray-700/60">
-        {/* Time row */}
+      </div>{/* end scrollable */}
+
+      {/* Time / Reminder / Repeat — outside the scroll container so overlay is never clipped */}
+      <div className="relative flex-none border-t border-gray-100 dark:border-gray-700/60">
+        {/* Overlay panel — floats upward over the calendar grid, never overflows downward */}
+        {(showTime||showRemind||showRepeat) && (
+          <div className="absolute bottom-full left-0 right-0 z-20 rounded-t-2xl border border-b-0 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-[#1E2128]">
+            {showTime && (
+              <div className="px-3 py-3">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Set Time</p>
+                <input type="time" value={dueTime} onChange={e=>setDueTime(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+            )}
+            {showRemind && (
+              <div className="py-1">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Reminder</p>
+                {REMIND_OPTS.map(o=><button key={o.v} type="button" onClick={()=>{setReminder(o.v);setShowRemind(false);}}
+                  className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${reminder===o.v?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+                >{o.l}{reminder===o.v&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}
+              </div>
+            )}
+            {showRepeat && (
+              <div className="py-1">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Repeat</p>
+                {REPEAT_OPTS.map(o=><button key={o} type="button" onClick={()=>{setRepeat(o);setShowRepeat(false);}}
+                  className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${repeat===o?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+                >{o==='none'?'No repeat':o.charAt(0).toUpperCase()+o.slice(1)}{repeat===o&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Three trigger rows */}
         <button type="button" onClick={()=>{setShowTime(v=>!v);setShowRemind(false);setShowRepeat(false);}}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition">
           <Clock className="h-4 w-4 text-gray-400 flex-none"/><span className="flex-1 text-left text-gray-700 dark:text-gray-300">Time</span>
           <span className="text-xs text-gray-400">{dueTime||'None'}</span><ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showTime?'rotate-90':''}`}/>
         </button>
-        {showTime && (
-          <div className="px-3 pb-3 pt-1 bg-gray-50 dark:bg-white/5">
-            <input type="time" value={dueTime} onChange={e=>setDueTime(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
-            />
-          </div>
-        )}
-
-        {/* Reminder row */}
         <button type="button" onClick={()=>{setShowRemind(v=>!v);setShowTime(false);setShowRepeat(false);}}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-50 dark:border-gray-700/40">
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/40">
           <Bell className="h-4 w-4 text-gray-400 flex-none"/><span className="flex-1 text-left text-gray-700 dark:text-gray-300">Reminder</span>
           <span className="text-xs text-gray-400">{remLabel}</span><ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRemind?'rotate-90':''}`}/>
         </button>
-        {showRemind && (
-          <div className="py-1 bg-gray-50 dark:bg-white/5">
-            {REMIND_OPTS.map(o=><button key={o.v} type="button" onClick={()=>{setReminder(o.v);setShowRemind(false);}}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${reminder===o.v?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
-            >{o.l}{reminder===o.v&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}
-          </div>
-        )}
-
-        {/* Repeat row */}
         <button type="button" onClick={()=>{setShowRepeat(v=>!v);setShowTime(false);setShowRemind(false);}}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-50 dark:border-gray-700/40">
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/40">
           <RotateCcw className="h-4 w-4 text-gray-400 flex-none"/><span className="flex-1 text-left text-gray-700 dark:text-gray-300">Repeat</span>
           <span className="text-xs text-gray-400">{repLabel}</span><ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRepeat?'rotate-90':''}`}/>
         </button>
-        {showRepeat && (
-          <div className="py-1 bg-gray-50 dark:bg-white/5">
-            {REPEAT_OPTS.map(o=><button key={o} type="button" onClick={()=>{setRepeat(o);setShowRepeat(false);}}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${repeat===o?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
-            >{o==='none'?'No repeat':o.charAt(0).toUpperCase()+o.slice(1)}{repeat===o&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}
-          </div>
-        )}
       </div>
-      </div>{/* end scrollable */}
 
       {/* OK / Clear — always visible at bottom */}
       <div className="flex-none flex gap-2 border-t border-gray-100 p-2 dark:border-gray-700">

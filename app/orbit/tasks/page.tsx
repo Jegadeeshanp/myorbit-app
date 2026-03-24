@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties } from 'react';
 import {
   Plus, Sun, Inbox, CalendarDays,
   ChevronRight, Search, X, Flag, Tag, Menu,
@@ -94,7 +94,7 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
   const remindLabel = REMIND_OPTS.find(o => o.v === localRemind)?.label ?? 'None';
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] w-72 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] w-72" onClick={e => e.stopPropagation()}>
       {/* Quick chips */}
       <div className="flex gap-1 p-2 border-b border-gray-100 dark:border-gray-700/60">
         {QUICK.map(q => (
@@ -130,9 +130,48 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
         </div>
       </div>
 
-      {/* Time / Reminder / Repeat as inline accordion rows */}
-      <div className="border-t border-gray-100 dark:border-gray-700/60">
-        {/* Time row */}
+      {/* Time / Reminder / Repeat — sub-panel floats above the 3 rows as an absolute overlay */}
+      <div className="relative border-t border-gray-100 dark:border-gray-700/60">
+        {/* Overlay panel — absolutely positioned above the trigger rows, never overflows downward */}
+        {(showTime || showRemind || showRepeat) && (
+          <div className="absolute bottom-full left-0 right-0 z-20 rounded-t-2xl border border-b-0 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-[#1E2128]">
+            {showTime && (
+              <div className="px-3 py-3">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Set Time</p>
+                <input type="time" value={localTime} onChange={e => { setLocalTime(e.target.value); onTimeChange?.(e.target.value); }}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+            )}
+            {showRemind && (
+              <div className="py-1">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Reminder</p>
+                {REMIND_OPTS.map(o => (
+                  <button key={o.v} onClick={() => { setLocalRemind(o.v); onReminderChange?.(o.v); setShowRemind(false); }}
+                    className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${localRemind === o.v ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+                  >
+                    {o.label}{localRemind === o.v && <Check className="ml-auto h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            )}
+            {showRepeat && (
+              <div className="py-1">
+                <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Repeat</p>
+                {REPEAT_OPTS.map(o => (
+                  <button key={o} onClick={() => { setLocalRepeat(o); onRepeatChange?.(o); setShowRepeat(false); }}
+                    className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${localRepeat === o ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+                  >
+                    {o === 'none' ? 'No repeat' : o.charAt(0).toUpperCase() + o.slice(1)}
+                    {localRepeat === o && <Check className="ml-auto h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Three trigger rows — always visible at the bottom of the popup */}
         <button onClick={() => { setShowTime(v => !v); setShowRepeat(false); setShowRemind(false); }}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition">
           <Clock className="h-4 w-4 text-gray-400 flex-none" />
@@ -140,14 +179,6 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
           <span className="text-xs text-gray-400">{timeLabel}</span>
           <ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showTime ? 'rotate-90' : ''}`} />
         </button>
-        {showTime && (
-          <div className="px-3 pb-3 pt-1 bg-gray-50/60 dark:bg-white/5">
-            <input type="time" value={localTime} onChange={e => { setLocalTime(e.target.value); onTimeChange?.(e.target.value); }}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
-            />
-          </div>
-        )}
-        {/* Reminder row */}
         <button onClick={() => { setShowRemind(v => !v); setShowTime(false); setShowRepeat(false); }}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/40">
           <Bell className="h-4 w-4 text-gray-400 flex-none" />
@@ -155,19 +186,6 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
           <span className="text-xs text-gray-400">{remindLabel}</span>
           <ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRemind ? 'rotate-90' : ''}`} />
         </button>
-        {showRemind && (
-          <div className="bg-gray-50/60 dark:bg-white/5 py-1">
-            {REMIND_OPTS.map(o => (
-              <button key={o.v} onClick={() => { setLocalRemind(o.v); onReminderChange?.(o.v); setShowRemind(false); }}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${localRemind === o.v ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
-              >
-                {o.label}
-                {localRemind === o.v && <Check className="ml-auto h-3.5 w-3.5" />}
-              </button>
-            ))}
-          </div>
-        )}
-        {/* Repeat row */}
         <button onClick={() => { setShowRepeat(v => !v); setShowTime(false); setShowRemind(false); }}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/40">
           <RotateCcw className="h-4 w-4 text-gray-400 flex-none" />
@@ -175,18 +193,6 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
           <span className="text-xs text-gray-400">{repeatLabel}</span>
           <ChevronRight className={`h-3.5 w-3.5 text-gray-300 transition-transform ${showRepeat ? 'rotate-90' : ''}`} />
         </button>
-        {showRepeat && (
-          <div className="bg-gray-50/60 dark:bg-white/5 py-1">
-            {REPEAT_OPTS.map(o => (
-              <button key={o} onClick={() => { setLocalRepeat(o); onRepeatChange?.(o); setShowRepeat(false); }}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${localRepeat === o ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
-              >
-                {o === 'none' ? 'No repeat' : o.charAt(0).toUpperCase() + o.slice(1)}
-                {localRepeat === o && <Check className="ml-auto h-3.5 w-3.5" />}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -319,31 +325,47 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
   const [showList, setShowList]   = useState(false);
   const [showTag, setShowTag]     = useState(false);
   const [showMore, setShowMore]   = useState(false);
-  const [calStyle, setCalStyle]   = useState<React.CSSProperties>({});
-  const calBtnRef = useRef<HTMLButtonElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [calStyle, setCalStyle]   = useState<CSSProperties>({});
+  const [priStyle, setPriStyle]   = useState<CSSProperties>({});
+  const [listStyle, setListStyle] = useState<CSSProperties>({});
+  const calBtnRef  = useRef<HTMLButtonElement>(null);
+  const priBtnRef  = useRef<HTMLButtonElement>(null);
+  const listBtnRef = useRef<HTMLButtonElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 80); }, []);
 
-  const openCalendar = () => {
-    if (calBtnRef.current) {
-      const rect = calBtnRef.current.getBoundingClientRect();
-      const calH = 480; // approx calendar height
-      const spaceAbove = rect.top;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const style: React.CSSProperties = { position: 'fixed', zIndex: 90, width: '320px' };
-      // Position horizontally — align left edge with button, clamp to viewport
-      const left = Math.min(Math.max(rect.left, 8), window.innerWidth - 328);
-      style.left = `${left}px`;
-      if (spaceAbove > calH || spaceAbove > spaceBelow) {
-        style.bottom = `${window.innerHeight - rect.top + 8}px`; // above button
-      } else {
-        style.top = `${rect.bottom + 8}px`; // below button
-      }
-      setCalStyle(style);
+  /** Compute a fixed popup style anchored to a ref button, opening above if space is tight */
+  function popupStyle(ref: React.RefObject<HTMLButtonElement | null>, popupH: number, popupW: number): CSSProperties {
+    if (!ref.current) return {};
+    const rect = ref.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const left = Math.min(Math.max(rect.left, 8), window.innerWidth - popupW - 8);
+    const style: CSSProperties = { position: 'fixed', zIndex: 90, width: `${popupW}px`, left: `${left}px` };
+    if (spaceBelow >= popupH) {
+      style.top = `${rect.bottom + 6}px`;
+    } else {
+      style.bottom = `${window.innerHeight - rect.top + 6}px`;
     }
+    return style;
+  }
+
+  const openCalendar = () => {
+    setCalStyle(popupStyle(calBtnRef, 480, 320));
     closeAll();
     setShowDate(v => !v);
+  };
+
+  const openPriPicker = () => {
+    setPriStyle(popupStyle(priBtnRef, 200, 180));
+    closeAll();
+    setShowPri(v => !v);
+  };
+
+  const openListPicker = () => {
+    setListStyle(popupStyle(listBtnRef, 280, 200));
+    closeAll();
+    setShowList(v => !v);
   };
 
   const submit = async () => {
@@ -377,12 +399,58 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
     <>
       <div className="fixed inset-0 z-[75] bg-black/40 md:hidden" onClick={onClose} />
 
-      {/* Calendar popup — single card, positioned near button */}
+      {/* Calendar popup — positioned near button */}
       {showDate && (
         <>
           <div className="fixed inset-0 z-[85]" onClick={() => setShowDate(false)} />
           <div style={calStyle} onClick={e => e.stopPropagation()}>
             <MiniCalendarPopup dueDate={dueDate} onSelect={v => { setDueDate(v); if (!v) setShowDate(false); }} onClose={() => setShowDate(false)} />
+          </div>
+        </>
+      )}
+
+      {/* Priority picker — fixed position, outside sheet to avoid clipping */}
+      {showPri && (
+        <>
+          <div className="fixed inset-0 z-[88]" onClick={() => setShowPri(false)} />
+          <div style={priStyle} className="z-[89] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830]"
+            onClick={e => e.stopPropagation()}>
+            {PRI_OPTS.map(p => (
+              <button key={p.v} onClick={() => { setPriority(p.v); setShowPri(false); }}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${priority === p.v ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+              >
+                <Flag className="h-4 w-4 flex-none" style={{ color: p.color }} />
+                <span className="flex-1 text-left text-gray-700 dark:text-gray-300">{p.label}</span>
+                {priority === p.v && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* List picker — fixed position, outside sheet to avoid clipping */}
+      {showList && (
+        <>
+          <div className="fixed inset-0 z-[88]" onClick={() => setShowList(false)} />
+          <div style={listStyle} className="z-[89] max-h-64 overflow-y-auto overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830]"
+            onClick={e => e.stopPropagation()}>
+            <button onClick={() => { setListId(''); setShowList(false); }}
+              className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${!listId ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+            >
+              <span>📥</span>
+              <span className="flex-1 text-left text-gray-700 dark:text-gray-300">Inbox</span>
+              {!listId && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+            </button>
+            {lists.map(l => (
+              <button key={l.id} onClick={() => { setListId(l.id); setShowList(false); }}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${listId === l.id ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+              >
+                <span>{l.emoji || '📋'}</span>
+                <span className="flex-1 truncate text-left text-gray-700 dark:text-gray-300">{l.name}</span>
+                {l.color && <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: l.color }} />}
+                {listId === l.id && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -395,52 +463,6 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
         <div className="flex justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
-
-        {/* Priority picker — floating popup above the toolbar */}
-        {showPri && (
-          <>
-            <div className="fixed inset-0 z-[84]" onClick={() => setShowPri(false)} />
-            <div className="absolute bottom-full left-12 z-[85] mb-2 w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830]"
-              onClick={e => e.stopPropagation()}>
-              {PRI_OPTS.map(p => (
-                <button key={p.v} onClick={() => { setPriority(p.v); setShowPri(false); }}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${priority === p.v ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
-                >
-                  <Flag className="h-4 w-4 flex-none" style={{ color: p.color }} />
-                  <span className="flex-1 text-left text-gray-700 dark:text-gray-300">{p.label}</span>
-                  {priority === p.v && <Check className="h-3.5 w-3.5 text-emerald-500" />}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* List picker — floating popup */}
-        {showList && (
-          <>
-            <div className="fixed inset-0 z-[84]" onClick={() => setShowList(false)} />
-            <div className="absolute bottom-full left-24 z-[85] mb-2 w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#252830] max-h-60 overflow-y-auto"
-              onClick={e => e.stopPropagation()}>
-              <button onClick={() => { setListId(''); setShowList(false); }}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${!listId ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
-              >
-                <span>📥</span>
-                <span className="flex-1 text-left text-gray-700 dark:text-gray-300">Inbox</span>
-                {!listId && <Check className="h-3.5 w-3.5 text-emerald-500" />}
-              </button>
-              {lists.map(l => (
-                <button key={l.id} onClick={() => { setListId(l.id); setShowList(false); }}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${listId === l.id ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
-                >
-                  <span>{l.emoji || '📋'}</span>
-                  <span className="flex-1 truncate text-left text-gray-700 dark:text-gray-300">{l.name}</span>
-                  {l.color && <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: l.color }} />}
-                  {listId === l.id && <Check className="h-3.5 w-3.5 text-emerald-500" />}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
 
         {/* Tag input row */}
         {showTag && (
@@ -503,13 +525,13 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
             <CalendarDays className="h-5 w-5 flex-none" />
             {dateLabel && <span className="max-w-[72px] truncate text-xs font-medium">{dateLabel}</span>}
           </button>
-          <button onClick={() => { closeAll(); setShowPri(v => !v); }}
+          <button ref={priBtnRef} onClick={openPriPicker}
             className={`flex h-9 w-9 items-center justify-center rounded-xl transition`}
             style={{ color: priority !== 'none' ? priColor : undefined }}
           >
             <Flag className={`h-5 w-5 ${priority === 'none' ? 'text-gray-500 dark:text-gray-400' : ''}`} />
           </button>
-          <button onClick={() => { closeAll(); setShowList(v => !v); }}
+          <button ref={listBtnRef} onClick={openListPicker}
             className={`flex items-center gap-1.5 rounded-xl px-2 py-2 text-sm transition ${showList || listId ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
             {selectedList ? <span className="text-base">{selectedList.emoji || '📋'}</span> : <ListIcon className="h-5 w-5" />}
             {selectedList && <span className="text-xs font-medium max-w-[60px] truncate">{selectedList.name}</span>}

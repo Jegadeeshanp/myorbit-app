@@ -6,7 +6,7 @@ import {
   Sun, Inbox, CalendarDays, Plus, Settings, Calendar, User,
   MoreHorizontal, Pencil, Pin, Copy, Share2, Trash2, X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 
 type TaskList = {
@@ -37,7 +37,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const [showListModal, setShowListModal] = useState(false);
   // FIX: per-list menu — stores the list id whose menu is open (not a boolean)
   const [openMenuListId, setOpenMenuListId] = useState<string | null>(null);
-  const [menuDirections, setMenuDirections] = useState<Map<string, 'up' | 'down'>>(new Map());
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [listName, setListName] = useState('');
   const [listIcon, setListIcon] = useState('📋');
@@ -246,9 +246,20 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                     e.stopPropagation();
                     if (!isMenuOpen) {
                       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const popupH = 230;
                       const spaceBelow = window.innerHeight - rect.bottom;
-                      const dir: 'up' | 'down' = spaceBelow < 200 ? 'up' : 'down';
-                      setMenuDirections(prev => new Map(prev).set(list.id, dir));
+                      const style: React.CSSProperties = {
+                        position: 'fixed',
+                        zIndex: 200,
+                        width: '160px',
+                        right: `${window.innerWidth - rect.right}px`,
+                      };
+                      if (spaceBelow >= popupH) {
+                        style.top = `${rect.bottom + 4}px`;
+                      } else {
+                        style.bottom = `${window.innerHeight - rect.top + 4}px`;
+                      }
+                      setMenuStyle(style);
                     }
                     setOpenMenuListId(isMenuOpen ? null : list.id);
                   }}
@@ -261,29 +272,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </button>
 
-                {/* Per-row dropdown menu — closes on outside click */}
-                {isMenuOpen && (
-                  <div
-                    data-menu-dropdown
-                    className={`absolute right-0 z-[100] w-40 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830] ${(menuDirections.get(list.id) ?? 'down') === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}
-                  >
-                    <button onClick={() => openEditModal(list)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
-                      <Pencil className="h-3.5 w-3.5 text-gray-400" />Edit
-                    </button>
-                    <button onClick={handlePinList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
-                      <Pin className="h-3.5 w-3.5 text-gray-400" />Pin
-                    </button>
-                    <button onClick={handleDuplicateList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
-                      <Copy className="h-3.5 w-3.5 text-gray-400" />Duplicate
-                    </button>
-                    <button onClick={handleShareList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
-                      <Share2 className="h-3.5 w-3.5 text-gray-400" />Share
-                    </button>
-                    <button onClick={handleDeleteList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-950/30">
-                      <Trash2 className="h-3.5 w-3.5" />Delete
-                    </button>
-                  </div>
-                )}
+
               </div>
             );
           })}
@@ -307,6 +296,27 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
           </Link>
         </div>
       </aside>
+
+      {/* Fixed-position list menu — rendered outside nav to escape overflow clipping */}
+      {openMenuListId && openList && (
+        <div data-menu-dropdown style={menuStyle} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
+          <button onClick={() => openEditModal(openList)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+            <Pencil className="h-3.5 w-3.5 text-gray-400" />Edit
+          </button>
+          <button onClick={handlePinList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+            <Pin className="h-3.5 w-3.5 text-gray-400" />Pin
+          </button>
+          <button onClick={handleDuplicateList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+            <Copy className="h-3.5 w-3.5 text-gray-400" />Duplicate
+          </button>
+          <button onClick={handleShareList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+            <Share2 className="h-3.5 w-3.5 text-gray-400" />Share
+          </button>
+          <button onClick={handleDeleteList} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-950/30">
+            <Trash2 className="h-3.5 w-3.5" />Delete
+          </button>
+        </div>
+      )}
 
       {/* Create / Edit list modal */}
       {showListModal && (

@@ -30,32 +30,29 @@ export default function AccountsPage() {
 
   // All hooks must be called before any early return (React rules of hooks)
   const { totalBalance, liquidBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
-    let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;
+    // Balance = sum of all non-credit accounts
+    const liquidBalance = state.accounts
+      .filter(a => a.type !== 'Credit Card')
+      .reduce((s, a) => s + a.balance, 0);
 
-    state.accounts.forEach(a => {
-      if (a.type === 'Bank')        bank   += a.balance;
-      if (a.type === 'Credit Card') credit += a.balance;
-      if (a.type === 'Wallet')      wallet += a.balance;
-      if (a.type === 'Cash')        cash   += a.balance;
-      if (a.type === 'Debit Card')  debit  += a.balance;
-    });
+    // Credit Used = net debit on all credit card accounts from transactions
+    // (expenses reduce balance, OB/BA adjustments are included naturally)
+    const creditAccIds = new Set(
+      state.accounts.filter(a => a.type === 'Credit Card').map(a => a.id)
+    );
+    const creditNet = state.transactions
+      .filter(t => t.accountId && creditAccIds.has(t.accountId))
+      .reduce((s, t) => s + t.amount, 0); // expenses negative, income positive
+    // Positive owed = negative net (spent more than paid/adjusted)
+    const creditUsed = Math.max(-creditNet, 0);
 
-    const creditUsed    = Math.abs(Math.min(credit, 0));
-    // Liquid = Bank + Debit + Wallets + Cash (no credit)
-    const liquidBalance = bank + wallet + cash + debit;
-    // Total = liquid minus what's owed on credit cards
-    const totalBalance  = liquidBalance - creditUsed;
+    // Total Balance = Balance - Credit Used
+    const totalBalance = liquidBalance - creditUsed;
 
-    // Current-month expenses, excluding future-dated transactions (matches Transaction page "Spent")
-    const now2 = new Date();
-    const today2 = now2.toISOString().slice(0, 10);
+    // Spend = total of ALL expense transactions (all time, no month filter)
+    const today2 = new Date().toISOString().slice(0, 10);
     const totalExpenses = state.transactions
-      .filter(t => {
-        if (t.type !== 'expense') return false;
-        if (t.date > today2) return false; // exclude upcoming
-        const d = new Date(t.date);
-        return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear();
-      })
+      .filter(t => t.type === 'expense' && t.date <= today2)
       .reduce((s, t) => s + Math.abs(t.amount), 0);
 
     const byType: Record<Account['type'], Account[]> = {
@@ -71,9 +68,9 @@ export default function AccountsPage() {
   }, [state.accounts, state.transactions]);
 
   const metrics = [
-    { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'Bank + Wallets + Cash' },
-    { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Outstanding balance' },
-    { label: 'Spent',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month' },
+    { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'All accounts (excl. credit)' },
+    { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Net credit card spend' },
+    { label: 'Spend',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'All expenses (total)' },
   ];
 
   const filteredByType = useMemo(() => {
@@ -96,7 +93,7 @@ export default function AccountsPage() {
       <div className="rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 px-7 py-6 shadow-md">
         <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300/70">Total Balance</p>
         <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
-        <p className="mt-1 text-xs text-white/80">Liquid assets minus credit used</p>
+        <p className="mt-1 text-xs text-white/80">Balance minus credit used</p>
       </div>
 
       {/* ── 3 metric cards ── */}

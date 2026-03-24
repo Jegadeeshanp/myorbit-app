@@ -332,17 +332,17 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  const SYSTEM_CATS_NET = ['Opening Balance', 'Balance Adjustment'];
+  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
 
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
-    const income   = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    // Expenses card excludes user-exempted categories (e.g. Investment)
+    // Income card: real income only — exclude Opening Balance & Balance Adjustment
+    const income   = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0);
+    // Expense card: excludes user-exempted categories (e.g. Investment)
     const expense  = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    // Net balance excludes Opening Balance & Balance Adjustment (setup transactions, not real cash flow)
-    const netIncome  = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATS_NET.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-    const netExpense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS_NET.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, net: income - netExpense, count: filtered.length };
+    // Net: income card value minus ALL expenses (includes exempted categories)
+    const allExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, net: income - allExpense, count: filtered.length };
   }, [filtered]);
 
   return (
