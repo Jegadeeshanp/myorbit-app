@@ -43,3 +43,10 @@ next-env.d.ts
 #claude
 .claude/
 .clone/
+
+# SQLite (legacy — project now uses Neon PostgreSQL)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+prisma/baseline.sql
