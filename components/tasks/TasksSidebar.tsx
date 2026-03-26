@@ -5,6 +5,17 @@ import { useSession } from 'next-auth/react';
 import {
   Sun, Inbox, CalendarDays, Plus, Settings, Calendar, User,
   MoreHorizontal, Pencil, Pin, Copy, Share2, Trash2, X,
+  // Task list icons
+  ClipboardList, CheckSquare, ListChecks, Target, Flag, Bookmark, Star, Rocket,
+  Briefcase, Laptop, Building2, Mail, Bell, Award, Folder, Trophy,
+  Home, Heart, Users, Gift, Coffee, Smile,
+  BookOpen, GraduationCap, Lightbulb,
+  Dumbbell, HeartPulse, Stethoscope, Leaf,
+  ShoppingCart, ShoppingBag, Package, PiggyBank, TrendingUp, Tag,
+  Plane, Car, Globe, Train, Map,
+  Music, Film, Camera, Gamepad2,
+  Zap, Shield, Wrench, MessageSquare, PawPrint, Phone, Code2,
+  type LucideIcon,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
@@ -27,7 +38,80 @@ interface Props {
   mobile?: boolean;
 }
 
-const LIST_ICONS = ['📋', '📝', '✅', '📌', '💼', '🏠', '🛒', '🎯', '📚', '💡', '💻', '🧾'];
+type ListIconDef = { name: string; icon: LucideIcon; color: string };
+const LIST_ICONS: ListIconDef[] = [
+  // ── Task essentials ──────────────────────────────────────────
+  { name: 'ClipboardList', icon: ClipboardList, color: 'text-emerald-600' },
+  { name: 'CheckSquare',   icon: CheckSquare,   color: 'text-green-600'   },
+  { name: 'ListChecks',    icon: ListChecks,    color: 'text-teal-600'    },
+  { name: 'Target',        icon: Target,        color: 'text-red-500'     },
+  { name: 'Flag',          icon: Flag,          color: 'text-orange-500'  },
+  { name: 'Bookmark',      icon: Bookmark,      color: 'text-blue-500'    },
+  { name: 'Star',          icon: Star,          color: 'text-yellow-500'  },
+  { name: 'Rocket',        icon: Rocket,        color: 'text-violet-500'  },
+  // ── Work & Productivity ──────────────────────────────────────
+  { name: 'Briefcase',     icon: Briefcase,     color: 'text-slate-600'   },
+  { name: 'Laptop',        icon: Laptop,        color: 'text-blue-600'    },
+  { name: 'Building2',     icon: Building2,     color: 'text-slate-500'   },
+  { name: 'Code2',         icon: Code2,         color: 'text-indigo-600'  },
+  { name: 'Mail',          icon: Mail,          color: 'text-sky-600'     },
+  { name: 'Calendar',      icon: Calendar,      color: 'text-indigo-500'  },
+  { name: 'Bell',          icon: Bell,          color: 'text-amber-500'   },
+  { name: 'Award',         icon: Award,         color: 'text-amber-600'   },
+  { name: 'Folder',        icon: Folder,        color: 'text-yellow-600'  },
+  { name: 'Trophy',        icon: Trophy,        color: 'text-amber-500'   },
+  // ── Personal & Home ──────────────────────────────────────────
+  { name: 'Home',          icon: Home,          color: 'text-violet-500'  },
+  { name: 'Heart',         icon: Heart,         color: 'text-rose-500'    },
+  { name: 'Users',         icon: Users,         color: 'text-teal-500'    },
+  { name: 'User',          icon: User,          color: 'text-gray-500'    },
+  { name: 'Gift',          icon: Gift,          color: 'text-rose-400'    },
+  { name: 'Coffee',        icon: Coffee,        color: 'text-amber-700'   },
+  { name: 'Smile',         icon: Smile,         color: 'text-yellow-500'  },
+  { name: 'PawPrint',      icon: PawPrint,      color: 'text-orange-400'  },
+  // ── Learning ─────────────────────────────────────────────────
+  { name: 'BookOpen',      icon: BookOpen,      color: 'text-indigo-500'  },
+  { name: 'GraduationCap', icon: GraduationCap, color: 'text-indigo-600'  },
+  { name: 'Lightbulb',     icon: Lightbulb,     color: 'text-yellow-500'  },
+  { name: 'Pencil',        icon: Pencil,        color: 'text-slate-500'   },
+  // ── Health & Fitness ─────────────────────────────────────────
+  { name: 'Dumbbell',      icon: Dumbbell,      color: 'text-orange-600'  },
+  { name: 'HeartPulse',    icon: HeartPulse,    color: 'text-red-500'     },
+  { name: 'Stethoscope',   icon: Stethoscope,   color: 'text-red-600'     },
+  { name: 'Leaf',          icon: Leaf,          color: 'text-green-500'   },
+  // ── Shopping & Finance ───────────────────────────────────────
+  { name: 'ShoppingCart',  icon: ShoppingCart,  color: 'text-green-500'   },
+  { name: 'ShoppingBag',   icon: ShoppingBag,   color: 'text-pink-500'    },
+  { name: 'Package',       icon: Package,       color: 'text-gray-500'    },
+  { name: 'PiggyBank',     icon: PiggyBank,     color: 'text-teal-500'    },
+  { name: 'TrendingUp',    icon: TrendingUp,    color: 'text-emerald-600'  },
+  { name: 'Tag',           icon: Tag,           color: 'text-gray-400'    },
+  // ── Travel & Transport ───────────────────────────────────────
+  { name: 'Plane',         icon: Plane,         color: 'text-sky-600'     },
+  { name: 'Car',           icon: Car,           color: 'text-amber-600'   },
+  { name: 'Globe',         icon: Globe,         color: 'text-teal-500'    },
+  { name: 'Train',         icon: Train,         color: 'text-blue-600'    },
+  { name: 'Map',           icon: Map,           color: 'text-green-600'   },
+  // ── Entertainment ────────────────────────────────────────────
+  { name: 'Music',         icon: Music,         color: 'text-purple-500'  },
+  { name: 'Film',          icon: Film,          color: 'text-purple-600'  },
+  { name: 'Camera',        icon: Camera,        color: 'text-slate-500'   },
+  { name: 'Gamepad2',      icon: Gamepad2,      color: 'text-violet-500'  },
+  // ── Utilities ────────────────────────────────────────────────
+  { name: 'Zap',           icon: Zap,           color: 'text-yellow-500'  },
+  { name: 'Shield',        icon: Shield,        color: 'text-teal-600'    },
+  { name: 'Wrench',        icon: Wrench,        color: 'text-slate-400'   },
+  { name: 'MessageSquare', icon: MessageSquare, color: 'text-blue-500'    },
+  { name: 'Phone',         icon: Phone,         color: 'text-cyan-600'    },
+];
+
+const ICON_MAP = Object.fromEntries(LIST_ICONS.map(i => [i.name, i]));
+function getListIcon(name: string | undefined, cls = 'h-3.5 w-3.5') {
+  const entry = ICON_MAP[name || 'ClipboardList'] ?? ICON_MAP['ClipboardList'];
+  const Icon = entry.icon;
+  return <Icon className={`${cls} ${entry.color}`} />;
+}
+
 const LIST_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#64748B'];
 
 export default function TasksSidebar({ selected, onSelect, refreshKey, view, onViewChange, mobile }: Props) {
@@ -40,7 +124,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [listName, setListName] = useState('');
-  const [listIcon, setListIcon] = useState('📋');
+  const [listIcon, setListIcon] = useState('ClipboardList');
   const [listColor, setListColor] = useState('#10B981');
 
   const fetchLists = useCallback(() => {
@@ -74,7 +158,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
 
   const openList = useMemo(() => lists.find(l => l.id === openMenuListId) ?? null, [lists, openMenuListId]);
 
-  const resetModal = () => { setEditingListId(null); setListName(''); setListIcon('📋'); setListColor('#10B981'); };
+  const resetModal = () => { setEditingListId(null); setListName(''); setListIcon('ClipboardList'); setListColor('#10B981'); };
   const closeModal = () => { setShowListModal(false); resetModal(); };
 
   const openCreateModal = () => { resetModal(); setShowListModal(true); setOpenMenuListId(null); };
@@ -82,7 +166,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const openEditModal = (list: TaskList) => {
     setEditingListId(list.id);
     setListName(list.name);
-    setListIcon(list.emoji || '📋');
+    setListIcon(list.emoji || 'ClipboardList');
     setListColor(list.color || '#10B981');
     setShowListModal(true);
     setOpenMenuListId(null);
@@ -116,7 +200,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   const handleDuplicateList = async () => {
     if (!openList) return;
     try {
-      const res = await fetch('/api/task-lists', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `${openList.name} Copy`, emoji: openList.emoji || '📋', color: openList.color || '#10B981' }) });
+      const res = await fetch('/api/task-lists', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `${openList.name} Copy`, emoji: openList.emoji || 'ClipboardList', color: openList.color || '#10B981' }) });
       if (!res.ok) throw new Error();
       toast('List duplicated'); setOpenMenuListId(null); fetchLists();
     } catch { toast('Failed to duplicate list', 'error'); }
@@ -216,12 +300,12 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
                       : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100'
                   }`}
                 >
-                  {/* List emoji icon */}
+                  {/* List icon */}
                   <span
-                    className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-sm leading-none"
+                    className="flex h-6 w-6 flex-none items-center justify-center rounded-md"
                     style={{ backgroundColor: `${list.color || '#10B981'}22` }}
                   >
-                    {list.emoji || '📋'}
+                    {getListIcon(list.emoji)}
                   </span>
 
                   {/* List name — left aligned, truncated */}
@@ -341,13 +425,17 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
             />
 
             <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">Choose icon</p>
-            <div className="mt-2 grid grid-cols-6 gap-2">
-              {LIST_ICONS.map(icon => (
-                <button key={icon} type="button" onClick={() => setListIcon(icon)}
-                  className={`flex h-9 w-full items-center justify-center rounded-xl text-lg transition ${
-                    listIcon === icon ? 'bg-emerald-100 dark:bg-emerald-900/40 ring-1 ring-emerald-400' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700'
+            <div className="mt-2 grid grid-cols-8 gap-1 max-h-48 overflow-y-auto pr-0.5">
+              {LIST_ICONS.map(({ name, icon: Icon, color }) => (
+                <button key={name} type="button" title={name} onClick={() => setListIcon(name)}
+                  className={`flex h-9 w-full items-center justify-center rounded-xl transition ${
+                    listIcon === name
+                      ? 'bg-emerald-100 dark:bg-emerald-900/40 ring-1 ring-emerald-400'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
-                >{icon}</button>
+                >
+                  <Icon className={`h-4 w-4 ${color}`} />
+                </button>
               ))}
             </div>
 
