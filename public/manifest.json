@@ -1,13 +1,13 @@
 {
-  "name": "MyOrbit — Finance",
+  "name": "MyOrbit",
   "short_name": "MyOrbit",
-  "description": "Your personal money command center",
-  "start_url": "/orbit/finance",
+  "description": "Your life, one orbit — track finances, habits, goals and tasks",
+  "start_url": "/orbit",
   "display": "standalone",
   "background_color": "#F7F7F5",
   "theme_color": "#059669",
   "orientation": "portrait-primary",
-  "categories": ["finance", "productivity"],
+  "categories": ["finance", "productivity", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -24,14 +24,24 @@
   ],
   "shortcuts": [
     {
-      "name": "Add Expense",
-      "url": "/orbit/finance/transactions/add",
-      "description": "Quick add expense"
+      "name": "Dashboard",
+      "url": "/orbit",
+      "description": "My Orbit Dashboard"
     },
     {
-      "name": "Overview",
+      "name": "Finance",
       "url": "/orbit/finance",
       "description": "Finance overview"
+    },
+    {
+      "name": "Habits",
+      "url": "/orbit/habits",
+      "description": "Habits dashboard"
+    },
+    {
+      "name": "Tasks",
+      "url": "/orbit/tasks",
+      "description": "Tasks & to-dos"
     }
   ]
 }

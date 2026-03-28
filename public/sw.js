@@ -1,6 +1,6 @@
 // Service Worker for MyOrbit PWA
-const CACHE_NAME = 'myorbit-v1';
-const STATIC_ASSETS = ['/', '/orbit', '/orbit/finance'];
+const CACHE_NAME = 'myorbit-v2';
+const STATIC_ASSETS = ['/', '/orbit'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
