@@ -1,11 +1,10 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import LandingPage from '@/components/LandingPage';
 
 export const runtime = 'nodejs';
 
-export default async function RootPage() {
+export default async function SignInLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (session?.user) redirect('/orbit');
-  return <LandingPage />;
+  return <>{children}</>;
 }
