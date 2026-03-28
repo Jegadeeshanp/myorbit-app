@@ -105,9 +105,42 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
     {v:'none',l:'None'},{v:'on-time',l:'On time'},{v:'5m',l:'5 min early'},
     {v:'30m',l:'30 min early'},{v:'1h',l:'1 hour early'},{v:'1d',l:'1 day early'},
   ];
-  const REPEAT_OPTS = ['none','daily','weekly','monthly','yearly'];
+  const REPEAT_OPTS = [
+    { v: 'none',     l: 'No repeat',           indent: false },
+    { v: 'daily',    l: 'Daily',                indent: false },
+    { v: 'weekly',   l: 'Weekly',               indent: false },
+    { v: 'weekdays', l: 'Weekdays (Mon–Fri)',    indent: true  },
+    { v: 'weekends', l: 'Weekends (Sat–Sun)',    indent: true  },
+    { v: 'monthly',  l: 'Monthly',              indent: false },
+    { v: 'yearly',   l: 'Yearly',               indent: false },
+    { v: 'custom',   l: 'Custom…',              indent: false },
+  ];
+  const CUSTOM_DAY_LABELS = ['S','M','T','W','T','F','S'];
+  const [customDays, setCustomDays] = useState<number[]>(() => {
+    if (repeat?.startsWith('custom:')) return repeat.replace('custom:','').split(',').map(Number).filter(n=>!isNaN(n));
+    return [];
+  });
   const remLabel = REMIND_OPTS.find(o=>o.v===reminder)?.l ?? 'None';
-  const repLabel = repeat === 'none' ? 'None' : repeat.charAt(0).toUpperCase()+repeat.slice(1);
+  const getRepLabel = (v: string) => {
+    if (v === 'none') return 'None';
+    if (v === 'weekdays') return 'Weekdays';
+    if (v === 'weekends') return 'Weekends';
+    if (v.startsWith('custom:')) {
+      const days = v.replace('custom:','').split(',').map(Number);
+      return days.map(d => CUSTOM_DAY_LABELS[d] ?? '').filter(Boolean).join(' ') || 'Custom';
+    }
+    if (v === 'custom') return 'Custom';
+    return v.charAt(0).toUpperCase()+v.slice(1);
+  };
+  const repLabel = getRepLabel(repeat);
+  const toggleCustomRepeatDay = (day: number) => {
+    setCustomDays(prev => {
+      const next = prev.includes(day) ? prev.filter(d=>d!==day) : [...prev, day].sort((a,b)=>a-b);
+      const val = next.length > 0 ? `custom:${next.join(',')}` : 'custom';
+      setRepeat(val);
+      return next;
+    });
+  };
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] w-72 flex flex-col overflow-hidden h-full">
@@ -172,9 +205,34 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
             {showRepeat && (
               <div className="py-1">
                 <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Repeat</p>
-                {REPEAT_OPTS.map(o=><button key={o} type="button" onClick={()=>{setRepeat(o);setShowRepeat(false);}}
-                  className={`flex w-full items-center gap-2 px-4 py-2 text-sm transition ${repeat===o?'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30':'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
-                >{o==='none'?'No repeat':o.charAt(0).toUpperCase()+o.slice(1)}{repeat===o&&<Check className="ml-auto h-3.5 w-3.5"/>}</button>)}
+                {REPEAT_OPTS.map(o => {
+                  const isSelected = o.v === 'custom' ? repeat.startsWith('custom') : repeat === o.v;
+                  return (
+                    <button key={o.v} type="button" onClick={() => {
+                      if (o.v === 'custom') { setRepeat('custom'); }
+                      else { setRepeat(o.v); setCustomDays([]); setShowRepeat(false); }
+                    }}
+                      className={`flex w-full items-center gap-2 py-2 text-sm transition ${o.indent ? 'pl-8 pr-4' : 'px-4'} ${isSelected ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
+                    >
+                      {o.indent && <span className="text-gray-300">↳</span>}
+                      {o.l}
+                      {isSelected && <Check className="ml-auto h-3.5 w-3.5"/>}
+                    </button>
+                  );
+                })}
+                {/* Custom day picker */}
+                {repeat.startsWith('custom') && (
+                  <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                    <p className="text-[10px] text-gray-400 mb-1.5">Select days</p>
+                    <div className="flex gap-1">
+                      {CUSTOM_DAY_LABELS.map((label, day) => (
+                        <button key={day} type="button" onClick={() => toggleCustomRepeatDay(day)}
+                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${customDays.includes(day) ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                        >{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

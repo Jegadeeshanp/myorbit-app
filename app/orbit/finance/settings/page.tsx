@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload, Plus } from 'lucide-react';
+import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload, Plus, Lock } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
 import {
+  DEFAULT_EXPENSE_CATEGORIES,
+  DEFAULT_INCOME_CATEGORIES,
   getAllExpenseCategories,
   getExcludedExpenseCategories,
   setExcludedExpenseCategories,
@@ -14,6 +16,25 @@ import {
   removeCustomExpenseCategory,
   removeCustomIncomeCategory,
 } from '@/lib/customCategoryStore';
+
+// Default emoji icons for built-in categories
+const DEFAULT_EXPENSE_ICONS: Record<string, string> = {
+  'Food': '🍕', 'Transport': '🚗', 'Shopping': '🛒', 'Bills': '⚡',
+  'Healthcare': '❤️', 'Entertainment': '🎬', 'Education': '📚',
+  'Travel': '✈️', 'Others': '📦',
+};
+const DEFAULT_INCOME_ICONS: Record<string, string> = {
+  'Salary': '💼', 'Freelance': '💻', 'Business': '🏢', 'Dividends': '📈',
+  'Rental Income': '🏠', 'Gifts': '🎁', 'Refunds': '💰', 'Other Income': '📦',
+};
+
+// Available icons for custom categories
+const CAT_ICON_OPTIONS = [
+  '🛒','🍕','🚗','🏠','⚡','❤️','🎬','📚','✈️','☕','📱','💊',
+  '🎮','🍷','🎁','💰','📈','💼','🏢','💳','🧾','🎓','🏋️','🌍',
+  '🐾','👔','🖥️','🎵','🍔','🚌','🏪','🌿','🎨','⚽','🎸','🏊',
+  '📦','🧘','🔧','🌐','💐','🐶','🍎','☀️','❄️','🧴','🧺','🪴',
+];
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
 const TABS = ['Preferences', 'Recurring', 'Categories', 'Data'] as const;
@@ -117,6 +138,8 @@ export default function FinanceSettingsPage() {
   const [catType, setCatType] = useState<'expense' | 'income'>('expense');
   const [dbCats, setDbCats] = useState<{ id: string; name: string; type: string; icon: string }[]>([]);
   const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('📦');
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [catLoading, setCatLoading] = useState(false);
 
   useEffect(() => {
@@ -130,14 +153,20 @@ export default function FinanceSettingsPage() {
     if (!name) return;
     setCatLoading(true);
     try {
-      const res = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, type: catType }) });
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type: catType, icon: newCatIcon }),
+      });
       if (res.ok) {
         const cat = await res.json();
         setDbCats(prev => [...prev.filter(c => !(c.name === name && c.type === catType)), cat]);
         setNewCatName('');
+        setNewCatIcon('📦');
+        setShowIconPicker(false);
         // also update localStorage
-        if (catType === 'expense') addCustomExpenseCategory(name);
-        else addCustomIncomeCategory(name);
+        if (catType === 'expense') addCustomExpenseCategory(name, newCatIcon);
+        else addCustomIncomeCategory(name, newCatIcon);
       }
     } finally { setCatLoading(false); }
   };
@@ -414,48 +443,97 @@ export default function FinanceSettingsPage() {
           </div>
 
           {/* Add category */}
-          <div className="flex gap-2">
-            <input value={newCatName} onChange={e => setNewCatName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddCat()}
-              placeholder="New category name…"
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
-            <button onClick={handleAddCat} disabled={!newCatName.trim() || catLoading}
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40">
-              <Plus className="h-4 w-4" /> Add
-            </button>
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Add New Category</p>
+            <div className="flex gap-2 items-start">
+              {/* Icon picker */}
+              <div className="relative">
+                <button type="button" onClick={() => setShowIconPicker(v => !v)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-xl hover:bg-gray-100 transition">
+                  {newCatIcon}
+                </button>
+                {showIconPicker && (
+                  <div className="absolute top-full left-0 mt-1 z-50 w-64 rounded-2xl border border-gray-200 bg-white shadow-2xl p-2">
+                    <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
+                      {CAT_ICON_OPTIONS.map(icon => (
+                        <button key={icon} type="button" onClick={() => { setNewCatIcon(icon); setShowIconPicker(false); }}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg text-base transition ${newCatIcon === icon ? 'bg-emerald-50 ring-1 ring-emerald-400' : 'hover:bg-gray-100'}`}>
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <input value={newCatName} onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddCat()}
+                placeholder="Category name…"
+                className="flex-1 h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+              <button onClick={handleAddCat} disabled={!newCatName.trim() || catLoading}
+                className="flex items-center gap-1.5 h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40">
+                <Plus className="h-4 w-4" /> Add
+              </button>
+            </div>
           </div>
 
-          {/* Category list */}
+          {/* Full category list: defaults + custom */}
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                {catType === 'expense' ? 'Expense' : 'Income'} categories
+                {catType === 'expense' ? 'Expense' : 'Income'} Categories
               </p>
               <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">
-                {dbCats.filter(c => c.type === catType).length} custom
+                {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).length + dbCats.filter(c => c.type === catType).length} total
               </span>
             </div>
-            {dbCats.filter(c => c.type === catType).length === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-400">No custom categories yet</div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {dbCats.filter(c => c.type === catType).map(cat => (
-                  <div key={cat.id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/50 transition">
-                    <span className="text-sm font-medium text-gray-800">{cat.name}</span>
-                    <button onClick={() => handleDeleteCat(cat)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+
+            {/* Default (built-in) categories */}
+            <div className="divide-y divide-gray-50">
+              {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).map(name => {
+                const icon = catType === 'expense' ? (DEFAULT_EXPENSE_ICONS[name] ?? '📦') : (DEFAULT_INCOME_ICONS[name] ?? '📦');
+                return (
+                  <div key={name} className="flex items-center gap-3 px-5 py-3 bg-gray-50/30">
+                    <span className="text-lg w-7 text-center">{icon}</span>
+                    <span className="flex-1 text-sm font-medium text-gray-700">{name}</span>
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                      <Lock className="h-2.5 w-2.5" /> built-in
+                    </span>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+
+            {/* Custom (user-added) categories */}
+            {dbCats.filter(c => c.type === catType).length > 0 && (
+              <>
+                <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Custom</p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {dbCats.filter(c => c.type === catType).map(cat => {
+                    // Determine display icon: if 1-2 chars (emoji), show it; else show 📦
+                    const displayIcon = cat.icon && [...cat.icon].length <= 2 ? cat.icon : '📦';
+                    return (
+                      <div key={cat.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition">
+                        <span className="text-lg w-7 text-center">{displayIcon}</span>
+                        <span className="flex-1 text-sm font-medium text-gray-800">{cat.name}</span>
+                        <button onClick={() => handleDeleteCat(cat)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {dbCats.filter(c => c.type === catType).length === 0 && (
+              <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-50">
+                No custom categories yet — add one above
               </div>
             )}
           </div>
-
-          <p className="text-xs text-gray-400 text-center">
-            Default categories (Food, Transport, etc.) are always available and cannot be deleted.
-            Custom categories added here appear in all transaction and budget forms.
-          </p>
         </div>
       )}
 

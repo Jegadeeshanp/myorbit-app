@@ -19,8 +19,32 @@ type Habit = {
   logs: { logDate: string; value: number }[];
 };
 
-const COLORS = ['#78716C', '#6B7280', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DB2777', '#4F46E5'];
-const EMOJIS = ['✅', '🔥', '💪', '📚', '🧘', '🏃', '💧', '🥗', '😴', '🎯', '✍️', '🎵'];
+const COLORS = ['#78716C', '#6B7280', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DB2777', '#4F46E5', '#EF4444', '#EC4899', '#F97316', '#14B8A6'];
+const EMOJIS = [
+  '✅', '🔥', '💪', '📚', '🧘', '🏃', '💧', '🥗', '😴', '🎯', '✍️', '🎵',
+  '🎨', '🏋️', '☕', '🚶', '🧠', '💊', '🌅', '🛌', '🌿', '❤️', '⭐', '🎓',
+  '💼', '🏊', '🚴', '🧹', '🪴', '🎮', '📝', '🌞', '💰', '🙏', '🎸', '📱',
+  '🌊', '🍎', '🏆', '⚡', '🦋', '🌈', '🧘‍♀️', '🍷', '🐾', '🎬', '🏠', '✈️',
+];
+
+// Days of week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+const WEEK_DAYS = [
+  { label: 'S', value: 0, full: 'Sun' },
+  { label: 'M', value: 1, full: 'Mon' },
+  { label: 'T', value: 2, full: 'Tue' },
+  { label: 'W', value: 3, full: 'Wed' },
+  { label: 'T', value: 4, full: 'Thu' },
+  { label: 'F', value: 5, full: 'Fri' },
+  { label: 'S', value: 6, full: 'Sat' },
+];
+
+// Map timeOfDay → 24-hour time string for task creation
+const TIME_OF_DAY_TO_HOUR: Record<string, string> = {
+  morning: '09:00',
+  noon: '12:00',
+  evening: '16:00',
+  night: '20:00',
+};
 
 const TIME_OF_DAY_OPTIONS = [
   { value: 'all_day', label: 'All Day', time: '' },
@@ -125,12 +149,23 @@ function getDayStatusColor(status: CalendarDayStatus): string {
 // ── Add Habit Modal ─────────────────────────────────────────────────────────
 function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated: (h: Habit) => void }) {
   const [name, setName] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(COLORS[4]); // emerald default
   const [emoji, setEmoji] = useState('✅');
   const [timeOfDay, setTimeOfDay] = useState('all_day');
   const [customTime, setCustomTime] = useState('09:00');
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // all days by default
   const [addToTask, setAddToTask] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        if (prev.length === 1) return prev; // must keep at least 1 day
+        return prev.filter(d => d !== day);
+      }
+      return [...prev, day].sort((a, b) => a - b);
+    });
+  };
 
   const handleSave = async () => {
     if (!name.trim()) { toast('Habit name is required', 'error'); return; }
@@ -145,6 +180,7 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
           iconEmoji: emoji,
           timeOfDay,
           customTime: timeOfDay === 'custom' ? customTime : null,
+          daysOfWeek: selectedDays,
         }),
       });
       if (!res.ok) throw new Error();
@@ -171,13 +207,16 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
             }
           }
           if (habitListId) {
+            // Derive dueTime from timeOfDay
+            const dueTime = timeOfDay === 'custom' ? customTime : (TIME_OF_DAY_TO_HOUR[timeOfDay] ?? null);
             await fetch('/api/tasks', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 title: name.trim(),
                 dueDate: getTodayString(),
-                tags: JSON.stringify([`habit:${habit.id}`]),
+                dueTime: dueTime || null,
+                tags: [`habit:${habit.id}`],  // send as array, not pre-stringified
                 listId: habitListId,
               }),
             });
@@ -223,7 +262,7 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
           {/* Icon */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Icon</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto pr-1">
               {EMOJIS.map(e => (
                 <button key={e} onClick={() => setEmoji(e)}
                   className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${emoji === e ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
@@ -275,6 +314,30 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                 />
               </div>
             )}
+          </div>
+
+          {/* Days of Week */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              Days of Week
+              <span className="ml-2 font-normal normal-case text-gray-400">({selectedDays.length}×/week)</span>
+            </label>
+            <div className="flex gap-1.5">
+              {WEEK_DAYS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleDay(value)}
+                  className={`flex-1 flex items-center justify-center h-9 rounded-xl text-xs font-bold transition border ${
+                    selectedDays.includes(value)
+                      ? 'bg-amber-500 border-amber-500 text-white'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Add to Task */}
@@ -704,9 +767,8 @@ function TodayHabitsSection({ habits, today, onLog }: {
                     <button
                       onClick={() => onLog(h.id, today)}
                       className={`flex h-8 w-8 items-center justify-center rounded-full transition flex-shrink-0 ${
-                        done ? 'text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+                        done ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}
-                      style={done ? { backgroundColor: h.color } : {}}
                     >
                       <CheckCircle2 className="h-5 w-5" />
                     </button>
@@ -732,7 +794,24 @@ function HabitCard({ habit, dates, onLog, onDelete }: {
   const streak = getStreakCount(habit.logs);
   const today = dates[dates.length - 1];
   const todayDone = logSet.has(today);
-  const weekDone = dates.filter(d => logSet.has(d)).length;
+
+  // Parse daysOfWeek — default to all 7 days if not set
+  const activeDays: number[] = useMemo(() => {
+    try {
+      const parsed = JSON.parse(habit.daysOfWeek || '[0,1,2,3,4,5,6]');
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+    return [0, 1, 2, 3, 4, 5, 6];
+  }, [habit.daysOfWeek]);
+
+  // Filter last-7 days to only the habit's active days
+  const activeDates = useMemo(
+    () => dates.filter(d => activeDays.includes(new Date(d + 'T12:00:00').getDay())),
+    [dates, activeDays],
+  );
+
+  const weekDone = activeDates.filter(d => logSet.has(d)).length;
+  const weekTotal = activeDates.length;
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden hover:shadow-md transition-all">
@@ -765,9 +844,23 @@ function HabitCard({ habit, dates, onLog, onDelete }: {
           </div>
         </div>
 
-        {/* 7-day grid */}
-        <div className="flex gap-1.5 items-center">
-          {dates.map((date, i) => {
+        {/* Day grid — only shows habit's active days */}
+        <div className="flex gap-1 items-center">
+          {activeDates.length > 0 ? activeDates.map((date) => {
+            const done = logSet.has(date);
+            const isToday = date === today;
+            const dayLabel = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(date + 'T12:00:00').getDay()];
+            return (
+              <button key={date} onClick={() => onLog(habit.id, date)}
+                className={`flex-1 flex flex-col items-center gap-1 rounded-lg py-1.5 transition ${
+                  done ? 'text-white' : isToday ? 'bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                style={done ? { backgroundColor: habit.color } : {}}>
+                <span className={`text-[10px] font-medium ${done ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{dayLabel}</span>
+                <div className={`h-3 w-3 rounded-full ${done ? 'bg-white/40' : 'bg-gray-200 dark:bg-gray-700'}`} />
+              </button>
+            );
+          }) : dates.map((date, i) => {
             const done = logSet.has(date);
             const isToday = i === dates.length - 1;
             const dayLabel = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(date + 'T12:00:00').getDay()];
@@ -785,11 +878,16 @@ function HabitCard({ habit, dates, onLog, onDelete }: {
         </div>
 
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-gray-400 dark:text-gray-500">{weekDone}/7 this week</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {weekDone}/{weekTotal} this week
+            {weekTotal < 7 && <span className="ml-1 opacity-60">({activeDays.length}×/wk)</span>}
+          </span>
           <div className="h-1.5 flex-1 mx-2 rounded-full bg-gray-100 dark:bg-gray-800">
-            <div className="h-1.5 rounded-full transition-all" style={{ width: `${(weekDone / 7) * 100}%`, backgroundColor: habit.color }} />
+            <div className="h-1.5 rounded-full transition-all" style={{ width: `${weekTotal > 0 ? (weekDone / weekTotal) * 100 : 0}%`, backgroundColor: habit.color }} />
           </div>
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{Math.round((weekDone / 7) * 100)}%</span>
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+            {weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0}%
+          </span>
         </div>
       </div>
     </div>
@@ -863,46 +961,44 @@ export default function HabitsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Action row */}
-      <div className="flex justify-end">
-        <button onClick={() => setShowModal(true)}
-          className="hidden md:flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 transition">
-          <Plus className="h-4 w-4" />
-          New Habit
-        </button>
-      </div>
 
-      {/* Insight card */}
+      {/* ── Overview: Insight + Stats + New Habit button ── */}
+      {/* Insight message */}
       {insightMessage && !loading && (
         <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-5 py-4">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{insightMessage}</p>
         </div>
       )}
 
+      {/* Stats row with New Habit button in top-right */}
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Overview</h2>
+          <button onClick={() => setShowModal(true)}
+            className="hidden md:flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition">
+            <Plus className="h-3.5 w-3.5" />
+            New Habit
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Today's Done", value: `${totalLogged}/${habits.length}`, sub: 'habits completed' },
+            { label: 'Total Streak XP', value: totalStreaks, sub: 'combined streak days' },
+            { label: 'Longest Streak', value: longestStreak, sub: 'consecutive days' },
+          ].map(({ label, value, sub }) => (
+            <div key={label} className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3">
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{value}</p>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-0.5">{label}</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500">{sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Today's habits by time */}
       {!loading && habits.length > 0 && (
         <TodayHabitsSection habits={habits} today={today} onLog={handleLog} />
       )}
-
-      {/* Calendar section — between overview and streaks */}
-      {!loading && habits.length > 0 && (
-        <CalendarSection habits={habits} />
-      )}
-
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Today's Done", value: `${totalLogged}/${habits.length}`, sub: 'habits completed' },
-          { label: 'Total Streak XP', value: totalStreaks, sub: 'combined streak days' },
-          { label: 'Longest Streak', value: longestStreak, sub: 'consecutive days' },
-        ].map(({ label, value, sub }) => (
-          <div key={label} className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>
-          </div>
-        ))}
-      </div>
 
       {/* Habit grid */}
       {loading ? (
@@ -928,6 +1024,11 @@ export default function HabitsPage() {
             <HabitCard key={habit.id} habit={habit} dates={dates} onLog={handleLog} onDelete={handleDelete} />
           ))}
         </div>
+      )}
+
+      {/* Calendar section — between Habit grid and Streaks sidebar page */}
+      {!loading && habits.length > 0 && (
+        <CalendarSection habits={habits} />
       )}
 
       {/* Mobile FAB */}
