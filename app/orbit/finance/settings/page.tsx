@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload, Plus, Lock } from 'lucide-react';
+import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload, Plus, Lock, Package } from 'lucide-react';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS } from '@/components/finance/CategoryPicker';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
@@ -17,24 +18,6 @@ import {
   removeCustomIncomeCategory,
 } from '@/lib/customCategoryStore';
 
-// Default emoji icons for built-in categories
-const DEFAULT_EXPENSE_ICONS: Record<string, string> = {
-  'Food': '🍕', 'Transport': '🚗', 'Shopping': '🛒', 'Bills': '⚡',
-  'Healthcare': '❤️', 'Entertainment': '🎬', 'Education': '📚',
-  'Travel': '✈️', 'Others': '📦',
-};
-const DEFAULT_INCOME_ICONS: Record<string, string> = {
-  'Salary': '💼', 'Freelance': '💻', 'Business': '🏢', 'Dividends': '📈',
-  'Rental Income': '🏠', 'Gifts': '🎁', 'Refunds': '💰', 'Other Income': '📦',
-};
-
-// Available icons for custom categories
-const CAT_ICON_OPTIONS = [
-  '🛒','🍕','🚗','🏠','⚡','❤️','🎬','📚','✈️','☕','📱','💊',
-  '🎮','🍷','🎁','💰','📈','💼','🏢','💳','🧾','🎓','🏋️','🌍',
-  '🐾','👔','🖥️','🎵','🍔','🚌','🏪','🌿','🎨','⚽','🎸','🏊',
-  '📦','🧘','🔧','🌐','💐','🐶','🍎','☀️','❄️','🧴','🧺','🪴',
-];
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
 const TABS = ['Preferences', 'Recurring', 'Categories', 'Data'] as const;
@@ -138,7 +121,7 @@ export default function FinanceSettingsPage() {
   const [catType, setCatType] = useState<'expense' | 'income'>('expense');
   const [dbCats, setDbCats] = useState<{ id: string; name: string; type: string; icon: string }[]>([]);
   const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('📦');
+  const [newCatIcon, setNewCatIcon] = useState('Package');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [catLoading, setCatLoading] = useState(false);
 
@@ -162,7 +145,7 @@ export default function FinanceSettingsPage() {
         const cat = await res.json();
         setDbCats(prev => [...prev.filter(c => !(c.name === name && c.type === catType)), cat]);
         setNewCatName('');
-        setNewCatIcon('📦');
+        setNewCatIcon('Package');
         setShowIconPicker(false);
         // also update localStorage
         if (catType === 'expense') addCustomExpenseCategory(name, newCatIcon);
@@ -433,34 +416,48 @@ export default function FinanceSettingsPage() {
       {activeTab === 'Categories' && (
         <div className="space-y-4">
           {/* Type toggle */}
-          <div className="flex rounded-2xl border border-gray-100 bg-gray-50/60 p-1">
+          <div className="flex rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 p-1">
             {(['expense', 'income'] as const).map(t => (
               <button key={t} onClick={() => setCatType(t)}
-                className={`flex-1 rounded-xl py-2 text-sm font-semibold capitalize transition ${catType === t ? t === 'expense' ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`flex-1 rounded-xl py-2 text-sm font-semibold capitalize transition ${catType === t ? t === 'expense' ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
                 {t}
               </button>
             ))}
           </div>
 
           {/* Add category */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+          <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm space-y-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Add New Category</p>
             <div className="flex gap-2 items-start">
               {/* Icon picker */}
               <div className="relative">
                 <button type="button" onClick={() => setShowIconPicker(v => !v)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-xl hover:bg-gray-100 transition">
-                  {newCatIcon}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                  {(() => {
+                    const opt = ICON_OPTIONS.find(o => o.name === newCatIcon);
+                    const I = opt?.icon ?? Package;
+                    return <I className={`h-5 w-5 ${opt?.color ?? 'text-gray-400'}`} />;
+                  })()}
                 </button>
                 {showIconPicker && (
-                  <div className="absolute top-full left-0 mt-1 z-50 w-64 rounded-2xl border border-gray-200 bg-white shadow-2xl p-2">
+                  <div className="absolute top-full left-0 mt-1 z-50 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl p-2">
                     <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
-                      {CAT_ICON_OPTIONS.map(icon => (
-                        <button key={icon} type="button" onClick={() => { setNewCatIcon(icon); setShowIconPicker(false); }}
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg text-base transition ${newCatIcon === icon ? 'bg-emerald-50 ring-1 ring-emerald-400' : 'hover:bg-gray-100'}`}>
-                          {icon}
-                        </button>
-                      ))}
+                      {ICON_OPTIONS.map(opt => {
+                        const Icon = opt.icon;
+                        const isSelected = newCatIcon === opt.name;
+                        return (
+                          <button key={opt.name} type="button"
+                            onClick={() => { setNewCatIcon(opt.name); setShowIconPicker(false); }}
+                            title={opt.name}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                              isSelected
+                                ? 'bg-emerald-100 dark:bg-emerald-900/50 ring-1 ring-emerald-400'
+                                : `${opt.color} hover:bg-gray-100 dark:hover:bg-gray-700`
+                            }`}>
+                            <Icon className="h-4 w-4" />
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -468,7 +465,7 @@ export default function FinanceSettingsPage() {
               <input value={newCatName} onChange={e => setNewCatName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddCat()}
                 placeholder="Category name…"
-                className="flex-1 h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+                className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-white px-3 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/50" />
               <button onClick={handleAddCat} disabled={!newCatName.trim() || catLoading}
                 className="flex items-center gap-1.5 h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40">
                 <Plus className="h-4 w-4" /> Add
@@ -477,25 +474,31 @@ export default function FinanceSettingsPage() {
           </div>
 
           {/* Full category list: defaults + custom */}
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3 flex items-center justify-between">
+          <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="border-b border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 px-5 py-3 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
                 {catType === 'expense' ? 'Expense' : 'Income'} Categories
               </p>
-              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">
+              <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                 {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).length + dbCats.filter(c => c.type === catType).length} total
               </span>
             </div>
 
             {/* Default (built-in) categories */}
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).map(name => {
-                const icon = catType === 'expense' ? (DEFAULT_EXPENSE_ICONS[name] ?? '📦') : (DEFAULT_INCOME_ICONS[name] ?? '📦');
+                const allCats = catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+                const catDef = allCats.find(c => c.name === name);
+                const CatIcon = catDef?.icon ?? Package;
+                const iconColor = catDef?.color ?? 'text-gray-500';
+                const iconBg = catDef?.bg ?? 'bg-gray-100';
                 return (
-                  <div key={name} className="flex items-center gap-3 px-5 py-3 bg-gray-50/30">
-                    <span className="text-lg w-7 text-center">{icon}</span>
-                    <span className="flex-1 text-sm font-medium text-gray-700">{name}</span>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                  <div key={name} className="flex items-center gap-3 px-5 py-3 bg-gray-50/30 dark:bg-gray-800/20">
+                    <span className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg ${iconBg}`}>
+                      <CatIcon className={`h-3.5 w-3.5 ${iconColor}`} />
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">{name}</span>
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
                       <Lock className="h-2.5 w-2.5" /> built-in
                     </span>
                   </div>
@@ -506,19 +509,22 @@ export default function FinanceSettingsPage() {
             {/* Custom (user-added) categories */}
             {dbCats.filter(c => c.type === catType).length > 0 && (
               <>
-                <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-2">
+                <div className="border-t border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 px-5 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Custom</p>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {dbCats.filter(c => c.type === catType).map(cat => {
-                    // Determine display icon: if 1-2 chars (emoji), show it; else show 📦
-                    const displayIcon = cat.icon && [...cat.icon].length <= 2 ? cat.icon : '📦';
+                    const iconOpt = ICON_OPTIONS.find(o => o.name === cat.icon);
+                    const CatIcon = iconOpt?.icon ?? Package;
+                    const iconColor = iconOpt?.color ?? 'text-gray-400';
                     return (
-                      <div key={cat.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition">
-                        <span className="text-lg w-7 text-center">{displayIcon}</span>
-                        <span className="flex-1 text-sm font-medium text-gray-800">{cat.name}</span>
+                      <div key={cat.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition">
+                        <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+                          <CatIcon className={`h-3.5 w-3.5 ${iconColor}`} />
+                        </span>
+                        <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{cat.name}</span>
                         <button onClick={() => handleDeleteCat(cat)}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition">
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 dark:text-gray-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-400 transition">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -529,7 +535,7 @@ export default function FinanceSettingsPage() {
             )}
 
             {dbCats.filter(c => c.type === catType).length === 0 && (
-              <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-50">
+              <div className="py-4 text-center text-xs text-gray-400 dark:text-gray-500 border-t border-gray-50 dark:border-gray-700">
                 No custom categories yet — add one above
               </div>
             )}

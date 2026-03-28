@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { Activity, LayoutDashboard, Flame, Timer, CalendarClock, Settings } from 'lucide-react';
+import { Activity, LayoutDashboard, Flame, Timer, CalendarClock, Settings, CalendarDays } from 'lucide-react';
 
 const menu = [
-  { label: 'Dashboard',   href: '/orbit/habits',            Icon: LayoutDashboard },
-  { label: 'Streaks',     href: '/orbit/habits/streaks',    Icon: Flame },
-  { label: 'Focus Timer', href: '/orbit/habits/focus',      Icon: Timer },
-  { label: 'Countdowns',  href: '/orbit/habits/countdowns', Icon: CalendarClock },
+  { label: 'Dashboard',   href: '/orbit/habits',             Icon: LayoutDashboard },
+  { label: 'Calendar',    href: '/orbit/habits/calendar',    Icon: CalendarDays },
+  { label: 'Streaks',     href: '/orbit/habits/streaks',     Icon: Flame },
+  { label: 'Focus Timer', href: '/orbit/habits/focus',       Icon: Timer },
+  { label: 'Countdowns',  href: '/orbit/habits/countdowns',  Icon: CalendarClock },
 ];
 
 export default function HabitsSidebar() {

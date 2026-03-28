@@ -1026,11 +1026,6 @@ export default function HabitsPage() {
         </div>
       )}
 
-      {/* Calendar section — between Habit grid and Streaks sidebar page */}
-      {!loading && habits.length > 0 && (
-        <CalendarSection habits={habits} />
-      )}
-
       {/* Mobile FAB */}
       <button onClick={() => setShowModal(true)}
         className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-amber-600 text-white shadow-lg hover:bg-amber-700 transition md:hidden">
