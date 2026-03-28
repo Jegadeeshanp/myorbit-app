@@ -49,11 +49,6 @@ export default function HabitsStreaksPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Streaks</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Your habit momentum at a glance</p>
-      </div>
-
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}</div>
       ) : sorted.length === 0 ? (

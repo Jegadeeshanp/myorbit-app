@@ -196,52 +196,37 @@ export default function VitalsPage() {
   const today = useMemo(() => new Date(), []);
   const todayStr = today.toISOString().slice(0, 10);
 
-  // ── 6-month rolling average income / expense ──────────────────────────────
-  // Looks back up to 6 calendar months (including the current partial month).
-  // If only 1 month has data, uses that month alone; grows to 6 as history builds.
-  // Matches exactly what is visible on the Transactions page — no date < today cap.
-  const { monthlyIncome, monthlyExpense, avgMonthCount } = useMemo(() => {
+  // ── Current-month income / expense — matches TransactionList exactly ─────
+  // Uses the same two rules TransactionList uses for its summary cards:
+  //   1. Exclude system categories (Opening Balance, Balance Adjustment) from both sides.
+  //   2. Exclude user-exempted categories (Investment, SIP, …) from expense only.
+  // No "date <= today" cap — the full calendar month is counted, same as the
+  // Transactions page when filtered to the current month.
+  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
+
+  const { monthlyIncome, monthlyExpense } = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
     const curYear  = today.getFullYear();
     const curMonth = today.getMonth();
 
-    const monthTotals = new Map<string, { income: number; expense: number }>();
+    let income  = 0;
+    let expense = 0;
 
     for (const t of state.transactions) {
+      // Skip system / internal categories on both sides
+      if (SYSTEM_CATS.includes(t.category)) continue;
+
       const d = new Date(t.date);
-      const yr = d.getFullYear();
-      const mo = d.getMonth();
-
-      // Only consider the last 6 calendar months (0 = current, 5 = oldest)
-      const monthsBack = (curYear - yr) * 12 + (curMonth - mo);
-      if (monthsBack < 0 || monthsBack >= 6) continue;
-
-      const key = `${yr}-${mo}`;
-      if (!monthTotals.has(key)) monthTotals.set(key, { income: 0, expense: 0 });
-      const entry = monthTotals.get(key)!;
+      if (d.getFullYear() !== curYear || d.getMonth() !== curMonth) continue;
 
       if (t.type === 'income') {
-        entry.income += t.amount;
+        income += t.amount;
       } else if (t.type === 'expense' && !excluded.includes(t.category)) {
-        entry.expense += Math.abs(t.amount);
+        expense += Math.abs(t.amount);
       }
     }
 
-    const count = monthTotals.size;
-    if (count === 0) return { monthlyIncome: 0, monthlyExpense: 0, avgMonthCount: 0 };
-
-    let totalIncome = 0;
-    let totalExpense = 0;
-    for (const v of monthTotals.values()) {
-      totalIncome  += v.income;
-      totalExpense += v.expense;
-    }
-
-    return {
-      monthlyIncome:  Math.round(totalIncome  / count),
-      monthlyExpense: Math.round(totalExpense / count),
-      avgMonthCount:  count,
-    };
+    return { monthlyIncome: Math.round(income), monthlyExpense: Math.round(expense) };
   }, [state.transactions, today]);
 
   // Emergency fund = Cash + Bank (savings) accounts only
@@ -358,8 +343,8 @@ export default function VitalsPage() {
             {/* Auto-pulled tiles */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Monthly Income',  value: fmt(monthlyIncome),  color: 'text-emerald-700', sub: avgMonthCount > 1 ? `${avgMonthCount}-mo avg` : 'Current month' },
-                { label: 'Monthly Expense', value: fmt(monthlyExpense), color: 'text-rose-600',    sub: avgMonthCount > 1 ? `${avgMonthCount}-mo avg` : 'Current month' },
+                { label: 'Monthly Income',  value: fmt(monthlyIncome),  color: 'text-emerald-700', sub: 'This month' },
+                { label: 'Monthly Expense', value: fmt(monthlyExpense), color: 'text-rose-600',    sub: 'This month' },
                 { label: 'Liquid Assets',   value: fmt(liquidAssets),   color: 'text-blue-700',    sub: 'Bank + Wallets' },
               ].map(t => (
                 <div key={t.label} className="rounded-xl bg-gray-50 p-3">
@@ -410,7 +395,7 @@ export default function VitalsPage() {
             detail={
               <>
                 <p>Income: <span className="font-semibold text-emerald-700">{fmt(monthlyIncome)}</span> · Expense: <span className="font-semibold text-rose-600">{fmt(monthlyExpense)}</span></p>
-                <p>Saving <span className={`font-semibold ${savingsRate >= 0.2 ? 'text-emerald-700' : 'text-amber-600'}`}>{Math.round(savingsRate * 100)}%</span> of income <span className="text-gray-400">({avgMonthCount > 1 ? `${avgMonthCount}-mo avg` : 'current month'})</span></p>
+                <p>Saving <span className={`font-semibold ${savingsRate >= 0.2 ? 'text-emerald-700' : 'text-amber-600'}`}>{Math.round(savingsRate * 100)}%</span> of income this month</p>
                 {fiYears !== null && <p className="text-gray-400 mt-0.5">FI estimate at current pace: ~{fiYears} yrs</p>}
               </>
             }

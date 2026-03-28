@@ -4,17 +4,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/orbit/habits':            'Dashboard',
-  '/orbit/habits/streaks':    'Streaks',
-  '/orbit/habits/focus':      'Focus Timer',
-  '/orbit/habits/countdowns': 'Countdowns',
+  '/orbit/habits':             'Dashboard',
+  '/orbit/habits/calendar':    'Calendar',
+  '/orbit/habits/streaks':     'Streaks',
+  '/orbit/habits/focus':       'Focus Timer',
+  '/orbit/habits/countdowns':  'Countdowns',
 };
 
 const PAGE_SUBTITLES: Record<string, string> = {
-  '/orbit/habits':            'Build systems that compound over time.',
-  '/orbit/habits/streaks':    'Your habit consistency and longest streaks at a glance.',
-  '/orbit/habits/focus':      'Deep work sessions with Pomodoro-style focus blocks.',
-  '/orbit/habits/countdowns': 'Important dates and milestone countdowns.',
+  '/orbit/habits':             'Build systems that compound over time.',
+  '/orbit/habits/calendar':    'Track your habit completion across days and months.',
+  '/orbit/habits/streaks':     'Your habit consistency and longest streaks at a glance.',
+  '/orbit/habits/focus':       'Deep work sessions with Pomodoro-style focus blocks.',
+  '/orbit/habits/countdowns':  'Important dates and milestone countdowns.',
 };
 
 const MyOrbitBadge = () => (
