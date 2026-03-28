@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
         priority: priority || 'none',
         dueDate: dueDate || null,
         dueTime: dueTime || null,
-        tags:    tags ? JSON.stringify(tags) : '[]',
+        tags:    Array.isArray(tags) ? JSON.stringify(tags) : (typeof tags === 'string' ? tags : '[]'),
         listId:  listId || null,
       },
       include: { subtasks: true, list: true },

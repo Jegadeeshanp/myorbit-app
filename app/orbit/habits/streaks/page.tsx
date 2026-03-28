@@ -48,7 +48,7 @@ export default function HabitsStreaksPage() {
   const sorted = [...habits].sort((a, b) => getStreakCount(b.logs) - getStreakCount(a.logs));
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Streaks</h1>
         <p className="text-sm text-gray-500 mt-0.5">Your habit momentum at a glance</p>

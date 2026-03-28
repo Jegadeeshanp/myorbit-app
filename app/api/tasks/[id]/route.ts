@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.priority !== undefined && { priority: body.priority }),
         ...(body.dueDate !== undefined && { dueDate: body.dueDate }),
         ...(body.dueTime !== undefined && { dueTime: body.dueTime }),
-        ...(body.tags !== undefined && { tags: JSON.stringify(body.tags) }),
+        ...(body.tags !== undefined && { tags: Array.isArray(body.tags) ? JSON.stringify(body.tags) : (typeof body.tags === 'string' ? body.tags : '[]') }),
         ...(body.listId !== undefined && { listId: body.listId }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),

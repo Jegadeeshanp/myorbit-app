@@ -654,7 +654,7 @@ export default function TasksPage() {
       if (opts?.reminder && opts.reminder !== 'none') extraTags.push(`reminder:${opts.reminder}`);
       if (opts?.repeat && opts.repeat !== 'none') extraTags.push(`repeat:${opts.repeat}`);
       const allTags = [...baseTags, ...extraTags];
-      const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, listId: listId || null, dueDate, dueTime: opts?.dueTime || null, priority: opts?.priority ?? 'none', tags: JSON.stringify(allTags) }) });
+      const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, listId: listId || null, dueDate, dueTime: opts?.dueTime || null, priority: opts?.priority ?? 'none', tags: allTags }) });
       if (!res.ok) throw new Error();
       const task = await res.json();
 
@@ -683,15 +683,17 @@ export default function TasksPage() {
   };
 
   const handleComplete = async (id: string) => {
+    const ct = tasks.find(t => t.id === id);
     try {
-      const ct = tasks.find(t => t.id === id);
       const res = await fetch(`/api/tasks/${id}/complete`, { method: 'PATCH' }); if (!res.ok) throw new Error();
       setTasks(prev => prev.filter(t => t.id !== id));
       if (ct && belongsToCurrentSelection(ct, selected)) setCompletedTasks(prev => [{ ...ct, status: 'completed' }, ...prev]);
       setRefreshKey(k => k + 1); toast('Task completed!');
+    } catch { toast('Failed to complete', 'error'); return; }
 
-      // If task is linked to a habit, log it as done for today
-      if (ct) {
+    // If task is linked to a habit, log it as done for today — silent failure
+    if (ct) {
+      try {
         const tags: string[] = (() => { try { return JSON.parse(ct.tags || '[]'); } catch { return []; } })();
         const habitTag = tags.find(t => t.startsWith('habit:'));
         if (habitTag) {
@@ -703,8 +705,8 @@ export default function TasksPage() {
             body: JSON.stringify({ date: today }),
           });
         }
-      }
-    } catch { toast('Failed to complete', 'error'); }
+      } catch { /* habit log failure must not affect task UX */ }
+    }
   };
   const handleDelete = async (id: string) => {
     try { await fetch(`/api/tasks/${id}`, { method: 'DELETE' }); setTasks(p => p.filter(t => t.id !== id)); setCompletedTasks(p => p.filter(t => t.id !== id)); setRefreshKey(k => k + 1); toast('Moved to deleted'); }
@@ -739,7 +741,16 @@ export default function TasksPage() {
     return groups;
   }, [tasks, selected, todayStr, searchQuery]);
 
-  const getListName = (v: string) => { if (v.startsWith('list:')) { const l = lists.find(i => i.id === v.replace('list:', '')); return l ? `${l.emoji || '📋'} ${l.name}` : 'List'; } return SMART_LABELS[v] || v; };
+  const getListName = (v: string) => {
+    if (v.startsWith('list:')) {
+      const l = lists.find(i => i.id === v.replace('list:', ''));
+      if (!l) return 'List';
+      // Only prepend emoji if it's an actual emoji (≤2 code points), not a Lucide icon name string
+      const isActualEmoji = l.emoji && [...l.emoji].length <= 2;
+      return isActualEmoji ? `${l.emoji} ${l.name}` : l.name;
+    }
+    return SMART_LABELS[v] || v;
+  };
   const listLabel = getListName(selected);
   const listSubtitle = selected === 'today' ? 'Only tasks due today are shown here.' : selected === 'next7' ? 'Tasks grouped from today through next seven days.' : selected === 'inbox' ? 'Tasks waiting to be scheduled.' : 'Tasks inside the selected list.';
   const focusCreateTask = () => { setView('tasks'); setActiveTask(null); if (typeof window !== 'undefined' && window.innerWidth < 768) setShowFab(true); else window.setTimeout(() => inputRef.current?.focus(), 80); };

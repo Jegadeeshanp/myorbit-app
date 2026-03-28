@@ -51,7 +51,7 @@ function buildTag(prefix: string, value: string) { return `${prefix}:${value}`; 
 function extractTag(tags: string[], prefix: string, fallback: string) {
   const hit = tags.find(t => t.startsWith(`${prefix}:`)); return hit ? hit.slice(prefix.length + 1) : fallback;
 }
-function visibleTags(tags: string[]) { return tags.filter(t => !t.startsWith('repeat:') && !t.startsWith('reminder:')); }
+function visibleTags(tags: string[]) { return tags.filter(t => !t.startsWith('repeat:') && !t.startsWith('reminder:') && !t.startsWith('habit:')); }
 
 // ── Auto-growing textarea ─────────────────────────────────────────────────────
 function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {

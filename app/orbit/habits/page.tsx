@@ -884,6 +884,11 @@ export default function HabitsPage() {
         <TodayHabitsSection habits={habits} today={today} onLog={handleLog} />
       )}
 
+      {/* Calendar section — between overview and streaks */}
+      {!loading && habits.length > 0 && (
+        <CalendarSection habits={habits} />
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
@@ -923,11 +928,6 @@ export default function HabitsPage() {
             <HabitCard key={habit.id} habit={habit} dates={dates} onLog={handleLog} onDelete={handleDelete} />
           ))}
         </div>
-      )}
-
-      {/* Calendar section */}
-      {!loading && habits.length > 0 && (
-        <CalendarSection habits={habits} />
       )}
 
       {/* Mobile FAB */}
