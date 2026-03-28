@@ -157,7 +157,9 @@ function LiabilityDotsMenu({
   onPay, onEdit, onDelete,
 }: { onPay: () => void; onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -168,16 +170,25 @@ function LiabilityDotsMenu({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropUp(window.innerHeight - rect.bottom < 150);
+    }
+    setOpen(v => !v);
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-30 w-36 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1">
+        <div className={`absolute right-0 ${dropUp ? 'bottom-9' : 'top-9'} z-30 w-36 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1`}>
           <button
             onClick={() => { onPay(); setOpen(false); }}
             className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"

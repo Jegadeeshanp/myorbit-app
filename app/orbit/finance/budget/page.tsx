@@ -41,9 +41,9 @@ export default function BudgetPage() {
     // Total planned = sum of all budget limits
     const planned = budgets.reduce((sum, b) => sum + (b.budget ?? 0), 0);
 
-    // Net Balance = income - all expenses this month (past only)
+    // Net Balance = income - expenses this month (past only), excluding Opening Balance & Balance Adjustment
     const totalExpense = transactions
-      .filter(t => t.type === 'expense' && thisMonthPast(t))
+      .filter(t => t.type === 'expense' && thisMonthPast(t) && !SYSTEM_CATS.includes(t.category))
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     return { moneyIn, planned, net: moneyIn - totalExpense };

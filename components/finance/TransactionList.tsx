@@ -196,21 +196,30 @@ function groupByMonth(txs: Transaction[]) {
 // ── Dots menu per row (works for both mobile and desktop) ─────────────────
 function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropUp(window.innerHeight - rect.bottom < 120);
+    }
+    setOpen(v => !v);
+  }
   return (
     <div ref={ref} className="relative flex-none">
-      <button onClick={() => setOpen(v => !v)}
+      <button ref={btnRef} onClick={handleOpen}
         className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition">
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-30 w-32 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1">
+        <div className={`absolute right-0 ${dropUp ? 'bottom-9' : 'top-9'} z-30 w-32 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1`}>
           <button onClick={() => { onEdit(); setOpen(false); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
             <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-400" /> Edit
@@ -337,12 +346,12 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
     // Income card: real income only — exclude Opening Balance & Balance Adjustment
-    const income   = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-    // Expense card: excludes user-exempted categories (e.g. Investment)
-    const expense  = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    // Net: income card value minus ALL expenses (includes exempted categories)
-    const allExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, net: income - allExpense, count: filtered.length };
+    const income = filtered.filter(t => t.type === 'income' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0);
+    // Expense card: excludes Opening Balance, Balance Adjustment, and user-exempted categories from settings
+    const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category) && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Net Balance: income minus expenses (excludes Opening Balance/Balance Adjustment, but includes user-exempted categories)
+    const netExpense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, net: income - netExpense, count: filtered.length };
   }, [filtered]);
 
   return (

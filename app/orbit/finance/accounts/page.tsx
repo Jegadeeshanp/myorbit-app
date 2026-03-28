@@ -6,6 +6,7 @@ import { StandardCard, CreditCardCard } from '@/components/finance/AccountCard';
 import AddAccountModal from '@/components/finance/AddAccountModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { Account, useFinance } from '@/lib/financeStore';
+import { getExcludedExpenseCategories } from '@/lib/customCategoryStore';
 import { AccountsSkeleton } from '@/components/finance/SkeletonLoader';
 
 function fmt(v: number) {
@@ -49,10 +50,12 @@ export default function AccountsPage() {
     // Total Balance = Balance - Credit Used
     const totalBalance = liquidBalance - creditUsed;
 
-    // Spend = total of ALL expense transactions (all time, no month filter)
+    // Spend = expenses excluding Opening Balance, Balance Adjustment, and user-excluded categories
     const today2 = new Date().toISOString().slice(0, 10);
+    const SPEND_SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
+    const excludedCats = getExcludedExpenseCategories();
     const totalExpenses = state.transactions
-      .filter(t => t.type === 'expense' && t.date <= today2)
+      .filter(t => t.type === 'expense' && t.date <= today2 && !SPEND_SYSTEM_CATS.includes(t.category) && !excludedCats.includes(t.category))
       .reduce((s, t) => s + Math.abs(t.amount), 0);
 
     const byType: Record<Account['type'], Account[]> = {
