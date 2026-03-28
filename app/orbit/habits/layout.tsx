@@ -1,5 +1,6 @@
 import HabitsSidebar from '@/components/habits/HabitsSidebar';
 import HabitsTopBar from '@/components/habits/HabitsTopBar';
+import HabitsMobileNav from '@/components/habits/HabitsMobileNav';
 import ToastContainer from '@/components/Toast';
 
 export default function HabitsLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export default function HabitsLayout({ children }: { children: React.ReactNode }
           {children}
         </main>
       </div>
+      <HabitsMobileNav />
       <ToastContainer />
     </div>
   );
