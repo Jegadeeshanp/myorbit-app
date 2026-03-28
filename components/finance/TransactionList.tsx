@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, type CSSProperties } from 'react';
 import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
   Truck, Search, Trash2, ChevronDown, ChevronRight, TrendingUp,
@@ -196,30 +196,31 @@ function groupByMonth(txs: Transaction[]) {
 // ── Dots menu per row (works for both mobile and desktop) ─────────────────
 function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => { if (!(e.target as Element).closest('[data-tx-menu]')) setOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
   function handleOpen() {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setDropUp(window.innerHeight - rect.bottom < 120);
-    }
+    if (!btnRef.current) { setOpen(v => !v); return; }
+    const rect = btnRef.current.getBoundingClientRect();
+    const style: CSSProperties = { position: 'fixed', zIndex: 9999, width: '128px', right: `${window.innerWidth - rect.right}px` };
+    if (window.innerHeight - rect.bottom >= 80) style.top = `${rect.bottom + 4}px`;
+    else style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    setMenuStyle(style);
     setOpen(v => !v);
   }
   return (
-    <div ref={ref} className="relative flex-none">
+    <div className="flex-none">
       <button ref={btnRef} onClick={handleOpen}
         className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition">
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
-        <div className={`absolute right-0 ${dropUp ? 'bottom-9' : 'top-9'} z-30 w-32 rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1`}>
+        <div data-tx-menu style={menuStyle} className="rounded-xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg py-1">
           <button onClick={() => { onEdit(); setOpen(false); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
             <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-400" /> Edit

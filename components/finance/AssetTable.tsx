@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type CSSProperties } from 'react';
 import { Asset } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig } from '@/lib/assetCategories';
@@ -20,53 +20,46 @@ type Props = {
 // ── Dots menu for mobile card ─────────────────────────────────────────────
 function CardMenu({ onEdit, onDelete }: { onEdit?: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (!(e.target as Element).closest('[data-asset-menu]')) setOpen(false);
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
   function handleOpen() {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setDropUp(window.innerHeight - rect.bottom < 150);
-    }
+    if (!btnRef.current) { setOpen(v => !v); return; }
+    const rect = btnRef.current.getBoundingClientRect();
+    const menuH = onEdit ? 80 : 44;
+    const style: CSSProperties = { position: 'fixed', zIndex: 9999, width: '144px', right: `${window.innerWidth - rect.right}px` };
+    if (window.innerHeight - rect.bottom >= menuH) style.top = `${rect.bottom + 4}px`;
+    else style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    setMenuStyle(style);
     setOpen(v => !v);
   }
 
   return (
-    <div ref={ref} className="relative flex-none">
-      <button
-        ref={btnRef}
-        onClick={handleOpen}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 transition"
-      >
+    <div className="flex-none">
+      <button ref={btnRef} onClick={handleOpen}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 transition">
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
-        <div className={`absolute right-0 ${dropUp ? 'bottom-9' : 'top-9'} z-20 w-36 rounded-xl border border-gray-100 bg-white shadow-lg py-1`}>
+        <div data-asset-menu style={menuStyle} className="rounded-xl border border-gray-100 bg-white shadow-lg py-1">
           {onEdit && (
-            <button
-              onClick={() => { onEdit(); setOpen(false); }}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-            >
-              <Pencil className="h-3.5 w-3.5 text-gray-400" />
-              Edit
+            <button onClick={() => { onEdit(); setOpen(false); }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition">
+              <Pencil className="h-3.5 w-3.5 text-gray-400" />Edit
             </button>
           )}
-          <button
-            onClick={() => { onDelete(); setOpen(false); }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 transition"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
+          <button onClick={() => { onDelete(); setOpen(false); }}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 transition">
+            <Trash2 className="h-3.5 w-3.5" />Delete
           </button>
         </div>
       )}
