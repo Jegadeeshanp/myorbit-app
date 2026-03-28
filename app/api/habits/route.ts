@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
     const body = await req.json();
-    const { name, color, iconEmoji, goalPerDay, isCountBased, daysOfWeek } = body;
+    const { name, color, iconEmoji, goalPerDay, isCountBased, daysOfWeek, timeOfDay, customTime } = body;
     if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 });
     const maxOrder = await prisma.habit.aggregate({
       where: { userId },
@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
         isCountBased: isCountBased || false,
         daysOfWeek: daysOfWeek ? JSON.stringify(daysOfWeek) : '[1,2,3,4,5,6,7]',
         sortOrder: (maxOrder._max.sortOrder ?? 0) + 1,
+        timeOfDay: timeOfDay || 'all_day',
+        customTime: customTime || null,
       },
       include: { logs: true },
     });

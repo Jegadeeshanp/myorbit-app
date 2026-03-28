@@ -200,9 +200,11 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
 
 
 // ── More Options Dropdown (desktop) ──────────────────────────────────────
-function MoreOptionsDropdown({ priority, listId, lists, tags, onPriority, onList, onTag, onClose }: {
+function MoreOptionsDropdown({ priority, listId, lists, tags, addToHabit, onPriority, onList, onTag, onAddToHabit, onClose }: {
   priority: string; listId: string; lists: TaskList[]; tags: string[];
+  addToHabit?: boolean;
   onPriority: (v: string) => void; onList: (v: string) => void; onTag: (t: string) => void;
+  onAddToHabit?: (v: boolean) => void;
   onClose: () => void;
 }) {
   const [tagInput, setTagInput] = useState('');
@@ -296,6 +298,17 @@ function MoreOptionsDropdown({ priority, listId, lists, tags, onPriority, onList
         </div>
       )}
 
+      {/* Add to Habit tracker */}
+      <label className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/60">
+        <input
+          type="checkbox"
+          checked={addToHabit ?? false}
+          onChange={e => onAddToHabit?.(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+        />
+        <span className="flex-1 text-left">Add to Habit tracker</span>
+      </label>
+
       {/* Attachment */}
       <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/60">
         <Paperclip className="h-4 w-4 text-gray-400" />
@@ -310,7 +323,7 @@ function MoreOptionsDropdown({ priority, listId, lists, tags, onPriority, onList
 // ── Mini Calendar ──────────────────────────────────────────────────────────
 function AddTaskOverlay({ onClose, onAdd, lists }: {
   onClose: () => void;
-  onAdd: (title: string, opts: { dueDate?: string; priority?: string; tags?: string[]; listId?: string }) => Promise<void>;
+  onAdd: (title: string, opts: { dueDate?: string; priority?: string; tags?: string[]; listId?: string; addToHabit?: boolean }) => Promise<Task | null>;
   lists: TaskList[];
 }) {
   const [title, setTitle]         = useState('');
@@ -325,6 +338,7 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
   const [showList, setShowList]   = useState(false);
   const [showTag, setShowTag]     = useState(false);
   const [showMore, setShowMore]   = useState(false);
+  const [addToHabit, setAddToHabit] = useState(false);
   const [calStyle, setCalStyle]   = useState<CSSProperties>({});
   const [priStyle, setPriStyle]   = useState<CSSProperties>({});
   const [listStyle, setListStyle] = useState<CSSProperties>({});
@@ -371,7 +385,7 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
   const submit = async () => {
     if (!title.trim() || adding) return;
     setAdding(true);
-    try { await onAdd(title.trim(), { dueDate: dueDate || undefined, priority, tags, listId: listId || undefined }); onClose(); }
+    try { await onAdd(title.trim(), { dueDate: dueDate || undefined, priority, tags, listId: listId || undefined, addToHabit }); onClose(); }
     finally { setAdding(false); }
   };
 
@@ -492,6 +506,15 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
         {/* More options */}
         {showMore && (
           <div className="border-t border-gray-100 dark:border-gray-700/60">
+            <label className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
+              <input
+                type="checkbox"
+                checked={addToHabit}
+                onChange={e => setAddToHabit(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>Add to Habit tracker</span>
+            </label>
             <button onClick={() => setShowMore(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
               <Paperclip className="h-4 w-4 text-gray-400" /><span>Attach file</span>
             </button>
@@ -585,6 +608,7 @@ export default function TasksPage() {
   const [desktopPriority, setDesktopPriority] = useState('none');
   const [desktopListId, setDesktopListId]     = useState('');
   const [desktopTags, setDesktopTags]         = useState<string[]>([]);
+  const [desktopAddToHabit, setDesktopAddToHabit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Resizable panel drag
@@ -618,8 +642,8 @@ export default function TasksPage() {
   useEffect(() => { fetchTasks(); fetchLists(); }, [fetchTasks, fetchLists]);
   useEffect(() => { if (searchParams.get('create') === '1') setShowFab(true); }, [searchParams]);
 
-  const handleAddTask = async (titleArg?: string, opts?: { dueDate?: string; dueTime?: string; reminder?: string; repeat?: string; priority?: string; tags?: string[]; listId?: string }) => {
-    const t = (titleArg ?? newTaskTitle).trim(); if (!t) return;
+  const handleAddTask = async (titleArg?: string, opts?: { dueDate?: string; dueTime?: string; reminder?: string; repeat?: string; priority?: string; tags?: string[]; listId?: string; addToHabit?: boolean }): Promise<Task | null> => {
+    const t = (titleArg ?? newTaskTitle).trim(); if (!t) return null;
     setAddingTask(true);
     try {
       const listId = opts?.listId ?? (selected.startsWith('list:') ? selected.replace('list:', '') : null);
@@ -633,17 +657,53 @@ export default function TasksPage() {
       const res = await fetch('/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t, listId: listId || null, dueDate, dueTime: opts?.dueTime || null, priority: opts?.priority ?? 'none', tags: JSON.stringify(allTags) }) });
       if (!res.ok) throw new Error();
       const task = await res.json();
+
+      // If addToHabit is requested, create a habit and link it to the task
+      if (opts?.addToHabit && task.id) {
+        const habitRes = await fetch('/api/habits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: t, color: '#10B981', iconEmoji: '✅' }),
+        });
+        if (habitRes.ok) {
+          const habit = await habitRes.json();
+          const existingTags = JSON.parse(task.tags || '[]');
+          await fetch(`/api/tasks/${task.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags: JSON.stringify([...existingTags, `habit:${habit.id}`]) }),
+          });
+          task.tags = JSON.stringify([...existingTags, `habit:${habit.id}`]);
+        }
+      }
+
       setTasks(prev => [task, ...prev]); setNewTaskTitle(''); setRefreshKey(k => k + 1); setActiveTask(task);
-    } catch { toast('Failed to add task', 'error'); } finally { setAddingTask(false); }
+      return task;
+    } catch { toast('Failed to add task', 'error'); return null; } finally { setAddingTask(false); }
   };
 
   const handleComplete = async (id: string) => {
     try {
-      const res = await fetch(`/api/tasks/${id}/complete`, { method: 'PATCH' }); if (!res.ok) throw new Error();
       const ct = tasks.find(t => t.id === id);
+      const res = await fetch(`/api/tasks/${id}/complete`, { method: 'PATCH' }); if (!res.ok) throw new Error();
       setTasks(prev => prev.filter(t => t.id !== id));
       if (ct && belongsToCurrentSelection(ct, selected)) setCompletedTasks(prev => [{ ...ct, status: 'completed' }, ...prev]);
       setRefreshKey(k => k + 1); toast('Task completed!');
+
+      // If task is linked to a habit, log it as done for today
+      if (ct) {
+        const tags: string[] = (() => { try { return JSON.parse(ct.tags || '[]'); } catch { return []; } })();
+        const habitTag = tags.find(t => t.startsWith('habit:'));
+        if (habitTag) {
+          const habitId = habitTag.replace('habit:', '');
+          const today = new Date().toISOString().split('T')[0];
+          await fetch(`/api/habits/${habitId}/log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: today }),
+          });
+        }
+      }
     } catch { toast('Failed to complete', 'error'); }
   };
   const handleDelete = async (id: string) => {
@@ -756,9 +816,9 @@ export default function TasksPage() {
                       <input ref={inputRef} className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-600" placeholder="Add task" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
                         onKeyDown={e => {
                           if (e.key === 'Enter') {
-                            void handleAddTask(undefined, { dueDate: desktopDueDate || undefined, dueTime: desktopDueTime || undefined, reminder: desktopReminder, repeat: desktopRepeat, priority: desktopPriority, listId: desktopListId || undefined, tags: desktopTags });
+                            void handleAddTask(undefined, { dueDate: desktopDueDate || undefined, dueTime: desktopDueTime || undefined, reminder: desktopReminder, repeat: desktopRepeat, priority: desktopPriority, listId: desktopListId || undefined, tags: desktopTags, addToHabit: desktopAddToHabit });
                             setDesktopDueDate(''); setDesktopDueTime(''); setDesktopReminder('none'); setDesktopRepeat('none');
-                            setDesktopPriority('none'); setDesktopListId(''); setDesktopTags([]);
+                            setDesktopPriority('none'); setDesktopListId(''); setDesktopTags([]); setDesktopAddToHabit(false);
                             setShowDesktopCal(false); setShowDesktopMore(false);
                           }
                         }}
@@ -798,7 +858,9 @@ export default function TasksPage() {
                         <div className="absolute right-0 top-full z-50 mt-1">
                           <MoreOptionsDropdown
                             priority={desktopPriority} listId={desktopListId} lists={lists} tags={desktopTags}
+                            addToHabit={desktopAddToHabit}
                             onPriority={setDesktopPriority} onList={setDesktopListId} onTag={t => setDesktopTags(p => p.includes(t) ? p.filter(i => i !== t) : [...p, t])}
+                            onAddToHabit={setDesktopAddToHabit}
                             onClose={() => setShowDesktopMore(false)}
                           />
                         </div>

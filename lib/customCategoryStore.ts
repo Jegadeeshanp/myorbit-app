@@ -94,6 +94,53 @@ export function removeCustomIncomeCategory(name: string): void {
   write(INCOME_KEY, read(INCOME_KEY).filter(c => c.name !== name));
 }
 
+// ── DB sync helpers ─────────────────────────────────────────────────────────
+// Call once on app mount to pull DB categories into localStorage.
+
+export async function syncCategoriesFromDB(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    const res = await fetch('/api/categories');
+    if (!res.ok) return;
+    const cats: { name: string; type: string; icon: string }[] = await res.json();
+    const expense = cats.filter(c => c.type === 'expense');
+    const income  = cats.filter(c => c.type === 'income');
+    // Merge into localStorage without removing existing
+    const existingExpense = read(EXPENSE_KEY);
+    const existingIncome  = read(INCOME_KEY);
+    const mergedExpense = [...existingExpense];
+    for (const c of expense) {
+      if (!mergedExpense.find(e => e.name === c.name)) mergedExpense.push({ name: c.name, icon: c.icon || 'Package' });
+    }
+    const mergedIncome = [...existingIncome];
+    for (const c of income) {
+      if (!mergedIncome.find(e => e.name === c.name)) mergedIncome.push({ name: c.name, icon: c.icon || 'Package' });
+    }
+    write(EXPENSE_KEY, mergedExpense);
+    write(INCOME_KEY, mergedIncome);
+  } catch { /* silent */ }
+}
+
+export async function addCustomExpenseCategoryDB(name: string, iconName: string = 'Package'): Promise<void> {
+  addCustomExpenseCategory(name, iconName);
+  try { await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, type: 'expense', icon: iconName }) }); } catch { /* silent */ }
+}
+
+export async function addCustomIncomeCategoryDB(name: string, iconName: string = 'Package'): Promise<void> {
+  addCustomIncomeCategory(name, iconName);
+  try { await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, type: 'income', icon: iconName }) }); } catch { /* silent */ }
+}
+
+export async function removeCustomExpenseCategoryDB(id: string, name: string): Promise<void> {
+  removeCustomExpenseCategory(name);
+  try { await fetch(`/api/categories/${id}`, { method: 'DELETE' }); } catch { /* silent */ }
+}
+
+export async function removeCustomIncomeCategoryDB(id: string, name: string): Promise<void> {
+  removeCustomIncomeCategory(name);
+  try { await fetch(`/api/categories/${id}`, { method: 'DELETE' }); } catch { /* silent */ }
+}
+
 // ── Excluded Expense Categories ─────────────────────────────────────────────
 // Categories whose transactions are hidden from expense totals (e.g. Investment)
 

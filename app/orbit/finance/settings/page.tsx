@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload } from 'lucide-react';
+import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload, Plus } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
@@ -9,10 +9,14 @@ import {
   getAllExpenseCategories,
   getExcludedExpenseCategories,
   setExcludedExpenseCategories,
+  addCustomExpenseCategory,
+  addCustomIncomeCategory,
+  removeCustomExpenseCategory,
+  removeCustomIncomeCategory,
 } from '@/lib/customCategoryStore';
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
-const TABS = ['Preferences', 'Recurring', 'Data'] as const;
+const TABS = ['Preferences', 'Recurring', 'Categories', 'Data'] as const;
 type Tab = typeof TABS[number];
 
 const CURRENCIES = [
@@ -74,12 +78,76 @@ export default function FinanceSettingsPage() {
     });
   }
 
-  // Mock recurring transactions
-  const [recurring] = useState([
-    { id: '1', description: 'Netflix',       amount: 649,   frequency: 'Monthly', nextDate: '2026-04-01', category: 'Subscriptions', type: 'expense' as const },
-    { id: '2', description: 'Salary',         amount: 95000, frequency: 'Monthly', nextDate: '2026-04-01', category: 'Salary',        type: 'income'  as const },
-    { id: '3', description: 'SIP – Nifty 50', amount: 5000,  frequency: 'Monthly', nextDate: '2026-04-05', category: 'Investment',    type: 'expense' as const },
-  ]);
+  // Real recurring data: liabilities (EMI) + assets with SIP config
+  const recurring = useMemo(() => {
+    const items: { id: string; description: string; amount: number; frequency: string; nextDate: string; category: string; type: 'expense' | 'income' }[] = [];
+    // Liabilities → monthly EMI payments
+    for (const l of state.liabilities) {
+      if (l.emisLeft > 0 && l.nextDueDate) {
+        items.push({
+          id: l.id,
+          description: l.name,
+          amount: l.monthlyEmi,
+          frequency: 'Monthly',
+          nextDate: l.nextDueDate,
+          category: 'Loan EMI',
+          type: 'expense',
+        });
+      }
+    }
+    // Assets with SIP config
+    for (const a of state.assets) {
+      if (a.investmentType === 'sip' && a.sipConfig) {
+        const cfg = a.sipConfig;
+        items.push({
+          id: a.id,
+          description: `SIP – ${a.name}`,
+          amount: a.invested,
+          frequency: cfg.frequency ? (cfg.frequency.charAt(0).toUpperCase() + cfg.frequency.slice(1)) : 'Monthly',
+          nextDate: cfg.startDate ?? new Date().toISOString().split('T')[0],
+          category: 'Investment',
+          type: 'expense',
+        });
+      }
+    }
+    return items;
+  }, [state.liabilities, state.assets]);
+
+  // Categories state
+  const [catType, setCatType] = useState<'expense' | 'income'>('expense');
+  const [dbCats, setDbCats] = useState<{ id: string; name: string; type: string; icon: string }[]>([]);
+  const [newCatName, setNewCatName] = useState('');
+  const [catLoading, setCatLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'Categories') {
+      fetch('/api/categories').then(r => r.json()).then(d => { if (Array.isArray(d)) setDbCats(d); });
+    }
+  }, [activeTab]);
+
+  const handleAddCat = async () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    setCatLoading(true);
+    try {
+      const res = await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, type: catType }) });
+      if (res.ok) {
+        const cat = await res.json();
+        setDbCats(prev => [...prev.filter(c => !(c.name === name && c.type === catType)), cat]);
+        setNewCatName('');
+        // also update localStorage
+        if (catType === 'expense') addCustomExpenseCategory(name);
+        else addCustomIncomeCategory(name);
+      }
+    } finally { setCatLoading(false); }
+  };
+
+  const handleDeleteCat = async (cat: { id: string; name: string; type: string }) => {
+    await fetch(`/api/categories/${cat.id}`, { method: 'DELETE' });
+    setDbCats(prev => prev.filter(c => c.id !== cat.id));
+    if (cat.type === 'expense') removeCustomExpenseCategory(cat.name);
+    else removeCustomIncomeCategory(cat.name);
+  };
 
   const handleExportJSON = () => {
     const data = {
@@ -329,6 +397,65 @@ export default function FinanceSettingsPage() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Categories ── */}
+      {activeTab === 'Categories' && (
+        <div className="space-y-4">
+          {/* Type toggle */}
+          <div className="flex rounded-2xl border border-gray-100 bg-gray-50/60 p-1">
+            {(['expense', 'income'] as const).map(t => (
+              <button key={t} onClick={() => setCatType(t)}
+                className={`flex-1 rounded-xl py-2 text-sm font-semibold capitalize transition ${catType === t ? t === 'expense' ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {/* Add category */}
+          <div className="flex gap-2">
+            <input value={newCatName} onChange={e => setNewCatName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddCat()}
+              placeholder="New category name…"
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" />
+            <button onClick={handleAddCat} disabled={!newCatName.trim() || catLoading}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-40">
+              <Plus className="h-4 w-4" /> Add
+            </button>
+          </div>
+
+          {/* Category list */}
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-gray-100 bg-gray-50/60 px-5 py-3 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                {catType === 'expense' ? 'Expense' : 'Income'} categories
+              </p>
+              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-500">
+                {dbCats.filter(c => c.type === catType).length} custom
+              </span>
+            </div>
+            {dbCats.filter(c => c.type === catType).length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">No custom categories yet</div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {dbCats.filter(c => c.type === catType).map(cat => (
+                  <div key={cat.id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/50 transition">
+                    <span className="text-sm font-medium text-gray-800">{cat.name}</span>
+                    <button onClick={() => handleDeleteCat(cat)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 text-center">
+            Default categories (Food, Transport, etc.) are always available and cannot be deleted.
+            Custom categories added here appear in all transaction and budget forms.
+          </p>
         </div>
       )}
 

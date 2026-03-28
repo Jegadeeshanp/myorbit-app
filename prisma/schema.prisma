@@ -25,6 +25,7 @@ model User {
   sessions            Session[]
   passwordResetTokens PasswordResetToken[]
   preferences         UserPreferences?
+  userCategories      UserCategory[]
   goals               Goal[]
   taskLists           TaskList[]
   tasks               Task[]
@@ -161,6 +162,19 @@ model UserPreferences {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model UserCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      String   // expense | income
+  icon      String?  @default("Package")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name, type])
+  @@index([userId])
+}
+
 // ── Goals Module ──────────────────────────────────────────────────────────
 
 model Goal {
@@ -277,6 +291,8 @@ model Habit {
   daysOfWeek   String     @default("[1,2,3,4,5,6,7]") // JSON array
   sortOrder    Int        @default(0)
   isActive     Boolean    @default(true)
+  timeOfDay    String?    @default("all_day") // all_day | morning | noon | evening | night | custom
+  customTime   String?    // HH:MM for custom time
   createdAt    DateTime   @default(now())
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs         HabitLog[]
