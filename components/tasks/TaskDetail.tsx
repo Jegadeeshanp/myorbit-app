@@ -248,6 +248,7 @@ function TaskPanel({
   const [showDate,    setShowDate]    = useState(false);
   const [calPos,      setCalPos]      = useState<React.CSSProperties | null>(null);
   const [showPri,     setShowPri]     = useState(false);
+  const [priDropUp,   setPriDropUp]   = useState(false);
   const [showList,    setShowList]    = useState(false);
   const [openAction,  setOpenAction]  = useState<null|'subtask'|'tag'|'delete'|'moveto'>(null);
   const [newStTitle,  setNewStTitle]  = useState('');
@@ -373,13 +374,19 @@ function TaskPanel({
 
         {/* Priority */}
         <div className="relative">
-          <button ref={priBtnRef} onClick={() => setShowPri(v=>!v)}
+          <button ref={priBtnRef} onClick={() => {
+            if (!showPri && priBtnRef.current) {
+              const rect = priBtnRef.current.getBoundingClientRect();
+              setPriDropUp(window.innerHeight - rect.bottom < 160);
+            }
+            setShowPri(v=>!v);
+          }}
             className={`flex h-7 w-7 items-center justify-center rounded-lg transition hover:bg-gray-100 dark:hover:bg-gray-700 ${PRIORITY_FLAG_COLOR[priority]}`}
           >
             <Flag className="h-4 w-4"/>
           </button>
           {showPri && (
-            <div ref={priRef} className="absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
+            <div ref={priRef} className={`absolute right-0 ${priDropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-50 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]`}>
               {(['high','medium','low','none'] as const).map(level => (
                 <button key={level} type="button"
                   onClick={() => { onPriorityChange(level); void onSave({priority:level, dueDate:localDueDate, dueTime:localDueTime}); setShowPri(false); }}

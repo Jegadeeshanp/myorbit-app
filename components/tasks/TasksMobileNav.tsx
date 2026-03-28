@@ -30,6 +30,7 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
   const [lists, setLists]           = useState<TaskList[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [menuListId, setMenuListId] = useState<string | null>(null);
+  const [menuDropUp, setMenuDropUp] = useState(false);
   const [newName, setNewName]       = useState('');
   const [newEmoji, setNewEmoji]     = useState('📋');
   const [newColor, setNewColor]     = useState('#10B981');
@@ -203,7 +204,7 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
                       <span className="h-3 w-3 flex-none rounded-full" style={{ backgroundColor: list.color || '#10B981' }} />
                       {/* ... menu trigger */}
                       <button
-                        onClick={e => { e.stopPropagation(); setMenuListId(isMenuOpen ? null : list.id); }}
+                        onClick={e => { e.stopPropagation(); if (!isMenuOpen) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setMenuDropUp(window.innerHeight - rect.bottom < 220); } setMenuListId(isMenuOpen ? null : list.id); }}
                         className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition"
                       >
                         <MoreH className="h-4 w-4" />
@@ -212,7 +213,7 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
 
                     {/* Per-list dropdown */}
                     {isMenuOpen && (
-                      <div className="absolute right-0 top-full z-[100] mt-1 w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
+                      <div className={`absolute right-0 ${menuDropUp ? 'bottom-full mb-1' : 'top-full mt-1'} z-[100] w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]`}>
                         <button onClick={() => openEditList(list)} className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
                           <Pencil className="h-4 w-4 text-gray-400" />Edit
                         </button>
