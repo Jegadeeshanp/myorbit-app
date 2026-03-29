@@ -15,6 +15,8 @@ import TaskDetail from '@/components/tasks/TaskDetail';
 import TaskCalendar from '@/components/tasks/TaskCalendar';
 import { toast } from '@/components/Toast';
 import TasksMobileNav from '@/components/tasks/TasksMobileNav';
+import { getListIcon } from '@/lib/taskListIcons';
+import CustomRepeatPicker, { buildCustomLabel } from '@/components/tasks/CustomRepeatPicker';
 
 type Subtask = { id: string; title: string; isDone: boolean };
 type TaskList = { id: string; name: string; emoji?: string; color?: string };
@@ -97,36 +99,19 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
     { v: '1h', label: '1 hour early' },
     { v: '1d', label: '1 day early' },
   ];
-  const CUSTOM_DAYS = ['S','M','T','W','T','F','S'];
-  const [customDays, setCustomDays] = React.useState<number[]>(() => {
-    if (localRepeat.startsWith('custom:')) return localRepeat.replace('custom:','').split(',').map(Number).filter(n=>!isNaN(n));
-    return [];
-  });
+  const [showCustomRepeat, setShowCustomRepeat] = useState(false);
 
   const timeLabel = localTime || 'None';
   const getRepeatLabel = (v: string) => {
     if (v === 'none') return 'None';
     if (v === 'weekdays') return 'Weekdays';
     if (v === 'weekends') return 'Weekends';
-    if (v.startsWith('custom:')) {
-      const days = v.replace('custom:','').split(',').map(Number);
-      return days.map(d => CUSTOM_DAYS[d] ?? '').filter(Boolean).join(' ') || 'Custom';
-    }
+    if (v.startsWith('custom:')) return buildCustomLabel(v);
     if (v === 'custom') return 'Custom';
     return v.charAt(0).toUpperCase() + v.slice(1);
   };
   const repeatLabel = getRepeatLabel(localRepeat);
   const remindLabel = REMIND_OPTS.find(o => o.v === localRemind)?.label ?? 'None';
-
-  const toggleCustomDay = (day: number) => {
-    setCustomDays(prev => {
-      const next = prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort((a,b)=>a-b);
-      const val = next.length > 0 ? `custom:${next.join(',')}` : 'custom';
-      setLocalRepeat(val);
-      onRepeatChange?.(val);
-      return next;
-    });
-  };
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] w-72" onClick={e => e.stopPropagation()}>
@@ -190,15 +175,15 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
                 ))}
               </div>
             )}
-            {showRepeat && (
+            {showRepeat && !showCustomRepeat && (
               <div className="py-1">
                 <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Repeat</p>
                 {REPEAT_OPTS.map(o => {
                   const isSelected = o.v === 'custom' ? localRepeat.startsWith('custom') : localRepeat === o.v;
                   return (
                     <button key={o.v} onClick={() => {
-                      if (o.v === 'custom') { setLocalRepeat('custom'); onRepeatChange?.('custom'); }
-                      else { setLocalRepeat(o.v); onRepeatChange?.(o.v); setCustomDays([]); setShowRepeat(false); }
+                      if (o.v === 'custom') { setShowCustomRepeat(true); }
+                      else { setLocalRepeat(o.v); onRepeatChange?.(o.v); setShowRepeat(false); }
                     }}
                       className={`flex w-full items-center gap-2 py-2 text-sm transition ${o.indent ? 'pl-8 pr-4' : 'px-4'} ${isSelected ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5'}`}
                     >
@@ -208,20 +193,14 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
                     </button>
                   );
                 })}
-                {/* Custom day picker */}
-                {localRepeat.startsWith('custom') && (
-                  <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700">
-                    <p className="text-[10px] text-gray-400 mb-1.5">Select days</p>
-                    <div className="flex gap-1">
-                      {CUSTOM_DAYS.map((label, day) => (
-                        <button key={day} type="button" onClick={() => toggleCustomDay(day)}
-                          className={`flex-1 h-8 rounded-lg text-xs font-bold transition ${customDays.includes(day) ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
-                        >{label}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
+            )}
+            {showCustomRepeat && (
+              <CustomRepeatPicker
+                initialValue={localRepeat}
+                onSave={v => { setLocalRepeat(v); onRepeatChange?.(v); setShowCustomRepeat(false); setShowRepeat(false); }}
+                onCancel={() => setShowCustomRepeat(false)}
+              />
             )}
           </div>
         )}
@@ -313,7 +292,9 @@ function MoreOptionsDropdown({ priority, listId, lists, tags, addToHabit, onPrio
             <button key={l.id} onClick={() => { onList(l.id); setShowLists(false); }}
               className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition ${listId === l.id ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
             >
-              <span>{l.emoji || '📋'}</span>
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded" style={{ backgroundColor: `${l.color || '#10B981'}22` }}>
+                {getListIcon(l.emoji, 'h-3.5 w-3.5')}
+              </span>
               <span className="flex-1 truncate">{l.name}</span>
               {listId === l.id && <Check className="h-3.5 w-3.5 text-emerald-500" />}
             </button>
@@ -514,9 +495,10 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
               <button key={l.id} onClick={() => { setListId(l.id); setShowList(false); }}
                 className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${listId === l.id ? 'bg-gray-50 dark:bg-white/5' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
               >
-                <span>{l.emoji || '📋'}</span>
+                <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg" style={{ backgroundColor: `${l.color || '#10B981'}22` }}>
+                  {getListIcon(l.emoji, 'h-4 w-4')}
+                </span>
                 <span className="flex-1 truncate text-left text-gray-700 dark:text-gray-300">{l.name}</span>
-                {l.color && <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ backgroundColor: l.color }} />}
                 {listId === l.id && <Check className="h-3.5 w-3.5 text-emerald-500" />}
               </button>
             ))}
@@ -611,7 +593,9 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
           </button>
           <button ref={listBtnRef} onClick={openListPicker}
             className={`flex items-center gap-1.5 rounded-xl px-2 py-2 text-sm transition ${showList || listId ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-            {selectedList ? <span className="text-base">{selectedList.emoji || '📋'}</span> : <ListIcon className="h-5 w-5" />}
+            {selectedList
+              ? <span className="flex h-6 w-6 items-center justify-center rounded" style={{ backgroundColor: `${selectedList.color || '#10B981'}22` }}>{getListIcon(selectedList.emoji, 'h-4 w-4')}</span>
+              : <ListIcon className="h-5 w-5" />}
             {selectedList && <span className="text-xs font-medium max-w-[60px] truncate">{selectedList.name}</span>}
           </button>
           <button onClick={() => { closeAll(); setShowTag(v => !v); }}
@@ -778,7 +762,7 @@ export default function TasksPage() {
     else { setTasks(p => p.map(t => t.id === updated.id ? updated : t)); setCompletedTasks(p => p.filter(t => t.id !== updated.id)); }
     setActiveTask(updated); setRefreshKey(k => k + 1);
   };
-  const handleTaskDeleted = (id: string) => { setTasks(p => p.filter(t => t.id !== id)); setCompletedTasks(p => p.filter(t => t.id !== id)); setActiveTask(null); };
+  const handleTaskDeleted = async (id: string) => { await handleDelete(id); setActiveTask(null); };
   const handleTaskCompleted = (id: string) => { handleComplete(id); setActiveTask(null); };
   const toggleGroup = (label: string) => { setCollapsedGroups(p => { const n = new Set(p); n.has(label) ? n.delete(label) : n.add(label); return n; }); };
 
