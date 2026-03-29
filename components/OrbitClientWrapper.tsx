@@ -22,7 +22,6 @@ function ForegroundNotificationListener() {
             icon:    '/icons/icon-192.png',
             badge:   '/icons/icon-72.png',
             tag:     payload.data?.tag ?? 'myorbit',
-            renotify: true,
           }))
           .catch(console.error);
       } else {
