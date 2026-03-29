@@ -23,11 +23,12 @@ const isStandalone = () => {
   return window.matchMedia('(display-mode: standalone)').matches;
 };
 
-// ── "Already enabled" state with test button ──────────────────────────────
-function NotificationsEnabled() {
-  const [sending, setSending] = useState(false);
-  const [sent, setSent]       = useState(false);
-  const [err, setErr]         = useState<string | null>(null);
+// ── "Already enabled" state with test + disable buttons ───────────────────
+function NotificationsEnabled({ onDisable }: { onDisable: () => void }) {
+  const [sending,    setSending]    = useState(false);
+  const [sent,       setSent]       = useState(false);
+  const [disabling,  setDisabling]  = useState(false);
+  const [err,        setErr]        = useState<string | null>(null);
 
   const sendTest = async () => {
     setSending(true);
@@ -46,6 +47,19 @@ function NotificationsEnabled() {
     }
   };
 
+  const disable = async () => {
+    setDisabling(true);
+    setErr(null);
+    try {
+      await fetch('/api/save-token', { method: 'DELETE' });
+      onDisable();
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setDisabling(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -58,11 +72,20 @@ function NotificationsEnabled() {
         <button
           type="button"
           onClick={sendTest}
-          disabled={sending}
+          disabled={sending || disabling}
           className="flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-gray-600 px-3 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-60"
         >
           <Send className="h-3.5 w-3.5" />
           {sending ? 'Sending…' : sent ? 'Sent ✓' : 'Send test'}
+        </button>
+        <button
+          type="button"
+          onClick={disable}
+          disabled={disabling || sending}
+          className="flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-gray-600 px-3 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-60"
+        >
+          <BellOff className="h-3.5 w-3.5" />
+          {disabling ? 'Disabling…' : 'Disable'}
         </button>
       </div>
       {err && (
@@ -132,7 +155,7 @@ export default function EnableNotifications() {
 
   if (status === 'checking' || status === 'unsupported') return null;
 
-  if (status === 'granted') return <NotificationsEnabled />;
+  if (status === 'granted') return <NotificationsEnabled onDisable={() => setStatus('idle')} />;
 
   if (status === 'denied') {
     return (
