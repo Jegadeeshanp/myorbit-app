@@ -8,6 +8,7 @@ import {
   ChevronRight, Search, X, Flag, Tag, Menu,
   List as ListIcon, MoreHorizontal, Paperclip, Maximize2,
   ChevronLeft, ChevronDown, Check, Bell, RotateCcw, Clock,
+  ArrowUpDown,
 } from 'lucide-react';
 import TasksSidebar from '@/components/tasks/TasksSidebar';
 import TaskItem from '@/components/tasks/TaskItem';
@@ -27,6 +28,16 @@ type Task = {
   list?: { id: string; name: string; emoji?: string; color?: string } | null;
 };
 type TaskGroup = { label: string; tasks: Task[] };
+type SortBy = 'custom' | 'date' | 'title' | 'tag' | 'priority';
+
+const SORT_OPTIONS: { v: SortBy; l: string }[] = [
+  { v: 'custom',   l: 'Custom' },
+  { v: 'date',     l: 'Date' },
+  { v: 'title',    l: 'Title' },
+  { v: 'tag',      l: 'Tag' },
+  { v: 'priority', l: 'Priority' },
+];
+const PRI_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 };
 
 const SMART_LABELS: Record<string, string> = { today: 'Today', inbox: 'Inbox', next7: 'Next 7 Days' };
 
@@ -638,6 +649,8 @@ export default function TasksPage() {
   const [searchOpen, setSearchOpen]   = useState(false);
   const [panelWidth, setPanelWidth]   = useState(42); // % for right panel
   const [dragging, setDragging]       = useState(false);
+  const [sortBy, setSortBy]           = useState<SortBy>('custom');
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [showDesktopCal, setShowDesktopCal]   = useState(false);
   const [showDesktopMore, setShowDesktopMore] = useState(false);
   const [desktopDueDate, setDesktopDueDate]   = useState('');
@@ -767,24 +780,45 @@ export default function TasksPage() {
   const toggleGroup = (label: string) => { setCollapsedGroups(p => { const n = new Set(p); n.has(label) ? n.delete(label) : n.add(label); return n; }); };
 
   const todayStr = todayString();
+
+  const sortTaskList = (list: Task[]): Task[] => {
+    if (sortBy === 'custom') return list;
+    return [...list].sort((a, b) => {
+      if (sortBy === 'date') {
+        const da = a.dueDate ?? '9999'; const db = b.dueDate ?? '9999';
+        if (da !== db) return da < db ? -1 : 1;
+        return (a.dueTime ?? '') < (b.dueTime ?? '') ? -1 : 1;
+      }
+      if (sortBy === 'title') return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+      if (sortBy === 'tag') {
+        const ta = (JSON.parse(a.tags || '[]') as string[])[0] ?? '';
+        const tb = (JSON.parse(b.tags || '[]') as string[])[0] ?? '';
+        return ta.localeCompare(tb);
+      }
+      if (sortBy === 'priority') return (PRI_ORDER[a.priority] ?? 3) - (PRI_ORDER[b.priority] ?? 3);
+      return 0;
+    });
+  };
+
   const groupedTasks = useMemo((): TaskGroup[] => {
     const filtered = searchQuery ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())) : tasks;
-    if (selected === 'inbox') return [{ label: 'Inbox', tasks: filtered }];
+    if (selected === 'inbox') return [{ label: 'Inbox', tasks: sortTaskList(filtered) }];
     if (selected === 'next7') {
       const order = [0,1,2,3,4,5,6,7].map(i => todayString(i));
       const grouped = new Map<string, Task[]>();
       for (const t of filtered) { const key = t.dueDate || todayStr; grouped.set(key, [...(grouped.get(key) ?? []), t]); }
-      return order.filter(d => grouped.has(d)).map(d => ({ label: next7Label(d), tasks: grouped.get(d) ?? [] }));
+      return order.filter(d => grouped.has(d)).map(d => ({ label: next7Label(d), tasks: sortTaskList(grouped.get(d) ?? []) }));
     }
     const overdue: Task[] = [], todayTasks: Task[] = [], upcoming: Task[] = [];
     for (const t of filtered) { if (!t.dueDate || t.dueDate === todayStr) todayTasks.push(t); else if (t.dueDate < todayStr) overdue.push(t); else upcoming.push(t); }
     const groups: TaskGroup[] = [];
-    if (overdue.length) groups.push({ label: 'Overdue', tasks: overdue });
-    if (todayTasks.length) groups.push({ label: `Today ${todayTasks.length}`, tasks: todayTasks });
-    if (upcoming.length) groups.push({ label: 'Upcoming', tasks: upcoming });
+    if (overdue.length) groups.push({ label: 'Overdue', tasks: sortTaskList(overdue) });
+    if (todayTasks.length) groups.push({ label: `Today ${todayTasks.length}`, tasks: sortTaskList(todayTasks) });
+    if (upcoming.length) groups.push({ label: 'Upcoming', tasks: sortTaskList(upcoming) });
     if (groups.length === 0) groups.push({ label: 'Today', tasks: [] });
     return groups;
-  }, [tasks, selected, todayStr, searchQuery]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, selected, todayStr, searchQuery, sortBy]);
 
   const getListName = (v: string) => {
     if (v.startsWith('list:')) {
@@ -923,6 +957,37 @@ export default function TasksPage() {
                       </>
                     )}
                   </div>
+                  {/* Sort bar */}
+                  {!loading && (tasks.length > 0 || completedTasks.length > 0) && (
+                    <div className="relative flex justify-end">
+                      <button
+                        onClick={() => setShowSortMenu(v => !v)}
+                        className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition ${showSortMenu ? 'bg-white text-gray-900 shadow-sm dark:bg-[#1C1F26] dark:text-white' : 'text-gray-500 hover:bg-white hover:text-gray-700 dark:text-gray-400 dark:hover:bg-[#1C1F26]'}`}
+                      >
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                        <span>Sort by</span>
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">{SORT_OPTIONS.find(o => o.v === sortBy)?.l}</span>
+                        <ChevronDown className={`h-3 w-3 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
+                      </button>
+                      {showSortMenu && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
+                          <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#1C1F26]">
+                            <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sort by</p>
+                            {SORT_OPTIONS.map(o => (
+                              <button key={o.v} onClick={() => { setSortBy(o.v); setShowSortMenu(false); }}
+                                className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition ${sortBy === o.v ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}`}
+                              >
+                                <span className="flex-1 text-left">{o.l}</span>
+                                {sortBy === o.v && <Check className="h-3.5 w-3.5 text-blue-500" />}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {loading ? (
                     <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700/60 dark:bg-[#1C1F26]"><div className="h-5 w-5 flex-none rounded-md bg-gray-200 dark:bg-gray-700" /><div className="h-4 flex-1 rounded bg-gray-200 dark:bg-gray-700" /></div>)}</div>
                   ) : tasks.length === 0 && completedTasks.length === 0 ? (
