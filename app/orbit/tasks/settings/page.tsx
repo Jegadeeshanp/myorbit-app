@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 import CreateTaskFab from '@/components/tasks/CreateTaskFab';
+import EnableNotifications from '@/components/EnableNotifications';
 import { getListIcon } from '@/lib/taskListIcons';
 
 type TaskList = {
@@ -222,31 +223,34 @@ export default function TasksSettingsPage() {
         ) : null}
 
         {activeTab === 'Notifications' ? (
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <div className="border-b border-white/5 px-5 py-4">
-              <h2 className="text-sm font-semibold text-gray-200">Notifications</h2>
-              <p className="mt-0.5 text-xs text-gray-500">Configure when you receive reminders</p>
-            </div>
-            <div className="divide-y divide-white/5">
-              {[
-                { label: 'Task reminders', sub: 'Get notified when tasks are due', value: notifReminder, set: setNotifReminder },
-                { label: 'Overdue alerts', sub: 'Get notified when tasks become overdue', value: notifOverdue, set: setNotifOverdue },
-                { label: 'Daily digest', sub: "Morning summary of today's tasks", value: notifDigest, set: setNotifDigest },
-              ].map(({ label, sub, value, set }) => (
-                <div key={label} className="flex items-center gap-4 px-5 py-4">
-                  <Bell className="h-5 w-5 flex-none text-gray-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-200">{label}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">{sub}</p>
+          <div className="space-y-4">
+            <EnableNotifications />
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+              <div className="border-b border-white/5 px-5 py-4">
+                <h2 className="text-sm font-semibold text-gray-200">Notifications</h2>
+                <p className="mt-0.5 text-xs text-gray-500">Configure when you receive reminders</p>
+              </div>
+              <div className="divide-y divide-white/5">
+                {[
+                  { label: 'Task reminders', sub: 'Get notified when tasks are due', value: notifReminder, set: setNotifReminder },
+                  { label: 'Overdue alerts', sub: 'Get notified when tasks become overdue', value: notifOverdue, set: setNotifOverdue },
+                  { label: 'Daily digest', sub: "Morning summary of today's tasks", value: notifDigest, set: setNotifDigest },
+                ].map(({ label, sub, value, set }) => (
+                  <div key={label} className="flex items-center gap-4 px-5 py-4">
+                    <Bell className="h-5 w-5 flex-none text-gray-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-200">{label}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{sub}</p>
+                    </div>
+                    <button
+                      onClick={() => set(v => !v)}
+                      className={`relative inline-flex h-6 w-11 flex-none rounded-full border-2 border-transparent transition-colors ${value ? 'bg-sky-600' : 'bg-white/10'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => set(v => !v)}
-                    className={`relative inline-flex h-6 w-11 flex-none rounded-full border-2 border-transparent transition-colors ${value ? 'bg-sky-600' : 'bg-white/10'}`}
-                  >
-                    <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         ) : null}
