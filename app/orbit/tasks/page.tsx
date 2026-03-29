@@ -957,37 +957,6 @@ export default function TasksPage() {
                       </>
                     )}
                   </div>
-                  {/* Sort bar */}
-                  {!loading && (tasks.length > 0 || completedTasks.length > 0) && (
-                    <div className="relative flex justify-end">
-                      <button
-                        onClick={() => setShowSortMenu(v => !v)}
-                        className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition ${showSortMenu ? 'bg-white text-gray-900 shadow-sm dark:bg-[#1C1F26] dark:text-white' : 'text-gray-500 hover:bg-white hover:text-gray-700 dark:text-gray-400 dark:hover:bg-[#1C1F26]'}`}
-                      >
-                        <ArrowUpDown className="h-3.5 w-3.5" />
-                        <span>Sort by</span>
-                        <span className="font-semibold text-gray-700 dark:text-gray-200">{SORT_OPTIONS.find(o => o.v === sortBy)?.l}</span>
-                        <ChevronDown className={`h-3 w-3 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
-                      </button>
-                      {showSortMenu && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
-                          <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#1C1F26]">
-                            <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sort by</p>
-                            {SORT_OPTIONS.map(o => (
-                              <button key={o.v} onClick={() => { setSortBy(o.v); setShowSortMenu(false); }}
-                                className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition ${sortBy === o.v ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}`}
-                              >
-                                <span className="flex-1 text-left">{o.l}</span>
-                                {sortBy === o.v && <Check className="h-3.5 w-3.5 text-blue-500" />}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
                   {loading ? (
                     <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700/60 dark:bg-[#1C1F26]"><div className="h-5 w-5 flex-none rounded-md bg-gray-200 dark:bg-gray-700" /><div className="h-4 flex-1 rounded bg-gray-200 dark:bg-gray-700" /></div>)}</div>
                   ) : tasks.length === 0 && completedTasks.length === 0 ? (
@@ -1002,11 +971,41 @@ export default function TasksPage() {
                     <div className="space-y-2">
                       {groupedTasks.map(group => (
                         <div key={group.label} className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700/60 dark:bg-[#1C1F26]">
-                          <button onClick={() => toggleGroup(group.label)} className="flex w-full items-center gap-2 px-4 py-3 text-left">
-                            <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${!collapsedGroups.has(group.label) ? 'rotate-90' : ''}`} />
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">{group.label}</span>
-                            <span className="ml-1 text-sm text-gray-400">{group.tasks.length}</span>
-                          </button>
+                          <div className="flex items-center pr-2">
+                            <button onClick={() => toggleGroup(group.label)} className="flex flex-1 items-center gap-2 px-4 py-3 text-left">
+                              <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${!collapsedGroups.has(group.label) ? 'rotate-90' : ''}`} />
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">{group.label}</span>
+                              <span className="ml-1 text-sm text-gray-400">{group.tasks.length}</span>
+                            </button>
+                            {/* Sort icon — only on first group */}
+                            {groupedTasks.indexOf(group) === 0 && (
+                              <div className="relative flex-none">
+                                <button
+                                  onClick={e => { e.stopPropagation(); setShowSortMenu(v => !v); }}
+                                  title="Sort tasks"
+                                  className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${showSortMenu || sortBy !== 'custom' ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'}`}
+                                >
+                                  <ArrowUpDown className="h-3.5 w-3.5" />
+                                </button>
+                                {showSortMenu && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
+                                    <div className="absolute right-0 top-full z-50 mt-1 w-40 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#1C1F26]">
+                                      <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sort by</p>
+                                      {SORT_OPTIONS.map(o => (
+                                        <button key={o.v} onClick={() => { setSortBy(o.v); setShowSortMenu(false); }}
+                                          className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition ${sortBy === o.v ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5'}`}
+                                        >
+                                          <span className="flex-1 text-left">{o.l}</span>
+                                          {sortBy === o.v && <Check className="h-3.5 w-3.5 text-blue-500" />}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           {!collapsedGroups.has(group.label) && <div className="space-y-0.5 px-2 pb-2">{group.tasks.map(task => <TaskItem key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} showList={!selected.startsWith('list:')} />)}</div>}
                         </div>
                       ))}
