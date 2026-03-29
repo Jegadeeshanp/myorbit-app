@@ -9,6 +9,7 @@ import {
   Pin, Copy, Share2, Trash2, Pencil,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
+import { getListIcon } from '@/lib/taskListIcons';
 
 type TaskList = { id: string; name: string; emoji?: string; color?: string; _count?: { tasks: number } };
 
@@ -193,9 +194,9 @@ export default function TasksMobileNav({ selected, view, onSelect, onViewChange,
                       onClick={() => { onSelect(`list:${list.id}`); onViewChange('tasks'); setListsOpen(false); setMenuListId(null); }}
                       className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3.5 transition ${selected === `list:${list.id}` ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20' : 'border-gray-200 bg-white dark:border-gray-700/60 dark:bg-[#1C1F26]'}`}
                     >
-                      {/* Emoji icon with color bg */}
-                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl text-xl" style={{ backgroundColor: `${list.color || '#10B981'}22` }}>
-                        {list.emoji || '📋'}
+                      {/* List icon with color bg */}
+                      <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl" style={{ backgroundColor: `${list.color || '#10B981'}22` }}>
+                        {getListIcon(list.emoji, 'h-5 w-5')}
                       </span>
                       <div className="min-w-0 flex-1 text-left">
                         <p className="font-semibold text-gray-900 dark:text-white truncate">{list.name}</p>

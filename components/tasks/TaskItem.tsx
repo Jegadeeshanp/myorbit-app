@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Clock, RotateCcw, Trash2, ChevronRight, Flag, Calendar } from 'lucide-react';
+import { Check, Clock, RotateCcw, Trash2, ChevronRight, Flag, Calendar, Layers } from 'lucide-react';
+import { getListIcon } from '@/lib/taskListIcons';
 
 type Task = {
   id: string;
@@ -148,11 +149,23 @@ export default function TaskItem({
         <div className="flex flex-none items-center gap-1.5 text-gray-400 dark:text-slate-400">
           {hasRepeat && <RotateCcw className="h-3.5 w-3.5 text-emerald-500" />}
 
+          {/* Subtask indicator */}
+          {hasSubtasks && (
+            <span className="flex items-center gap-0.5 text-gray-400 dark:text-slate-500">
+              <Layers className="h-3 w-3" />
+              <span className="text-[10px] leading-none">{task.subtasks.length}</span>
+            </span>
+          )}
+
           {/* Date/time label */}
           {dateInfo && (
             <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-400' : dateInfo.isTime ? 'text-sky-400' : 'text-gray-400 dark:text-slate-500'}`}>
               {dateInfo.isTime ? <Clock className="h-3.5 w-3.5" /> : <Calendar className="h-3 w-3" />}
               {dateInfo.label}
+              {/* Show time alongside date when both are set and date is the primary label */}
+              {!dateInfo.isTime && task.dueTime && (
+                <span className="text-sky-400">· {task.dueTime}</span>
+              )}
             </span>
           )}
 
@@ -161,8 +174,9 @@ export default function TaskItem({
 
           {/* List chip — only when showList=true and task belongs to a list */}
           {showList && task.list && (
-            <span className="max-w-[96px] truncate text-xs text-gray-500 dark:text-slate-500">
-              {task.list.emoji && [...task.list.emoji].length <= 2 ? `${task.list.emoji} ` : '📋 '}{task.list.name.slice(0, 8)}
+            <span className="flex items-center gap-1 max-w-[96px] text-xs text-gray-500 dark:text-slate-500">
+              {getListIcon(task.list.emoji, 'h-3 w-3 flex-none')}
+              <span className="truncate">{task.list.name.slice(0, 8)}</span>
             </span>
           )}
         </div>
