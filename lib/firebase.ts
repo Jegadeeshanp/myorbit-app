@@ -41,8 +41,8 @@ export async function requestPermission(): Promise<'granted' | 'denied' | 'unsup
 export async function registerAndGetToken(): Promise<string | null> {
   try {
     const supported = await isFCMSupported();
-    if (!supported) return null;
-    if (Notification.permission !== 'granted') return null;
+    if (!supported) throw new Error('FCM is not supported in this browser.');
+    if (Notification.permission !== 'granted') throw new Error('Notifications permission is not granted.');
 
     // Register (or reuse) our config-injected service worker
     const registration = await navigator.serviceWorker.register(
@@ -60,7 +60,7 @@ export async function registerAndGetToken(): Promise<string | null> {
     return token || null;
   } catch (err) {
     console.error('[FCM] Error getting token:', err);
-    return null;
+    throw err;
   }
 }
 
@@ -91,9 +91,13 @@ export async function saveTokenToServer(token: string): Promise<void> {
   const res = await fetch('/api/save-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify({ token, platform }),
   });
-  if (!res.ok) throw new Error('Failed to save FCM token');
+  if (!res.ok) {
+    const detail = await res.text().catch(() => res.statusText);
+    throw new Error(`Failed to save FCM token (${res.status} ${detail})`);
+  }
 }
 
 function detectPlatform(): string {

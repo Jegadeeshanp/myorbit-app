@@ -36,6 +36,18 @@ const securityHeaders = [
   },
 ];
 
+const workerCSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self'",
+  "connect-src 'self' https:",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
 const nextConfig: NextConfig = {
   // Prevent Prisma and bcrypt from being bundled for Edge/browser
   serverExternalPackages: ['@prisma/client', 'prisma', 'bcryptjs'],
@@ -46,6 +58,10 @@ const nextConfig: NextConfig = {
         // Apply security headers to all routes
         source: '/(.*)',
         headers: securityHeaders,
+      },
+      {
+        source: '/api/firebase-messaging-sw',
+        headers: [{ key: 'Content-Security-Policy', value: workerCSP }],
       },
     ];
   },
