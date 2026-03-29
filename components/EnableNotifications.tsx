@@ -11,6 +11,18 @@ import {
 
 type Status = 'checking' | 'unsupported' | 'idle' | 'loading' | 'granted' | 'denied';
 
+const isiOSDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(window.navigator.userAgent);
+};
+
+const isStandalone = () => {
+  if (typeof window === 'undefined') return false;
+  const nav = window.navigator as typeof window.navigator & { standalone?: boolean };
+  if (nav.standalone) return true;
+  return window.matchMedia('(display-mode: standalone)').matches;
+};
+
 export default function EnableNotifications() {
   const [status, setStatus]     = useState<Status>('checking');
   const [showInfo, setShowInfo] = useState(false);
@@ -42,6 +54,10 @@ export default function EnableNotifications() {
     setStatus('loading');
     setError(null);
     try {
+      if (isiOSDevice() && !isStandalone()) {
+        throw new Error('Install the app to your Home Screen (Safari → Share → Add to Home Screen) before enabling push on iPhone.');
+      }
+
       const perm = await requestPermission();
 
       if (perm === 'unsupported') { setStatus('unsupported'); return; }
