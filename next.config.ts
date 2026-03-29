@@ -60,7 +60,12 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // Apply Firebase-friendly CSP to both the legacy API route and the unified sw.js
         source: '/api/firebase-messaging-sw',
+        headers: [{ key: 'Content-Security-Policy', value: workerCSP }],
+      },
+      {
+        source: '/sw.js',
         headers: [{ key: 'Content-Security-Policy', value: workerCSP }],
       },
     ];

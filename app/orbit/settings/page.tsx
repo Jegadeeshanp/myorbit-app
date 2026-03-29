@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/authStore';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Settings, Users, Shield, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import AccountTab from '@/components/settings/AccountTab';
@@ -23,9 +22,8 @@ const TABS = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('account');
   const { auth, signOut } = useAuth();
-  const router = useRouter();
 
-  const handleSignOut = () => { signOut(); router.push('/signin'); };
+  const handleSignOut = () => signOut(); // nextSignOut handles redirect via callbackUrl
 
   return (
     <FinanceProvider>

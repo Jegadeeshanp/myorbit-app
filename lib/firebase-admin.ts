@@ -73,12 +73,13 @@ export async function sendToToken(
 /**
  * Send a notification to up to 500 FCM tokens at once.
  * Logs individual failures but does not throw.
+ * Returns the list of tokens that are no longer registered (so callers can clean them up).
  */
 export async function sendToTokens(
   tokens: string[],
   payload: NotificationPayload
-): Promise<void> {
-  if (!tokens.length) return;
+): Promise<string[]> {
+  if (!tokens.length) return [];
 
   const app = getAdminApp();
   const message: MulticastMessage = {
@@ -102,17 +103,31 @@ export async function sendToTokens(
   };
 
   const response = await app.messaging().sendEachForMulticast(message);
+  const staleTokens: string[] = [];
+
   if (response.failureCount > 0) {
     response.responses.forEach((r, i) => {
       if (!r.success) {
+        const code = r.error?.code ?? '';
         console.error(`[FCM] Token index ${i} failed:`, r.error?.message);
+        // Mark unregistered / invalid tokens for cleanup
+        if (
+          code === 'messaging/registration-token-not-registered' ||
+          code === 'messaging/invalid-registration-token' ||
+          r.error?.message === 'NotRegistered'
+        ) {
+          staleTokens.push(tokens[i]);
+        }
       }
     });
   }
+
+  return staleTokens;
 }
 
 /**
  * Send a notification to every registered device of a user.
+ * Automatically deletes stale / unregistered tokens from the DB.
  * Pass in the prisma client to avoid circular imports.
  */
 export async function sendToUser(
@@ -126,7 +141,15 @@ export async function sendToUser(
     select: { token: true },
   });
   const tokens = rows.map(r => r.token);
-  await sendToTokens(tokens, payload);
+  const staleTokens = await sendToTokens(tokens, payload);
+
+  // Clean up tokens FCM no longer recognises
+  if (staleTokens.length > 0) {
+    console.log(`[FCM] Removing ${staleTokens.length} stale token(s) for user ${userId}`);
+    await prismaClient.pushToken.deleteMany({
+      where: { userId, token: { in: staleTokens } },
+    });
+  }
 }
 
 // ── Convenience notification builders ────────────────────────────────────

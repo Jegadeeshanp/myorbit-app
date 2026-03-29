@@ -4,6 +4,7 @@ import { SessionProvider } from 'next-auth/react';
 import { AuthProvider } from '@/lib/authStore';
 import { ThemeProvider } from '@/lib/themeStore';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
+import NotificationListener from "@/components/NotificationListener"; 
 import './globals.css';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
@@ -26,13 +27,10 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-// Root layout does NOT call auth() — SessionProvider handles session
-// via its own cookie-based client fetch. auth() belongs in protected layouts.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Anti-flicker: apply saved theme before first paint */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})();`,
@@ -44,12 +42,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="MyOrbit" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
+
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
           <AuthProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <ThemeProvider>
+              <NotificationListener /> {/* ✅ ADD HERE */}
+              {children}
+            </ThemeProvider>
           </AuthProvider>
         </SessionProvider>
+
         <ServiceWorkerRegistration />
       </body>
     </html>

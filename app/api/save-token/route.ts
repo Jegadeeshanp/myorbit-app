@@ -4,6 +4,19 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
+// GET /api/save-token — check if current user has any registered tokens
+export async function GET() {
+  try {
+    const userId = await requireUserId();
+    const count = await prisma.pushToken.count({ where: { userId } });
+    return NextResponse.json({ hasToken: count > 0 });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
 // POST /api/save-token — register or refresh a device's FCM push token
 export async function POST(req: NextRequest) {
   try {

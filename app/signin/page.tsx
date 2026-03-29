@@ -25,7 +25,7 @@ export default function SignInPage() {
     setLoading(true);
     try {
       await signIn(email.trim(), password);
-      router.push('/orbit');
+      window.location.href = '/orbit';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.');
     } finally {

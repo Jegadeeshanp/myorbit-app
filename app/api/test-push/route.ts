@@ -7,18 +7,18 @@ export async function GET() {
     const record = await prisma.pushToken.findFirst();
 
     if (!record?.token) {
-      return NextResponse.json({ error: 'Token missing' }, { status: 400 });
+      return NextResponse.json({ error: 'No token found' }, { status: 400 });
     }
 
     await sendToToken(record.token, {
-      title: '🔥 Test Notification',
-      body: 'If you see this, everything works!',
+      title: '🔥 MyOrbit Test',
+      body: 'If you see this, push notifications work!',
       url: '/orbit/tasks',
     });
 
     return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Failed to send' }, { status: 500 });
   }
 }

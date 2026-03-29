@@ -53,7 +53,9 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await signUp(email.trim(), password, name.trim());
-      router.push('/orbit');
+      // Hard redirect so the browser picks up the new session cookie cleanly.
+      // router.push() is a client-side nav that can serve a stale JWT.
+      window.location.href = '/orbit';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed. Please try again.');
     } finally {

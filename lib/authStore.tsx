@@ -41,14 +41,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
       throw new Error(data.error ?? 'Sign up failed');
     }
 
-    // Auto sign-in after registration
+    // Clear any lingering session before signing in as the new user
+    await nextSignOut({ redirect: false });
+
+    // Sign in as the new user
     const result = await nextSignIn('credentials', {
       email,
       password,
       redirect: false,
     });
 
-    if (result?.error) {
+    if (result?.error || !result?.ok) {
       throw new Error('Account created but sign in failed. Please sign in manually.');
     }
   };

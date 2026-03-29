@@ -44,9 +44,9 @@ export async function registerAndGetToken(): Promise<string | null> {
     if (!supported) throw new Error('FCM is not supported in this browser.');
     if (Notification.permission !== 'granted') throw new Error('Notifications permission is not granted.');
 
-    // Register (or reuse) our config-injected service worker
+    // Register (or reuse) the unified SW that handles both caching and FCM
     const registration = await navigator.serviceWorker.register(
-      '/api/firebase-messaging-sw',
+      '/sw.js',
       { scope: '/' }
     );
     await navigator.serviceWorker.ready;
