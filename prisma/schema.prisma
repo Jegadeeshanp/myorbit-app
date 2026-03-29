@@ -34,6 +34,7 @@ model User {
   countdowns          Countdown[]
   healthEntries       HealthEntry[]
   workouts            Workout[]
+  pushTokens          PushToken[]
 }
 
 model Session {
@@ -379,6 +380,20 @@ model Workout {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ── Push Notifications (FCM) ───────────────────────────────────────────────
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("web") // web | ios | android
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

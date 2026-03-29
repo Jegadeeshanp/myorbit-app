@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTheme } from '@/lib/themeStore';
+import EnableNotifications from '@/components/EnableNotifications';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -90,6 +91,15 @@ export default function PreferencesTab() {
             <option value="orbit">My Orbit</option>
           </select>
         </Row>
+      </Section>
+
+      <Section title="Notifications">
+        <div className="space-y-2">
+          <p className="text-sm text-gray-500">
+            Receive push notifications for task reminders and habit check-ins.
+          </p>
+          <EnableNotifications />
+        </div>
       </Section>
 
       <Section title="Appearance">
