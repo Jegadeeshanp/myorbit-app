@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import {
-  Sun, Inbox, CalendarDays, Plus, Settings, User,
+  Sun, Inbox, CalendarDays, Plus, Settings, Calendar, User,
   MoreHorizontal, Pencil, Pin, Copy, Share2, Trash2, X,
 } from 'lucide-react';
 import { LIST_ICONS, getListIcon } from '@/lib/taskListIcons';

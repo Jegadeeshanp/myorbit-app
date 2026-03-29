@@ -716,7 +716,21 @@ function TodayHabitsSection({ habits, today, onLog }: {
   const groups = useMemo(() => {
     const grouped: Record<string, Habit[]> = {};
     for (const h of habits) {
-      const key = h.timeOfDay || 'all_day';
+      let key = h.timeOfDay || 'all_day';
+      // Backward compat: 'all' was an old value before 'all_day'
+      if (key === 'all') key = 'all_day';
+      // Custom time: bucket into morning/noon/evening/night based on hour
+      if (key === 'custom') {
+        if (h.customTime) {
+          const hour = parseInt(h.customTime.split(':')[0], 10);
+          if (hour >= 5 && hour < 12) key = 'morning';
+          else if (hour >= 12 && hour < 15) key = 'noon';
+          else if (hour >= 15 && hour < 20) key = 'evening';
+          else key = 'night';
+        } else {
+          key = 'all_day';
+        }
+      }
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(h);
     }
@@ -742,7 +756,7 @@ function TodayHabitsSection({ habits, today, onLog }: {
               {key !== 'all_day' && <Clock className="h-3.5 w-3.5 text-gray-400" />}
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 {groupLabel(key)}
-                {key !== 'all_day' && key !== 'custom' && (
+                {key !== 'all_day' && (
                   <span className="ml-1 font-normal normal-case">
                     ({TIME_OF_DAY_OPTIONS.find(o => o.value === key)?.time})
                   </span>
