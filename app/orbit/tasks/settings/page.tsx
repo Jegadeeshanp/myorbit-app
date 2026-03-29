@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 import CreateTaskFab from '@/components/tasks/CreateTaskFab';
+import { getListIcon } from '@/lib/taskListIcons';
 
 type TaskList = {
   id: string;
@@ -196,7 +197,9 @@ export default function TasksSettingsPage() {
                     const taskCount = list._count?.tasks ?? 0;
                     return (
                       <div key={list.id} className="flex items-center gap-3 border-b border-white/5 px-5 py-3 transition last:border-0 hover:bg-white/5">
-                        <span className="flex-none text-lg">{list.emoji || '📋'}</span>
+                        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg" style={{ backgroundColor: `${list.color || '#10B981'}22` }}>
+                          {getListIcon(list.emoji, 'h-4 w-4')}
+                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-gray-200">{list.name}</p>
                           <p className="text-xs text-gray-500">{taskCount} active task{taskCount !== 1 ? 's' : ''}</p>

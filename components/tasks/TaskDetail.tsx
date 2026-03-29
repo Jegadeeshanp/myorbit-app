@@ -183,8 +183,7 @@ function CustomRepeatPicker({ initialValue, onSave, onCancel }: {
   const numCls = (on: boolean) => `h-8 w-full flex items-center justify-center rounded-lg text-xs font-medium transition ${on ? 'bg-blue-500 text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onCancel}>
-      <div className="w-[22rem] rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1E2128] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="flex flex-col flex-1 min-h-0">
 
         {/* Period tabs */}
         <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
@@ -294,7 +293,6 @@ function CustomRepeatPicker({ initialValue, onSave, onCancel }: {
             OK
           </button>
         </div>
-      </div>
     </div>
   );
 }
@@ -357,8 +355,16 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1E2128] w-72 flex flex-col overflow-hidden h-full">
-      {/* Scrollable content */}
-      <div className="overflow-y-auto flex-1 min-h-0">
+      {/* Inline custom-repeat picker — replaces calendar when active */}
+      {showCustomRepeat && (
+        <CustomRepeatPicker
+          initialValue={repeat}
+          onSave={v => { setRepeat(v); setShowCustomRepeat(false); }}
+          onCancel={() => setShowCustomRepeat(false)}
+        />
+      )}
+      {/* Scrollable content — hidden while custom repeat is open */}
+      <div className={`overflow-y-auto flex-1 min-h-0 ${showCustomRepeat ? 'hidden' : ''}`}>
       {/* Quick chips */}
       <div className="flex gap-1 p-2 border-b border-gray-100 dark:border-gray-700/60">
         {QUICK.map(q => (
@@ -455,22 +461,14 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
         </button>
       </div>
 
-      {/* OK / Clear — always visible at bottom */}
-      <div className="flex-none flex gap-2 border-t border-gray-100 p-2 dark:border-gray-700">
+      {/* OK / Clear — hidden while custom repeat picker is open (it has its own Cancel/OK) */}
+      <div className={`flex-none flex gap-2 border-t border-gray-100 p-2 dark:border-gray-700 ${showCustomRepeat ? 'hidden' : ''}`}>
         <button type="button" onClick={()=>{setDueDate('');setDueTime('');setReminder('on-time');setRepeat('none');onClose();}}
           className="flex-1 rounded-xl border border-gray-200 py-2 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400">Clear</button>
         <button type="button" onClick={()=>{onSave();onClose();}}
           className="flex-1 rounded-xl bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-500">OK</button>
       </div>
 
-      {/* Custom repeat modal — rendered outside scroll so fixed positioning works */}
-      {showCustomRepeat && (
-        <CustomRepeatPicker
-          initialValue={repeat}
-          onSave={v => { setRepeat(v); setShowCustomRepeat(false); }}
-          onCancel={() => setShowCustomRepeat(false)}
-        />
-      )}
     </div>
   );
 }

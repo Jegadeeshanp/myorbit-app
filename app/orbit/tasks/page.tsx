@@ -764,7 +764,13 @@ export default function TasksPage() {
     }
   };
   const handleDelete = async (id: string) => {
-    try { await fetch(`/api/tasks/${id}`, { method: 'DELETE' }); setTasks(p => p.filter(t => t.id !== id)); setCompletedTasks(p => p.filter(t => t.id !== id)); setRefreshKey(k => k + 1); toast('Moved to deleted'); }
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      setTasks(p => p.filter(t => t.id !== id));
+      setCompletedTasks(p => p.filter(t => t.id !== id));
+      toast('Moved to deleted');
+    }
     catch { toast('Failed to delete', 'error'); }
   };
   const handleTaskUpdated = (updated: Task) => {
@@ -772,7 +778,7 @@ export default function TasksPage() {
     else { setTasks(p => p.map(t => t.id === updated.id ? updated : t)); setCompletedTasks(p => p.filter(t => t.id !== updated.id)); }
     setActiveTask(updated); setRefreshKey(k => k + 1);
   };
-  const handleTaskDeleted = (id: string) => { setTasks(p => p.filter(t => t.id !== id)); setCompletedTasks(p => p.filter(t => t.id !== id)); setActiveTask(null); setRefreshKey(k => k + 1); };
+  const handleTaskDeleted = (id: string) => { setTasks(p => p.filter(t => t.id !== id)); setCompletedTasks(p => p.filter(t => t.id !== id)); setActiveTask(null); };
   const handleTaskCompleted = (id: string) => { handleComplete(id); setActiveTask(null); };
   const toggleGroup = (label: string) => { setCollapsedGroups(p => { const n = new Set(p); n.has(label) ? n.delete(label) : n.add(label); return n; }); };
 
