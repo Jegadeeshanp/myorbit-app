@@ -74,23 +74,16 @@ self.addEventListener('notificationclick', function (event) {
     return;
   }
 
-  // ── Snooze actions: re-show notification after delay ────────────────────
-  if (action === 'snooze-15' || action === 'snooze-30' || action === 'snooze-60') {
+  // ── Snooze actions: store snooze time server-side so cron re-notifies ────
+  // (setTimeout in SW is unreliable — OS kills background processes on mobile)
+  if ((action === 'snooze-15' || action === 'snooze-30' || action === 'snooze-60') && taskId) {
     var minutes = action === 'snooze-15' ? 15 : action === 'snooze-30' ? 30 : 60;
-    var ms = minutes * 60 * 1000;
     event.waitUntil(
-      new Promise(function (resolve) {
-        setTimeout(function () {
-          self.registration.showNotification(title, {
-            body,
-            icon:    '/icon',
-            badge:   '/icon',
-            data:    { url, taskId },
-            tag:     'snoozed-' + taskId,
-            actions: taskId ? TASK_ACTIONS : [],
-          });
-          resolve();
-        }, ms);
+      fetch('/api/tasks/' + taskId + '/snooze?minutes=' + minutes, {
+        method:      'POST',
+        credentials: 'include',
+      }).catch(function (e) {
+        console.error('[MyOrbit SW] Snooze API failed:', e);
       })
     );
     return;
