@@ -27,6 +27,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const log = await prisma.habitLog.create({
       data: { habitId: id, userId, logDate, value },
     });
+
+    // Sync: if there's a task tagged habit:<id> due today, mark it complete
+    try {
+      const linkedTasks = await prisma.task.findMany({
+        where: { userId, status: 'active', dueDate: logDate, tags: { contains: `habit:${id}` } },
+        select: { id: true },
+      });
+      if (linkedTasks.length > 0) {
+        await prisma.task.updateMany({
+          where: { id: { in: linkedTasks.map(t => t.id) }, userId },
+          data: { status: 'completed', completedAt: new Date() },
+        });
+      }
+    } catch { /* habit→task sync failure must not affect habit UX */ }
+
     return NextResponse.json({ log, logDate }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

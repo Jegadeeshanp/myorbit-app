@@ -225,6 +225,14 @@ export default function TasksSettingsPage() {
         {activeTab === 'Notifications' ? (
           <div className="space-y-4">
             <EnableNotifications />
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-5 py-4">
+              <p className="text-sm font-medium text-amber-300">Getting duplicate notifications?</p>
+              <p className="mt-1 text-xs text-amber-400/80">
+                If you have MyOrbit open in both the browser <em>and</em> as a home-screen app, both register separately for push notifications.
+                To fix this: open Settings &rarr; Notifications on your phone and disable the <strong>browser</strong> source for MyOrbit,
+                keeping only the installed app.
+              </p>
+            </div>
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
               <div className="border-b border-white/5 px-5 py-4">
                 <h2 className="text-sm font-semibold text-gray-200">Notifications</h2>

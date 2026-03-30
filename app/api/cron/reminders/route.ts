@@ -97,29 +97,32 @@ export async function GET(req: NextRequest) {
       isActive: true,
       ...taskFilter,
     },
-    select: { userId: true, title: true, dueTime: true },
+    select: {
+      id: true, userId: true, title: true, dueTime: true,
+      list: { select: { name: true, emoji: true } },
+    },
   });
 
-  // Group by user and send
-  const tasksByUser = tasks.reduce<Record<string, string[]>>((acc, t) => {
-    (acc[t.userId] ??= []).push(t.title);
-    return acc;
-  }, {});
-
-  for (const [userId, titles] of Object.entries(tasksByUser)) {
-    const tokens = await tokensFor(userId);
+  // Send one notification per task so each has its own title + action buttons
+  const taskTokenCache: Record<string, string[]> = {};
+  for (const task of tasks) {
+    if (!taskTokenCache[task.userId]) {
+      taskTokenCache[task.userId] = await tokensFor(task.userId);
+    }
+    const tokens = taskTokenCache[task.userId];
     if (!tokens.length) continue;
-    const count = titles.length;
+    const listLabel = task.list ? `${task.list.emoji || '📋'} ${task.list.name}` : '📋 MyOrbit Task';
     try {
       await sendToTokens(tokens, {
-        title: `📋 ${count} task${count > 1 ? 's' : ''} due now`,
-        body:  count === 1 ? titles[0] : `${titles[0]} +${count - 1} more`,
-        url:   '/orbit/tasks',
-        tag:   `tasks-${userId}-${now}`,
+        title:  task.title,
+        body:   listLabel,
+        url:    `/orbit/tasks?task=${task.id}`,
+        tag:    `task-${task.id}`,
+        taskId: task.id,
       });
       stats.tasksSent++;
     } catch (e) {
-      console.error(`[reminders] tasks user ${userId}:`, e);
+      console.error(`[reminders] task ${task.id}:`, e);
     }
   }
 

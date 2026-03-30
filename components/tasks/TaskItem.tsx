@@ -112,23 +112,23 @@ export default function TaskItem({
     <div>
       <div
         onClick={onClick}
-        className={`group flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 transition ${
+        className={`group flex cursor-pointer items-start sm:items-center gap-3 rounded-xl px-3 py-2.5 transition ${
           isActive ? 'bg-emerald-50 dark:bg-white/8' : 'hover:bg-gray-50 dark:hover:bg-white/5'
         }`}
       >
         {hasSubtasks && subtasksMode === 'toggle' ? (
-          <button onClick={toggleExpand} className="mt-0.5 flex items-center transition">
+          <button onClick={toggleExpand} className="mt-0.5 sm:mt-0 flex items-center transition">
             <ChevronRight className={`h-3.5 w-3.5 text-slate-500 transition-transform ${expanded ? 'rotate-90' : ''}`} />
           </button>
         ) : (
-          <span className="mt-0.5 h-3.5 w-3.5 flex-none" />
+          <span className="mt-0.5 sm:mt-0 h-3.5 w-3.5 flex-none" />
         )}
 
         <button
           type="button"
           onClick={handleComplete}
           disabled={completing || isCompleted || showTrashActions}
-          className="mt-0.5 flex-none transition"
+          className="mt-0.5 sm:mt-0 flex-none transition"
         >
           {isCompleted ? (
             <div className="flex h-5 w-5 items-center justify-center rounded-md border-2 bg-emerald-500/15" style={{ borderColor: accentColor }}>
@@ -142,12 +142,12 @@ export default function TaskItem({
           )}
         </button>
 
-        {/* Two-line content: title on top, metadata below */}
-        <div className="min-w-0 flex-1">
-          <p className={`text-sm leading-snug ${isCompleted ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-900 dark:text-slate-100'}`}>
+        {/* Mobile: two lines (title + metadata). Desktop (sm+): single line with metadata inline. */}
+        <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+          <p className={`text-sm leading-snug sm:flex-1 sm:truncate ${isCompleted ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-900 dark:text-slate-100'}`}>
             {task.title}
           </p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <div className="mt-0.5 sm:mt-0 flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-0.5 sm:flex-none">
             {/* Date/time label */}
             {dateInfo && (
               <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-400' : dateInfo.isTime ? 'text-sky-400' : 'text-gray-400 dark:text-slate-500'}`}>

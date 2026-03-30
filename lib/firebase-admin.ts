@@ -29,15 +29,17 @@ function getAdminApp(): admin.app.App {
 // ── Types ─────────────────────────────────────────────────────────────────
 
 export interface NotificationPayload {
-  title:  string;
-  body:   string;
-  icon?:  string;
-  /** Deep-link inside the PWA, e.g. '/orbit/tasks' */
-  url?:   string;
+  title:   string;
+  body:    string;
+  icon?:   string;
+  /** Deep-link inside the PWA, e.g. '/orbit/tasks?task=abc' */
+  url?:    string;
   /** Notification tag — prevents duplicate banners for the same topic */
-  tag?:   string;
+  tag?:    string;
+  /** Task ID — forwarded to SW so actions (Done/Snooze) know which task */
+  taskId?: string;
   /** Extra key-value pairs forwarded to the SW / app */
-  data?:  Record<string, string>;
+  data?:   Record<string, string>;
 }
 
 // ── Core send helpers ──────────────────────────────────────────────────────
@@ -55,16 +57,17 @@ export async function sendToToken(
       notification: {
         title:  payload.title,
         body:   payload.body,
-        icon:   payload.icon  ?? '/icons/icon-192.png',
-        badge:  '/icons/icon-72.png',
+        icon:   payload.icon ?? '/icon',
+        badge:  '/icon',
         tag:    payload.tag,
       },
       fcmOptions: { link: payload.url ?? '/orbit/tasks' },
     },
     data: {
-      ...(payload.url  ? { url:  payload.url  } : {}),
-      ...(payload.tag  ? { tag:  payload.tag  } : {}),
-      ...(payload.data ?? {}),
+      ...(payload.url    ? { url:    payload.url    } : {}),
+      ...(payload.tag    ? { tag:    payload.tag    } : {}),
+      ...(payload.taskId ? { taskId: payload.taskId } : {}),
+      ...(payload.data  ?? {}),
     },
   };
   await app.messaging().send(message);
@@ -89,16 +92,17 @@ export async function sendToTokens(
       notification: {
         title:  payload.title,
         body:   payload.body,
-        icon:   payload.icon  ?? '/icons/icon-192.png',
-        badge:  '/icons/icon-72.png',
+        icon:   payload.icon ?? '/icon',
+        badge:  '/icon',
         tag:    payload.tag,
       },
       fcmOptions: { link: payload.url ?? '/orbit/tasks' },
     },
     data: {
-      ...(payload.url  ? { url:  payload.url  } : {}),
-      ...(payload.tag  ? { tag:  payload.tag  } : {}),
-      ...(payload.data ?? {}),
+      ...(payload.url    ? { url:    payload.url    } : {}),
+      ...(payload.tag    ? { tag:    payload.tag    } : {}),
+      ...(payload.taskId ? { taskId: payload.taskId } : {}),
+      ...(payload.data  ?? {}),
     },
   };
 

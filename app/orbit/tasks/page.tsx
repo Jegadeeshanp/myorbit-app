@@ -696,6 +696,14 @@ export default function TasksPage() {
   useEffect(() => { fetchTasks(); fetchLists(); }, [fetchTasks, fetchLists]);
   useEffect(() => { if (searchParams.get('create') === '1') setShowFab(true); }, [searchParams]);
 
+  // Open a specific task when navigated to via ?task=ID (e.g. from a push notification)
+  useEffect(() => {
+    const taskId = searchParams.get('task');
+    if (!taskId || tasks.length === 0) return;
+    const found = tasks.find(t => t.id === taskId);
+    if (found) { setActiveTask(found); setSelected('today'); }
+  }, [searchParams, tasks]);
+
   // Refresh tasks automatically at midnight so "Today" resets correctly
   useEffect(() => {
     const now = new Date();
