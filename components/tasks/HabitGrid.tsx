@@ -10,7 +10,7 @@ type Habit    = { id: string; name: string; iconEmoji?: string; color?: string; 
 const LAST_7_DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date();
   d.setDate(d.getDate() - 6 + i);
-  return d.toISOString().split('T')[0];
+  return d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
 });
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];

@@ -112,23 +112,23 @@ export default function TaskItem({
     <div>
       <div
         onClick={onClick}
-        className={`group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition ${
+        className={`group flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 transition ${
           isActive ? 'bg-emerald-50 dark:bg-white/8' : 'hover:bg-gray-50 dark:hover:bg-white/5'
         }`}
       >
         {hasSubtasks && subtasksMode === 'toggle' ? (
-          <button onClick={toggleExpand} className="flex items-center transition">
+          <button onClick={toggleExpand} className="mt-0.5 flex items-center transition">
             <ChevronRight className={`h-3.5 w-3.5 text-slate-500 transition-transform ${expanded ? 'rotate-90' : ''}`} />
           </button>
         ) : (
-          <span className="h-3.5 w-3.5 flex-none" />
+          <span className="mt-0.5 h-3.5 w-3.5 flex-none" />
         )}
 
         <button
           type="button"
           onClick={handleComplete}
           disabled={completing || isCompleted || showTrashActions}
-          className="flex-none transition"
+          className="mt-0.5 flex-none transition"
         >
           {isCompleted ? (
             <div className="flex h-5 w-5 items-center justify-center rounded-md border-2 bg-emerald-500/15" style={{ borderColor: accentColor }}>
@@ -142,43 +142,47 @@ export default function TaskItem({
           )}
         </button>
 
-        <span className={`min-w-0 flex-1 truncate text-sm ${isCompleted ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-900 dark:text-slate-100'}`}>
-          {task.title}
-        </span>
+        {/* Two-line content: title on top, metadata below */}
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm leading-snug ${isCompleted ? 'text-gray-400 line-through dark:text-slate-500' : 'text-gray-900 dark:text-slate-100'}`}>
+            {task.title}
+          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {/* Date/time label */}
+            {dateInfo && (
+              <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-400' : dateInfo.isTime ? 'text-sky-400' : 'text-gray-400 dark:text-slate-500'}`}>
+                {dateInfo.isTime ? <Clock className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+                {dateInfo.label}
+                {!dateInfo.isTime && task.dueTime && (
+                  <span className="text-sky-400">· {task.dueTime}</span>
+                )}
+              </span>
+            )}
 
-        <div className="flex flex-none items-center gap-1.5 text-gray-400 dark:text-slate-400">
-          {hasRepeat && <RotateCcw className="h-3.5 w-3.5 text-emerald-500" />}
+            {/* Repeat */}
+            {hasRepeat && <RotateCcw className="h-3 w-3 text-emerald-500" />}
 
-          {/* Subtask indicator */}
-          {hasSubtasks && (
-            <span className="flex items-center gap-0.5 text-gray-400 dark:text-slate-500">
-              <Layers className="h-3 w-3" />
-              <span className="text-[10px] leading-none">{task.subtasks.length}</span>
-            </span>
-          )}
+            {/* Subtask indicator */}
+            {hasSubtasks && (
+              <span className="flex items-center gap-0.5 text-gray-400 dark:text-slate-500">
+                <Layers className="h-3 w-3" />
+                <span className="text-[10px] leading-none">{task.subtasks.length}</span>
+              </span>
+            )}
 
-          {/* Date/time label */}
-          {dateInfo && (
-            <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-400' : dateInfo.isTime ? 'text-sky-400' : 'text-gray-400 dark:text-slate-500'}`}>
-              {dateInfo.isTime ? <Clock className="h-3.5 w-3.5" /> : <Calendar className="h-3 w-3" />}
-              {dateInfo.label}
-              {/* Show time alongside date when both are set and date is the primary label */}
-              {!dateInfo.isTime && task.dueTime && (
-                <span className="text-sky-400">· {task.dueTime}</span>
-              )}
-            </span>
-          )}
+            {/* Priority flag */}
+            {task.priority !== 'none' && (
+              <Flag className={`h-3 w-3 ${task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : 'text-blue-500'}`} />
+            )}
 
-          {/* Priority flag — always show (dimmed for none) */}
-          <Flag className={`h-3.5 w-3.5 ${task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : task.priority === 'low' ? 'text-blue-500' : 'text-slate-500/40 dark:text-slate-600'}`} />
-
-          {/* List chip — only when showList=true and task belongs to a list */}
-          {showList && task.list && (
-            <span className="flex items-center gap-1 max-w-[96px] text-xs text-gray-500 dark:text-slate-500">
-              {getListIcon(task.list.emoji, 'h-3 w-3 flex-none')}
-              <span className="truncate">{task.list.name.slice(0, 8)}</span>
-            </span>
-          )}
+            {/* List chip */}
+            {showList && task.list && (
+              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-500">
+                {getListIcon(task.list.emoji, 'h-3 w-3 flex-none')}
+                <span className="max-w-[80px] truncate">{task.list.name}</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {showTrashActions ? (

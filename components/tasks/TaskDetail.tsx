@@ -393,14 +393,14 @@ function TaskPanel({
               const spaceAbove = rect.top - 16;
               const spaceBelow = window.innerHeight - rect.bottom - 16;
               const left = Math.min(Math.max(rect.left - 8, 8), window.innerWidth - 328);
+              // Use explicit height (not maxHeight) so h-full works inside CompactDatePicker
               const style: React.CSSProperties = { width: '320px', left };
-              // Always prefer opening above if there's meaningful space, otherwise below
               if (spaceAbove >= 320) {
                 style.bottom = window.innerHeight - rect.top + 8;
-                style.maxHeight = `${Math.min(spaceAbove, calH)}px`;
+                style.height = `${Math.min(spaceAbove, calH)}px`;
               } else {
                 style.top = rect.bottom + 8;
-                style.maxHeight = `${Math.min(spaceBelow, calH)}px`;
+                style.height = `${Math.min(spaceBelow, calH)}px`;
               }
               setCalPos(style as React.CSSProperties);
             }

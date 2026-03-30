@@ -42,7 +42,9 @@ const PRI_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2, none: 3 
 const SMART_LABELS: Record<string, string> = { today: 'Today', inbox: 'Inbox', next7: 'Next 7 Days' };
 
 function todayString(offset = 0) {
-  const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().split('T')[0];
+  const d = new Date(); d.setDate(d.getDate() + offset);
+  // Use local date (not UTC) so midnight in any timezone is correct
+  return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
 }
 function next7Label(date: string) {
   const today = todayString(); const tomorrow = todayString(1);
@@ -693,6 +695,14 @@ export default function TasksPage() {
   const fetchLists = useCallback(() => { fetch('/api/task-lists').then(r => r.json()).then(d => { if (Array.isArray(d)) setLists(d); }).catch(() => {}); }, []);
   useEffect(() => { fetchTasks(); fetchLists(); }, [fetchTasks, fetchLists]);
   useEffect(() => { if (searchParams.get('create') === '1') setShowFab(true); }, [searchParams]);
+
+  // Refresh tasks automatically at midnight so "Today" resets correctly
+  useEffect(() => {
+    const now = new Date();
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 1, 0).getTime() - now.getTime();
+    const t = setTimeout(() => { fetchTasks(); }, msUntilMidnight);
+    return () => clearTimeout(t);
+  }, [fetchTasks]);
 
   const handleAddTask = async (titleArg?: string, opts?: { dueDate?: string; dueTime?: string; reminder?: string; repeat?: string; priority?: string; tags?: string[]; listId?: string; addToHabit?: boolean }): Promise<Task | null> => {
     const t = (titleArg ?? newTaskTitle).trim(); if (!t) return null;
