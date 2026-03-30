@@ -126,6 +126,41 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── 1b. Snoozed task reminders ───────────────────────────────────────────
+  // Tasks tagged `snoozed-until:HH:MM` get a re-notification when their snooze time arrives.
+  const snoozedTasks = await prisma.task.findMany({
+    where: { status: 'active', isActive: true, tags: { contains: `snoozed-until:${now}` } },
+    select: {
+      id: true, userId: true, title: true, tags: true,
+      list: { select: { name: true, emoji: true } },
+    },
+  });
+  for (const task of snoozedTasks) {
+    // Remove the snooze tag so it doesn't re-fire next minute
+    const cleaned = JSON.parse(task.tags || '[]')
+      .filter((t: string) => !t.startsWith('snoozed-until:'));
+    await prisma.task.update({ where: { id: task.id }, data: { tags: JSON.stringify(cleaned) } });
+
+    if (!taskTokenCache[task.userId]) {
+      taskTokenCache[task.userId] = await tokensFor(task.userId);
+    }
+    const tokens = taskTokenCache[task.userId];
+    if (!tokens.length) continue;
+    const listLabel = task.list ? `${task.list.emoji || '📋'} ${task.list.name}` : '📋 MyOrbit Task';
+    try {
+      await sendToTokens(tokens, {
+        title:  task.title,
+        body:   `⏰ Snoozed reminder · ${listLabel}`,
+        url:    `/orbit/tasks?task=${task.id}`,
+        tag:    `task-${task.id}`,
+        taskId: task.id,
+      });
+      stats.tasksSent++;
+    } catch (e) {
+      console.error(`[reminders] snoozed task ${task.id}:`, e);
+    }
+  }
+
   // ── 2. Habit reminders ───────────────────────────────────────────────────
   // a) Custom-time habits — fire at their exact customTime
   // b) Slot-based habits  — fire at the fixed slot time

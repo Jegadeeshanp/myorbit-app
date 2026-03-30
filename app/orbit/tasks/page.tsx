@@ -696,13 +696,16 @@ export default function TasksPage() {
   useEffect(() => { fetchTasks(); fetchLists(); }, [fetchTasks, fetchLists]);
   useEffect(() => { if (searchParams.get('create') === '1') setShowFab(true); }, [searchParams]);
 
-  // Open a specific task when navigated to via ?task=ID (e.g. from a push notification)
+  // Open a specific task when navigated to via ?task=ID (e.g. from a push notification).
+  // Fetch directly from API so it works regardless of which view is currently selected.
   useEffect(() => {
     const taskId = searchParams.get('task');
-    if (!taskId || tasks.length === 0) return;
-    const found = tasks.find(t => t.id === taskId);
-    if (found) { setActiveTask(found); setSelected('today'); }
-  }, [searchParams, tasks]);
+    if (!taskId) return;
+    fetch(`/api/tasks/${taskId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(task => { if (task?.id) setActiveTask(task); })
+      .catch(() => {});
+  }, [searchParams]);
 
   // Refresh tasks automatically at midnight so "Today" resets correctly
   useEffect(() => {
