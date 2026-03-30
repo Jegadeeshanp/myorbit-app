@@ -12,13 +12,26 @@ const firebaseConfig = {
   appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+function isFirebaseConfigured(): boolean {
+  return !!(
+    firebaseConfig.apiKey &&
+    firebaseConfig.projectId &&
+    firebaseConfig.messagingSenderId &&
+    firebaseConfig.appId
+  );
+}
+
 function getFirebaseApp(): FirebaseApp {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase is not configured — check NEXT_PUBLIC_FIREBASE_* env vars');
+  }
   return getApps().length ? getApp() : initializeApp(firebaseConfig);
 }
 
-/** Returns true if the current browser supports FCM. */
+/** Returns true if the current browser supports FCM and Firebase is configured. */
 export async function isFCMSupported(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
+  if (!isFirebaseConfigured()) return false;
   return isSupported();
 }
 
@@ -77,7 +90,8 @@ export async function onForegroundMessage(
   const supported = await isFCMSupported();
   if (!supported) return () => {};
 
-  const app = getFirebaseApp();
+  let app: FirebaseApp;
+  try { app = getFirebaseApp(); } catch { return () => {}; }
   const messaging = getMessaging(app);
   return onMessage(messaging, callback as any);
 }
