@@ -16,43 +16,93 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// ── Notification actions (shown on long-press on iOS, expand on Android) ──
+var TASK_ACTIONS = [
+  { action: 'snooze-15', title: 'Snooze 15 min' },
+  { action: 'snooze-30', title: 'Snooze 30 min' },
+  { action: 'snooze-60', title: 'Snooze 1 Hour' },
+  { action: 'done',      title: 'Done ✓' },
+];
+
 // ── Background push handler ───────────────────────────────────────────────
-// Fires when a push arrives and the app tab is closed or in the background.
 messaging.onBackgroundMessage(function (payload) {
   console.log('[MyOrbit SW] Background message received:', payload);
 
-  const notification = payload.notification || {};
-  const data         = payload.data         || {};
+  var notification = payload.notification || {};
+  var data         = payload.data         || {};
 
-  const title = notification.title || data.title || 'MyOrbit';
-  const body  = notification.body  || data.body  || '';
-  const icon  = notification.icon  || '/icons/icon-192.png';
-  const url   = data.url || '/orbit/tasks';
+  var title  = notification.title || data.title || 'MyOrbit';
+  var body   = notification.body  || data.body  || '';
+  // Use the dynamic /icon route — same origin, so it's always accessible
+  var icon   = '/icon';
+  var url    = data.url    || '/orbit/tasks';
+  var taskId = data.taskId || '';
+  var isTask = !!taskId;
 
   self.registration.showNotification(title, {
     body,
     icon,
-    badge:              '/icons/icon-72.png',
-    data:               { url },
+    badge:              '/icon',
+    data:               { url, taskId },
     tag:                data.tag || 'myorbit',
-    renotify:           true,
     requireInteraction: false,
+    actions:            isTask ? TASK_ACTIONS : [],
   });
 });
 
-// ── Notification click ────────────────────────────────────────────────────
+// ── Notification click / action handler ───────────────────────────────────
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
 
-  const url = (event.notification.data && event.notification.data.url)
-    ? event.notification.data.url
-    : '/orbit/tasks';
+  var action = event.action;
+  var data   = event.notification.data || {};
+  var url    = data.url    || '/orbit/tasks';
+  var taskId = data.taskId || '';
+  var title  = event.notification.title || '';
+  var body   = event.notification.body  || '';
 
+  // ── "Done" action: mark task complete via API ────────────────────────────
+  if (action === 'done' && taskId) {
+    event.waitUntil(
+      fetch('/api/tasks/' + taskId + '/complete', {
+        method:      'PATCH',
+        credentials: 'include',
+      }).catch(function (e) {
+        console.error('[MyOrbit SW] Failed to complete task:', e);
+      })
+    );
+    return;
+  }
+
+  // ── Snooze actions: re-show notification after delay ────────────────────
+  if (action === 'snooze-15' || action === 'snooze-30' || action === 'snooze-60') {
+    var minutes = action === 'snooze-15' ? 15 : action === 'snooze-30' ? 30 : 60;
+    var ms = minutes * 60 * 1000;
+    event.waitUntil(
+      new Promise(function (resolve) {
+        setTimeout(function () {
+          self.registration.showNotification(title, {
+            body,
+            icon:    '/icon',
+            badge:   '/icon',
+            data:    { url, taskId },
+            tag:     'snoozed-' + taskId,
+            actions: taskId ? TASK_ACTIONS : [],
+          });
+          resolve();
+        }, ms);
+      })
+    );
+    return;
+  }
+
+  // ── Default: open/focus the app at the task URL ──────────────────────────
   event.waitUntil(
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then(function (windowClients) {
-        for (const client of windowClients) {
+        for (var i = 0; i < windowClients.length; i++) {
+          var client = windowClients[i];
           if (client.url.includes(self.location.origin) && 'focus' in client) {
             client.focus();
             client.navigate(url);
@@ -65,8 +115,8 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 // ── PWA Caching ───────────────────────────────────────────────────────────
-const CACHE_NAME = 'myorbit-v3';
-const STATIC_ASSETS = ['/', '/orbit'];
+var CACHE_NAME = 'myorbit-v4';
+var STATIC_ASSETS = ['/', '/orbit'];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
