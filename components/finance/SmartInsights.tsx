@@ -37,7 +37,7 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
   });
 
   // Savings
-  const thisIncome  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const thisIncome  = thisMonth.filter(t => t.type === 'income' && t.category !== 'Transfer').reduce((s,t) => s + t.amount, 0);
   const thisExpense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = thisIncome > 0 ? Math.round(((thisIncome - thisExpense) / thisIncome) * 100) : 0;
 
