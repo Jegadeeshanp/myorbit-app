@@ -42,13 +42,12 @@ messaging.onBackgroundMessage(function (payload) {
   var notifOpts = {
     icon,
     badge:              '/icon',
+    body:               body || ' ',   // always set — empty body makes iOS append "from MyOrbit"
     data:               { url, taskId },
     tag:                data.tag || 'myorbit',
     requireInteraction: false,
     actions:            isTask ? TASK_ACTIONS : [],
   };
-  // Only add body if it has content — avoids blank subtitle line on iOS
-  if (body) notifOpts.body = body;
   self.registration.showNotification(title, notifOpts);
 });
 
