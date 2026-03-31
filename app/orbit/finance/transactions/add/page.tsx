@@ -96,24 +96,8 @@ export default function AddTransactionPage() {
     if (!amount || !accountId) return;
     if (type === 'transfer') {
       if (!toAccountId) return;
-      // Debit from source
-      addTransaction({
-        date,
-        category: 'Transfer',
-        description: notes || 'Transfer',
-        amount: -Number(amount),
-        type: 'expense',
-        accountId,
-      });
-      // Credit to destination
-      addTransaction({
-        date,
-        category: 'Transfer',
-        description: notes || 'Transfer',
-        amount: Number(amount),
-        type: 'income',
-        accountId: toAccountId,
-      });
+      addTransaction({ date, category: 'Transfer', description: notes || 'Transfer', amount: -Number(amount), type: 'transfer', accountId });
+      addTransaction({ date, category: 'Transfer', description: notes || 'Transfer', amount:  Number(amount), type: 'transfer', accountId: toAccountId });
     } else {
       addTransaction({
         date,

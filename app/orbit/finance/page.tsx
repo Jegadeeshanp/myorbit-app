@@ -57,8 +57,8 @@ export default function FinanceOverviewPage() {
       const d = new Date(tx.date);
       const row = map.get(`${d.getFullYear()}-${d.getMonth()}`);
       if (!row) return;
-      if (tx.type === 'income' && tx.category !== 'Transfer' && tx.category !== 'Opening Balance' && tx.category !== 'Balance Adjustment')  row.income  += tx.amount;
-      if (tx.type === 'expense' && tx.category !== 'Transfer' && tx.category !== 'Opening Balance' && tx.category !== 'Balance Adjustment') row.expense += Math.abs(tx.amount);
+      if (tx.type === 'income')  row.income  += tx.amount;
+      if (tx.type === 'expense') row.expense += Math.abs(tx.amount);
     });
     return Array.from(map.values());
   }, [transactions]);

@@ -105,10 +105,24 @@ function TxIcon({ tx }: { tx: { type: string; category: string } }) {
       </div>
     );
   }
-  if (tx.category === 'Transfer') {
+  if (tx.type === 'transfer' || tx.category === 'Transfer') {
     return (
       <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-blue-50">
         <ArrowLeftRight className="h-4 w-4 text-blue-500" />
+      </div>
+    );
+  }
+  if (tx.type === 'opening_balance') {
+    return (
+      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-emerald-50">
+        <TrendingUp className="h-4 w-4 text-emerald-600" />
+      </div>
+    );
+  }
+  if (tx.type === 'adjustment') {
+    return (
+      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gray-100">
+        <Wallet className="h-4 w-4 text-gray-500" />
       </div>
     );
   }
@@ -342,16 +356,14 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
-
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
-    // Income card: real income only — exclude Opening Balance & Balance Adjustment
-    const income = filtered.filter(t => t.type === 'income' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-    // Expense card: excludes Opening Balance, Balance Adjustment, and user-exempted categories from settings
-    const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category) && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    // Net Balance: income minus expenses (excludes Opening Balance/Balance Adjustment, but includes user-exempted categories)
-    const netExpense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Income: only real income transactions
+    const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    // Expense: actual expenses minus user-exempted categories (e.g. investments)
+    const expense = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Net: income minus all expenses (including exempted)
+    const netExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
     return { income, expense, net: income - netExpense, count: filtered.length };
   }, [filtered]);
 

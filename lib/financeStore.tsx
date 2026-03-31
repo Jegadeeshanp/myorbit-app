@@ -165,6 +165,11 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     if (status !== 'authenticated') return;
 
     dispatch({ type: 'setLoadState', payload: 'loading' });
+
+    // Run one-time migration to update legacy category-based types to proper types.
+    // Fire-and-forget — load proceeds regardless of migration outcome.
+    fetch('/api/migrate-transactions', { method: 'POST' }).catch(() => {});
+
     Promise.all([
       api<Account[]>('/api/accounts'),
       api<Transaction[]>('/api/transactions'),
@@ -197,8 +202,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               date: today,
               category: 'Opening Balance',
               description: 'Opening Balance',
-              amount: created.balance,
-              type: created.balance > 0 ? 'income' : 'expense',
+              amount: Math.abs(created.balance),
+              type: 'opening_balance',
               accountId: created.id,
             }),
           });
@@ -224,7 +229,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               category: 'Balance Adjustment',
               description: 'Balance Adjustment',
               amount: diff,
-              type: diff > 0 ? 'income' : 'expense',
+              type: 'adjustment',
               accountId: a.id,
             }),
           });
@@ -241,7 +246,14 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       if (!account) return;
       const txNetBalance = state.transactions
         .filter(t => t.accountId === accountId)
-        .reduce((s, t) => s + (t.type === 'income' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+        .reduce((s, t) => {
+          if (t.type === 'income') return s + Math.abs(t.amount);
+          if (t.type === 'expense') return s - Math.abs(t.amount);
+          if (t.type === 'transfer') return s + t.amount; // negative for source, positive for destination
+          if (t.type === 'opening_balance') return s + t.amount; // always positive
+          if (t.type === 'adjustment') return s + t.amount; // positive or negative diff
+          return s;
+        }, 0);
       const diff = account.balance - txNetBalance;
       if (Math.abs(diff) < 1) return;
       const txRow = await api<Transaction>('/api/transactions', {
@@ -252,7 +264,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
           category: 'Opening Balance',
           description: 'Opening balance',
           amount: Math.abs(diff),
-          type: diff > 0 ? 'income' : 'expense',
+          type: 'opening_balance',
         }),
       });
       dispatch({ type: 'addTransaction', payload: txRow });
@@ -266,24 +278,28 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       // Update linked account balance only if transaction date is today or in the past
       // Future-dated recurring transactions appear in the list but don't affect balance yet
       const today = new Date().toISOString().slice(0, 10);
-      if (t.accountId && (t.type === 'income' || t.type === 'expense') && created.date <= today) {
-        const account = state.accounts.find(a => a.id === t.accountId);
-        if (account) {
-          try {
-            const updated = await api<Account>(`/api/accounts/${account.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ balance: account.balance + created.amount }),
-            });
-            dispatch({ type: 'updateAccount', payload: updated });
-          } catch { /* non-critical */ }
+      if (created.date <= today) {
+        // income / expense / transfer: update the linked account by the transaction amount
+        // (transfer uses signed amount: negative for source side, positive for destination side)
+        // opening_balance / adjustment: caller manages account balance directly — skip here
+        if (t.accountId && (t.type === 'income' || t.type === 'expense' || t.type === 'transfer')) {
+          const account = state.accounts.find(a => a.id === t.accountId);
+          if (account) {
+            try {
+              const updated = await api<Account>(`/api/accounts/${account.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ balance: account.balance + created.amount }),
+              });
+              dispatch({ type: 'updateAccount', payload: updated });
+            } catch { /* non-critical */ }
+          }
         }
-        // Recalculate spent for ALL budgets from scratch using current-month transactions
-        // This ensures category changes are always reflected correctly
+
+        // Recalculate spent for ALL budgets from scratch using current-month expense transactions
         const txDate = new Date(created.date);
         const nowDate = new Date();
         const isCurrentMonth = txDate.getMonth() === nowDate.getMonth() && txDate.getFullYear() === nowDate.getFullYear();
         if (created.type === 'expense' && isCurrentMonth) {
-          // Get all current-month expense transactions (including the newly created one)
           const allTx = [...state.transactions, created];
           const monthTx = allTx.filter(t => {
             const d = new Date(t.date);
@@ -291,8 +307,6 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               && d.getMonth() === nowDate.getMonth()
               && d.getFullYear() === nowDate.getFullYear();
           });
-
-          // For each budget, recalculate spent from transactions
           for (const budget of state.budgets) {
             const cats = budget.category
               ? budget.category.split(',').map(c => c.trim()).filter(Boolean)
@@ -300,7 +314,6 @@ export function FinanceProvider({ children }: PropsWithChildren) {
             const recalcSpent = monthTx
               .filter(t => cats.includes(t.category) || budget.name === t.category)
               .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
             if (recalcSpent !== budget.spent) {
               try {
                 const updatedBudget = await api<BudgetCategory>(`/api/budgets/${budget.id}`, {

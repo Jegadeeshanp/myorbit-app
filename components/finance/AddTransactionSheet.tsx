@@ -394,7 +394,7 @@ type Props = {
   accounts: { id: string; name: string; type?: string }[];
   onSaveExpense: (tx: Omit<Transaction, 'id'>) => void;
   onSaveIncome:  (tx: Omit<Transaction, 'id'>) => void;
-  onSaveTransfer: (tx1: Omit<Transaction, 'id'>, tx2: Omit<Transaction, 'id'>) => void;
+  onSaveTransfer: (fromTx: Omit<Transaction, 'id'>, toTx: Omit<Transaction, 'id'>) => void;
 };
 
 
@@ -490,8 +490,8 @@ export default function AddTransactionSheet({
     } else if (tab === 'transfer' && canTransfer) {
       const desc = trNote.trim() || 'Transfer';
       onSaveTransfer(
-        { date: trDate, category: 'Transfer', description: desc, amount: -Number(trAmt), type: 'expense', accountId: trFromId, recurring: rec },
-        { date: trDate, category: 'Transfer', description: desc, amount:  Number(trAmt), type: 'income',  accountId: trToId,   recurring: rec },
+        { date: trDate, category: 'Transfer', description: desc, amount: -Number(trAmt), type: 'transfer', accountId: trFromId, recurring: rec },
+        { date: trDate, category: 'Transfer', description: desc, amount:  Number(trAmt), type: 'transfer', accountId: trToId,   recurring: rec },
       );
       toast('Transfer recorded');
     } else return;
