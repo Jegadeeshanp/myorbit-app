@@ -52,7 +52,8 @@ export async function sendToToken(
   const app = getAdminApp();
   const message: Message = {
     token,
-    notification: { title: payload.title, body: payload.body },
+    // No top-level notification field — prevents FCM from auto-displaying a
+    // second notification alongside the one shown by the service worker.
     webpush: {
       notification: {
         title:  payload.title,
@@ -87,7 +88,8 @@ export async function sendToTokens(
   const app = getAdminApp();
   const message: MulticastMessage = {
     tokens,
-    notification: { title: payload.title, body: payload.body },
+    // No top-level notification field — prevents FCM from auto-displaying a
+    // second notification alongside the one shown by the service worker.
     webpush: {
       notification: {
         title:  payload.title,
