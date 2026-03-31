@@ -27,7 +27,7 @@ function getScore(transactions: Transaction[], totalAssets: number, totalLiab: n
     const d = new Date(t.date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
-  const income  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const income  = thisMonth.filter(t => t.type === 'income' && t.category !== 'Transfer' && t.category !== 'Opening Balance').reduce((s,t) => s + t.amount, 0);
   const expense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
 

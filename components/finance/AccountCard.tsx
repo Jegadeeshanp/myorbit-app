@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Account, useFinance } from '@/lib/financeStore';
-import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2, AlertCircle } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
@@ -73,10 +73,23 @@ function EditableBalance({ account }: { account: Account }) {
 }
 
 export function StandardCard({ account }: { account: Account }) {
-  const { deleteAccount } = useFinance();
+  const { deleteAccount, reconcileOpeningBalance, state } = useFinance();
   const cfg   = TYPE_CONFIG[account.type] ?? TYPE_CONFIG['Bank'];
   const label = ACCOUNT_LABEL[account.type];
   const [showConfirm, setShowConfirm] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
+
+  const needsReconcile = useMemo(() => {
+    const txNet = state.transactions
+      .filter(t => t.accountId === account.id)
+      .reduce((s, t) => s + (t.type === 'income' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+    return Math.abs(account.balance - txNet) >= 1;
+  }, [account, state.transactions]);
+
+  const handleReconcile = async () => {
+    setReconciling(true);
+    try { await reconcileOpeningBalance(account.id); } finally { setReconciling(false); }
+  };
 
   return (
     <div className={`group flex items-center justify-between gap-3 rounded-2xl border ${cfg.border} bg-white px-4 py-3.5 shadow-sm transition hover:shadow-md`}>
@@ -91,6 +104,16 @@ export function StandardCard({ account }: { account: Account }) {
       </div>
       <div className="flex flex-none items-center gap-1.5">
         <EditableBalance account={account} />
+        {needsReconcile && (
+          <button
+            onClick={handleReconcile}
+            disabled={reconciling}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-amber-400 transition hover:bg-amber-50 hover:text-amber-600 sm:opacity-0 sm:group-hover:opacity-100"
+            title="Fix opening balance — transactions don't match stored balance"
+          >
+            <AlertCircle className="h-3.5 w-3.5" />
+          </button>
+        )}
         <button
           onClick={() => setShowConfirm(true)}
           className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
@@ -112,7 +135,7 @@ export function StandardCard({ account }: { account: Account }) {
 }
 
 export function CreditCardCard({ account }: { account: Account }) {
-  const { deleteAccount, updateAccount } = useFinance();
+  const { deleteAccount, updateAccount, reconcileOpeningBalance, state } = useFinance();
   const outstanding  = Math.abs(account.balance);
   const creditLimit  = account.creditLimit ?? outstanding * 1.5;
   const available    = Math.max(0, creditLimit - outstanding);
@@ -123,6 +146,14 @@ export function CreditCardCard({ account }: { account: Account }) {
   const [editing, setEditing]         = useState(false);
   const [editBal,  setEditBal]        = useState('');
   const [editLimit, setEditLimit]     = useState('');
+  const [reconciling, setReconciling] = useState(false);
+
+  const needsReconcile = useMemo(() => {
+    const txNet = state.transactions
+      .filter(t => t.accountId === account.id)
+      .reduce((s, t) => s + (t.type === 'income' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+    return Math.abs(account.balance - txNet) >= 1;
+  }, [account, state.transactions]);
 
   const startEdit = () => {
     setEditBal(String(outstanding));
@@ -137,6 +168,11 @@ export function CreditCardCard({ account }: { account: Account }) {
       await updateAccount({ ...account, balance: -Math.abs(newBal), creditLimit: newLimit });
     }
     setEditing(false);
+  };
+
+  const handleReconcile = async () => {
+    setReconciling(true);
+    try { await reconcileOpeningBalance(account.id); } finally { setReconciling(false); }
   };
 
   return (
@@ -154,6 +190,13 @@ export function CreditCardCard({ account }: { account: Account }) {
         {!editing && (
           <div className="flex items-center gap-1.5">
             <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
+            {needsReconcile && !editing && (
+              <button onClick={handleReconcile} disabled={reconciling}
+                className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-amber-400 transition hover:bg-amber-50 hover:text-amber-600"
+                title="Fix opening balance — transactions don't match stored balance">
+                <AlertCircle className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button onClick={startEdit}
               className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500"
               title="Edit balance & limit">

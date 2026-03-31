@@ -10,7 +10,7 @@ export default function SavingsRateCard({ transactions }: { transactions: Transa
       const d = new Date(t.date);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
-    const income  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+    const income  = thisMonth.filter(t => t.type === 'income' && t.category !== 'Transfer' && t.category !== 'Opening Balance').reduce((s,t) => s + t.amount, 0);
     const expense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
     const rate    = income > 0 ? Math.max(0, Math.round(((income - expense) / income) * 100)) : 0;
     return { income, expense, rate };

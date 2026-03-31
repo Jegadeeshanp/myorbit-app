@@ -8,7 +8,7 @@ const BAR_COLORS = ['#10b981','#3b82f6','#f97316','#eab308','#8b5cf6'];
 
 export default function SpendingCategories({ transactions }: { transactions: Transaction[] }) {
   const map = new Map<string, number>();
-  transactions.filter(t => t.type === 'expense').forEach(t => {
+  transactions.filter(t => t.type === 'expense' && t.category !== 'Opening Balance').forEach(t => {
     map.set(t.category, (map.get(t.category) ?? 0) + Math.abs(t.amount));
   });
   const rows = Array.from(map.entries())
