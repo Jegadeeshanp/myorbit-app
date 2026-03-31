@@ -118,9 +118,10 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
 
 type FinanceContextValue = {
   state: FinanceState;
-  addAccount:             (a: Omit<Account, 'id'>)        => Promise<void>;
-  updateAccount:          (a: Account)                     => Promise<void>;
-  deleteAccount:          (id: string)                     => Promise<void>;
+  addAccount:               (a: Omit<Account, 'id'>)        => Promise<void>;
+  updateAccount:            (a: Account)                     => Promise<void>;
+  deleteAccount:            (id: string)                     => Promise<void>;
+  reconcileOpeningBalance:  (accountId: string)              => Promise<void>;
   addTransaction:         (t: Omit<Transaction, 'id'>)     => Promise<void>;
   updateTransaction:      (t: Transaction)                  => Promise<void>;
   deleteTransaction:      (id: string)                     => Promise<void>;
@@ -235,6 +236,29 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       await api(`/api/accounts/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteAccount', payload: id });
     },
+    reconcileOpeningBalance: async (accountId) => {
+      const account = state.accounts.find(a => a.id === accountId);
+      if (!account) return;
+      const txNetBalance = state.transactions
+        .filter(t => t.accountId === accountId)
+        .reduce((s, t) => s + (t.type === 'income' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+      const diff = account.balance - txNetBalance;
+      if (Math.abs(diff) < 1) return;
+      const txRow = await api<Transaction>('/api/transactions', {
+        method: 'POST',
+        body: JSON.stringify({
+          accountId,
+          date: new Date().toISOString().slice(0, 10),
+          category: 'Opening Balance',
+          description: 'Opening balance',
+          amount: Math.abs(diff),
+          type: diff > 0 ? 'income' : 'expense',
+        }),
+      });
+      dispatch({ type: 'addTransaction', payload: txRow });
+      // Intentionally NOT patching account.balance — it is already correct
+    },
+
 
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
@@ -422,6 +446,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         .filter(t => {
           const d = new Date(t.date);
           return t.type === 'expense'
+            && t.category !== 'Opening Balance'
+            && t.category !== 'Balance Adjustment'
             && d.getMonth() === nowDate.getMonth()
             && d.getFullYear() === nowDate.getFullYear()
             && (cats.includes(t.category) || b.name === t.category);
