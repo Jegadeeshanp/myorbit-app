@@ -24,8 +24,8 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
   // Category spending change
   const catThis: Record<string, number> = {};
   const catLast: Record<string, number> = {};
-  thisMonth.filter(t => t.type === 'expense').forEach(t => { catThis[t.category] = (catThis[t.category] ?? 0) + Math.abs(t.amount); });
-  lastMonth.filter(t => t.type === 'expense').forEach(t => { catLast[t.category] = (catLast[t.category] ?? 0) + Math.abs(t.amount); });
+  thisMonth.filter(t => t.type === 'expense' && t.category !== 'Transfer' && t.category !== 'Opening Balance' && t.category !== 'Balance Adjustment').forEach(t => { catThis[t.category] = (catThis[t.category] ?? 0) + Math.abs(t.amount); });
+  lastMonth.filter(t => t.type === 'expense' && t.category !== 'Transfer' && t.category !== 'Opening Balance' && t.category !== 'Balance Adjustment').forEach(t => { catLast[t.category] = (catLast[t.category] ?? 0) + Math.abs(t.amount); });
 
   Object.entries(catThis).forEach(([cat, amt]) => {
     const prev = catLast[cat] ?? 0;
@@ -37,8 +37,8 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
   });
 
   // Savings
-  const thisIncome  = thisMonth.filter(t => t.type === 'income' && t.category !== 'Transfer' && t.category !== 'Opening Balance').reduce((s,t) => s + t.amount, 0);
-  const thisExpense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
+  const thisIncome  = thisMonth.filter(t => t.type === 'income'  && t.category !== 'Transfer' && t.category !== 'Opening Balance' && t.category !== 'Balance Adjustment').reduce((s,t) => s + t.amount, 0);
+  const thisExpense = thisMonth.filter(t => t.type === 'expense' && t.category !== 'Transfer' && t.category !== 'Opening Balance' && t.category !== 'Balance Adjustment').reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = thisIncome > 0 ? Math.round(((thisIncome - thisExpense) / thisIncome) * 100) : 0;
 
   if (savingsRate > 30)  insights.push({ icon: CheckCircle2, text: `You are saving ${savingsRate}% of your income this month. Excellent!`, type: 'positive' });
