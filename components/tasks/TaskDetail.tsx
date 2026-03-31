@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   X, Plus, Trash2, CheckCircle2, Circle, Flag, Calendar, Bell,
-  RotateCcw, Clock, ChevronRight, Tag, ChevronLeft, Check, List as ListIcon,
+  RotateCcw, Clock, ChevronRight, Tag, ChevronLeft, Check,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 import { getListIcon } from '@/lib/taskListIcons';
-import CustomRepeatPicker, { buildCustomLabel, parseCustomRepeat } from '@/components/tasks/CustomRepeatPicker';
+import CustomRepeatPicker, { buildCustomLabel } from '@/components/tasks/CustomRepeatPicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Subtask = {
@@ -250,6 +250,25 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
 }
 
 
+function repeatLabel(repeat: string, tags: string[]): string {
+  switch (repeat) {
+    case 'daily':    return 'Every Day';
+    case 'weekly':   return 'Every Week';
+    case 'weekdays': return 'Every Weekday (Mon – Fri)';
+    case 'weekends': return 'Every Weekend (Sat – Sun)';
+    case 'monthly':  return 'Every Month';
+    case 'yearly':   return 'Every Year';
+    case 'custom': {
+      const raw = tags.find(t => t.startsWith('repeat-config:'));
+      if (raw) {
+        try { return buildCustomLabel(raw.slice('repeat-config:'.length)); } catch { /* fall through */ }
+      }
+      return 'Custom repeat';
+    }
+    default: return '';
+  }
+}
+
 // ── Single panel (used for both main task and subtask) ────────────────────────
 interface PanelProps {
   id: string; isSubtask?: boolean;
@@ -380,80 +399,146 @@ function TaskPanel({
         </>
       )}
 
-      {/* ── Top bar: status + date + priority + close ── */}
-      <div className="flex flex-none items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700/60">
-        {status === 'completed'
-          ? <CheckCircle2 className="h-4 w-4 flex-none text-emerald-500"/>
-          : <Circle className="h-4 w-4 flex-none text-gray-400 dark:text-gray-500"/>
-        }
-        <button ref={dateBtnRef} onClick={() => {
-            if (dateBtnRef.current) {
-              const rect = dateBtnRef.current.getBoundingClientRect();
-              const calH = 560;
-              const spaceAbove = rect.top - 16;
-              const spaceBelow = window.innerHeight - rect.bottom - 16;
-              const left = Math.min(Math.max(rect.left - 8, 8), window.innerWidth - 328);
-              // Use explicit height (not maxHeight) so h-full works inside CompactDatePicker
-              const style: React.CSSProperties = { width: '320px', left };
-              if (spaceAbove >= 320) {
-                style.bottom = window.innerHeight - rect.top + 8;
-                style.height = `${Math.min(spaceAbove, calH)}px`;
-              } else {
-                style.top = rect.bottom + 8;
-                style.height = `${Math.min(spaceBelow, calH)}px`;
-              }
-              setCalPos(style as React.CSSProperties);
-            }
-            setShowDate(v => !v);
-          }}
-          className={`flex flex-1 items-center gap-1.5 truncate text-xs transition ${hasDate?'text-sky-500 hover:text-sky-400':'text-gray-400 hover:text-gray-600 dark:text-gray-500'}`}
-        >
-          <Calendar className="h-3.5 w-3.5 flex-none"/>
-          <span className="truncate">{topLabel}</span>
-          {localRepeat!=='none' && <RotateCcw className="h-3 w-3 text-emerald-500"/>}
-        </button>
-
-        {/* Priority */}
-        <div className="relative">
-          <button ref={priBtnRef} onClick={() => {
-            if (!showPri && priBtnRef.current) {
-              const rect = priBtnRef.current.getBoundingClientRect();
-              setPriDropUp(window.innerHeight - rect.bottom < 160);
-            }
-            setShowPri(v=>!v);
-          }}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition hover:bg-gray-100 dark:hover:bg-gray-700 ${PRIORITY_FLAG_COLOR[priority]}`}
-          >
-            <Flag className="h-4 w-4"/>
-          </button>
-          {showPri && (
-            <div ref={priRef} className={`absolute right-0 ${priDropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-50 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]`}>
-              {(['high','medium','low','none'] as const).map(level => (
-                <button key={level} type="button"
-                  onClick={() => { onPriorityChange(level); void onSave({priority:level, dueDate:localDueDate, dueTime:localDueTime}); setShowPri(false); }}
+      {/* ── Row 1: List name (left) + Priority + Close (right) ── */}
+      <div className="flex flex-none items-center justify-between border-b border-gray-100 px-4 py-2.5 dark:border-gray-700/60">
+        {/* List picker button — left aligned */}
+        {!isSubtask ? (
+          <div className="relative">
+            <button ref={listBtnRef} onClick={() => setShowList(v=>!v)}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/10"
+            >
+              {(() => {
+                const cur = lists.find(l => l.id === listId);
+                return cur
+                  ? <><span>{cur.emoji || '📋'}</span><span className="max-w-[140px] truncate">{cur.name}</span></>
+                  : <><span>📥</span><span>Inbox</span></>;
+              })()}
+              <ChevronRight className="h-3.5 w-3.5 rotate-90 text-gray-400"/>
+            </button>
+            {showList && (
+              <div ref={listRef} className="absolute left-0 top-full z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
+                <button type="button"
+                  onClick={() => { onListChange?.(''); void onSave({listId:''}); setShowList(false); }}
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 >
-                  <Flag className={`h-3.5 w-3.5 ${PRIORITY_FLAG_COLOR[level]}`}/>
-                  <span className="flex-1 text-gray-700 dark:text-gray-200">{PRIORITY_LABEL[level]}</span>
-                  {priority===level && <Check className="h-3.5 w-3.5 text-sky-500"/>}
+                  <span>📥</span>
+                  <span className="flex-1 text-gray-700 dark:text-gray-200">Inbox</span>
+                  {!listId && <Check className="h-3.5 w-3.5 text-sky-500"/>}
                 </button>
-              ))}
-            </div>
+                {lists.map(l => (
+                  <button key={l.id} type="button"
+                    onClick={() => { onListChange?.(l.id); void onSave({listId:l.id}); setShowList(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  >
+                    <span className="flex h-5 w-5 flex-none items-center justify-center rounded"
+                      style={{ backgroundColor: `${l.color || '#10B981'}22` }}>
+                      {getListIcon(l.emoji, 'h-3 w-3')}
+                    </span>
+                    <span className="flex-1 truncate text-gray-700 dark:text-gray-200">{l.name}</span>
+                    {listId===l.id && <Check className="h-3.5 w-3.5 text-sky-500"/>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm font-medium text-gray-400 dark:text-gray-500">Subtask</span>
+        )}
+
+        {/* Priority flag + Close — right aligned */}
+        <div className="flex items-center gap-1">
+          <div className="relative">
+            <button ref={priBtnRef} onClick={() => {
+              if (!showPri && priBtnRef.current) {
+                const rect = priBtnRef.current.getBoundingClientRect();
+                setPriDropUp(window.innerHeight - rect.bottom < 160);
+              }
+              setShowPri(v=>!v);
+            }}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition hover:bg-gray-100 dark:hover:bg-gray-700 ${PRIORITY_FLAG_COLOR[priority]}`}
+            >
+              <Flag className="h-4 w-4"/>
+            </button>
+            {showPri && (
+              <div ref={priRef} className={`absolute right-0 ${priDropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-50 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]`}>
+                {(['high','medium','low','none'] as const).map(level => (
+                  <button key={level} type="button"
+                    onClick={() => { onPriorityChange(level); void onSave({priority:level, dueDate:localDueDate, dueTime:localDueTime}); setShowPri(false); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  >
+                    <Flag className={`h-3.5 w-3.5 ${PRIORITY_FLAG_COLOR[level]}`}/>
+                    <span className="flex-1 text-gray-700 dark:text-gray-200">{PRIORITY_LABEL[level]}</span>
+                    {priority===level && <Check className="h-3.5 w-3.5 text-sky-500"/>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
+            <X className="h-4 w-4"/>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Row 2: Checkbox + Date + Repeat ── */}
+      <div className="flex flex-none items-start gap-3 px-4 py-3">
+        {/* Square checkbox — rounded corners, tappable to complete */}
+        <button
+          onClick={onComplete}
+          className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition ${
+            status === 'completed'
+              ? 'border-emerald-500 bg-emerald-500'
+              : 'border-gray-400 bg-transparent hover:border-emerald-400 dark:border-gray-500'
+          }`}
+        >
+          {status === 'completed' && <Check className="h-3 w-3 text-white"/>}
+        </button>
+
+        {/* Date + repeat stacked */}
+        <div className="min-w-0 flex-1">
+          <button ref={dateBtnRef} onClick={() => {
+              if (dateBtnRef.current) {
+                const rect = dateBtnRef.current.getBoundingClientRect();
+                const calH = 560;
+                const spaceAbove = rect.top - 16;
+                const spaceBelow = window.innerHeight - rect.bottom - 16;
+                const left = Math.min(Math.max(rect.left - 8, 8), window.innerWidth - 328);
+                const style: React.CSSProperties = { width: '320px', left };
+                if (spaceAbove >= 320) {
+                  style.bottom = window.innerHeight - rect.top + 8;
+                  style.height = `${Math.min(spaceAbove, calH)}px`;
+                } else {
+                  style.top = rect.bottom + 8;
+                  style.height = `${Math.min(spaceBelow, calH)}px`;
+                }
+                setCalPos(style);
+              }
+              setShowDate(v => !v);
+            }}
+            className={`flex items-center gap-1.5 text-sm font-medium transition ${
+              hasDate ? 'text-amber-500 hover:text-amber-400' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500'
+            }`}
+          >
+            {hasDate
+              ? <><Calendar className="h-3.5 w-3.5 flex-none"/><span>{topLabel}</span></>
+              : <><Calendar className="h-3.5 w-3.5 flex-none"/><span>Set date</span></>
+            }
+          </button>
+          {localRepeat !== 'none' && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <RotateCcw className="h-3 w-3 flex-none text-emerald-500"/>
+              <span>{repeatLabel(localRepeat, tags)}</span>
+            </p>
           )}
         </div>
-
-        {/* Close button — right next to priority */}
-        <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 dark:hover:bg-gray-700">
-          <X className="h-4 w-4"/>
-        </button>
       </div>
 
       {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
         {/* Title */}
-        <div className="px-5 pt-4 pb-1">
+        <div className="px-5 pt-1 pb-1">
           <input
-            className="w-full bg-transparent text-base font-bold text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-600"
+            className="w-full bg-transparent text-lg font-bold text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-600"
             value={title} placeholder={isSubtask ? 'Subtask title...' : 'Task title...'}
             onChange={e => onTitleChange(e.target.value)}
             onBlur={() => void onSave({title})}
@@ -568,43 +653,6 @@ function TaskPanel({
 
         {/* Icon row — bigger icons for mobile */}
         <div className="flex items-center gap-0.5 px-2 py-2.5">
-          {/* List picker — bottom left */}
-          {!isSubtask && (
-            <div className="relative">
-              <button ref={listBtnRef} onClick={() => setShowList(v=>!v)}
-                className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${showList ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : listId ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'} hover:bg-gray-100 dark:hover:bg-white/5`}
-                title="Move to list"
-              >
-                <ListIcon className="h-5 w-5"/>
-              </button>
-              {showList && (
-                <div ref={listRef} className="absolute left-0 bottom-full z-50 mb-1.5 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-[#252830]">
-                  <button type="button"
-                    onClick={() => { onListChange?.(''); void onSave({listId:''}); setShowList(false); }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                  >
-                    <span>📥</span>
-                    <span className="flex-1 text-gray-700 dark:text-gray-200">Inbox</span>
-                    {!listId && <Check className="h-3.5 w-3.5 text-sky-500"/>}
-                  </button>
-                  {lists.map(l => (
-                    <button key={l.id} type="button"
-                      onClick={() => { onListChange?.(l.id); void onSave({listId:l.id}); setShowList(false); }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                    >
-                      <span className="flex h-5 w-5 flex-none items-center justify-center rounded"
-                        style={{ backgroundColor: `${l.color || '#10B981'}22` }}>
-                        {getListIcon(l.emoji, 'h-3 w-3')}
-                      </span>
-                      <span className="flex-1 truncate text-gray-700 dark:text-gray-200">{l.name}</span>
-                      {listId===l.id && <Check className="h-3.5 w-3.5 text-sky-500"/>}
-                      {l.color && <span className="h-2 w-2 flex-none rounded-full" style={{backgroundColor:l.color}}/>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Tag */}
           <button onClick={() => setOpenAction(v => v==='tag' ? null : 'tag')}
