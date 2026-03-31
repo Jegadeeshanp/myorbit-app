@@ -235,6 +235,7 @@ export function CreditCardCard({ account }: { account: Account }) {
               Save
             </button>
           </div>
+        </div>
       ) : (
         <>
           <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-400">
