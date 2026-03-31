@@ -27,11 +27,11 @@ function getScore(transactions: Transaction[], totalAssets: number, totalLiab: n
     const d = new Date(t.date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
-  const income  = thisMonth.filter(t => t.type === 'income' && t.category !== 'Transfer' && t.category !== 'Opening Balance').reduce((s,t) => s + t.amount, 0);
+  const income  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
   const expense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
 
-  const savingsScore     = Math.min(25, Math.round(savingsRate * 0.8));
+  const savingsScore     = Math.max(0, Math.min(25, Math.round(savingsRate * 0.8)));
   const debtScore        = totalAssets === 0 ? 0 : totalLiab < totalAssets * 0.3 ? 25 : totalLiab < totalAssets * 0.5 ? 18 : 10;
   const consistencyScore = transactions.length > 5 ? 25 : Math.round(transactions.length * 5);
   const diversifyScore   = totalAssets > 0 ? 25 : 0;

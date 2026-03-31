@@ -5,9 +5,6 @@ import { ChevronRight } from 'lucide-react';
 import { Transaction } from '@/lib/financeData';
 import { getExcludedExpenseCategories } from '@/lib/customCategoryStore';
 
-// System-internal categories that are never real expenses
-const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
-
 const COLORS = ['#10b981', '#3b82f6', '#f97316', '#eab308', '#8b5cf6'];
 
 export default function TopExpenses({ transactions }: { transactions: Transaction[] }) {
@@ -17,10 +14,9 @@ export default function TopExpenses({ transactions }: { transactions: Transactio
   const monthLabel = now.toLocaleString('default', { month: 'short' });
   const excluded   = getExcludedExpenseCategories();
 
-  // Only real expenses in the current calendar month
+  // Only real expenses in the current calendar month (type==='expense' excludes transfer/opening_balance/adjustment)
   const expenses = transactions.filter(tx => {
     if (tx.type !== 'expense') return false;
-    if (SYSTEM_CATS.includes(tx.category)) return false;
     if (excluded.includes(tx.category)) return false;
     const d = new Date(tx.date);
     return d.getFullYear() === curYear && d.getMonth() === curMonth;

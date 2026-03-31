@@ -19,7 +19,7 @@ export default function TransactionSummaryCard({ transactions }: { transactions:
       if (tx.date > today) return; // upcoming — exclude from summary
       const d = new Date(tx.date);
       if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return;
-      if (tx.type === 'income' && tx.category !== 'Transfer' && tx.category !== 'Opening Balance')  income  += tx.amount;
+      if (tx.type === 'income')  income += tx.amount;
       if (tx.type === 'expense') {
         const abs = Math.abs(tx.amount);
         expense += abs;
