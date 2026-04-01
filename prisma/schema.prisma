@@ -34,7 +34,8 @@ model User {
   countdowns          Countdown[]
   healthEntries       HealthEntry[]
   workouts            Workout[]
-  pushTokens          PushToken[]
+  pushTokens            PushToken[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model Session {
@@ -382,6 +383,30 @@ model Workout {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ── Recurring Finance Transactions ────────────────────────────────────────
+// Stores a template for each user-defined recurring transaction.
+// A daily cron fires nextDate occurrences, creates a Transaction record,
+// updates the linked account balance, updates budgets, then advances nextDate.
+model RecurringTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  accountId       String?
+  category        String
+  description     String
+  notes           String?
+  amount          String   // encrypted — same sign as the amount (negative for expense)
+  type            String   // expense | income
+  recurringConfig String   // JSON: RecurringConfig { frequency, startDate, endType, ... }
+  nextDate        String   // YYYY-MM-DD — date of the next occurrence to create
+  occurrenceCount Int      @default(0) // how many times spawned so far (for endAfterTimes check)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nextDate])
 }
 
 // ── Push Notifications (FCM) ───────────────────────────────────────────────
