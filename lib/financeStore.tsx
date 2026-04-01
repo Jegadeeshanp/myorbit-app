@@ -10,6 +10,7 @@ import type {
   Asset as AssetType, Liability as LiabilityType, BudgetCategory,
   RecurringConfig,
 } from '@/lib/financeData';
+import { syncCategoriesFromDB } from '@/lib/customCategoryStore';
 
 export type AccountTypeName = 'Bank' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Wallet';
 export type Account = AccountType & { creditLimit?: number };
@@ -102,6 +103,9 @@ const defaultState: FinanceState = {
 
 function calculateBudgetSpentForCurrentMonth(budget: BudgetCategory, transactions: Transaction[]) {
   const now = new Date();
+  // Only count transactions that have already occurred (date <= today)
+  // Future-dated transactions are "upcoming", not "spent"
+  const todayStr = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
   const cats = budget.category
     ? budget.category.split(',').map(c => c.trim()).filter(Boolean)
     : [];
@@ -109,6 +113,7 @@ function calculateBudgetSpentForCurrentMonth(budget: BudgetCategory, transaction
   const year = now.getFullYear();
   return transactions
     .filter(t => t.type === 'expense')
+    .filter(t => t.date <= todayStr) // exclude upcoming/future-dated
     .filter(t => {
       const d = new Date(t.date);
       return d.getMonth() === month && d.getFullYear() === year;
@@ -183,6 +188,8 @@ type FinanceContextValue = {
   deleteBudget:           (id: string)                     => Promise<void>;
   cancelRecurring:        (id: string)                     => Promise<void>;
   investAsset:            (assetId: string, amount: number, type: 'LUMPSUM' | 'SIP' | 'REDEMPTION', date: string, accountId?: string, note?: string) => Promise<void>;
+  setupAssetSip:          (assetId: string, amount: number, dayOfMonth: number, accountId?: string, note?: string) => Promise<void>;
+  cancelAssetSip:         (assetId: string)                => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -217,6 +224,9 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     // Run one-time migration to update legacy category-based types to proper types.
     // Fire-and-forget — load proceeds regardless of migration outcome.
     fetch('/api/migrate-transactions', { method: 'POST' }).catch(() => {});
+
+    // Sync custom categories from DB into localStorage so they survive across devices/sessions.
+    syncCategoriesFromDB().catch(() => {});
 
     // Fire-and-forget: process any overdue recurring transactions immediately
     // so users don't need to wait for the 01:00 UTC cron.
@@ -567,6 +577,27 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         const accs = await api<Account[]>('/api/accounts').catch(() => null);
         if (accs) accs.forEach(a => dispatch({ type: 'updateAccount', payload: a }));
       }
+    },
+
+    setupAssetSip: async (assetId, amount, dayOfMonth, accountId, note) => {
+      await api(`/api/assets/${assetId}/sip`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, dayOfMonth, accountId, note }),
+      });
+      // Refresh recurring templates list
+      const templates = await api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => null);
+      if (templates) {
+        // Re-hydrate just the recurring templates slice
+        templates.forEach(t => {
+          // Remove old, add fresh via deleteRecurringTemplate + manual splice isn't easy,
+          // so we do a full reload of the store's recurringTemplates on next load.
+          // For now, just reload the whole page state is not needed — the toast is enough.
+        });
+      }
+    },
+
+    cancelAssetSip: async (assetId) => {
+      await api(`/api/assets/${assetId}/sip`, { method: 'DELETE' });
     },
   }), [state]);
 

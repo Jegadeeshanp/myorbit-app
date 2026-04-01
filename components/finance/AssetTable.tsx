@@ -20,7 +20,8 @@ type Props = {
 };
 
 // ── Invest / Redeem / SIP modal ─────────────────────────────────────────────
-type InvestAction = 'LUMPSUM' | 'REDEMPTION' | 'SIP_SETUP';
+type InvestTab = 'invest' | 'redeem';
+
 function InvestModal({
   open, onClose, asset, accounts,
 }: {
@@ -29,65 +30,85 @@ function InvestModal({
   asset: Asset | null;
   accounts: { id: string; name: string; type?: string }[];
 }) {
-  const { investAsset } = useFinance();
-  const [action, setAction]   = useState<InvestAction>('LUMPSUM');
-  const [amount, setAmount]   = useState('');
-  const [date, setDate]       = useState(() => new Date().toLocaleDateString('en-CA'));
-  const [accountId, setAccId] = useState('');
-  const [note, setNote]       = useState('');
+  const { investAsset, setupAssetSip } = useFinance();
+  const [tab, setTab]           = useState<InvestTab>('invest');
+  // invest tab state
+  const [recurring, setRecurring] = useState(false);
+  const [amount, setAmount]       = useState('');
+  const [date, setDate]           = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [dayOfMonth, setDay]      = useState<number>(new Date().getDate());
+  const [accountId, setAccId]     = useState('');
+  const [note, setNote]           = useState('');
 
   useEffect(() => {
     if (open) {
-      setAction('LUMPSUM'); setAmount(''); setDate(new Date().toLocaleDateString('en-CA'));
+      setTab('invest'); setRecurring(false);
+      setAmount(''); setDate(new Date().toLocaleDateString('en-CA'));
+      setDay(new Date().getDate());
       setAccId(accounts[0]?.id ?? ''); setNote('');
     }
   }, [open]);
 
+  const canSave = !!amount && Number(amount) > 0;
+
   async function handleSave() {
-    if (!asset || !amount || Number(amount) <= 0) return;
+    if (!asset || !canSave) return;
     try {
-      const type = action === 'REDEMPTION' ? 'REDEMPTION' : 'LUMPSUM';
-      await investAsset(asset.id, Number(amount), type, date, accountId || undefined, note || undefined);
-      toast(action === 'REDEMPTION' ? 'Withdrawal recorded' : 'Investment added');
+      if (tab === 'redeem') {
+        await investAsset(asset.id, Number(amount), 'REDEMPTION', date, accountId || undefined, note || undefined);
+        toast('Withdrawal recorded');
+      } else if (recurring) {
+        await setupAssetSip(asset.id, Number(amount), dayOfMonth, accountId || undefined, note || undefined);
+        toast('Monthly SIP scheduled ✓');
+      } else {
+        await investAsset(asset.id, Number(amount), 'LUMPSUM', date, accountId || undefined, note || undefined);
+        toast('Investment added');
+      }
       onClose();
     } catch (e: any) {
       toast(e.message ?? 'Failed to save', 'error');
     }
   }
 
+  const saveLabel = tab === 'redeem' ? 'Record Withdrawal'
+    : recurring ? 'Start Monthly SIP'
+    : 'Add Investment';
+  const saveCls = tab === 'redeem'
+    ? 'bg-rose-600 hover:bg-rose-700'
+    : 'bg-emerald-700 hover:bg-emerald-800';
+
   const footer = (
     <div className="flex items-center justify-end gap-3">
-      <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+      <button type="button" onClick={onClose}
+        className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSave} disabled={!amount || Number(amount) <= 0}
-        className={`rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
-          action === 'REDEMPTION' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-700 hover:bg-emerald-800'
-        }`}>
-        {action === 'REDEMPTION' ? 'Record Withdrawal' : 'Add Investment'}
+      <button type="button" onClick={handleSave} disabled={!canSave}
+        className={`rounded-full px-5 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${saveCls}`}>
+        {saveLabel}
       </button>
     </div>
   );
 
-  const titleMap: Record<InvestAction, string> = {
-    LUMPSUM: 'Add Investment',
-    REDEMPTION: 'Withdraw / Redeem',
-    SIP_SETUP: 'Add Investment',
-  };
-
   return (
-    <Modal open={open} onClose={onClose} title={asset ? titleMap[action] : ''} subtitle={asset?.name} footer={footer}>
+    <Modal
+      open={open} onClose={onClose}
+      title={tab === 'redeem' ? 'Withdraw / Redeem' : recurring ? 'Start Monthly SIP' : 'Add Investment'}
+      subtitle={asset?.name}
+      footer={footer}
+    >
       <div className="space-y-4">
-        {/* Action tabs */}
+
+        {/* ── Action tabs: Invest | Withdraw ── */}
         <div className="flex gap-2">
           {([
-            { key: 'LUMPSUM',   label: '+ Invest' },
-            { key: 'REDEMPTION', label: '− Withdraw' },
-          ] as { key: InvestAction; label: string }[]).map(opt => (
-            <button key={opt.key} type="button" onClick={() => setAction(opt.key)}
+            { key: 'invest' as InvestTab, label: '+ Invest' },
+            { key: 'redeem' as InvestTab, label: '− Withdraw' },
+          ]).map(opt => (
+            <button key={opt.key} type="button" onClick={() => { setTab(opt.key); setRecurring(false); }}
               className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition ${
-                action === opt.key
-                  ? opt.key === 'REDEMPTION'
+                tab === opt.key
+                  ? opt.key === 'redeem'
                     ? 'border-rose-400 bg-rose-50 text-rose-700 shadow-sm'
                     : 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
                   : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700'
@@ -97,39 +118,93 @@ function InvestModal({
           ))}
         </div>
 
+        {/* ── Invest tab: One-time / Recurring toggle ── */}
+        {tab === 'invest' && (
+          <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <Repeat2 className="h-4 w-4 flex-none text-gray-400" />
+            <span className="flex-1 text-sm font-medium text-gray-700">Monthly SIP (recurring)</span>
+            <button
+              type="button"
+              onClick={() => setRecurring(v => !v)}
+              className={`relative inline-flex h-6 w-10 flex-none items-center rounded-full transition-colors ${
+                recurring ? 'bg-emerald-600' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                recurring ? 'translate-x-5' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+        )}
+
+        {/* ── Amount ── */}
         <div>
           <SectionLabel>Amount (₹)</SectionLabel>
           <input
             type="number" min="1" placeholder="0"
             value={amount} onChange={e => setAmount(e.target.value)}
-            className={inputCls}
-            autoFocus
+            className={inputCls} autoFocus
           />
         </div>
 
-        <div>
-          <SectionLabel>Date</SectionLabel>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
-        </div>
+        {/* ── One-time: date field | Recurring: day-of-month picker ── */}
+        {tab === 'invest' && recurring ? (
+          <div>
+            <SectionLabel>Debit on day of month</SectionLabel>
+            <div className="flex items-center gap-3">
+              <input
+                type="number" min="1" max="28"
+                value={dayOfMonth}
+                onChange={e => setDay(Math.min(28, Math.max(1, Number(e.target.value))))}
+                className={`${inputCls} w-24`}
+              />
+              <span className="text-sm text-gray-400">of every month (1 – 28)</span>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              First debit: {(() => {
+                const now = new Date();
+                const today = now.getDate();
+                let m = now.getMonth(), y = now.getFullYear();
+                if (dayOfMonth <= today) { m += 1; if (m > 11) { m = 0; y += 1; } }
+                const maxD = new Date(y, m + 1, 0).getDate();
+                const d = Math.min(dayOfMonth, maxD);
+                return new Date(y, m, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+              })()}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <SectionLabel>Date</SectionLabel>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
+          </div>
+        )}
 
+        {/* ── Account ── */}
         {accounts.length > 0 && (
           <div>
-            <SectionLabel>Debit/Credit Account <span className="text-xs font-normal text-gray-400">(optional)</span></SectionLabel>
+            <SectionLabel>
+              {tab === 'invest' ? 'Debit Account' : 'Credit Account'}
+              <span className="ml-1 text-xs font-normal text-gray-400">(optional)</span>
+            </SectionLabel>
             <select value={accountId} onChange={e => setAccId(e.target.value)} className={inputCls}>
               <option value="">— none —</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.type ? ` – ${a.type}` : ''}</option>)}
+              {accounts.map(a => (
+                <option key={a.id} value={a.id}>{a.name}{a.type ? ` – ${a.type}` : ''}</option>
+              ))}
             </select>
           </div>
         )}
 
+        {/* ── Note ── */}
         <div>
           <SectionLabel>Note <span className="text-xs font-normal text-gray-400">(optional)</span></SectionLabel>
           <input
-            type="text" placeholder="e.g. Monthly SIP"
+            type="text" placeholder={recurring ? 'e.g. Monthly SIP via HDFC' : 'e.g. Q1 top-up'}
             value={note} onChange={e => setNote(e.target.value)}
             className={inputCls}
           />
         </div>
+
       </div>
     </Modal>
   );

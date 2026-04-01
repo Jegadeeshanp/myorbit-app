@@ -36,18 +36,13 @@ export default function AccountsPage() {
       .filter(a => a.type !== 'Credit Card')
       .reduce((s, a) => s + a.balance, 0);
 
-    // Credit Used = net debit on all credit card accounts from transactions
-    // (expenses reduce balance, OB/BA adjustments are included naturally)
-    const creditAccIds = new Set(
-      state.accounts.filter(a => a.type === 'Credit Card').map(a => a.id)
-    );
-    const creditNet = state.transactions
-      .filter(t => t.accountId && creditAccIds.has(t.accountId))
-      .reduce((s, t) => s + t.amount, 0); // expenses negative, income positive
-    // Positive owed = negative net (spent more than paid/adjusted)
-    const creditUsed = Math.max(-creditNet, 0);
+    // Credit Used = sum of absolute negative balances on credit card accounts only
+    // (balance < 0 means money owed; excludes wallets, banks, assets)
+    const creditUsed = state.accounts
+      .filter(a => a.type === 'Credit Card' && a.balance < 0)
+      .reduce((s, a) => s + Math.abs(a.balance), 0);
 
-    // Total Balance = Balance - Credit Used
+    // Total Balance = liquid balance minus credit card debt
     const totalBalance = liquidBalance - creditUsed;
 
     // Spend = real expenses only (type==='expense' automatically excludes transfer/opening_balance/adjustment)

@@ -5,8 +5,8 @@ import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 import { INCOME_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
-import { Plus, X, Package, Check } from 'lucide-react';
-import { getCustomIncomeCategoryDefs, addCustomIncomeCategory } from '@/lib/customCategoryStore';
+import { Plus, X, Package, Check, Repeat2 } from 'lucide-react';
+import { getCustomIncomeCategoryDefs, addCustomIncomeCategoryDB } from '@/lib/customCategoryStore';
 
 export type AddIncomeProps = {
   open: boolean;
@@ -53,7 +53,7 @@ function IncomeCategoryGrid({
     };
     setExtras(prev => [...prev, newCat]);
     const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
-    addCustomIncomeCategory(newCat.name, iconName); // persist name + icon
+    addCustomIncomeCategoryDB(newCat.name, iconName); // persist to localStorage + DB
     onChange(newCat.name);
     setCustomName('');
     setCustomIcon(Package);
@@ -174,6 +174,8 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
   const [note,        setNote]      = useState('');
   const [amount,      setAmount]    = useState('');
   const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
+  // Recurring: default frequency = monthly on selected date
+  const [isRecurring, setRecurring] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -183,6 +185,7 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
       setNote(initial?.notes ?? '');
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
+      setRecurring(false);
     }
   }, [open]);
 
@@ -192,8 +195,13 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSave({ date, category, description: description.trim(), notes: note.trim() || undefined, amount: Math.abs(Number(amount)), type: 'income', accountId });
-    toast(initial ? 'Income updated' : 'Income recorded');
+    const recurring = isRecurring && !initial ? {
+      frequency:  'monthly' as const,
+      startDate:   date,
+      endType:     'never' as const,
+    } : undefined;
+    onSave({ date, category, description: description.trim(), notes: note.trim() || undefined, amount: Math.abs(Number(amount)), type: 'income', accountId, ...(recurring ? { recurring } : {}) } as any);
+    toast(initial ? 'Income updated' : isRecurring ? 'Recurring income added' : 'Income recorded');
     onClose();
   };
 
@@ -253,6 +261,25 @@ export default function AddIncomeModal({ open, onClose, accounts, onSave, initia
               </label>
               <input value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Add a note…" className={inputCls} />
             </div>
+
+            {/* Repeat monthly toggle — hidden when editing an existing transaction */}
+            {!initial && (
+              <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <Repeat2 className="h-4 w-4 flex-none text-gray-400" />
+                <span className="flex-1 text-sm font-medium text-gray-700">Repeat monthly on this date</span>
+                <button
+                  type="button"
+                  onClick={() => setRecurring(v => !v)}
+                  className={`relative inline-flex h-6 w-10 flex-none items-center rounded-full transition-colors ${
+                    isRecurring ? 'bg-emerald-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    isRecurring ? 'translate-x-5' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

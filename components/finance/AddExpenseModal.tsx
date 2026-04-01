@@ -5,8 +5,8 @@ import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
-import { Plus, X, Package, Check } from 'lucide-react';
-import { getCustomExpenseCategoryDefs, addCustomExpenseCategory } from '@/lib/customCategoryStore';
+import { Plus, X, Package, Check, Repeat2 } from 'lucide-react';
+import { getCustomExpenseCategoryDefs, addCustomExpenseCategoryDB } from '@/lib/customCategoryStore';
 
 export type AddExpenseProps = {
   open: boolean;
@@ -53,7 +53,7 @@ function CategoryGrid({
     };
     setExtras(prev => [...prev, newCat]);
     const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
-    addCustomExpenseCategory(newCat.name, iconName); // persist name + icon to central store
+    addCustomExpenseCategoryDB(newCat.name, iconName); // persist to localStorage + DB
     onChange(newCat.name);
     setCustomName('');
     setCustomIcon(Package);
@@ -174,6 +174,8 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
   const [note,        setNote]      = useState('');
   const [amount,      setAmount]    = useState('');
   const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
+  // Recurring: default frequency = monthly on selected date
+  const [isRecurring, setRecurring] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -183,6 +185,7 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
       setNote(initial?.notes ?? '');
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
+      setRecurring(false);
     }
   }, [open]);
 
@@ -192,8 +195,14 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSave({ date, category, description: description.trim(), notes: note.trim() || undefined, amount: -Math.abs(Number(amount)), type: 'expense', accountId });
-    toast(initial ? 'Expense updated' : 'Expense recorded');
+    // If recurring, attach a monthly config starting from selected date
+    const recurring = isRecurring && !initial ? {
+      frequency:  'monthly' as const,
+      startDate:   date,
+      endType:     'never' as const,
+    } : undefined;
+    onSave({ date, category, description: description.trim(), notes: note.trim() || undefined, amount: -Math.abs(Number(amount)), type: 'expense', accountId, ...(recurring ? { recurring } : {}) } as any);
+    toast(initial ? 'Expense updated' : isRecurring ? 'Recurring expense added' : 'Expense recorded');
     onClose();
   };
 
@@ -253,6 +262,25 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
               </label>
               <input value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Add a note…" className={inputCls} />
             </div>
+
+            {/* Repeat monthly toggle — hidden when editing an existing transaction */}
+            {!initial && (
+              <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <Repeat2 className="h-4 w-4 flex-none text-gray-400" />
+                <span className="flex-1 text-sm font-medium text-gray-700">Repeat monthly on this date</span>
+                <button
+                  type="button"
+                  onClick={() => setRecurring(v => !v)}
+                  className={`relative inline-flex h-6 w-10 flex-none items-center rounded-full transition-colors ${
+                    isRecurring ? 'bg-rose-500' : 'bg-gray-200'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    isRecurring ? 'translate-x-5' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
