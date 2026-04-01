@@ -191,6 +191,7 @@ type FinanceContextValue = {
   investAsset:            (assetId: string, amount: number, type: 'LUMPSUM' | 'SIP' | 'REDEMPTION', date: string, accountId?: string, note?: string) => Promise<void>;
   setupAssetSip:          (assetId: string, amount: number, dayOfMonth: number, accountId?: string, note?: string) => Promise<void>;
   cancelAssetSip:         (assetId: string)                => Promise<void>;
+  fixAccountBalance:      (accountId: string)              => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -354,6 +355,18 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       // Intentionally NOT patching account.balance — it is already correct
     },
 
+    fixAccountBalance: async (accountId) => {
+      const result = await api<{
+        ok: boolean;
+        diff: number;
+        message?: string;
+        transaction?: Transaction;
+      }>(`/api/accounts/${accountId}/fix-balance`, { method: 'POST' });
+      // If a new adjustment transaction was created, add it to state
+      if (result.transaction) {
+        dispatch({ type: 'addTransaction', payload: result.transaction });
+      }
+    },
 
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });

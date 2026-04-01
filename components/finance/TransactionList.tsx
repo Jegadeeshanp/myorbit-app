@@ -361,12 +361,18 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
-    // Income: only real income transactions
-    const income = displayTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    // Expense: actual expenses minus user-exempted categories (e.g. investments)
-    const expense = displayTransactions.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    // Net: income minus all expenses (including exempted)
-    const netExpense = displayTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Income: real income only — exclude Transfer legs (just moving money between accounts)
+    const income = displayTransactions
+      .filter(t => t.type === 'income' && t.category !== 'Transfer')
+      .reduce((s, t) => s + t.amount, 0);
+    // Expense: actual expenses minus user-exempted categories — exclude Transfer legs
+    const expense = displayTransactions
+      .filter(t => t.type === 'expense' && t.category !== 'Transfer' && !excluded.includes(t.category))
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Net: income minus all non-transfer expenses (including exempted)
+    const netExpense = displayTransactions
+      .filter(t => t.type === 'expense' && t.category !== 'Transfer')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
     return { income, expense, net: income - netExpense, count: displayTransactions.length };
   }, [displayTransactions]);
 
@@ -512,10 +518,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           {upcomingOpen && (
             <div className="divide-y divide-blue-50/60 dark:divide-blue-900/20">
               {displayUpcoming.map(tx => {
-                const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-                const isExp    = tx.type === 'expense';
-                const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
-                const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                const catColor  = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+                const isNegative = tx.amount < 0; // use signed amount for correct +/- display
+                const account   = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+                const dateStr   = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                 return (
                   <div key={tx.id} className="group transition hover:bg-blue-50/60 focus-within:bg-blue-50/60 active:bg-blue-50/60 dark:hover:bg-blue-900/20 dark:focus-within:bg-blue-900/20 dark:active:bg-blue-900/20">
                     {/* Mobile */}
@@ -526,12 +532,15 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                         {tx.notes && <p className="truncate text-[11px] text-gray-400 leading-tight">{tx.notes}</p>}
                         <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                          {tx.type === 'adjustment' && (
+                            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adjustment</span>
+                          )}
                           {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
                           <span className="text-[11px] text-blue-400">{dateStr}</span>
                         </div>
                       </div>
-                      <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                        {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                      <p className={`flex-none text-sm font-bold ${isNegative ? 'text-rose-500' : 'text-emerald-600'}`}>
+                        {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                       </p>
                       <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
                     </div>
@@ -540,12 +549,17 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                       <span className="text-xs text-blue-400 whitespace-nowrap">{dateStr}</span>
                       <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100 min-w-0">{tx.description}</p>
                       <p className="truncate text-xs text-gray-400 min-w-0">{tx.notes || '—'}</p>
-                      <span className={`inline-flex w-fit items-center justify-self-start rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
-                        {tx.category}
-                      </span>
+                      <div className="inline-flex w-fit items-center justify-self-start gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
+                          {tx.category}
+                        </span>
+                        {tx.type === 'adjustment' && (
+                          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adj</span>
+                        )}
+                      </div>
                       <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
-                      <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                        {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                      <span className={`text-right text-sm font-bold ${isNegative ? 'text-rose-500' : 'text-emerald-600'}`}>
+                        {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                       </span>
                       <div className="flex justify-end">
                         <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
@@ -579,9 +593,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           {groups.map((group, gi) => {
             const isCollapsed = collapsedGroups.has(group.label);
             const isNow       = group.label === currentMonthLabel;
-            const groupNet    = group.transactions.reduce(
-              (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
-            );
+            // Use signed amounts directly — expenses are stored negative, income positive
+            const groupNet    = group.transactions.reduce((s, tx) => s + tx.amount, 0);
 
             return (
             <div key={group.label}>
@@ -618,10 +631,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
               {!isCollapsed && (
               <div className="divide-y divide-gray-50 dark:divide-gray-800/40">
                 {group.transactions.map(tx => {
-                  const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-                  const isExp    = tx.type === 'expense';
-                  const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
-                  const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  const catColor   = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+                  const isNegative = tx.amount < 0; // use signed amount — correct for expense, income, transfer, adjustment
+                  const account    = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+                  const dateStr    = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
                   return (
                     <div key={tx.id} className="group transition hover:bg-gray-50/50">
@@ -632,12 +645,15 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                           <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
                           <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                            {tx.type === 'adjustment' && (
+                              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adjustment</span>
+                            )}
                             {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
                             <span className="text-[11px] text-gray-400">{dateStr}</span>
                           </div>
                         </div>
-                        <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
-                          {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        <p className={`flex-none text-sm font-bold ${isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </p>
                         <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
                       </div>
@@ -647,12 +663,15 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                         <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                         <p className="truncate text-sm font-medium text-gray-900 min-w-0">{tx.description}</p>
                         <p className="truncate text-xs text-gray-400 min-w-0">{tx.notes || '—'}</p>
-                        <span className="justify-self-start inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium truncate max-w-full">
+                        <div className="justify-self-start inline-flex items-center gap-1.5 flex-wrap min-w-0">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
-                        </span>
+                          {tx.type === 'adjustment' && (
+                            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adj</span>
+                          )}
+                        </div>
                         <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
-                        <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
-                          {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        <span className={`text-right text-sm font-bold ${isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </span>
                         <div className="flex justify-end">
                           <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
