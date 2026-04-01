@@ -6,16 +6,42 @@ import { encryptNumber, decryptNumber } from '@/lib/encryption';
 
 export const runtime = 'nodejs';
 
+async function computeInvested(assetId: string): Promise<number> {
+  const rows = await prisma.investmentTransaction.findMany({
+    where: { assetId, type: { in: ['LUMPSUM', 'SIP'] } },
+  });
+  if (rows.length === 0) return 0;
+  return (await Promise.all(rows.map(r => decryptNumber(r.amount)))).reduce((s, v) => s + v, 0);
+}
+
 async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null }) {
+  const computedInvested = await computeInvested(row.id);
+  const storedInvested   = await decryptNumber(row.invested);
   return {
     id: row.id, name: row.name, category: row.category,
     units: row.units ?? null,
     value: await decryptNumber(row.value),
-    invested: await decryptNumber(row.invested),
+    invested: computedInvested > 0 ? computedInvested : storedInvested,
     accountId: extra?.accountId ?? undefined,
     investmentType: (extra?.investmentType ?? 'lump_sum') as 'lump_sum' | 'sip',
     sipConfig: extra?.sipConfig ? JSON.parse(extra.sipConfig) : null,
   };
+}
+
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const userId = await requireUserId();
+    const row = await prisma.asset.findFirst({ where: { id, userId } });
+    if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const [extra] = await prisma.$queryRaw<any[]>`
+      SELECT id, "accountId", "investmentType", "sipConfig", "units" FROM "Asset" WHERE id = ${id}
+    `;
+    return NextResponse.json(await decryptAsset(row, extra));
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

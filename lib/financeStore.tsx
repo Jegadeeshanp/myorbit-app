@@ -155,6 +155,7 @@ type FinanceContextValue = {
   updateBudget:           (b: BudgetCategory)              => Promise<void>;
   deleteBudget:           (id: string)                     => Promise<void>;
   cancelRecurring:        (id: string)                     => Promise<void>;
+  investAsset:            (assetId: string, amount: number, type: 'LUMPSUM' | 'SIP' | 'REDEMPTION', date: string, accountId?: string, note?: string) => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -189,6 +190,10 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     // Run one-time migration to update legacy category-based types to proper types.
     // Fire-and-forget — load proceeds regardless of migration outcome.
     fetch('/api/migrate-transactions', { method: 'POST' }).catch(() => {});
+
+    // Fire-and-forget: process any overdue recurring transactions immediately
+    // so users don't need to wait for the 01:00 UTC cron.
+    fetch('/api/recurring-transactions', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
 
     Promise.all([
       api<Account[]>('/api/accounts'),
@@ -501,6 +506,22 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     cancelRecurring: async (id) => {
       await api(`/api/recurring-transactions/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteRecurringTemplate', payload: id });
+    },
+
+    investAsset: async (assetId, amount, type, date, accountId, note) => {
+      await api(`/api/assets/${assetId}/invest`, {
+        method: 'POST',
+        body: JSON.stringify({ type, amount, date, accountId, note }),
+      });
+      // Reload the asset so `invested` reflects the new InvestmentTransaction total
+      const updated = await api<Asset>(`/api/assets/${assetId}`).catch(() => null);
+      if (updated) dispatch({ type: 'updateAsset', payload: updated as any });
+
+      // Mirror in accounts state if account was debited/credited
+      if (accountId) {
+        const accs = await api<Account[]>('/api/accounts').catch(() => null);
+        if (accs) accs.forEach(a => dispatch({ type: 'updateAccount', payload: a }));
+      }
     },
   }), [state]);
 

@@ -36,6 +36,7 @@ model User {
   workouts            Workout[]
   pushTokens            PushToken[]
   recurringTransactions RecurringTransaction[]
+  investmentTxs         InvestmentTransaction[]
 }
 
 model Session {
@@ -94,7 +95,29 @@ model Asset {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentTxs  InvestmentTransaction[]
+  assetSips      RecurringTransaction[]
 
+  @@index([userId])
+}
+
+// ── Investment Transactions (per-asset money movements) ────────────────────
+// Every capital movement into/out of an asset is recorded here.
+// total_invested = SUM(amount WHERE type IN ('LUMPSUM','SIP'))
+// REDEMPTION amounts are always positive — represents withdrawal size.
+model InvestmentTransaction {
+  id        String   @id @default(cuid())
+  assetId   String
+  userId    String
+  type      String   // LUMPSUM | SIP | REDEMPTION
+  amount    String   // encrypted — always stored as a positive number
+  date      String   // YYYY-MM-DD
+  note      String?
+  createdAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
   @@index([userId])
 }
 
@@ -392,18 +415,20 @@ model Workout {
 model RecurringTransaction {
   id              String   @id @default(cuid())
   userId          String
-  accountId       String?
+  accountId       String?  // bank account to debit/credit for expense/income or asset SIP
+  assetId         String?  // set for asset SIP templates; null for regular recurring transactions
   category        String
   description     String
   notes           String?
   amount          String   // encrypted — same sign as the amount (negative for expense)
-  type            String   // expense | income
+  type            String   // expense | income | SIP (for asset SIP templates)
   recurringConfig String   // JSON: RecurringConfig { frequency, startDate, endType, ... }
   nextDate        String   // YYYY-MM-DD — date of the next occurrence to create
   occurrenceCount Int      @default(0) // how many times spawned so far (for endAfterTimes check)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset           Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([nextDate])

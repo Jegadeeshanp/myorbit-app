@@ -6,15 +6,30 @@ import { encryptNumber, decryptNumber } from '@/lib/encryption';
 
 export const runtime = 'nodejs';
 
-async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null }) {
+/** Compute invested from InvestmentTransaction rows (LUMPSUM + SIP only). */
+async function computeInvested(assetId: string): Promise<number> {
+  const rows = await prisma.investmentTransaction.findMany({
+    where: { assetId, type: { in: ['LUMPSUM', 'SIP'] } },
+  });
+  if (rows.length === 0) return 0;
+  return (await Promise.all(rows.map(r => decryptNumber(r.amount)))).reduce((s, v) => s + v, 0);
+}
+
+async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null; units?: number | null }) {
+  // Prefer computed invested from InvestmentTransaction; fall back to stored field
+  const computedInvested = await computeInvested(row.id);
+  const storedInvested   = await decryptNumber(row.invested);
+
   return {
-    id: row.id, name: row.name, category: row.category,
-    units: (extra as any)?.units ?? (row as any).units ?? null,
-    value: await decryptNumber(row.value),
-    invested: await decryptNumber(row.invested),
-    accountId: extra?.accountId ?? undefined,
+    id:             row.id,
+    name:           row.name,
+    category:       row.category,
+    units:          extra?.units ?? (row as any).units ?? null,
+    value:          await decryptNumber(row.value),
+    invested:       computedInvested > 0 ? computedInvested : storedInvested,
+    accountId:      extra?.accountId ?? undefined,
     investmentType: (extra?.investmentType ?? 'lump_sum') as 'lump_sum' | 'sip',
-    sipConfig: extra?.sipConfig ? JSON.parse(extra.sipConfig) : null,
+    sipConfig:      extra?.sipConfig ? JSON.parse(extra.sipConfig) : null,
   };
 }
 
@@ -23,7 +38,6 @@ export async function GET() {
     const userId = await requireUserId();
     const rows = await prisma.asset.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 
-    // Fetch new fields via raw SQL — safely handle units column that may not exist yet
     let extras: { id: string; accountId: string | null; investmentType: string; sipConfig: string | null; units?: number | null }[] = [];
     try {
       extras = await prisma.$queryRaw`
@@ -51,28 +65,35 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
     const { name, category, value, invested, accountId, investmentType, sipConfig } = parsed.data;
-
-    // Create without new fields (old Prisma client doesn't know them)
     const { units } = parsed.data as any;
+
     const row = await prisma.asset.create({
       data: { userId, name, category, value: await encryptNumber(value), invested: await encryptNumber(invested), units: units ?? null },
     });
 
-    // Set new fields via raw SQL
-    const invType = investmentType ?? 'lump_sum';
-    const sipConfigRaw = sipConfig;
-    const sipVal = sipConfigRaw == null
-      ? null
-      : typeof sipConfigRaw === 'string'
-        ? sipConfigRaw
-        : JSON.stringify(sipConfigRaw);
-    const accVal = accountId ?? null;
+    const invType    = investmentType ?? 'lump_sum';
+    const sipVal     = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
+    const accVal     = accountId ?? null;
     await prisma.$executeRaw`
       UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
       WHERE id = ${row.id}
     `;
 
-    return NextResponse.json(await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal }), { status: 201 });
+    // Create initial InvestmentTransaction (LUMPSUM) so invested is tracked properly
+    if (invested > 0) {
+      await prisma.investmentTransaction.create({
+        data: {
+          assetId: row.id,
+          userId,
+          type: 'LUMPSUM',
+          amount: await encryptNumber(invested),
+          date: new Date().toLocaleDateString('en-CA'),
+          note: 'Initial investment',
+        },
+      });
+    }
+
+    return NextResponse.json(await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units }), { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

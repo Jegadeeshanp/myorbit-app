@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { decryptNumber } from '@/lib/encryption';
+import { processRecurring } from '@/lib/processRecurring';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +19,22 @@ async function decryptTemplate(row: any) {
     nextDate:        row.nextDate,
     occurrenceCount: row.occurrenceCount,
   };
+}
+
+/**
+ * POST /api/recurring-transactions — immediately process overdue templates
+ * for the authenticated user.  Called on app load so users don't have to
+ * wait for the 01:00 UTC cron to see recurring transactions fire.
+ */
+export async function POST() {
+  try {
+    const userId = await requireUserId();
+    const spawned = await processRecurring(userId);
+    return NextResponse.json({ ok: true, spawned });
+  } catch (e: any) {
+    if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
 }
 
 /** GET /api/recurring-transactions — list all templates for the current user */
