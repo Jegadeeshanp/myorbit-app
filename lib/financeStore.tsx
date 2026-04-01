@@ -283,14 +283,31 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         }, 0);
       const diff = account.balance - txNetBalance;
       if (Math.abs(diff) < 1) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const amount = Math.abs(diff);
+      const existing = state.transactions
+        .filter(t => t.accountId === accountId && t.type === 'opening_balance')
+        .find(t => t.date === today);
+      if (existing) {
+        if (existing.amount !== amount) {
+          const updatedTx = await api<Transaction>(`/api/transactions/${existing.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              amount,
+            }),
+          });
+          dispatch({ type: 'updateTransaction', payload: updatedTx });
+        }
+        return;
+      }
       const txRow = await api<Transaction>('/api/transactions', {
         method: 'POST',
         body: JSON.stringify({
           accountId,
-          date: new Date().toISOString().slice(0, 10),
+          date: today,
           category: 'Opening Balance',
           description: 'Opening balance',
-          amount: Math.abs(diff),
+          amount,
           type: 'opening_balance',
         }),
       });
