@@ -40,8 +40,9 @@ export async function processRecurring(userId: string | null): Promise<number> {
     const cfg: RecurringConfig = JSON.parse(recurringConfig);
     const txAmount = await decryptNumber(encAmount); // signed: negative for expenses
 
-    // ── 1a. Asset SIP: create InvestmentTransaction ───────────────────────
+    // ── 1a. Asset SIP: create InvestmentTransaction + mirror Transaction ──
     if (assetId && type === 'SIP') {
+      // Record in investment history (for P&L and invested tracking)
       await prisma.investmentTransaction.create({
         data: {
           assetId,
@@ -50,6 +51,21 @@ export async function processRecurring(userId: string | null): Promise<number> {
           amount: await encryptNumber(Math.abs(txAmount)), // always stored positive
           date: nextDate,
           note: notes ?? null,
+        },
+      });
+
+      // Mirror as an expense Transaction so it appears in the Transactions list
+      const asset = await prisma.asset.findFirst({ where: { id: assetId } }).catch(() => null);
+      await prisma.transaction.create({
+        data: {
+          userId:      tUserId,
+          accountId:   accountId ?? null,
+          date:        nextDate,
+          category:    'Investment',
+          description: `SIP – ${asset?.name ?? description}`,
+          notes:       notes ?? null,
+          amount:      await encryptNumber(-Math.abs(txAmount)), // negative = expense debit
+          type:        'expense',
         },
       });
     } else {

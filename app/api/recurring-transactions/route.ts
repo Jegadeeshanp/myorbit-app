@@ -10,11 +10,12 @@ async function decryptTemplate(row: any) {
   return {
     id:              row.id,
     accountId:       row.accountId ?? undefined,
+    assetId:         row.assetId   ?? undefined, // present for asset SIPs
     category:        row.category,
     description:     row.description,
     notes:           row.notes ?? undefined,
     amount:          await decryptNumber(row.amount),
-    type:            row.type,
+    type:            row.type, // 'expense' | 'income' | 'SIP'
     recurringConfig: JSON.parse(row.recurringConfig),
     nextDate:        row.nextDate,
     occurrenceCount: row.occurrenceCount,

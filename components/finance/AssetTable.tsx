@@ -286,6 +286,13 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
 
   const accountList = state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
 
+  // Build a map of assetId → active SIP template for quick lookup
+  const sipByAsset = new Map(
+    state.recurringTemplates
+      .filter(t => t.type === 'SIP' && t.assetId)
+      .map(t => [t.assetId!, t])
+  );
+
   function openInvest(asset: Asset, action: 'LUMPSUM' | 'REDEMPTION') {
     setInvestAction(action);
     setInvestTarget(asset);
@@ -314,10 +321,19 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
               const invested = asset.invested;
               const pnl      = asset.value - invested;
               const allocPct = allocBase > 0 ? Math.round((asset.value / allocBase) * 100) : 0;
+              const activeSip = sipByAsset.get(asset.id);
 
               return (
                 <tr key={asset.id} className="group transition hover:bg-gray-50/50">
-                  <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">{asset.name}</td>
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug">{asset.name}</p>
+                    {activeSip && (
+                      <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        <Repeat2 className="h-2.5 w-2.5" />
+                        SIP {fmt(activeSip.amount)}/mo
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.tagBg} ${cfg.tagText}`}>
                       <Icon className="h-3 w-3" />{asset.category}
@@ -376,9 +392,10 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
       {/* ── Mobile cards ──────────────────────────────────────────────────── */}
       <div className="sm:hidden rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden divide-y divide-gray-100">
         {assets.map(asset => {
-          const cfg  = getCategoryConfig(asset.category);
-          const Icon = cfg.icon;
-          const pnl  = asset.value - asset.invested;
+          const cfg       = getCategoryConfig(asset.category);
+          const Icon      = cfg.icon;
+          const pnl       = asset.value - asset.invested;
+          const activeSip = sipByAsset.get(asset.id);
 
           return (
             <div key={asset.id} className="px-4 py-3.5">
@@ -388,8 +405,14 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
                   <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.tagBg} ${cfg.tagText}`}>
                     <Icon className="h-2.5 w-2.5" />{asset.category}
                   </span>
-                  <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-400">
+                  <div className="mt-1.5 flex items-center gap-3 flex-wrap text-xs text-gray-400">
                     <span>Invested: {fmt(asset.invested)}</span>
+                    {activeSip && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                        <Repeat2 className="h-2.5 w-2.5" />
+                        SIP {fmt(activeSip.amount)}/mo · next {new Date(activeSip.nextDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-none">

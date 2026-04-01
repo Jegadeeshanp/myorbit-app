@@ -45,11 +45,18 @@ export default function AccountsPage() {
     // Total Balance = liquid balance minus credit card debt
     const totalBalance = liquidBalance - creditUsed;
 
-    // Spend = real expenses only (type==='expense' automatically excludes transfer/opening_balance/adjustment)
-    const today2 = new Date().toISOString().slice(0, 10);
+    // Spend = current month expenses only (date <= today, same month/year)
+    const now2         = new Date();
+    const today2       = now2.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const monthPrefix2 = today2.slice(0, 7); // YYYY-MM
     const excludedCats = getExcludedExpenseCategories();
     const totalExpenses = state.transactions
-      .filter(t => t.type === 'expense' && t.date <= today2 && !excludedCats.includes(t.category))
+      .filter(t =>
+        t.type === 'expense' &&
+        t.date <= today2 &&
+        t.date.startsWith(monthPrefix2) &&
+        !excludedCats.includes(t.category)
+      )
       .reduce((s, t) => s + Math.abs(t.amount), 0);
 
     const byType: Record<Account['type'], Account[]> = {
@@ -67,7 +74,7 @@ export default function AccountsPage() {
   const metrics = [
     { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'All accounts (excl. credit)' },
     { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Net credit card spend' },
-    { label: 'Spend',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'All expenses (total)' },
+    { label: 'Spend',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month\'s expenses' },
   ];
 
   const filteredByType = useMemo(() => {

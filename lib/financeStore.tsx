@@ -21,11 +21,12 @@ export type Liability = LiabilityType;
 export type RecurringTemplate = {
   id: string;
   accountId?: string;
+  assetId?: string;       // set for asset SIP templates
   category: string;
   description: string;
   notes?: string;
   amount: number;
-  type: 'expense' | 'income';
+  type: 'expense' | 'income' | 'SIP';
   recurringConfig: RecurringConfig;
   nextDate: string;
   occurrenceCount: number;
