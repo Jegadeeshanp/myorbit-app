@@ -352,20 +352,23 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     return applyTabSearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
   }, [upcomingTxs, safeTab, search, accountTabMap]);
 
-  const groups = useMemo(() => groupByMonth(filtered), [filtered]);
+  const displayTransactions = useMemo(() => filtered.filter(tx => tx.type !== 'opening_balance'), [filtered]);
+  const displayUpcoming = useMemo(() => filteredUpcoming.filter(tx => tx.type !== 'opening_balance'), [filteredUpcoming]);
+
+  const groups = useMemo(() => groupByMonth(displayTransactions), [displayTransactions]);
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
     // Income: only real income transactions
-    const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const income = displayTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     // Expense: actual expenses minus user-exempted categories (e.g. investments)
-    const expense = filtered.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const expense = displayTransactions.filter(t => t.type === 'expense' && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
     // Net: income minus all expenses (including exempted)
-    const netExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, net: income - netExpense, count: filtered.length };
-  }, [filtered]);
+    const netExpense = displayTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, net: income - netExpense, count: displayTransactions.length };
+  }, [displayTransactions]);
 
   return (
     <div className="space-y-4">
@@ -491,7 +494,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
       </div>
 
       {/* ── Upcoming transactions ── */}
-      {filteredUpcoming.length > 0 && (
+      {displayUpcoming.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm dark:border-blue-900/30 dark:bg-[#1C1F26]">
           {/* Collapsible header */}
           <button
@@ -502,13 +505,13 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             <Clock className="h-3.5 w-3.5 text-blue-500" />
             <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Upcoming</p>
             <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-              {filteredUpcoming.length}
+              {displayUpcoming.length}
             </span>
           </button>
 
           {upcomingOpen && (
             <div className="divide-y divide-blue-50/60 dark:divide-blue-900/20">
-              {filteredUpcoming.map(tx => {
+              {displayUpcoming.map(tx => {
                 const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
                 const isExp    = tx.type === 'expense';
                 const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;

@@ -100,6 +100,33 @@ const defaultState: FinanceState = {
   liabilities: [], budgets: [], recurringTemplates: [], loadState: 'idle',
 };
 
+function calculateBudgetSpentForCurrentMonth(budget: BudgetCategory, transactions: Transaction[]) {
+  const now = new Date();
+  const cats = budget.category
+    ? budget.category.split(',').map(c => c.trim()).filter(Boolean)
+    : [];
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  return transactions
+    .filter(t => t.type === 'expense')
+    .filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === month && d.getFullYear() === year;
+    })
+    .filter(t => {
+      if (cats.length === 0) return true;
+      return cats.includes(t.category) || budget.name === t.category;
+    })
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+}
+
+function recalcBudgetsForCurrentMonth(budgets: BudgetCategory[], transactions: Transaction[]) {
+  return budgets.map(b => ({
+    ...b,
+    spent: Math.round(calculateBudgetSpentForCurrentMonth(b, transactions)),
+  }));
+}
+
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
     case 'hydrate':      return { ...state, ...action.payload, loadState: 'ready' };
@@ -204,7 +231,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       // Non-critical — don't let a recurring-templates failure block finance data
       api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => [] as RecurringTemplate[]),
     ]).then(([accounts, transactions, assets, liabilities, budgets, recurringTemplates]) => {
-      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets, recurringTemplates } });
+      const adjustedBudgets = recalcBudgetsForCurrentMonth(budgets, transactions);
+      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets: adjustedBudgets, recurringTemplates } });
     }).catch((err) => {
       console.error('Failed to load finance data:', err);
       dispatch({ type: 'setLoadState', payload: 'error' });
