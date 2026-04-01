@@ -196,7 +196,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       api<Asset[]>('/api/assets'),
       api<Liability[]>('/api/liabilities'),
       api<BudgetCategory[]>('/api/budgets'),
-      api<RecurringTemplate[]>('/api/recurring-transactions'),
+      // Non-critical — don't let a recurring-templates failure block finance data
+      api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => [] as RecurringTemplate[]),
     ]).then(([accounts, transactions, assets, liabilities, budgets, recurringTemplates]) => {
       dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets, recurringTemplates } });
     }).catch((err) => {
