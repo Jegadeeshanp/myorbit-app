@@ -8,7 +8,21 @@ import { useSession } from 'next-auth/react';
 import type {
   Account as AccountType, Transaction as TransactionType,
   Asset as AssetType, Liability as LiabilityType, BudgetCategory,
+  RecurringConfig,
 } from '@/lib/financeData';
+
+export type RecurringTemplate = {
+  id: string;
+  accountId?: string;
+  category: string;
+  description: string;
+  notes?: string;
+  amount: number;
+  type: 'expense' | 'income';
+  recurringConfig: RecurringConfig;
+  nextDate: string;
+  occurrenceCount: number;
+};
 
 export type AccountTypeName = 'Bank' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Wallet';
 export type Account = AccountType & { creditLimit?: number };
@@ -56,6 +70,7 @@ type FinanceState = {
   assets: Asset[];
   liabilities: Liability[];
   budgets: BudgetCategory[];
+  recurringTemplates: RecurringTemplate[];
   loadState: LoadState;
 };
 
@@ -77,11 +92,12 @@ type FinanceAction =
   | { type: 'deleteLiability'; payload: string }
   | { type: 'addBudget'; payload: BudgetCategory }
   | { type: 'updateBudget'; payload: BudgetCategory }
-  | { type: 'deleteBudget'; payload: string };
+  | { type: 'deleteBudget'; payload: string }
+  | { type: 'deleteRecurringTemplate'; payload: string };
 
 const defaultState: FinanceState = {
   accounts: [], transactions: [], assets: [],
-  liabilities: [], budgets: [], loadState: 'idle',
+  liabilities: [], budgets: [], recurringTemplates: [], loadState: 'idle',
 };
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
@@ -110,6 +126,9 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'updateBudget': return { ...state, budgets: state.budgets.map(b => b.id === action.payload.id ? action.payload : b) };
     case 'deleteBudget': return { ...state, budgets: state.budgets.filter(b => b.id !== action.payload) };
 
+    case 'deleteRecurringTemplate':
+      return { ...state, recurringTemplates: state.recurringTemplates.filter(r => r.id !== action.payload) };
+
     default: return state;
   }
 }
@@ -118,22 +137,23 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
 
 type FinanceContextValue = {
   state: FinanceState;
-  addAccount:             (a: Omit<Account, 'id'>)        => Promise<void>;
-  updateAccount:          (a: Account)                     => Promise<void>;
-  deleteAccount:          (id: string)                     => Promise<void>;
-  addTransaction:         (t: Omit<Transaction, 'id'>)     => Promise<void>;
-  updateTransaction:      (t: Transaction)                  => Promise<void>;
-  deleteTransaction:      (id: string)                     => Promise<void>;
-  addAsset:               (a: Omit<Asset, 'id'>)           => Promise<void>;
-  updateAsset:            (a: Asset)                       => Promise<void>;
-  deleteAsset:            (id: string)                     => Promise<void>;
-  addLiability:           (l: Omit<Liability, 'id'>)       => Promise<void>;
-  updateLiability:        (l: Liability)                   => Promise<void>;
-  deleteLiability:        (id: string)                     => Promise<void>;
-  recordLiabilityPayment: (id: string, amount: number, repaymentAccountId?: string) => Promise<void>;
-  addBudget:              (b: Omit<BudgetCategory, 'id'>)  => Promise<void>;
-  updateBudget:           (b: BudgetCategory)              => Promise<void>;
-  deleteBudget:           (id: string)                     => Promise<void>;
+  addAccount:              (a: Omit<Account, 'id'>)        => Promise<void>;
+  updateAccount:           (a: Account)                    => Promise<void>;
+  deleteAccount:           (id: string)                    => Promise<void>;
+  addTransaction:          (t: Omit<Transaction, 'id'>)    => Promise<void>;
+  updateTransaction:       (t: Transaction)                 => Promise<void>;
+  deleteTransaction:       (id: string)                    => Promise<void>;
+  addAsset:                (a: Omit<Asset, 'id'>)          => Promise<void>;
+  updateAsset:             (a: Asset)                      => Promise<void>;
+  deleteAsset:             (id: string)                    => Promise<void>;
+  addLiability:            (l: Omit<Liability, 'id'>)      => Promise<void>;
+  updateLiability:         (l: Liability)                  => Promise<void>;
+  deleteLiability:         (id: string)                    => Promise<void>;
+  recordLiabilityPayment:  (id: string, amount: number, repaymentAccountId?: string) => Promise<void>;
+  addBudget:               (b: Omit<BudgetCategory, 'id'>) => Promise<void>;
+  updateBudget:            (b: BudgetCategory)             => Promise<void>;
+  deleteBudget:            (id: string)                    => Promise<void>;
+  cancelRecurring:         (id: string)                    => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -170,8 +190,9 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       api<Asset[]>('/api/assets'),
       api<Liability[]>('/api/liabilities'),
       api<BudgetCategory[]>('/api/budgets'),
-    ]).then(([accounts, transactions, assets, liabilities, budgets]) => {
-      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets } });
+      api<RecurringTemplate[]>('/api/recurring-transactions'),
+    ]).then(([accounts, transactions, assets, liabilities, budgets, recurringTemplates]) => {
+      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets, recurringTemplates } });
     }).catch((err) => {
       console.error('Failed to load finance data:', err);
       dispatch({ type: 'setLoadState', payload: 'error' });
@@ -435,6 +456,11 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     deleteBudget: async (id) => {
       await api(`/api/budgets/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteBudget', payload: id });
+    },
+
+    cancelRecurring: async (id) => {
+      await api(`/api/recurring-transactions/${id}`, { method: 'DELETE' });
+      dispatch({ type: 'deleteRecurringTemplate', payload: id });
     },
   }), [state]);
 

@@ -3,6 +3,8 @@ import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { transactionSchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
+import { nextFinanceDate } from '@/lib/financeRecurrence';
+import type { RecurringConfig } from '@/lib/financeData';
 
 export const runtime = 'nodejs';
 
@@ -31,10 +33,39 @@ export async function POST(req: NextRequest) {
     const parsed = transactionSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { accountId, date, category, description, notes, amount, type } = parsed.data as any;
+    const { accountId, date, category, description, notes, amount, type, recurring } = parsed.data as any;
+
+    // Create the first (or one-off) transaction occurrence
     const row = await prisma.transaction.create({
       data: { userId, accountId, date, category, description, notes: notes ?? null, amount: await encryptNumber(amount), type },
     });
+
+    // If recurring, register a template for future auto-spawning
+    if (recurring) {
+      const cfg = recurring as RecurringConfig;
+      const nextDate = nextFinanceDate(date, cfg.frequency, cfg.customInterval);
+      const isExpired = nextDate === null
+        || (cfg.endType === 'on_date' && cfg.endDate && nextDate > cfg.endDate)
+        || (cfg.endType === 'after' && cfg.endAfterTimes && cfg.endAfterTimes <= 1);
+
+      if (!isExpired && nextDate) {
+        await prisma.recurringTransaction.create({
+          data: {
+            userId,
+            accountId: accountId ?? null,
+            category,
+            description,
+            notes: notes ?? null,
+            amount: await encryptNumber(amount), // keep original sign
+            type,
+            recurringConfig: JSON.stringify(cfg),
+            nextDate,
+            occurrenceCount: 1,
+          },
+        });
+      }
+    }
+
     return NextResponse.json(await decryptTx(row), { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
