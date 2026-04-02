@@ -71,13 +71,24 @@ export async function POST(req: NextRequest) {
       data: { userId, name, category, value: await encryptNumber(value), invested: await encryptNumber(invested), units: units ?? null },
     });
 
-    const invType    = investmentType ?? 'lump_sum';
-    const sipVal     = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
-    const accVal     = accountId ?? null;
-    await prisma.$executeRaw`
-      UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
-      WHERE id = ${row.id}
-    `;
+    const invType          = investmentType ?? 'lump_sum';
+    const sipVal           = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
+    const accVal           = accountId ?? null;
+    const isExternallyOwned = !accVal;
+
+    try {
+      await prisma.$executeRaw`
+        UPDATE "Asset"
+        SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}, "isExternallyOwned" = ${isExternallyOwned}
+        WHERE id = ${row.id}
+      `;
+    } catch {
+      // isExternallyOwned column may not exist yet (pre-migration) — fall back without it
+      await prisma.$executeRaw`
+        UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
+        WHERE id = ${row.id}
+      `;
+    }
 
     // Create initial InvestmentTransaction (LUMPSUM) so invested is tracked properly
     if (invested > 0) {
@@ -93,7 +104,55 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units }), { status: 201 });
+    // ── Funding transaction (account-linked assets only) ──────────────────
+    // Single source of truth — no client-side duplication.
+    // Guard: only for account-linked assets with a positive invested amount.
+    let fundingTransaction: any = null;
+    let updatedAccount: any = null;
+
+    if (accVal && invested > 0) {
+      const today = new Date().toLocaleDateString('en-CA');
+
+      // Idempotency: skip if a funding transaction for this asset already exists today
+      const existing = await prisma.transaction.findFirst({
+        where: { userId, accountId: accVal, category: 'Investment', description: name, date: today },
+      });
+
+      if (!existing) {
+        fundingTransaction = await prisma.transaction.create({
+          data: {
+            userId,
+            accountId: accVal,
+            date: today,
+            category: 'Investment',
+            description: name,
+            amount: await encryptNumber(-Math.abs(invested)),
+            type: 'expense',
+          },
+        });
+        // Decrypt amount for client
+        fundingTransaction = {
+          ...fundingTransaction,
+          amount: -Math.abs(invested),
+        };
+
+        // Deduct from linked account balance
+        const accRow = await prisma.account.findFirst({ where: { id: accVal, userId } });
+        if (accRow) {
+          const currentBalance = await decryptNumber(accRow.balance);
+          const newBalance     = currentBalance - Math.abs(invested);
+          const updated        = await prisma.account.update({
+            where: { id: accVal },
+            data:  { balance: await encryptNumber(newBalance) },
+          });
+          updatedAccount = { id: updated.id, name: updated.name, type: updated.type, balance: newBalance };
+          if (updated.creditLimit) updatedAccount.creditLimit = await decryptNumber(updated.creditLimit);
+        }
+      }
+    }
+
+    const asset = await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units });
+    return NextResponse.json({ asset, fundingTransaction, updatedAccount }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
