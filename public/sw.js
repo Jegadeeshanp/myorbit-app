@@ -109,7 +109,7 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 // ── PWA Caching ───────────────────────────────────────────────────────────
-var CACHE_NAME = 'myorbit-v4';
+var CACHE_NAME = 'myorbit-v5';
 var STATIC_ASSETS = ['/', '/orbit'];
 
 self.addEventListener('install', function (event) {
