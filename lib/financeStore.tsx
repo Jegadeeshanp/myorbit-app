@@ -280,7 +280,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               date: today,
               category: 'Opening Balance',
               description: 'Opening Balance',
-              amount: Math.abs(created.balance),
+              amount: created.balance,   // signed — negative for credit cards, positive for savings
               type: 'opening_balance',
               accountId: created.id,
             }),
@@ -335,8 +335,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         }, 0);
       const diff = account.balance - txNetBalance;
       if (Math.abs(diff) < 1) return;
-      const today = new Date().toISOString().slice(0, 10);
-      const amount = Math.abs(diff);
+      const today  = new Date().toISOString().slice(0, 10);
+      const amount = diff;   // signed — negative for credit cards, positive for savings
       const existing = state.transactions
         .filter(t => t.accountId === accountId && t.type === 'opening_balance')
         .find(t => t.date === today);
