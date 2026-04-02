@@ -612,6 +612,9 @@ export function FinanceProvider({ children }: PropsWithChildren) {
 
     cancelAssetSip: async (assetId) => {
       await api(`/api/assets/${assetId}/sip`, { method: 'DELETE' });
+      // Reload the asset so state reflects the cleared SIP config
+      const updated = await api<Asset>(`/api/assets/${assetId}`).catch(() => null);
+      if (updated) dispatch({ type: 'updateAsset', payload: updated as any });
     },
   }), [state]);
 
