@@ -71,24 +71,14 @@ export async function POST(req: NextRequest) {
       data: { userId, name, category, value: await encryptNumber(value), invested: await encryptNumber(invested), units: units ?? null },
     });
 
-    const invType          = investmentType ?? 'lump_sum';
-    const sipVal           = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
-    const accVal           = accountId ?? null;
-    const isExternallyOwned = !accVal;
+    const invType = investmentType ?? 'lump_sum';
+    const sipVal  = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
+    const accVal  = accountId ?? null;
 
-    try {
-      await prisma.$executeRaw`
-        UPDATE "Asset"
-        SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}, "isExternallyOwned" = ${isExternallyOwned}
-        WHERE id = ${row.id}
-      `;
-    } catch {
-      // isExternallyOwned column may not exist yet (pre-migration) — fall back without it
-      await prisma.$executeRaw`
-        UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
-        WHERE id = ${row.id}
-      `;
-    }
+    await prisma.$executeRaw`
+      UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
+      WHERE id = ${row.id}
+    `;
 
     // Create initial InvestmentTransaction (LUMPSUM) so invested is tracked properly
     if (invested > 0) {
