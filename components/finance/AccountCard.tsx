@@ -79,10 +79,11 @@ export function StandardCard({ account }: { account: Account }) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [fixing, setFixing] = useState(false);
 
-  // Use raw signed sum — all amounts are stored with correct sign
+  // Use raw signed sum — only count transactions up to today (future-dated excluded)
   const needsReconcile = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-CA');
     const txNet = state.transactions
-      .filter(t => t.accountId === account.id)
+      .filter(t => t.accountId === account.id && t.date <= today)
       .reduce((s, t) => s + t.amount, 0);
     return Math.abs(account.balance - txNet) >= 1;
   }, [account, state.transactions]);
@@ -156,10 +157,11 @@ export function CreditCardCard({ account }: { account: Account }) {
   const [editLimit, setEditLimit]     = useState('');
   const [fixing, setFixing]           = useState(false);
 
-  // Use raw signed sum — all amounts are stored with correct sign
+  // Use raw signed sum — only count transactions up to today (future-dated excluded)
   const needsReconcile = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-CA');
     const txNet = state.transactions
-      .filter(t => t.accountId === account.id)
+      .filter(t => t.accountId === account.id && t.date <= today)
       .reduce((s, t) => s + t.amount, 0);
     return Math.abs(account.balance - txNet) >= 1;
   }, [account, state.transactions]);
