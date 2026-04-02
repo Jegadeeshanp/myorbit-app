@@ -9,7 +9,7 @@ import { ASSET_CATEGORIES, AssetCategory } from '@/lib/assetCategories';
 export type AddAssetProps = {
   open: boolean;
   onClose: () => void;
-  onSave: (payload: Omit<Asset, 'id'>) => void;
+  onSave: (payload: Omit<Asset, 'id'>) => void | Promise<void>;
   initial?: Asset;
   accounts?: { id: string; name: string; type?: string }[];
 };
@@ -35,6 +35,7 @@ function shortAccLabel(a: { name: string; type?: string }) {
 export default function AddAssetModal({ open, onClose, onSave, initial, accounts = [] }: AddAssetProps) {
   const [name,          setName]          = useState('');
   const [category,      setCategory]      = useState<AssetCategory>('Stocks & Equity');
+  const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [value,         setValue]         = useState('');
   const [invested,      setInvested]      = useState('');
   const [units,         setUnits]         = useState('');
@@ -87,32 +88,36 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
     !!name.trim() && Number(invested) > 0,
   [name, invested]);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const numUnits = Number(units) > 0 ? Number(units) : undefined;
-    const numPerUnit = Number(perUnit) > 0 ? Number(perUnit) : undefined;
-    // If per-unit price is given with units, compute total value
-    const computedValue = numUnits && numPerUnit ? numUnits * numPerUnit : Number(value) > 0 ? Number(value) : Number(invested);
-    const sipCfg: SipConfig | null = invType === 'sip' ? {
-      frequency: sipFreq,
-      startDate: sipStart,
-      endType: sipEndType,
-      endAfterTimes: sipEndType === 'after' && sipEndAfter ? Number(sipEndAfter) : undefined,
-      endDate: sipEndType === 'on_date' && sipEndDate ? sipEndDate : undefined,
-    } : null;
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const numUnits = Number(units) > 0 ? Number(units) : undefined;
+      const numPerUnit = Number(perUnit) > 0 ? Number(perUnit) : undefined;
+      const computedValue = numUnits && numPerUnit ? numUnits * numPerUnit : Number(value) > 0 ? Number(value) : Number(invested);
+      const sipCfg: SipConfig | null = invType === 'sip' ? {
+        frequency: sipFreq,
+        startDate: sipStart,
+        endType: sipEndType,
+        endAfterTimes: sipEndType === 'after' && sipEndAfter ? Number(sipEndAfter) : undefined,
+        endDate: sipEndType === 'on_date' && sipEndDate ? sipEndDate : undefined,
+      } : null;
 
-    onSave({
-      name: name.trim(),
-      category,
-      value: computedValue,
-      invested: Number(invested),
-      units: numUnits ?? null,
-      accountId: accountId || undefined,
-      investmentType: invType,
-      sipConfig: sipCfg,
-    });
-    toast(initial ? 'Asset updated' : 'Asset added');
-    onClose();
+      await onSave({
+        name: name.trim(),
+        category,
+        value: computedValue,
+        invested: Number(invested),
+        units: numUnits ?? null,
+        accountId: accountId || undefined,
+        investmentType: invType,
+        sipConfig: sipCfg,
+      });
+      toast(initial ? 'Asset updated' : 'Asset added');
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selected = ASSET_CATEGORIES.find(c => c.label === category) ?? ASSET_CATEGORIES[ASSET_CATEGORIES.length - 1];
@@ -123,9 +128,9 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
       <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
         Cancel
       </button>
-      <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+      <button type="button" onClick={handleSubmit} disabled={!canSubmit || isSubmitting}
         className="rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50">
-        {isEdit ? 'Update asset' : 'Save asset'}
+        {isSubmitting ? 'Saving…' : isEdit ? 'Update asset' : 'Save asset'}
       </button>
     </div>
   );

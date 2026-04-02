@@ -48,6 +48,16 @@ function serializeAsset(a: Record<string, any>) {
   return out;
 }
 
+// ── Balance-adjustment guard ───────────────────────────────────────────────
+// Opening balance / adjustment transactions MUST only be created for Accounts.
+// Pass entityType explicitly; the function throws for assets or liabilities to
+// prevent silent side-effects from spreading to other entity types.
+function requireAccountEntity(entityType: 'account' | 'asset' | 'liability'): void {
+  if (entityType !== 'account') {
+    throw new Error(`balanceAdjustment is not allowed for entityType="${entityType}". Only "account" is permitted.`);
+  }
+}
+
 // ── API helper ─────────────────────────────────────────────────────────────
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -255,6 +265,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     state,
 
     addAccount: async (a) => {
+      requireAccountEntity('account');
       const created = await api<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(a) });
       dispatch({ type: 'addAccount', payload: created });
       // Record Opening Balance transaction when account has a non-zero starting balance.
@@ -279,6 +290,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       }
     },
     updateAccount: async (a) => {
+      requireAccountEntity('account');
       const existing = state.accounts.find(acc => acc.id === a.id);
       const updated = await api<Account>(`/api/accounts/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
       dispatch({ type: 'updateAccount', payload: updated });
@@ -434,37 +446,13 @@ export function FinanceProvider({ children }: PropsWithChildren) {
 
     addAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, any>);
-      const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
-      dispatch({ type: 'addAsset', payload: created });
-      // When an account is linked, record the investment as an expense transaction and
-      // deduct the invested amount from the account balance.
-      // Direct API call (not store's addTransaction) to control balance update ourselves.
-      if (created.accountId) {
-        const account = state.accounts.find(acc => acc.id === created.accountId);
-        if (account) {
-          try {
-            const today = new Date().toISOString().slice(0, 10);
-            const tx = await api<Transaction>('/api/transactions', {
-              method: 'POST',
-              body: JSON.stringify({
-                date: today,
-                category: 'Investment',
-                description: created.name,
-                amount: -Math.abs(created.invested),
-                type: 'expense',
-                accountId: created.accountId,
-              }),
-            });
-            dispatch({ type: 'addTransaction', payload: tx });
-            // Deduct invested amount from the linked account
-            const updatedAcc = await api<Account>(`/api/accounts/${account.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ balance: account.balance - Math.abs(created.invested) }),
-            });
-            dispatch({ type: 'updateAccount', payload: updatedAcc });
-          } catch { /* non-critical — asset still saved */ }
-        }
-      }
+      // API is the single source of truth for funding transaction + account deduction.
+      const res = await api<{ asset: Asset; fundingTransaction: Transaction | null; updatedAccount: Account | null }>(
+        '/api/assets', { method: 'POST', body: JSON.stringify(payload) }
+      );
+      dispatch({ type: 'addAsset', payload: res.asset });
+      if (res.fundingTransaction) dispatch({ type: 'addTransaction', payload: res.fundingTransaction });
+      if (res.updatedAccount)     dispatch({ type: 'updateAccount',  payload: res.updatedAccount });
     },
     updateAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, any>);
