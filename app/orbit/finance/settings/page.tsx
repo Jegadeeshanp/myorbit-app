@@ -7,8 +7,6 @@ import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
 import {
-  DEFAULT_EXPENSE_CATEGORIES,
-  DEFAULT_INCOME_CATEGORIES,
   getAllExpenseCategories,
   getExcludedExpenseCategories,
   setExcludedExpenseCategories,
@@ -513,9 +511,9 @@ export default function FinanceSettingsPage() {
                             className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
                               isSelected
                                 ? 'bg-emerald-100 dark:bg-emerald-900/50 ring-1 ring-emerald-400'
-                                : `${opt.color} hover:bg-gray-100 dark:hover:bg-gray-700`
+                                : `hover:bg-gray-100 dark:hover:bg-gray-700`
                             }`}>
-                            <Icon className="h-4 w-4" />
+                            <Icon className={`h-4 w-4 ${opt.color}`} />
                           </button>
                         );
                       })}
@@ -541,15 +539,14 @@ export default function FinanceSettingsPage() {
                 {catType === 'expense' ? 'Expense' : 'Income'} Categories
               </p>
               <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
-                {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).length + dbCats.filter(c => c.type === catType).length} total
+                {(catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).length + dbCats.filter(c => c.type === catType).length} total
               </span>
             </div>
 
             {/* Default (built-in) categories */}
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
-              {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).map(name => {
-                const allCats = catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
-                const catDef = allCats.find(c => c.name === name);
+              {(catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(catDef => {
+                const name = catDef.name;
                 const CatIcon = catDef?.icon ?? Package;
                 const iconColor = catDef?.color ?? 'text-gray-500';
                 const iconBg = catDef?.bg ?? 'bg-gray-100';
