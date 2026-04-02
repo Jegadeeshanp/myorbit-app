@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect, type CSSProperties } from 'react'
 import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
   Truck, Search, Trash2, ChevronDown, ChevronRight, TrendingUp,
-  Landmark, Wallet, Banknote, ArrowLeftRight, Pencil,
+  Landmark, Wallet, ArrowLeftRight, Pencil,
   ArrowUpRight, ArrowDownLeft, Stethoscope, GraduationCap,
   Plane, MoreHorizontal,
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
@@ -136,27 +136,6 @@ function TxIcon({ tx }: { tx: { type: string; category: string } }) {
   );
 }
 
-// ── Account type → tab key mapping ────────────────────────────────────────
-const ACCOUNT_TYPE_TAB: Record<string, string> = {
-  Bank:          'Bank',
-  'Credit Card': 'Credit',
-  'Debit Card':  'Debit',
-  Wallet:        'Wallet',
-  Cash:          'Cash',
-};
-
-// Tab config — icon + label + color
-const TAB_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  All:    { icon: ArrowLeftRight, color: 'text-gray-600',    bg: 'bg-gray-100' },
-  Income: { icon: TrendingUp,     color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  Bank:   { icon: Landmark,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  Credit: { icon: CreditCard,     color: 'text-rose-600',    bg: 'bg-rose-50' },
-  Debit:  { icon: CreditCard,     color: 'text-blue-600',    bg: 'bg-blue-50' },
-  Wallet: { icon: Wallet,         color: 'text-violet-600',  bg: 'bg-violet-50' },
-  Cash:   { icon: Banknote,       color: 'text-amber-600',   bg: 'bg-amber-50' },
-};
-
-
 const SHORT_ACCOUNT_TYPE: Record<string, string> = {
   'Bank': 'Bank', 'Credit Card': 'Credit', 'Debit Card': 'Debit', 'Wallet': 'Wallet', 'Cash': 'Cash',
 };
@@ -252,7 +231,6 @@ function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function TransactionList({ transactions, onAdd }: { transactions: Transaction[]; onAdd?: () => void }) {
   const { state, deleteTransaction, updateTransaction } = useFinance();
-  const [activeTab, setActiveTab]   = useState('All');
   const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
   const [mobileSearch, setMobileSearch] = useState(false);
@@ -288,69 +266,37 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     return `₹${abs.toLocaleString('en-IN')}`;
   }
 
-  // Build account lookup: accountId → account type tab key
-  const accountTabMap = useMemo(() => {
-    const map = new Map<string, string>();
-    state.accounts.forEach(a => {
-      map.set(a.id, ACCOUNT_TYPE_TAB[a.type] ?? 'All');
-    });
-    return map;
-  }, [state.accounts]);
-
   // Split into upcoming (future) and past
   const { pastTxs, upcomingTxs } = useMemo(() => ({
     pastTxs:     transactions.filter(tx => tx.date <= today),
     upcomingTxs: transactions.filter(tx => tx.date >  today),
   }), [transactions, today]);
 
-  // Derive which tabs are available based on past transactions only
-  const availableTabs = useMemo(() => {
-    const tabs = new Set<string>(['All', 'Income']);
-    pastTxs.forEach(tx => {
-      if (tx.accountId) {
-        const tab = accountTabMap.get(tx.accountId);
-        if (tab) tabs.add(tab);
-      }
+  // Apply search filter
+  function applySearch(txs: Transaction[]) {
+    if (!search.trim()) return txs;
+    const q = search.toLowerCase();
+    return txs.filter(t => {
+      const account = t.accountId ? state.accounts.find(a => a.id === t.accountId) : null;
+      return (
+        t.description.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q) ||
+        (t.notes ?? '').toLowerCase().includes(q) ||
+        String(Math.abs(t.amount)).includes(q) ||
+        t.date.includes(q) ||
+        (account?.name.toLowerCase().includes(q) ?? false) ||
+        (account?.type.toLowerCase().includes(q) ?? false)
+      );
     });
-    return ['All', 'Income', 'Bank', 'Credit', 'Debit', 'Wallet', 'Cash']
-      .filter(t => tabs.has(t));
-  }, [pastTxs, accountTabMap]);
-
-  // Ensure active tab stays valid
-  const safeTab = availableTabs.includes(activeTab) ? activeTab : 'All';
-
-  // Apply tab + search filter helper
-  function applyTabSearch(txs: Transaction[]) {
-    if (safeTab === 'Income') {
-      txs = txs.filter(t => t.type === 'income');
-    } else if (safeTab !== 'All') {
-      txs = txs.filter(t => t.accountId && accountTabMap.get(t.accountId) === safeTab);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      txs = txs.filter(t => {
-        const account = t.accountId ? state.accounts.find(a => a.id === t.accountId) : null;
-        return (
-          t.description.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q) ||
-          (t.notes ?? '').toLowerCase().includes(q) ||
-          String(Math.abs(t.amount)).includes(q) ||
-          t.date.includes(q) ||
-          (account?.name.toLowerCase().includes(q) ?? false) ||
-          (account?.type.toLowerCase().includes(q) ?? false)
-        );
-      });
-    }
-    return txs;
   }
 
   const filtered = useMemo(() => {
-    return applyTabSearch(filterByPeriod(pastTxs, period));
-  }, [pastTxs, period, safeTab, search, accountTabMap]);
+    return applySearch(filterByPeriod(pastTxs, period));
+  }, [pastTxs, period, search]);
 
   const filteredUpcoming = useMemo(() => {
-    return applyTabSearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
-  }, [upcomingTxs, safeTab, search, accountTabMap]);
+    return applySearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
+  }, [upcomingTxs, search]);
 
   const displayTransactions = useMemo(() => filtered.filter(tx => tx.type !== 'opening_balance'), [filtered]);
   const displayUpcoming = useMemo(() => filteredUpcoming.filter(tx => tx.type !== 'opening_balance'), [filteredUpcoming]);
@@ -472,31 +418,6 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             </div>
           )}
         </div>
-      </div>
-
-      {/* ── Row 2: Tabs ── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-        {availableTabs.map(tab => {
-          const cfg = TAB_CONFIG[tab];
-          const Icon = cfg.icon;
-          const isActive = safeTab === tab;
-          const periodPast = filterByPeriod(pastTxs, period);
-          const count = tab === 'All'
-            ? periodPast.length
-            : tab === 'Income'
-            ? periodPast.filter(t => t.type === 'income').length
-            : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
-          return (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
-                isActive ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
-              }`}>
-              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-              {tab}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* ── Upcoming transactions ── */}

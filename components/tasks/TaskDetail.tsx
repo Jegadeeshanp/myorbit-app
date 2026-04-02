@@ -410,7 +410,7 @@ function TaskPanel({
               {(() => {
                 const cur = lists.find(l => l.id === listId);
                 return cur
-                  ? <><span>{cur.emoji || '📋'}</span><span className="max-w-[140px] truncate">{cur.name}</span></>
+                  ? <><span className="flex h-5 w-5 flex-none items-center justify-center rounded" style={{ backgroundColor: `${cur.color || '#10B981'}22` }}>{getListIcon(cur.emoji, 'h-3.5 w-3.5')}</span><span className="max-w-[140px] truncate">{cur.name}</span></>
                   : <><span>📥</span><span>Inbox</span></>;
               })()}
               <ChevronRight className="h-3.5 w-3.5 rotate-90 text-gray-400"/>
