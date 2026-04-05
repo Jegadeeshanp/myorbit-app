@@ -61,11 +61,11 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
       setUnits(initial.units != null ? String(initial.units) : '');
       setPerUnit(initial.units && initial.units > 0 && initial.value > 0 ? String(Math.round((initial.value / initial.units) * 100) / 100) : '');
       setAccountId(initial.accountId ?? '');
-      setInvType(initial.investmentType ?? 'lump_sum');
+      setInvType((initial.investmentType ?? 'lump_sum') as InvestmentType);
       if (initial.sipConfig) {
-        setSipFreq(initial.sipConfig.frequency);
+        setSipFreq(initial.sipConfig.frequency as SipFrequency);
         setSipStart(initial.sipConfig.startDate);
-        setSipEndType(initial.sipConfig.endType);
+        setSipEndType(initial.sipConfig.endType as SipEndType);
         setSipEndAfter(initial.sipConfig.endAfterTimes != null ? String(initial.sipConfig.endAfterTimes) : '');
         setSipEndDate(initial.sipConfig.endDate ?? '');
       } else {

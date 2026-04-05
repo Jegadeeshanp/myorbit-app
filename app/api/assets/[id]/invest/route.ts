@@ -82,15 +82,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // 3. Compute updated invested total and sync Asset.invested
+    // 3. Compute updated invested total and sync Asset.invested + Asset.value
     const invTxRows = await prisma.investmentTransaction.findMany({
       where: { assetId, userId, type: { in: ['LUMPSUM', 'SIP'] } },
     });
     const newInvested = (await Promise.all(invTxRows.map(r => decryptNumber(r.amount))))
       .reduce((s, v) => s + v, 0);
+
+    // For SIP / LUMPSUM: also update current value by the same amount added.
+    // REDEMPTION reduces value instead.
+    const currentValue = await decryptNumber(asset.value);
+    const valueDelta = type === 'REDEMPTION' ? -amount : amount;
+    const newValue = Math.max(0, currentValue + valueDelta);
+
     await prisma.asset.update({
       where: { id: assetId },
-      data: { invested: await encryptNumber(newInvested) },
+      data: {
+        invested: await encryptNumber(newInvested),
+        value:    await encryptNumber(newValue),
+      },
     });
 
     return NextResponse.json({

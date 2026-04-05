@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { Heart, LayoutDashboard, ClipboardList, Dumbbell, Settings } from 'lucide-react';
+import { Heart, LayoutDashboard, ClipboardList, Dumbbell, UtensilsCrossed, Settings } from 'lucide-react';
 
 const menu = [
-  { label: 'Dashboard', href: '/orbit/health',          Icon: LayoutDashboard },
-  { label: 'Log Today',  href: '/orbit/health/log',      Icon: ClipboardList },
-  { label: 'Workouts',  href: '/orbit/health/workouts', Icon: Dumbbell },
+  { label: 'Dashboard',  href: '/orbit/health',           Icon: LayoutDashboard },
+  { label: 'Log Today',  href: '/orbit/health/log',       Icon: ClipboardList },
+  { label: 'Workouts',   href: '/orbit/health/workouts',  Icon: Dumbbell },
+  { label: 'Nutrition',  href: '/orbit/health/nutrition', Icon: UtensilsCrossed },
 ];
 
 export default function HealthSidebar() {

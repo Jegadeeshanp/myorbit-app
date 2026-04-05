@@ -34,6 +34,7 @@ model User {
   countdowns          Countdown[]
   healthEntries       HealthEntry[]
   workouts            Workout[]
+  foodEntries         FoodEntry[]
   pushTokens            PushToken[]
   recurringTransactions RecurringTransaction[]
   investmentTxs         InvestmentTransaction[]
@@ -278,6 +279,8 @@ model Task {
   dueTime     String?   // HH:MM
   tags        String    @default("[]")     // JSON array of strings
   sortOrder   Int       @default(0)
+  habitId     String?
+  habit       Habit?    @relation(fields: [habitId], references: [id], onDelete: SetNull)
   completedAt DateTime?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -317,11 +320,13 @@ model Habit {
   daysOfWeek   String     @default("[1,2,3,4,5,6,7]") // JSON array
   sortOrder    Int        @default(0)
   isActive     Boolean    @default(true)
+  category     String     @default("general") // health | finance | productivity | general
   timeOfDay    String?    @default("all_day") // all_day | morning | noon | evening | night | custom
   customTime   String?    // HH:MM for custom time
   createdAt    DateTime   @default(now())
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs         HabitLog[]
+  tasks        Task[]
 
   @@index([userId])
 }
@@ -447,4 +452,31 @@ model PushToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ── Nutrition / Food Logging ───────────────────────────────────────────────
+
+model FoodEntry {
+  id             String   @id @default(cuid())
+  userId         String
+  date           String   // YYYY-MM-DD
+  name           String   // food item name
+  mealType       String   @default("snack") // breakfast | lunch | dinner | snack
+  calories       Float?
+  proteinG       Float?
+  carbsG         Float?
+  fatG           Float?
+  saturatedFatG  Float?
+  sodiumMg       Float?
+  potassiumMg    Float?
+  fiberG         Float?
+  waterMl        Float?
+  servingSize    String?  // e.g. "1 cup", "100g"
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
 }

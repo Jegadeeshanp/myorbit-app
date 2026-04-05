@@ -68,6 +68,24 @@ export async function processRecurring(userId: string | null): Promise<number> {
           type:        'expense',
         },
       });
+
+      // Sync asset.invested + asset.value (current value grows by the SIP amount)
+      if (asset) {
+        const invTxRows = await prisma.investmentTransaction.findMany({
+          where: { assetId, userId: tUserId, type: { in: ['LUMPSUM', 'SIP'] } },
+        });
+        const newInvested = (await Promise.all(invTxRows.map(r => decryptNumber(r.amount))))
+          .reduce((s, v) => s + v, 0);
+        const currentValue = await decryptNumber(asset.value);
+        const newValue = Math.max(0, currentValue + Math.abs(txAmount));
+        await prisma.asset.update({
+          where: { id: assetId },
+          data: {
+            invested: await encryptNumber(newInvested),
+            value:    await encryptNumber(newValue),
+          },
+        });
+      }
     } else {
       // ── 1b. Regular recurring: create Transaction record ─────────────────
       await prisma.transaction.create({

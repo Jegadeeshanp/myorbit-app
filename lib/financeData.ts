@@ -7,15 +7,6 @@ export type Account = {
   balance: number;
 };
 
-export type RecurringConfig = {
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
-  customInterval?: string;   // e.g. "every 2 weeks" — used when frequency === 'custom'
-  startDate: string;         // YYYY-MM-DD
-  endType: 'never' | 'after' | 'on_date';
-  endAfterTimes?: number;    // used when endType === 'after'
-  endDate?: string;          // used when endType === 'on_date'
-};
-
 export type Transaction = {
   id: string;
   date: string;
@@ -23,17 +14,9 @@ export type Transaction = {
   description: string;
   notes?: string;
   amount: number;
-  type: 'expense' | 'income' | 'transfer' | 'opening_balance' | 'adjustment';
+  type: 'expense' | 'income' | 'transfer';
   accountId?: string;
   recurring?: RecurringConfig;
-};
-
-export type SipConfig = {
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
-  startDate: string;
-  endType: 'forever' | 'after' | 'on_date';
-  endAfterTimes?: number;
-  endDate?: string;
 };
 
 export type Asset = {
@@ -44,7 +27,7 @@ export type Asset = {
   invested: number;
   units?: number | null;
   accountId?: string;
-  investmentType?: 'lump_sum' | 'sip';
+  investmentType?: string;
   sipConfig?: SipConfig | null;
 };
 
@@ -58,7 +41,7 @@ export type Liability = {
   nextDueDate?: string;
   emisLeft: number;
   totalRepaid: number;
-  repaymentAccountId?: string; // account debited each time EMI is paid
+  repaymentAccountId?: string;
 };
 
 export type BudgetCategory = {
@@ -66,13 +49,30 @@ export type BudgetCategory = {
   name: string;
   budget: number;
   spent: number;
-  category?: string; // comma-separated expense categories
+  category?: string;
 };
 
 export type Insight = {
   id: string;
   title: string;
   description: string;
+};
+
+export type RecurringConfig = {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  customInterval?: string;
+  startDate: string;
+  endType: string;
+  endAfterTimes?: number;
+  endDate?: string;
+};
+
+export type SipConfig = {
+  frequency: string;
+  startDate: string;
+  endType: string;
+  endAfterTimes?: number;
+  endDate?: string;
 };
 
 export const accounts: Account[] = [

@@ -1,222 +1,360 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Heart, Footprints, Moon, Droplets, Smile, Zap, Activity } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Plus, Dumbbell, Target, CheckCircle2, Circle,
+  Flame, Clock, ChevronRight, Pencil, Trash2, Activity,
+} from 'lucide-react';
 import Link from 'next/link';
+import { useHealth } from '@/lib/healthStore';
+import HealthRings from '@/components/health/HealthRings';
+import HealthInsights from '@/components/health/HealthInsights';
+import LogHealthModal from '@/components/health/LogHealthModal';
+import AddWorkoutModal from '@/components/health/AddWorkoutModal';
+import { toast } from '@/components/Toast';
 
-type HealthEntry = {
-  id: string; date: string; steps?: number; sleepHours?: number; waterMl?: number;
-  weightKg?: number; mood?: number; energyLevel?: number; heartRate?: number; notes?: string;
+const WORKOUT_EMOJI: Record<string, string> = {
+  running: '🏃', cycling: '🚴', strength: '💪', yoga: '🧘', sports: '⚽', other: '🏋️',
 };
-
-type Workout = { id: string; name: string; type: string; durationMins: number; caloriesBurned?: number; date: string };
 
 const MOOD_LABELS = ['', '😞', '😕', '😐', '😊', '😄'];
 
-function HealthScoreRing({ score }: { score: number }) {
-  const r = 54;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  return (
-    <div className="relative flex h-36 w-36 items-center justify-center">
-      <svg className="absolute inset-0 -rotate-90" width="144" height="144">
-        <circle cx="72" cy="72" r={r} fill="none" stroke="#f3f4f6" strokeWidth="12" />
-        <circle cx="72" cy="72" r={r} fill="none" stroke="url(#hg)" strokeWidth="12"
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
-        <defs>
-          <linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#f43f5e" />
-            <stop offset="100%" stopColor="#fb7185" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="text-center z-10">
-        <p className="text-3xl font-bold text-gray-900">{score}</p>
-        <p className="text-xs text-gray-500">Health Score</p>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, unit, icon: Icon, iconBg, iconColor }: {
-  label: string; value: string | number | undefined; unit: string; icon: any; iconBg: string; iconColor: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg} mb-3`}>
-        <Icon className={`h-5 w-5 ${iconColor}`} />
-      </div>
-      <p className="text-xl font-bold text-gray-900">{value ?? '—'} <span className="text-sm font-normal text-gray-400">{value !== undefined ? unit : ''}</span></p>
-      <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-    </div>
-  );
-}
-
 export default function HealthPage() {
-  const [entries, setEntries] = useState<HealthEntry[]>([]);
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask } = useHealth();
+
+  const [logOpen, setLogOpen] = useState(false);
+  const [workoutOpen, setWorkoutOpen] = useState(false);
+  const [completingTask, setCompletingTask] = useState<string | null>(null);
+  const [togglingHabit, setTogglingHabit] = useState<string | null>(null);
 
   const today = new Date().toISOString().split('T')[0];
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/health/entries?limit=7').then(r => r.json()),
-      fetch('/api/workouts?limit=5').then(r => r.json()),
-    ]).then(([e, w]) => {
-      if (Array.isArray(e)) setEntries(e);
-      if (Array.isArray(w)) setWorkouts(w);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  const todayEntry = entries.find(e => e.date === today);
-
-  let score = 0;
-  if (todayEntry) {
-    if (todayEntry.steps && todayEntry.steps >= 10000) score += 25;
-    else if (todayEntry.steps) score += Math.round((todayEntry.steps / 10000) * 25);
-    if (todayEntry.sleepHours && todayEntry.sleepHours >= 7.5) score += 25;
-    else if (todayEntry.sleepHours) score += Math.round((todayEntry.sleepHours / 7.5) * 25);
-    if (todayEntry.mood) score += Math.round((todayEntry.mood / 5) * 25);
-    if (todayEntry.energyLevel) score += Math.round((todayEntry.energyLevel / 10) * 25);
+  if (loadState === 'loading' || loadState === 'idle') {
+    return (
+      <div className="space-y-4 max-w-4xl mx-auto animate-pulse">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-28 rounded-2xl bg-gray-100" />
+        ))}
+      </div>
+    );
   }
 
-  const WORKOUT_TYPES: Record<string, string> = {
-    running: '🏃', cycling: '🚴', strength: '💪', yoga: '🧘', sports: '⚽', other: '🏋️'
-  };
+  if (loadState === 'error') {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <p className="text-sm text-gray-400">Failed to load health data. Please refresh.</p>
+      </div>
+    );
+  }
+
+  const d = dashboard;
+  const todayEntry = d?.todayEntry;
+  const todayWorkoutMins = (d?.todayWorkouts ?? []).reduce((s, w) => s + w.durationMins, 0);
+  const totalCalories = (d?.todayWorkouts ?? []).reduce((s, w) => s + (w.caloriesBurned ?? 0), 0);
+
+  async function handleCompleteTask(taskId: string) {
+    setCompletingTask(taskId);
+    try {
+      await completeHealthTask(taskId);
+      toast('Task completed & workout logged!');
+    } catch {
+      toast('Failed to complete task');
+    } finally {
+      setCompletingTask(null);
+    }
+  }
+
+  async function handleToggleHabit(habitId: string, completed: boolean) {
+    if (completed) return; // already done
+    setTogglingHabit(habitId);
+    try {
+      await fetch(`/api/habits/${habitId}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logDate: today, value: 1 }),
+      });
+      toast('Habit marked done!');
+      // Reload dashboard via reload
+      window.location.reload();
+    } catch {
+      toast('Failed to log habit');
+    } finally {
+      setTogglingHabit(null);
+    }
+  }
+
+  async function handleDeleteWorkout(id: string) {
+    try {
+      await deleteWorkout(id);
+      toast('Workout deleted');
+    } catch {
+      toast('Failed to delete workout');
+    }
+  }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Action row */}
-      <div className="flex justify-end">
-        <Link href="/orbit/health/log"
-          className="hidden md:flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition">
-          <Plus className="h-4 w-4" />
-          Log Today
-        </Link>
-      </div>
-
-      {/* Score + today's entry */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 flex flex-col items-center justify-center gap-2">
-          <HealthScoreRing score={score} />
-          <p className="text-xs text-gray-400">
-            {todayEntry ? "Based on today's data" : "Log today's metrics to see your score"}
-          </p>
-        </div>
-
-        <div className="flex-1 grid grid-cols-2 gap-3">
-          <MetricCard label="Steps"      value={todayEntry?.steps}       unit="steps" icon={Footprints} iconBg="bg-blue-50"   iconColor="text-blue-500" />
-          <MetricCard label="Sleep"      value={todayEntry?.sleepHours}  unit="hrs"   icon={Moon}       iconBg="bg-indigo-50" iconColor="text-indigo-500" />
-          <MetricCard label="Water"      value={todayEntry?.waterMl ? Math.round(todayEntry.waterMl / 100) / 10 : undefined} unit="L" icon={Droplets} iconBg="bg-cyan-50" iconColor="text-cyan-500" />
-          <MetricCard label="Heart Rate" value={todayEntry?.heartRate}   unit="bpm"   icon={Heart}      iconBg="bg-rose-50"  iconColor="text-rose-500" />
+    <div className="space-y-5 max-w-4xl mx-auto">
+      {/* Quick actions */}
+      <div className="flex items-center justify-between">
+        <div />
+        <div className="flex items-center gap-2">
+          <button onClick={() => setWorkoutOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition">
+            <Dumbbell className="h-4 w-4 text-gray-400" />
+            Add Workout
+          </button>
+          <button onClick={() => setLogOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 shadow-sm transition">
+            <Plus className="h-4 w-4" />
+            Log Today
+          </button>
         </div>
       </div>
 
-      {/* Mood & Energy */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Smile className="h-5 w-5 text-pink-400" />
-            <p className="text-sm font-medium text-gray-700">Today's Mood</p>
+      {/* Rings */}
+      <HealthRings
+        steps={todayEntry?.steps}
+        sleepHours={todayEntry?.sleepHours}
+        waterMl={todayEntry?.waterMl}
+        caloriesBurned={totalCalories || undefined}
+        workoutMins={todayWorkoutMins || undefined}
+      />
+
+      {/* Metric cards row */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: 'Mood', value: todayEntry?.mood ? MOOD_LABELS[todayEntry.mood] : '—', sub: todayEntry?.mood ? ['Bad','Poor','Okay','Good','Great'][todayEntry.mood-1] : 'Not logged', color: 'rose' },
+          { label: 'Energy', value: todayEntry?.energyLevel ? `${todayEntry.energyLevel}/10` : '—', sub: 'Energy level', color: 'amber' },
+          { label: 'Weight', value: todayEntry?.weightKg ? `${todayEntry.weightKg} kg` : '—', sub: 'Body weight', color: 'blue' },
+          { label: 'Heart Rate', value: todayEntry?.heartRate ? `${todayEntry.heartRate} bpm` : '—', sub: 'Resting HR', color: 'rose' },
+        ].map(card => (
+          <div key={card.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs text-gray-400">{card.label}</p>
+            <p className="text-lg font-bold text-gray-900 mt-0.5">{card.value}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{card.sub}</p>
           </div>
-          <div className="flex gap-2">
-            {[1,2,3,4,5].map(n => (
-              <div key={n} className={`flex-1 text-center rounded-lg py-2 text-lg transition ${todayEntry?.mood === n ? 'bg-rose-50 ring-2 ring-rose-200' : 'bg-gray-50'}`}>
-                {MOOD_LABELS[n]}
+        ))}
+      </div>
+
+      {/* Main 2-col grid */}
+      <div className="grid gap-5 lg:grid-cols-2">
+
+        {/* Today's Health Tasks */}
+        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+          <p className="mb-3 text-sm font-semibold text-gray-900">Today's Health Tasks</p>
+          {(d?.healthTasks ?? []).length === 0 ? (
+            <div className="flex flex-col items-center py-6 text-center">
+              <CheckCircle2 className="h-8 w-8 text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">No health tasks scheduled today.</p>
+              <p className="text-xs text-gray-300 mt-0.5">Link tasks to health habits to see them here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(d?.healthTasks ?? []).map(task => (
+                <div key={task.id}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${task.status === 'completed' ? 'bg-emerald-50' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                  <button
+                    onClick={() => task.status !== 'completed' && handleCompleteTask(task.id)}
+                    disabled={completingTask === task.id || task.status === 'completed'}
+                    className="flex-none"
+                  >
+                    {task.status === 'completed'
+                      ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      : completingTask === task.id
+                        ? <div className="h-5 w-5 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
+                        : <Circle className="h-5 w-5 text-gray-300 hover:text-rose-400 transition" />
+                    }
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                      {task.title}
+                    </p>
+                    {task.dueTime && (
+                      <p className="text-[11px] text-gray-400">{task.dueTime}</p>
+                    )}
+                  </div>
+                  {task.habit && (
+                    <span className="text-sm flex-none">{task.habit.iconEmoji ?? '🏃'}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Health Habits */}
+        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-900">Health Habits</p>
+            <Link href="/orbit/habits" className="text-xs text-rose-500 hover:text-rose-600 transition">
+              Manage →
+            </Link>
+          </div>
+          {(d?.healthHabits ?? []).length === 0 ? (
+            <div className="flex flex-col items-center py-6 text-center">
+              <Activity className="h-8 w-8 text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">No health habits set up.</p>
+              <Link href="/orbit/habits" className="text-xs text-rose-500 mt-1 hover:underline">
+                Add habits with the "health" category →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(d?.healthHabits ?? []).map(habit => (
+                <div key={habit.id}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${habit.completedToday ? 'bg-emerald-50' : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'}`}
+                  onClick={() => !habit.completedToday && handleToggleHabit(habit.id, habit.completedToday)}
+                >
+                  <div className="flex-none">
+                    {habit.completedToday
+                      ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      : togglingHabit === habit.id
+                        ? <div className="h-5 w-5 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
+                        : <Circle className="h-5 w-5 text-gray-300" />
+                    }
+                  </div>
+                  <span className="text-base flex-none">{habit.iconEmoji ?? '✅'}</span>
+                  <p className={`flex-1 text-sm font-medium truncate ${habit.completedToday ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                    {habit.name}
+                  </p>
+                  {habit.completedToday && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 font-medium flex-none">Done</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Workouts today */}
+      <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-900">Today's Workouts</p>
+          <div className="flex items-center gap-3">
+            {(d?.todayWorkouts ?? []).length > 0 && (
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Clock className="h-3.5 w-3.5" />
+                {todayWorkoutMins}m
+                {totalCalories > 0 && (
+                  <>
+                    <Flame className="h-3.5 w-3.5 ml-1" />
+                    {totalCalories} kcal
+                  </>
+                )}
+              </div>
+            )}
+            <button onClick={() => setWorkoutOpen(true)}
+              className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 transition">
+              <Plus className="h-3.5 w-3.5" />
+              Add
+            </button>
+          </div>
+        </div>
+        {(d?.todayWorkouts ?? []).length === 0 ? (
+          <div className="flex flex-col items-center py-6 text-center">
+            <Dumbbell className="h-8 w-8 text-gray-200 mb-2" />
+            <p className="text-xs text-gray-400">No workouts logged today.</p>
+            <button onClick={() => setWorkoutOpen(true)}
+              className="mt-2 text-xs text-rose-500 hover:underline">Log a workout →</button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {(d?.todayWorkouts ?? []).map(w => (
+              <div key={w.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2.5 group">
+                <span className="text-xl flex-none">{WORKOUT_EMOJI[w.type] ?? '🏋️'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{w.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {w.durationMins} min
+                    {w.caloriesBurned ? ` · ${w.caloriesBurned} kcal` : ''}
+                    {w.distanceKm ? ` · ${w.distanceKm} km` : ''}
+                  </p>
+                </div>
+                <button onClick={() => handleDeleteWorkout(w.id)}
+                  className="hidden group-hover:flex items-center justify-center h-7 w-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 transition flex-none">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>
-          {!todayEntry?.mood && <p className="text-xs text-gray-400 mt-2 text-center">Not logged today</p>}
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Zap className="h-5 w-5 text-amber-400" />
-            <p className="text-sm font-medium text-gray-700">Energy Level</p>
-          </div>
-          {todayEntry?.energyLevel ? (
-            <div>
-              <div className="flex items-end gap-1 mb-1">
-                <p className="text-3xl font-bold text-gray-900">{todayEntry.energyLevel}</p>
-                <p className="text-sm text-gray-400 mb-1">/10</p>
-              </div>
-              <div className="h-2 rounded-full bg-gray-100">
-                <div className="h-2 rounded-full bg-amber-400 transition-all" style={{ width: `${todayEntry.energyLevel * 10}%` }} />
-              </div>
-            </div>
-          ) : <p className="text-xs text-gray-400 mt-2">Not logged today</p>}
-        </div>
+        )}
       </div>
 
-      {/* 7-day history */}
-      {entries.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-900 mb-4">Last 7 Days</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-gray-500 font-medium pb-2 pr-4">Date</th>
-                  <th className="text-right text-gray-500 font-medium pb-2 px-2">Steps</th>
-                  <th className="text-right text-gray-500 font-medium pb-2 px-2">Sleep</th>
-                  <th className="text-right text-gray-500 font-medium pb-2 px-2">Mood</th>
-                  <th className="text-right text-gray-500 font-medium pb-2 px-2">Energy</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
-                {entries.map(e => (
-                  <tr key={e.id}>
-                    <td className="py-2 pr-4 text-gray-600 font-medium">{e.date === today ? 'Today' : e.date}</td>
-                    <td className="py-2 px-2 text-right text-gray-700">{e.steps?.toLocaleString() ?? '—'}</td>
-                    <td className="py-2 px-2 text-right text-gray-700">{e.sleepHours ? `${e.sleepHours}h` : '—'}</td>
-                    <td className="py-2 px-2 text-right text-gray-700">{e.mood ? MOOD_LABELS[e.mood] : '—'}</td>
-                    <td className="py-2 px-2 text-right text-gray-700">{e.energyLevel ? `${e.energyLevel}/10` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Recent workouts */}
-      {workouts.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-900">Recent Workouts</p>
-            <Link href="/orbit/health/workouts" className="text-xs text-rose-500 hover:text-rose-600">See all →</Link>
+      {/* Health Goals */}
+      {(d?.healthGoals ?? []).length > 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-900">Health Goals</p>
+            <Link href="/orbit/goals" className="text-xs text-rose-500 hover:text-rose-600 transition">
+              All goals →
+            </Link>
           </div>
           <div className="space-y-2">
-            {workouts.slice(0, 4).map(w => (
-              <div key={w.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2.5">
-                <span className="text-xl">{WORKOUT_TYPES[w.type] || '🏋️'}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{w.name}</p>
-                  <p className="text-xs text-gray-500">{w.durationMins} min{w.caloriesBurned ? ` · ${w.caloriesBurned} kcal` : ''}</p>
-                </div>
-                <p className="text-xs text-gray-400">{w.date === today ? 'Today' : w.date}</p>
-              </div>
-            ))}
+            {(d?.healthGoals ?? []).map(goal => {
+              const done = goal.milestones.filter(m => m.isCompleted).length;
+              const total = goal.milestones.length;
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              return (
+                <Link key={goal.id} href={`/orbit/goals/${goal.id}`}
+                  className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2.5 hover:bg-gray-100 transition group">
+                  <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-rose-50">
+                    <Target className="h-4 w-4 text-rose-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{goal.title}</p>
+                    {total > 0 ? (
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-gray-200">
+                          <div className="h-1.5 rounded-full bg-rose-400 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[11px] text-gray-400 flex-none">{done}/{total}</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-0.5">{goal.metric ?? 'No milestones yet'}</p>
+                    )}
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-300 flex-none" />
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && entries.length === 0 && workouts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50">
-            <Activity className="h-8 w-8 text-rose-400" />
-          </div>
-          <p className="text-base font-semibold text-gray-900">Start tracking your health</p>
-          <p className="mt-1 text-sm text-gray-500">Log your daily metrics to see your Health Score</p>
-          <Link href="/orbit/health/log"
-            className="mt-4 flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition">
-            <Plus className="h-4 w-4" />
-            Log Today's Health
-          </Link>
+      {/* Weekly summary */}
+      {d && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Habits this week', value: d.weeklyStats.habitsCompletedThisWeek, color: 'emerald' },
+            { label: 'Workouts this week', value: d.weeklyStats.workoutsThisWeek, color: 'blue' },
+            { label: 'Avg sleep', value: d.weeklyStats.avgSleep ? `${d.weeklyStats.avgSleep}h` : '—', color: 'purple' },
+          ].map(stat => (
+            <div key={stat.label} className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm text-center">
+              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Insights */}
+      {d && (
+        <HealthInsights dashboard={d} recentEntries={entries} />
+      )}
+
+      {/* Modals */}
+      <LogHealthModal
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        initial={dashboard?.todayEntry}
+        onSave={addHealthEntry}
+      />
+      <AddWorkoutModal
+        open={workoutOpen}
+        onClose={() => setWorkoutOpen(false)}
+        onSave={addWorkout}
+      />
     </div>
   );
 }
