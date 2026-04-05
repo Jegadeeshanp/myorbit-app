@@ -8,7 +8,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   initial?: Workout | null;
-  onSave: (data: Omit<Workout, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onSave: (data: Omit<Workout, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<Workout>;
 };
 
 const WORKOUT_TYPES = [
