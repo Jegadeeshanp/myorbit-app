@@ -8,7 +8,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   initial?: HealthEntry | null;
-  onSave: (data: Partial<HealthEntry>) => Promise<void>;
+  onSave: (data: Omit<HealthEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<HealthEntry>;
 };
 
 const MOOD_LABELS = ['', '😞 Bad', '😕 Poor', '😐 Okay', '😊 Good', '😄 Great'];
@@ -48,14 +48,14 @@ export default function LogHealthModal({ open, onClose, initial, onSave }: Props
     try {
       await onSave({
         date,
-        steps: steps ? parseInt(steps) : undefined,
-        sleepHours: sleepHours ? parseFloat(sleepHours) : undefined,
-        waterMl: waterMl ? parseInt(waterMl) : undefined,
-        weightKg: weightKg ? parseFloat(weightKg) : undefined,
-        mood: mood || undefined,
-        energyLevel: energyLevel || undefined,
-        heartRate: heartRate ? parseInt(heartRate) : undefined,
-        notes: notes || undefined,
+        steps: steps ? parseInt(steps) : null,
+        sleepHours: sleepHours ? parseFloat(sleepHours) : null,
+        waterMl: waterMl ? parseInt(waterMl) : null,
+        weightKg: weightKg ? parseFloat(weightKg) : null,
+        mood: mood || null,
+        energyLevel: energyLevel || null,
+        heartRate: heartRate ? parseInt(heartRate) : null,
+        notes: notes || null,
       });
       onClose();
     } finally {
