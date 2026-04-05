@@ -5,6 +5,7 @@ export type Account = {
   name: string;
   type: 'Bank' | 'Credit Card' | 'Cash' | 'Debit Card' | 'Wallet';
   balance: number;
+  creditLimit?: number;
 };
 
 export type Transaction = {
