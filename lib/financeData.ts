@@ -14,7 +14,7 @@ export type Transaction = {
   description: string;
   notes?: string;
   amount: number;
-  type: 'expense' | 'income' | 'transfer';
+  type: 'expense' | 'income' | 'transfer' | 'opening_balance';
   accountId?: string;
   recurring?: RecurringConfig;
 };
