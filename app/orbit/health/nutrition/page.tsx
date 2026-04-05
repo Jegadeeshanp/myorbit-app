@@ -42,8 +42,17 @@ const MEAL_COLORS: Record<string, string> = {
   snack: 'bg-emerald-50 border-emerald-100',
 };
 
-const EMPTY_FORM = {
-  name: '', mealType: 'snack' as const, servingSize: '',
+type FormState = {
+  name: string;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  servingSize: string;
+  calories: string; proteinG: string; carbsG: string; fatG: string;
+  saturatedFatG: string; sodiumMg: string; potassiumMg: string;
+  fiberG: string; waterMl: string; notes: string;
+};
+
+const EMPTY_FORM: FormState = {
+  name: '', mealType: 'snack', servingSize: '',
   calories: '', proteinG: '', carbsG: '', fatG: '',
   saturatedFatG: '', sodiumMg: '', potassiumMg: '', fiberG: '', waterMl: '', notes: '',
 };
@@ -74,7 +83,7 @@ function FoodModal({ open, onClose, initial, date, onSaved }: {
   initial?: FoodEntry | null; date: string;
   onSaved: (entry: FoodEntry) => void;
 }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
