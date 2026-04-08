@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
+
+const HTML_RE = /<[^>]*>/;
+const noHtml = (v: string) => !HTML_RE.test(v);
+const goalPostSchema = z.object({
+  title: z.string().min(1, 'Title required').max(200).refine(noHtml, { message: 'Title cannot contain HTML' }),
+  category: z.string().max(50).optional(),
+  why: z.string().max(1000).refine(noHtml, { message: 'Why cannot contain HTML' }).optional().nullable(),
+  metric: z.string().max(500).refine(noHtml, { message: 'Metric cannot contain HTML' }).optional().nullable(),
+  deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  milestones: z.array(z.object({ title: z.string().max(200), horizon: z.string().optional() })).optional(),
+  processes: z.array(z.object({ title: z.string().max(200), frequency: z.string().optional() })).optional(),
+});
 
 export const runtime = 'nodejs';
 
@@ -25,9 +38,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const body = await req.json();
-    const { title, category, why, metric, deadline, milestones = [], processes = [] } = body;
-    if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 });
+    const parsed = goalPostSchema.safeParse(await req.json());
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+    const { title, category, why = null, metric = null, deadline = null, milestones = [], processes = [] } = parsed.data;
 
     const goal = await prisma.goal.create({
       data: {

@@ -1,5 +1,6 @@
 import HealthSidebar from '@/components/health/HealthSidebar';
 import HealthTopBar from '@/components/health/HealthTopBar';
+import HealthFAB from '@/components/health/HealthFAB';
 import ToastContainer from '@/components/Toast';
 
 export default function HealthLayout({ children }: { children: React.ReactNode }) {
@@ -8,10 +9,11 @@ export default function HealthLayout({ children }: { children: React.ReactNode }
       <HealthSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <HealthTopBar />
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 pb-24 md:pb-6">
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 pb-28 md:pb-6">
           {children}
         </main>
       </div>
+      <HealthFAB />
       <ToastContainer />
     </div>
   );

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Account, useFinance } from '@/lib/financeStore';
-import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2, AlertTriangle, ArrowRight } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
@@ -73,32 +73,64 @@ function EditableBalance({ account }: { account: Account }) {
 }
 
 export function StandardCard({ account }: { account: Account }) {
-  const { deleteAccount } = useFinance();
+  const { deleteAccount, fixAccountBalance, state } = useFinance();
   const cfg   = TYPE_CONFIG[account.type] ?? TYPE_CONFIG['Bank'];
   const label = ACCOUNT_LABEL[account.type];
   const [showConfirm, setShowConfirm] = useState(false);
+  const [fixing, setFixing] = useState(false);
+
+  // Use raw signed sum — only count transactions up to today (future-dated excluded)
+  const needsReconcile = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-CA');
+    const txNet = state.transactions
+      .filter(t => t.accountId === account.id && t.date <= today)
+      .reduce((s, t) => s + t.amount, 0);
+    return Math.abs(account.balance - txNet) >= 1;
+  }, [account, state.transactions]);
+
+  const handleFix = async () => {
+    setFixing(true);
+    try { await fixAccountBalance(account.id); } finally { setFixing(false); }
+  };
 
   return (
-    <div className={`group flex items-center justify-between gap-3 rounded-2xl border ${cfg.border} bg-white px-4 py-3.5 shadow-sm transition hover:shadow-md`}>
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${cfg.bg}`}>
-          <span className={cfg.color}>{cfg.icon}</span>
+    <div className={`group rounded-2xl border ${cfg.border} bg-white shadow-sm transition hover:shadow-md`}>
+      <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${cfg.bg}`}>
+            <span className={cfg.color}>{cfg.icon}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900">{account.name}</p>
+            <p className="text-xs text-gray-400">{label}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">{account.name}</p>
-          <p className="text-xs text-gray-400">{label}</p>
+        <div className="flex flex-none items-center gap-1.5">
+          <EditableBalance account={account} />
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+            title="Delete account"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
-      <div className="flex flex-none items-center gap-1.5">
-        <EditableBalance account={account} />
-        <button
-          onClick={() => setShowConfirm(true)}
-          className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
-          title="Delete account"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {needsReconcile && (
+        <div className="flex items-center justify-between gap-2 rounded-b-2xl border-t border-amber-100 bg-amber-50 px-4 py-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <AlertTriangle className="h-3.5 w-3.5 flex-none text-amber-500" />
+            <span className="text-xs font-medium text-amber-700 truncate">Balance mismatch</span>
+          </div>
+          <button
+            onClick={handleFix}
+            disabled={fixing}
+            className="flex flex-none items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition disabled:opacity-50"
+          >
+            Fix Now <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+      )}
       <ConfirmDialog
         open={showConfirm}
         title="Delete account"
@@ -112,7 +144,7 @@ export function StandardCard({ account }: { account: Account }) {
 }
 
 export function CreditCardCard({ account }: { account: Account }) {
-  const { deleteAccount, updateAccount } = useFinance();
+  const { deleteAccount, updateAccount, fixAccountBalance, state } = useFinance();
   const outstanding  = Math.abs(account.balance);
   const creditLimit  = account.creditLimit ?? outstanding * 1.5;
   const available    = Math.max(0, creditLimit - outstanding);
@@ -123,6 +155,16 @@ export function CreditCardCard({ account }: { account: Account }) {
   const [editing, setEditing]         = useState(false);
   const [editBal,  setEditBal]        = useState('');
   const [editLimit, setEditLimit]     = useState('');
+  const [fixing, setFixing]           = useState(false);
+
+  // Use raw signed sum — only count transactions up to today (future-dated excluded)
+  const needsReconcile = useMemo(() => {
+    const today = new Date().toLocaleDateString('en-CA');
+    const txNet = state.transactions
+      .filter(t => t.accountId === account.id && t.date <= today)
+      .reduce((s, t) => s + t.amount, 0);
+    return Math.abs(account.balance - txNet) >= 1;
+  }, [account, state.transactions]);
 
   const startEdit = () => {
     setEditBal(String(outstanding));
@@ -137,6 +179,11 @@ export function CreditCardCard({ account }: { account: Account }) {
       await updateAccount({ ...account, balance: -Math.abs(newBal), creditLimit: newLimit });
     }
     setEditing(false);
+  };
+
+  const handleFix = async () => {
+    setFixing(true);
+    try { await fixAccountBalance(account.id); } finally { setFixing(false); }
   };
 
   return (
@@ -204,6 +251,21 @@ export function CreditCardCard({ account }: { account: Account }) {
             <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(utilization, 100)}%` }} />
           </div>
           <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
+          {needsReconcile && (
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <AlertTriangle className="h-3.5 w-3.5 flex-none text-amber-500" />
+                <span className="text-xs font-medium text-amber-700 truncate">Balance mismatch</span>
+              </div>
+              <button
+                onClick={handleFix}
+                disabled={fixing}
+                className="flex flex-none items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition disabled:opacity-50"
+              >
+                Fix Now <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          )}
         </>
       )}
 

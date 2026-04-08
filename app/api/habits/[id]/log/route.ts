@@ -15,6 +15,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const logDate = body.date || body.logDate || new Date().toISOString().split('T')[0];
     const value = body.value || 1;
 
+    const today = new Date().toISOString().split('T')[0];
+    if (logDate > today) {
+      return NextResponse.json({ error: 'Cannot log a habit for a future date' }, { status: 400 });
+    }
+
     // Toggle: if log exists for this date, remove it; otherwise create
     const existing = await prisma.habitLog.findUnique({
       where: { habitId_logDate: { habitId: id, logDate } },

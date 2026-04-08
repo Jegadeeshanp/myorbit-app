@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect, type CSSProperties } from 'react'
 import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
   Truck, Search, Trash2, ChevronDown, ChevronRight, TrendingUp,
-  Landmark, Wallet, Banknote, ArrowLeftRight, Pencil,
+  Landmark, Wallet, ArrowLeftRight, Pencil,
   ArrowUpRight, ArrowDownLeft, Stethoscope, GraduationCap,
   Plane, MoreHorizontal,
   Home, ShoppingCart, Utensils, Fuel, Bus, Zap, Wifi,
@@ -105,10 +105,24 @@ function TxIcon({ tx }: { tx: { type: string; category: string } }) {
       </div>
     );
   }
-  if (tx.category === 'Transfer') {
+  if (tx.type === 'transfer' || tx.category === 'Transfer') {
     return (
       <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-blue-50">
         <ArrowLeftRight className="h-4 w-4 text-blue-500" />
+      </div>
+    );
+  }
+  if (tx.type === 'opening_balance') {
+    return (
+      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-emerald-50">
+        <TrendingUp className="h-4 w-4 text-emerald-600" />
+      </div>
+    );
+  }
+  if (tx.type === 'adjustment') {
+    return (
+      <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gray-100">
+        <Wallet className="h-4 w-4 text-gray-500" />
       </div>
     );
   }
@@ -121,27 +135,6 @@ function TxIcon({ tx }: { tx: { type: string; category: string } }) {
     </div>
   );
 }
-
-// ── Account type → tab key mapping ────────────────────────────────────────
-const ACCOUNT_TYPE_TAB: Record<string, string> = {
-  Bank:          'Bank',
-  'Credit Card': 'Credit',
-  'Debit Card':  'Debit',
-  Wallet:        'Wallet',
-  Cash:          'Cash',
-};
-
-// Tab config — icon + label + color
-const TAB_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  All:    { icon: ArrowLeftRight, color: 'text-gray-600',    bg: 'bg-gray-100' },
-  Income: { icon: TrendingUp,     color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  Bank:   { icon: Landmark,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  Credit: { icon: CreditCard,     color: 'text-rose-600',    bg: 'bg-rose-50' },
-  Debit:  { icon: CreditCard,     color: 'text-blue-600',    bg: 'bg-blue-50' },
-  Wallet: { icon: Wallet,         color: 'text-violet-600',  bg: 'bg-violet-50' },
-  Cash:   { icon: Banknote,       color: 'text-amber-600',   bg: 'bg-amber-50' },
-};
-
 
 const SHORT_ACCOUNT_TYPE: Record<string, string> = {
   'Bank': 'Bank', 'Credit Card': 'Credit', 'Debit Card': 'Debit', 'Wallet': 'Wallet', 'Cash': 'Cash',
@@ -238,7 +231,6 @@ function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function TransactionList({ transactions, onAdd }: { transactions: Transaction[]; onAdd?: () => void }) {
   const { state, deleteTransaction, updateTransaction } = useFinance();
-  const [activeTab, setActiveTab]   = useState('All');
   const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
   const [mobileSearch, setMobileSearch] = useState(false);
@@ -274,86 +266,61 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     return `₹${abs.toLocaleString('en-IN')}`;
   }
 
-  // Build account lookup: accountId → account type tab key
-  const accountTabMap = useMemo(() => {
-    const map = new Map<string, string>();
-    state.accounts.forEach(a => {
-      map.set(a.id, ACCOUNT_TYPE_TAB[a.type] ?? 'All');
-    });
-    return map;
-  }, [state.accounts]);
-
   // Split into upcoming (future) and past
   const { pastTxs, upcomingTxs } = useMemo(() => ({
     pastTxs:     transactions.filter(tx => tx.date <= today),
     upcomingTxs: transactions.filter(tx => tx.date >  today),
   }), [transactions, today]);
 
-  // Derive which tabs are available based on past transactions only
-  const availableTabs = useMemo(() => {
-    const tabs = new Set<string>(['All', 'Income']);
-    pastTxs.forEach(tx => {
-      if (tx.accountId) {
-        const tab = accountTabMap.get(tx.accountId);
-        if (tab) tabs.add(tab);
-      }
+  // Apply search filter
+  function applySearch(txs: Transaction[]) {
+    if (!search.trim()) return txs;
+    const q = search.toLowerCase();
+    return txs.filter(t => {
+      const account = t.accountId ? state.accounts.find(a => a.id === t.accountId) : null;
+      return (
+        t.description.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q) ||
+        (t.notes ?? '').toLowerCase().includes(q) ||
+        String(Math.abs(t.amount)).includes(q) ||
+        t.date.includes(q) ||
+        (account?.name.toLowerCase().includes(q) ?? false) ||
+        (account?.type.toLowerCase().includes(q) ?? false)
+      );
     });
-    return ['All', 'Income', 'Bank', 'Credit', 'Debit', 'Wallet', 'Cash']
-      .filter(t => tabs.has(t));
-  }, [pastTxs, accountTabMap]);
-
-  // Ensure active tab stays valid
-  const safeTab = availableTabs.includes(activeTab) ? activeTab : 'All';
-
-  // Apply tab + search filter helper
-  function applyTabSearch(txs: Transaction[]) {
-    if (safeTab === 'Income') {
-      txs = txs.filter(t => t.type === 'income');
-    } else if (safeTab !== 'All') {
-      txs = txs.filter(t => t.accountId && accountTabMap.get(t.accountId) === safeTab);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      txs = txs.filter(t => {
-        const account = t.accountId ? state.accounts.find(a => a.id === t.accountId) : null;
-        return (
-          t.description.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q) ||
-          (t.notes ?? '').toLowerCase().includes(q) ||
-          String(Math.abs(t.amount)).includes(q) ||
-          t.date.includes(q) ||
-          (account?.name.toLowerCase().includes(q) ?? false) ||
-          (account?.type.toLowerCase().includes(q) ?? false)
-        );
-      });
-    }
-    return txs;
   }
 
   const filtered = useMemo(() => {
-    return applyTabSearch(filterByPeriod(pastTxs, period));
-  }, [pastTxs, period, safeTab, search, accountTabMap]);
+    return applySearch(filterByPeriod(pastTxs, period));
+  }, [pastTxs, period, search]);
 
   const filteredUpcoming = useMemo(() => {
-    return applyTabSearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
-  }, [upcomingTxs, safeTab, search, accountTabMap]);
+    return applySearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
+  }, [upcomingTxs, search]);
 
-  const groups = useMemo(() => groupByMonth(filtered), [filtered]);
+  const displayTransactions = useMemo(() => filtered.filter(tx => tx.type !== 'opening_balance'), [filtered]);
+  const displayUpcoming = useMemo(() => filteredUpcoming.filter(tx => tx.type !== 'opening_balance'), [filteredUpcoming]);
+
+  const groups = useMemo(() => groupByMonth(displayTransactions), [displayTransactions]);
 
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
-
   const summary = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
-    // Income card: real income only — exclude Opening Balance & Balance Adjustment
-    const income = filtered.filter(t => t.type === 'income' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-    // Expense card: excludes Opening Balance, Balance Adjustment, and user-exempted categories from settings
-    const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category) && !excluded.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    // Net Balance: income minus expenses (excludes Opening Balance/Balance Adjustment, but includes user-exempted categories)
-    const netExpense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
-    return { income, expense, net: income - netExpense, count: filtered.length };
-  }, [filtered]);
+    // Income: real income only — exclude Transfer legs (just moving money between accounts)
+    const income = displayTransactions
+      .filter(t => t.type === 'income' && t.category !== 'Transfer')
+      .reduce((s, t) => s + t.amount, 0);
+    // Expense: actual expenses minus user-exempted categories — exclude Transfer legs
+    const expense = displayTransactions
+      .filter(t => t.type === 'expense' && t.category !== 'Transfer' && !excluded.includes(t.category))
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Net: income minus all non-transfer expenses (including exempted)
+    const netExpense = displayTransactions
+      .filter(t => t.type === 'expense' && t.category !== 'Transfer')
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+    return { income, expense, net: income - netExpense, count: displayTransactions.length };
+  }, [displayTransactions]);
 
   return (
     <div className="space-y-4">
@@ -453,33 +420,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
         </div>
       </div>
 
-      {/* ── Row 2: Tabs ── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-        {availableTabs.map(tab => {
-          const cfg = TAB_CONFIG[tab];
-          const Icon = cfg.icon;
-          const isActive = safeTab === tab;
-          const periodPast = filterByPeriod(pastTxs, period);
-          const count = tab === 'All'
-            ? periodPast.length
-            : tab === 'Income'
-            ? periodPast.filter(t => t.type === 'income').length
-            : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
-          return (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
-                isActive ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
-              }`}>
-              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-              {tab}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* ── Upcoming transactions ── */}
-      {filteredUpcoming.length > 0 && (
+      {displayUpcoming.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm dark:border-blue-900/30 dark:bg-[#1C1F26]">
           {/* Collapsible header */}
           <button
@@ -490,17 +432,17 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             <Clock className="h-3.5 w-3.5 text-blue-500" />
             <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Upcoming</p>
             <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-              {filteredUpcoming.length}
+              {displayUpcoming.length}
             </span>
           </button>
 
           {upcomingOpen && (
             <div className="divide-y divide-blue-50/60 dark:divide-blue-900/20">
-              {filteredUpcoming.map(tx => {
-                const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-                const isExp    = tx.type === 'expense';
-                const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
-                const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+              {displayUpcoming.map(tx => {
+                const catColor  = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+                const isNegative = tx.amount < 0; // use signed amount for correct +/- display
+                const account   = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+                const dateStr   = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                 return (
                   <div key={tx.id} className="group transition hover:bg-blue-50/60 focus-within:bg-blue-50/60 active:bg-blue-50/60 dark:hover:bg-blue-900/20 dark:focus-within:bg-blue-900/20 dark:active:bg-blue-900/20">
                     {/* Mobile */}
@@ -511,12 +453,15 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                         {tx.notes && <p className="truncate text-[11px] text-gray-400 leading-tight">{tx.notes}</p>}
                         <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                          {tx.type === 'adjustment' && (
+                            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adjustment</span>
+                          )}
                           {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
                           <span className="text-[11px] text-blue-400">{dateStr}</span>
                         </div>
                       </div>
-                      <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                        {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                      <p className={`flex-none text-sm font-bold ${isNegative ? 'text-rose-500' : 'text-emerald-600'}`}>
+                        {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                       </p>
                       <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
                     </div>
@@ -525,12 +470,17 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                       <span className="text-xs text-blue-400 whitespace-nowrap">{dateStr}</span>
                       <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100 min-w-0">{tx.description}</p>
                       <p className="truncate text-xs text-gray-400 min-w-0">{tx.notes || '—'}</p>
-                      <span className={`inline-flex w-fit items-center justify-self-start rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
-                        {tx.category}
-                      </span>
+                      <div className="inline-flex w-fit items-center justify-self-start gap-1.5 flex-wrap">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>
+                          {tx.category}
+                        </span>
+                        {tx.type === 'adjustment' && (
+                          <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adj</span>
+                        )}
+                      </div>
                       <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
-                      <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-500' : 'text-emerald-600'}`}>
-                        {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                      <span className={`text-right text-sm font-bold ${isNegative ? 'text-rose-500' : 'text-emerald-600'}`}>
+                        {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                       </span>
                       <div className="flex justify-end">
                         <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
@@ -564,9 +514,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           {groups.map((group, gi) => {
             const isCollapsed = collapsedGroups.has(group.label);
             const isNow       = group.label === currentMonthLabel;
-            const groupNet    = group.transactions.reduce(
-              (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
-            );
+            // Use signed amounts directly — expenses are stored negative, income positive
+            const groupNet    = group.transactions.reduce((s, tx) => s + tx.amount, 0);
 
             return (
             <div key={group.label}>
@@ -603,10 +552,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
               {!isCollapsed && (
               <div className="divide-y divide-gray-50 dark:divide-gray-800/40">
                 {group.transactions.map(tx => {
-                  const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-                  const isExp    = tx.type === 'expense';
-                  const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
-                  const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  const catColor   = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
+                  const isNegative = tx.amount < 0; // use signed amount — correct for expense, income, transfer, adjustment
+                  const account    = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
+                  const dateStr    = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
                   return (
                     <div key={tx.id} className="group transition hover:bg-gray-50/50">
@@ -617,12 +566,15 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                           <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
                           <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
+                            {tx.type === 'adjustment' && (
+                              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adjustment</span>
+                            )}
                             {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
                             <span className="text-[11px] text-gray-400">{dateStr}</span>
                           </div>
                         </div>
-                        <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
-                          {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        <p className={`flex-none text-sm font-bold ${isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </p>
                         <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
                       </div>
@@ -632,12 +584,15 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                         <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
                         <p className="truncate text-sm font-medium text-gray-900 min-w-0">{tx.description}</p>
                         <p className="truncate text-xs text-gray-400 min-w-0">{tx.notes || '—'}</p>
-                        <span className="justify-self-start inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium truncate max-w-full">
+                        <div className="justify-self-start inline-flex items-center gap-1.5 flex-wrap min-w-0">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
-                        </span>
+                          {tx.type === 'adjustment' && (
+                            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Adj</span>
+                          )}
+                        </div>
                         <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
-                        <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
-                          {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
+                        <span className={`text-right text-sm font-bold ${isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {isNegative ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </span>
                         <div className="flex justify-end">
                           <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
