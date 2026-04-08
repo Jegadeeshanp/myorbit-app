@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+const HTML_RE = /<[^>]*>/;
+
 export const runtime = 'nodejs';
 
 export async function GET() {
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, color, iconEmoji, goalPerDay, isCountBased, daysOfWeek, timeOfDay, customTime } = body;
     if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 });
+    if (HTML_RE.test(name)) return NextResponse.json({ error: 'Name cannot contain HTML' }, { status: 400 });
     const maxOrder = await prisma.habit.aggregate({
       where: { userId },
       _max: { sortOrder: true },
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
         iconEmoji: iconEmoji || '✅',
         goalPerDay: goalPerDay || 1,
         isCountBased: isCountBased || false,
-        daysOfWeek: daysOfWeek ? JSON.stringify(daysOfWeek) : '[1,2,3,4,5,6,7]',
+        daysOfWeek: daysOfWeek ? JSON.stringify(daysOfWeek) : '[0,1,2,3,4,5,6]',
         sortOrder: (maxOrder._max.sortOrder ?? 0) + 1,
         timeOfDay: timeOfDay || 'all_day',
         customTime: customTime || null,

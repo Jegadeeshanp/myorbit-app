@@ -31,6 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.title !== undefined && { title: body.title }),
         ...(body.notes !== undefined && { notes: body.notes }),
         ...(body.status !== undefined && { status: body.status }),
+        ...(body.status === 'completed' && { completedAt: new Date() }),
         ...(body.priority !== undefined && { priority: body.priority }),
         ...(body.dueDate !== undefined && { dueDate: body.dueDate }),
         ...(body.dueTime !== undefined && { dueTime: body.dueTime }),
