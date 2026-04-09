@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft, CheckCircle2, Circle, Plus, Trash2, Target,
-  Calendar, Edit3, Save, X, Zap, RotateCcw,
+  Calendar, Edit3, Save, X, Zap, RotateCcw, Flag, TrendingUp,
+  ListChecks, Activity,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
@@ -47,12 +48,12 @@ export default function GoalDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   // process add state
-  const [newProcess, setNewProcess]     = useState('');
+  const [newProcess, setNewProcess]         = useState('');
   const [newProcessFreq, setNewProcessFreq] = useState('daily');
   const [addingProcess, setAddingProcess]   = useState(false);
 
   // milestone add state
-  const [newMilestone, setNewMilestone]         = useState('');
+  const [newMilestone, setNewMilestone]               = useState('');
   const [newMilestoneHorizon, setNewMilestoneHorizon] = useState('1m');
   const [addingMilestone, setAddingMilestone]         = useState(false);
 
@@ -189,10 +190,13 @@ export default function GoalDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 w-48 bg-gray-200 rounded-lg" />
-        <div className="h-32 rounded-2xl bg-gray-200" />
-        <div className="h-64 rounded-2xl bg-gray-200" />
+        <div className="h-40 rounded-2xl bg-gray-200" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 h-64 rounded-2xl bg-gray-200" />
+          <div className="h-64 rounded-2xl bg-gray-200" />
+        </div>
       </div>
     );
   }
@@ -213,14 +217,15 @@ export default function GoalDetailPage() {
   const catClr  = CATEGORY_COLORS[goal.category] || CATEGORY_COLORS.Other;
   const doneMs  = goal.milestones.filter(m => m.isCompleted).length;
   const totalMs = goal.milestones.length;
+  const progressPct = totalMs > 0 ? Math.round((doneMs / totalMs) * 100) : 0;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="space-y-5">
       {/* Back + Delete */}
       <div className="flex items-center justify-between">
         <button onClick={() => router.push('/orbit/goals')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition">
           <ArrowLeft className="h-4 w-4" />
-          Back
+          Back to Goals
         </button>
         <button
           onClick={handleDelete}
@@ -232,7 +237,7 @@ export default function GoalDetailPage() {
         </button>
       </div>
 
-      {/* Hero card */}
+      {/* Hero card — full width */}
       <div className={`rounded-2xl bg-gradient-to-br ${grad} p-6 text-white`}>
         <div className="flex items-start justify-between gap-3 mb-3">
           <span className="bg-white/20 backdrop-blur-sm rounded-lg px-2.5 py-0.5 text-xs font-medium">
@@ -242,6 +247,11 @@ export default function GoalDetailPage() {
             {goal.status === 'completed' && (
               <span className="bg-white/20 rounded-lg px-2.5 py-0.5 text-xs font-medium flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" /> Achieved
+              </span>
+            )}
+            {goal.status === 'paused' && (
+              <span className="bg-white/20 rounded-lg px-2.5 py-0.5 text-xs font-medium">
+                Paused
               </span>
             )}
             <button
@@ -254,263 +264,383 @@ export default function GoalDetailPage() {
         </div>
         <h1 className="text-2xl font-bold mb-2">{goal.title}</h1>
         {goal.why && <p className="text-sm opacity-80 italic mb-3">"{goal.why}"</p>}
-        <div className="flex flex-wrap gap-3 text-sm opacity-90">
-          {goal.metric && <span>📏 {goal.metric}</span>}
-          {goal.deadline && <span>📅 {goal.deadline}</span>}
+        <div className="flex flex-wrap gap-4 text-sm opacity-90 mb-4">
+          {goal.metric && <span className="flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5" />{goal.metric}</span>}
+          {goal.deadline && <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{goal.deadline}</span>}
+        </div>
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xl font-bold">{progressPct}%</p>
+            <p className="text-xs opacity-75 mt-0.5">Progress</p>
+          </div>
+          <div className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xl font-bold">{doneMs}<span className="text-sm font-normal opacity-75">/{totalMs}</span></p>
+            <p className="text-xs opacity-75 mt-0.5">Milestones</p>
+          </div>
+          <div className="bg-white/15 rounded-xl px-3 py-2.5 text-center">
+            <p className="text-xl font-bold">{goal.processes.length}</p>
+            <p className="text-xs opacity-75 mt-0.5">Processes</p>
+          </div>
         </div>
         {totalMs > 0 && (
           <div className="mt-4">
-            <div className="flex justify-between text-xs opacity-75 mb-1.5">
-              <span>Progress</span><span>{doneMs}/{totalMs} milestones</span>
-            </div>
             <div className="h-2 w-full rounded-full bg-white/20">
-              <div className="h-2 rounded-full bg-white/80 transition-all" style={{ width: `${totalMs > 0 ? (doneMs/totalMs)*100 : 0}%` }} />
+              <div className="h-2 rounded-full bg-white/80 transition-all" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex rounded-xl bg-gray-100 p-1">
-        {[
-          { key: 'goal' as Tab, label: 'Goal' },
-          { key: 'milestones' as Tab, label: 'Milestones' },
-          { key: 'process' as Tab, label: 'Process' },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
-              tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-      {/* Tab: Goal */}
-      {tab === 'goal' && (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
-          {editing ? (
-            <>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Title</label>
-                <input className={inputCls} value={editData.title} onChange={e => setEditData(d => ({ ...d, title: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Why</label>
-                <textarea className={`${inputCls} resize-none`} rows={3} value={editData.why} onChange={e => setEditData(d => ({ ...d, why: e.target.value }))} placeholder="Your motivation..." />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Metric</label>
-                <input className={inputCls} value={editData.metric} onChange={e => setEditData(d => ({ ...d, metric: e.target.value }))} placeholder="How will you measure success?" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Deadline</label>
-                <input type="date" className={inputCls} value={editData.deadline} onChange={e => setEditData(d => ({ ...d, deadline: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
-                <select className={inputCls} value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))}>
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
-                  <option value="paused">Paused</option>
-                </select>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => setEditing(false)}
-                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
-                >
-                  <X className="h-4 w-4" /> Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              {goal.why && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Why</p>
-                  <p className="text-sm text-gray-700 italic">"{goal.why}"</p>
-                </div>
-              )}
-              {goal.metric && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Success Metric</p>
-                  <p className="text-sm text-gray-700">📏 {goal.metric}</p>
-                </div>
-              )}
-              {goal.deadline && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Deadline</p>
-                  <p className="text-sm text-gray-700 flex items-center gap-1"><Calendar className="h-4 w-4 text-indigo-400" />{goal.deadline}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</p>
-                <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${catClr}`}>
-                  {goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}
-                </span>
-              </div>
-              {!goal.why && !goal.metric && !goal.deadline && (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  Click edit to add your why, metric, and deadline.
-                </p>
-              )}
+        {/* Left: Tabs + main content */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Tabs */}
+          <div className="flex rounded-xl bg-gray-100 p-1">
+            {[
+              { key: 'goal' as Tab, label: 'Goal Details', Icon: Flag },
+              { key: 'milestones' as Tab, label: 'Milestones', Icon: ListChecks },
+              { key: 'process' as Tab, label: 'Processes', Icon: Activity },
+            ].map(t => (
               <button
-                onClick={() => setEditing(true)}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-indigo-200 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition"
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition ${
+                  tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                <Edit3 className="h-4 w-4" /> Edit Goal
+                <t.Icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t.label}</span>
+                <span className="sm:hidden">{t.key === 'goal' ? 'Goal' : t.key === 'milestones' ? 'Milestones' : 'Process'}</span>
               </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Milestones */}
-      {tab === 'milestones' && (
-        <div className="space-y-4">
-          {HORIZONS.map(hz => {
-            const msList = goal.milestones.filter(m => m.horizon === hz);
-            return (
-              <div key={hz} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
-                  <div className="h-2 w-2 rounded-full bg-indigo-500" />
-                  <p className="text-sm font-semibold text-gray-900">{HORIZON_LABELS[hz]}</p>
-                  <span className="ml-auto text-xs text-gray-400">{msList.filter(m => m.isCompleted).length}/{msList.length}</span>
-                </div>
-                <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
-                  {msList.length === 0 && (
-                    <p className="px-4 py-3 text-sm text-gray-400 italic">No milestones for this horizon</p>
-                  )}
-                  {msList.map(m => (
-                    <div key={m.id} className="flex items-center gap-3 px-4 py-3 group">
-                      <button onClick={() => toggleMilestone(m.id, m.isCompleted)} className="flex-none">
-                        {m.isCompleted
-                          ? <CheckCircle2 className="h-5 w-5 text-indigo-600" />
-                          : <Circle className="h-5 w-5 text-gray-300 hover:text-indigo-400 transition" />}
-                      </button>
-                      <p className={`flex-1 text-sm ${m.isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                        {m.title}
-                      </p>
-                      <button
-                        onClick={() => deleteMilestone(m.id)}
-                        className="opacity-0 group-hover:opacity-100 transition flex h-6 w-6 items-center justify-center rounded-full hover:bg-rose-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Add milestone */}
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Add Milestone</p>
-            <div className="flex gap-2">
-              <input
-                className={`${inputCls} flex-1`}
-                placeholder="Milestone title..."
-                value={newMilestone}
-                onChange={e => setNewMilestone(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addMilestone()}
-              />
-              <select
-                className="rounded-xl border border-gray-200 px-2 py-2 text-sm focus:border-indigo-400 focus:outline-none bg-white"
-                value={newMilestoneHorizon}
-                onChange={e => setNewMilestoneHorizon(e.target.value)}
-              >
-                <option value="1m">1 Month</option>
-                <option value="3m">3 Months</option>
-                <option value="6m">6 Months</option>
-              </select>
-              <button
-                onClick={addMilestone}
-                disabled={addingMilestone}
-                className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
 
-      {/* Tab: Process */}
-      {tab === 'process' && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            {goal.processes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Zap className="h-10 w-10 text-indigo-200 mb-2" />
-                <p className="text-sm text-gray-500">No processes yet</p>
-                <p className="text-xs text-gray-400 mt-0.5">Processes are recurring habits that drive your goal</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
-                {goal.processes.map(p => (
-                  <div key={p.id} className="flex items-center gap-3 px-4 py-3 group">
-                    <div className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-indigo-50">
-                      <RotateCcw className="h-4 w-4 text-indigo-500" />
+          {/* Tab: Goal */}
+          {tab === 'goal' && (
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+              {editing ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Title</label>
+                    <input className={inputCls} value={editData.title} onChange={e => setEditData(d => ({ ...d, title: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Why</label>
+                    <textarea className={`${inputCls} resize-none`} rows={3} value={editData.why} onChange={e => setEditData(d => ({ ...d, why: e.target.value }))} placeholder="Your motivation..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Success Metric</label>
+                    <input className={inputCls} value={editData.metric} onChange={e => setEditData(d => ({ ...d, metric: e.target.value }))} placeholder="How will you measure success?" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Deadline</label>
+                      <input type="date" className={inputCls} value={editData.deadline} onChange={e => setEditData(d => ({ ...d, deadline: e.target.value }))} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800">{p.title}</p>
-                      <p className="text-xs text-gray-400 capitalize">{p.frequency}</p>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</label>
+                      <select className={inputCls} value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))}>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="paused">Paused</option>
+                      </select>
                     </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
                     <button
-                      onClick={() => deleteProcess(p.id)}
-                      className="opacity-0 group-hover:opacity-100 transition flex h-7 w-7 items-center justify-center rounded-full hover:bg-rose-50"
+                      onClick={() => setEditing(false)}
+                      className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                      <X className="h-4 w-4" /> Cancel
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
+                </>
+              ) : (
+                <>
+                  {goal.why && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Why This Goal</p>
+                      <p className="text-sm text-gray-700 italic bg-gray-50 rounded-xl px-3 py-2.5">"{goal.why}"</p>
+                    </div>
+                  )}
+                  {goal.metric && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Success Metric</p>
+                      <p className="text-sm text-gray-700 flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5">
+                        <TrendingUp className="h-4 w-4 text-indigo-400 flex-none" />{goal.metric}
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    {goal.deadline && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Deadline</p>
+                        <p className="text-sm text-gray-700 flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5">
+                          <Calendar className="h-4 w-4 text-indigo-400 flex-none" />{goal.deadline}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Status</p>
+                      <div className="bg-gray-50 rounded-xl px-3 py-2.5">
+                        <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${catClr}`}>
+                          {goal.status.charAt(0).toUpperCase() + goal.status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {!goal.why && !goal.metric && !goal.deadline && (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      Click edit to add your why, metric, and deadline.
+                    </p>
+                  )}
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-indigo-200 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition"
+                  >
+                    <Edit3 className="h-4 w-4" /> Edit Goal Details
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Milestones */}
+          {tab === 'milestones' && (
+            <div className="space-y-4">
+              {HORIZONS.map(hz => {
+                const msList = goal.milestones.filter(m => m.horizon === hz);
+                return (
+                  <div key={hz} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
+                      <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                      <p className="text-sm font-semibold text-gray-900">{HORIZON_LABELS[hz]}</p>
+                      <span className="ml-auto text-xs text-gray-400">{msList.filter(m => m.isCompleted).length}/{msList.length}</span>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {msList.length === 0 && (
+                        <p className="px-4 py-3 text-sm text-gray-400 italic">No milestones for this horizon</p>
+                      )}
+                      {msList.map(m => (
+                        <div key={m.id} className="flex items-center gap-3 px-4 py-3 group">
+                          <button onClick={() => toggleMilestone(m.id, m.isCompleted)} className="flex-none">
+                            {m.isCompleted
+                              ? <CheckCircle2 className="h-5 w-5 text-indigo-600" />
+                              : <Circle className="h-5 w-5 text-gray-300 hover:text-indigo-400 transition" />}
+                          </button>
+                          <p className={`flex-1 text-sm ${m.isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                            {m.title}
+                          </p>
+                          <button
+                            onClick={() => deleteMilestone(m.id)}
+                            className="opacity-0 group-hover:opacity-100 transition flex h-6 w-6 items-center justify-center rounded-full hover:bg-rose-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add milestone */}
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Add Milestone</p>
+                <div className="flex gap-2">
+                  <input
+                    className={`${inputCls} flex-1`}
+                    placeholder="Milestone title..."
+                    value={newMilestone}
+                    onChange={e => setNewMilestone(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addMilestone()}
+                  />
+                  <select
+                    className="rounded-xl border border-gray-200 px-2 py-2 text-sm focus:border-indigo-400 focus:outline-none bg-white"
+                    value={newMilestoneHorizon}
+                    onChange={e => setNewMilestoneHorizon(e.target.value)}
+                  >
+                    <option value="1m">1 Month</option>
+                    <option value="3m">3 Months</option>
+                    <option value="6m">6 Months</option>
+                  </select>
+                  <button
+                    onClick={addMilestone}
+                    disabled={addingMilestone}
+                    className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab: Process */}
+          {tab === 'process' && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                {goal.processes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <Zap className="h-10 w-10 text-indigo-200 mb-2" />
+                    <p className="text-sm text-gray-500">No processes yet</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Processes are recurring habits that drive your goal</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {goal.processes.map(p => (
+                      <div key={p.id} className="flex items-center gap-3 px-4 py-3 group">
+                        <div className="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-indigo-50">
+                          <RotateCcw className="h-4 w-4 text-indigo-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800">{p.title}</p>
+                          <p className="text-xs text-gray-400 capitalize">{p.frequency}</p>
+                        </div>
+                        <button
+                          onClick={() => deleteProcess(p.id)}
+                          className="opacity-0 group-hover:opacity-100 transition flex h-7 w-7 items-center justify-center rounded-full hover:bg-rose-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add process */}
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Add Process</p>
+                <div className="flex gap-2">
+                  <input
+                    className={`${inputCls} flex-1`}
+                    placeholder="e.g. Run 5km, Read 30 pages..."
+                    value={newProcess}
+                    onChange={e => setNewProcess(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addProcess()}
+                  />
+                  <select
+                    className="rounded-xl border border-gray-200 px-2 py-2 text-sm focus:border-indigo-400 focus:outline-none bg-white"
+                    value={newProcessFreq}
+                    onChange={e => setNewProcessFreq(e.target.value)}
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                  <button
+                    onClick={addProcess}
+                    disabled={addingProcess}
+                    className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right: summary sidebar */}
+        <div className="space-y-4">
+
+          {/* Milestone progress per horizon */}
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ListChecks className="h-4 w-4 text-indigo-500" />
+              <p className="text-sm font-semibold text-gray-900">Milestone Breakdown</p>
+            </div>
+            {HORIZONS.map(hz => {
+              const msList = goal.milestones.filter(m => m.horizon === hz);
+              const done   = msList.filter(m => m.isCompleted).length;
+              const pct    = msList.length > 0 ? (done / msList.length) * 100 : 0;
+              return (
+                <div key={hz} className="mb-3 last:mb-0">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>{HORIZON_LABELS[hz]}</span>
+                    <span>{done}/{msList.length}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-gray-100">
+                    <div
+                      className="h-1.5 rounded-full bg-indigo-500 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {totalMs === 0 && (
+              <p className="text-xs text-gray-400 text-center py-2">No milestones yet</p>
+            )}
+          </div>
+
+          {/* Recent processes */}
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-indigo-500" />
+              <p className="text-sm font-semibold text-gray-900">Active Processes</p>
+            </div>
+            {goal.processes.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-2">No processes yet</p>
+            ) : (
+              <div className="space-y-2">
+                {goal.processes.slice(0, 5).map(p => (
+                  <div key={p.id} className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 flex-none items-center justify-center rounded-lg bg-indigo-50">
+                      <RotateCcw className="h-3 w-3 text-indigo-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-700 truncate">{p.title}</p>
+                      <p className="text-[10px] text-gray-400 capitalize">{p.frequency}</p>
+                    </div>
+                  </div>
                 ))}
+                {goal.processes.length > 5 && (
+                  <p className="text-xs text-gray-400 text-center pt-1">+{goal.processes.length - 5} more</p>
+                )}
               </div>
             )}
           </div>
 
-          {/* Add process */}
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Add Process</p>
-            <div className="flex gap-2">
-              <input
-                className={`${inputCls} flex-1`}
-                placeholder="e.g. Run 5km, Read 30 pages..."
-                value={newProcess}
-                onChange={e => setNewProcess(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addProcess()}
-              />
-              <select
-                className="rounded-xl border border-gray-200 px-2 py-2 text-sm focus:border-indigo-400 focus:outline-none bg-white"
-                value={newProcessFreq}
-                onChange={e => setNewProcessFreq(e.target.value)}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <button
-                onClick={addProcess}
-                disabled={addingProcess}
-                className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition disabled:opacity-50"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+          {/* Quick actions */}
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-2">
+            <p className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</p>
+            <button
+              onClick={() => setTab('milestones')}
+              className="w-full flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition"
+            >
+              <Plus className="h-4 w-4 flex-none" />
+              Add Milestone
+            </button>
+            <button
+              onClick={() => setTab('process')}
+              className="w-full flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition"
+            >
+              <Zap className="h-4 w-4 flex-none" />
+              Add Process
+            </button>
+            <button
+              onClick={() => { setEditing(true); setTab('goal'); }}
+              className="w-full flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition"
+            >
+              <Edit3 className="h-4 w-4 flex-none" />
+              Edit Goal
+            </button>
           </div>
+
         </div>
-      )}
+      </div>
     </div>
   );
 }

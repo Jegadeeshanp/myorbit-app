@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download, Trash2, Upload, Plus, Lock, Package, TrendingUp, Landmark, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
+import { RefreshCw, Download, Trash2, Upload, Plus, Lock, Package, TrendingUp, Landmark, ArrowDownLeft, ArrowUpRight, X, ArrowLeft, Settings2, List, LayoutGrid, Database } from 'lucide-react';
+import Link from 'next/link';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS } from '@/components/finance/CategoryPicker';
 import { useFinance } from '@/lib/financeStore';
-import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
 import {
   getAllExpenseCategories,
@@ -18,8 +18,13 @@ import {
 
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
-const TABS = ['Preferences', 'Recurring', 'Categories', 'Data'] as const;
-type Tab = typeof TABS[number];
+const TABS = [
+  { id: 'Preferences' as const, label: 'Preferences', icon: Settings2  },
+  { id: 'Recurring'   as const, label: 'Recurring',   icon: RefreshCw  },
+  { id: 'Categories'  as const, label: 'Categories',  icon: LayoutGrid },
+  { id: 'Data'        as const, label: 'Data',        icon: Database   },
+] as const;
+type Tab = typeof TABS[number]['id'];
 
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
@@ -45,7 +50,7 @@ const DEFAULT_VIEWS = [
 
 export default function FinanceSettingsPage() {
   const { state, cancelRecurring, cancelAssetSip } = useFinance();
-  const [activeTab, setActiveTab] = useState<Tab>('Preferences');
+  const [activeTab, setActiveTab] = useState<Tab>('Preferences' as Tab);
   const [showImport, setShowImport] = useState(false);
 
   // Preferences state
@@ -206,22 +211,35 @@ export default function FinanceSettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <FinanceTopBar />
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Link
+          href="/orbit/finance"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm transition hover:bg-gray-50"
+        >
+          <ArrowLeft className="h-4 w-4 text-gray-600" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Finance Settings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage your finance preferences and data</p>
+        </div>
+      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-2xl border border-gray-100 bg-gray-50/60 p-1">
-        {TABS.map(t => (
+      {/* Tab bar */}
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
+        {TABS.map(({ id, label, icon: Icon }) => (
           <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
-              activeTab === t
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex flex-none items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition whitespace-nowrap ${
+              activeTab === id
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
-            {t}
+            <Icon className="h-4 w-4" />
+            {label}
           </button>
         ))}
       </div>
