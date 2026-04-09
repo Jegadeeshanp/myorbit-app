@@ -7,9 +7,9 @@ import ToastContainer from '@/components/Toast';
 export default function HealthLayout({ children }: { children: React.ReactNode }) {
   return (
     <HealthProvider>
-      <div className="flex min-h-screen bg-[#F7F7F5]">
+      <div className="flex h-screen overflow-hidden bg-[#F7F7F5]">
         <HealthSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex flex-1 flex-col min-w-0">
           <HealthTopBar />
           <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 pb-28 md:pb-6">
             {children}
