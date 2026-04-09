@@ -112,10 +112,23 @@ function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     if (!selected) return;
     setLogging(true);
     try {
-      const r = await fetch('/api/food-logs', {
+      const r = await fetch('/api/health/food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: today, foodName: selected.name, mealType, ...selected }),
+        body: JSON.stringify({
+          date: today,
+          name: selected.name,
+          mealType,
+          servingSize: selected.servingSize ?? null,
+          calories: selected.calories ?? null,
+          proteinG: selected.protein ?? null,
+          carbsG: selected.carbs ?? null,
+          fatG: selected.fats ?? null,
+          saturatedFatG: selected.saturatedFat ?? null,
+          sodiumMg: selected.sodium ?? null,
+          potassiumMg: selected.potassium ?? null,
+          fiberG: selected.fiber ?? null,
+        }),
       });
       if (!r.ok) throw new Error();
       toast('🍎 Food logged!');
