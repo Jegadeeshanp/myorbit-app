@@ -82,7 +82,13 @@ function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [selected, setSelected] = useState<any | null>(null);
-  const [mealType, setMealType] = useState('snack');
+  const [mealType, setMealType] = useState(() => {
+    const h = new Date().getHours();
+    if (h < 11) return 'morning';
+    if (h < 14) return 'noon';
+    if (h < 19) return 'evening';
+    return 'night';
+  });
   const [logging, setLogging] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = new Date().toISOString().split('T')[0];
@@ -219,11 +225,16 @@ function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
               {/* Meal type */}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Meal</p>
-                <div className="flex gap-2">
-                  {['breakfast', 'lunch', 'dinner', 'snack'].map(m => (
-                    <button key={m} onClick={() => setMealType(m)}
-                      className={`flex-1 rounded-xl py-1.5 text-xs font-medium capitalize transition ${mealType === m ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      {m}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { key: 'morning', emoji: '🌅' },
+                    { key: 'noon',    emoji: '☀️' },
+                    { key: 'evening', emoji: '🌇' },
+                    { key: 'night',   emoji: '🌙' },
+                  ].map(({ key, emoji }) => (
+                    <button key={key} onClick={() => setMealType(key)}
+                      className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-xs font-medium capitalize transition ${mealType === key ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      <span>{emoji}</span>{key}
                     </button>
                   ))}
                 </div>

@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 const foodSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   name: z.string().min(1).max(200),
-  mealType: z.enum(['breakfast', 'lunch', 'dinner', 'snack']).default('snack'),
+  mealType: z.enum(['morning', 'noon', 'evening', 'night']).default('evening'),
   calories: z.number().nonnegative().optional(),
   proteinG: z.number().nonnegative().optional(),
   carbsG: z.number().nonnegative().optional(),
