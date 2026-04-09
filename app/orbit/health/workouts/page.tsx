@@ -21,7 +21,7 @@ function AddWorkoutModal({ onClose, onCreated }: { onClose: () => void; onCreate
   const [saving, setSaving] = useState(false);
 
   const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
-  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100 bg-white';
+  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-100 bg-white';
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast('Workout name required', 'error'); return; }
@@ -66,7 +66,7 @@ function AddWorkoutModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <div className="grid grid-cols-3 gap-2">
               {WORKOUT_TYPES.map(t => (
                 <button key={t.value} onClick={() => set('type', t.value)}
-                  className={`flex flex-col items-center gap-1 rounded-xl py-2.5 text-xs transition ${form.type === t.value ? 'bg-rose-50 ring-2 ring-rose-400 text-rose-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+                  className={`flex flex-col items-center gap-1 rounded-xl py-2.5 text-xs transition ${form.type === t.value ? 'bg-orange-50 ring-2 ring-orange-300 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
                   <span className="text-lg">{t.emoji}</span>
                   {t.label}
                 </button>
@@ -91,7 +91,7 @@ function AddWorkoutModal({ onClose, onCreated }: { onClose: () => void; onCreate
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition disabled:opacity-50">
+            className="flex-1 rounded-xl bg-orange-400 py-2.5 text-sm font-semibold text-white hover:bg-orange-500 transition disabled:opacity-50">
             {saving ? 'Saving...' : 'Log Workout'}
           </button>
         </div>
@@ -131,7 +131,7 @@ export default function WorkoutsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Track your training sessions</p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-600 transition">
+          className="flex items-center gap-2 rounded-xl bg-orange-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 transition">
           <Plus className="h-4 w-4" />
           Log Workout
         </button>
@@ -160,11 +160,11 @@ export default function WorkoutsPage() {
       ) : workouts.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50">
-            <Dumbbell className="h-8 w-8 text-rose-400" />
+            <Dumbbell className="h-8 w-8 text-orange-400" />
           </div>
           <p className="text-base font-semibold text-gray-900">No workouts logged</p>
           <p className="mt-1 text-sm text-gray-500">Log your first training session</p>
-          <button onClick={() => setShowModal(true)} className="mt-4 flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition">
+          <button onClick={() => setShowModal(true)} className="mt-4 flex items-center gap-2 rounded-xl bg-orange-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-500 transition">
             <Plus className="h-4 w-4" /> Log Workout
           </button>
         </div>

@@ -25,8 +25,8 @@ function HealthScoreRing({ score }: { score: number }) {
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
         <defs>
           <linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#f43f5e" />
-            <stop offset="100%" stopColor="#fb7185" />
+            <stop offset="0%" stopColor="#fb7185" />
+            <stop offset="100%" stopColor="#fda4af" />
           </linearGradient>
         </defs>
       </svg>
@@ -90,7 +90,7 @@ export default function HealthPage() {
       {/* Action row */}
       <div className="flex justify-end">
         <Link href="/orbit/health/log"
-          className="hidden md:flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700 transition">
+          className="hidden md:flex items-center gap-2 rounded-xl bg-rose-400 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-500 transition">
           <Plus className="h-4 w-4" />
           Log Today
         </Link>
@@ -185,7 +185,7 @@ export default function HealthPage() {
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-gray-900">Recent Workouts</p>
-            <Link href="/orbit/health/workouts" className="text-xs text-rose-500 hover:text-rose-600">See all →</Link>
+            <Link href="/orbit/health/workouts" className="text-xs text-rose-400 hover:text-rose-500">See all →</Link>
           </div>
           <div className="space-y-2">
             {workouts.slice(0, 4).map(w => (
@@ -211,7 +211,7 @@ export default function HealthPage() {
           <p className="text-base font-semibold text-gray-900">Start tracking your health</p>
           <p className="mt-1 text-sm text-gray-500">Log your daily metrics to see your Health Score</p>
           <Link href="/orbit/health/log"
-            className="mt-4 flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 transition">
+            className="mt-4 flex items-center gap-2 rounded-xl bg-rose-400 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-500 transition">
             <Plus className="h-4 w-4" />
             Log Today's Health
           </Link>

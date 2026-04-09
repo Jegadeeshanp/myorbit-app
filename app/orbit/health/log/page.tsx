@@ -80,7 +80,7 @@ export default function HealthLogPage() {
     }
   };
 
-  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100 bg-white';
+  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-100 bg-white';
   const labelCls = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5';
 
   return (
@@ -179,7 +179,7 @@ export default function HealthLogPage() {
 
       {/* Save */}
       <button onClick={handleSave} disabled={saving || saved}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl bg-rose-500 py-3.5 text-sm font-semibold text-white hover:bg-rose-600 transition disabled:opacity-60">
+        className="w-full flex items-center justify-center gap-2 rounded-2xl bg-rose-400 py-3.5 text-sm font-semibold text-white hover:bg-rose-500 transition disabled:opacity-60">
         {saved ? <CheckCircle2 className="h-5 w-5" /> : <Save className="h-5 w-5" />}
         {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Health Log'}
       </button>
