@@ -413,7 +413,7 @@ export default function NutritionPage() {
 
   const fmt = (n: number, d = 1) => n > 0 ? Number(n.toFixed(d)).toString() : '0';
   const remaining = (key: keyof typeof targets) =>
-    Math.max(0, targets[key] - (tot as any)[key] ?? 0);
+    Math.max(0, targets[key] - ((tot as any)[key] ?? 0));
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
