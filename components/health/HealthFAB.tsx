@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, X, Dumbbell, Droplets, Apple, Activity } from 'lucide-react';
+import { Plus, X, Dumbbell, Droplets, Apple, Activity, Loader2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
 // ── Quick Water Log modal ─────────────────────────────────────────────────
@@ -16,7 +16,6 @@ function QuickWaterModal({ onClose }: { onClose: () => void }) {
     if (!water || water <= 0) { toast('Enter a valid amount', 'error'); return; }
     setSaving(true);
     try {
-      // Upsert today's health entry, incrementing waterMl
       const existing = await fetch('/api/health/entries?limit=1').then(r => r.json());
       const todayEntry = Array.isArray(existing) ? existing.find((e: any) => e.date === today) : null;
       const newWater = (todayEntry?.waterMl ?? 0) + water;
@@ -50,23 +49,16 @@ function QuickWaterModal({ onClose }: { onClose: () => void }) {
         <div className="px-5 py-5 space-y-4">
           <div className="grid grid-cols-4 gap-2">
             {[150, 250, 350, 500].map(v => (
-              <button
-                key={v}
-                onClick={() => setMl(String(v))}
-                className={`rounded-xl py-2.5 text-sm font-semibold transition ${ml === String(v) ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              >
+              <button key={v} onClick={() => setMl(String(v))}
+                className={`rounded-xl py-2.5 text-sm font-semibold transition ${ml === String(v) ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 {v}
               </button>
             ))}
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Amount (ml)</label>
-            <input
-              type="number"
-              value={ml}
-              onChange={e => setMl(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100"
-            />
+            <input type="number" value={ml} onChange={e => setMl(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100" />
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-3">
@@ -95,16 +87,21 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
 
   const handleSearch = (q: string) => {
     setQuery(q);
-    setSelected(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!q.trim()) { setResults([]); return; }
+    if (!q.trim()) { setResults([]); setSelected(null); return; }
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
         const r = await fetch(`/api/food-search?q=${encodeURIComponent(q)}`);
         const d = await r.json();
-        if (Array.isArray(d)) setResults(d);
-      } catch { setResults([]); }
+        if (Array.isArray(d) && d.length > 0) {
+          setResults(d);
+          setSelected(d[0]); // auto-select top result
+        } else {
+          setResults([]);
+          setSelected(null);
+        }
+      } catch { setResults([]); setSelected(null); }
       finally { setSearching(false); }
     }, 500);
   };
@@ -132,7 +129,7 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-none">
           <div className="flex items-center gap-2">
             <Apple className="h-5 w-5 text-emerald-500" />
@@ -144,44 +141,46 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="px-5 py-4 space-y-3 overflow-y-auto flex-1">
-          <input
-            autoFocus
-            type="text"
-            value={query}
-            onChange={e => handleSearch(e.target.value)}
-            placeholder="Search food (e.g. apple, rice, milk)..."
-            className={inputCls}
-          />
+          {/* Search — auto-calculates nutrition as you type */}
+          <div className="relative">
+            <input autoFocus type="text" value={query}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Type food name (e.g. apple, rice, milk)..."
+              className={inputCls} />
+            {searching && (
+              <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" />
+            )}
+          </div>
 
-          {searching && <p className="text-sm text-gray-400 text-center py-2">Searching...</p>}
-
-          {results.length > 0 && !selected && (
+          {/* Other result options */}
+          {results.length > 1 && selected && (
             <div className="rounded-xl border border-gray-100 bg-gray-50 overflow-hidden">
-              {results.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setSelected(r); setResults([]); }}
-                  className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-left hover:bg-emerald-50 border-b border-gray-100 last:border-0 transition"
-                >
-                  <span className="text-gray-800 font-medium truncate flex-1 pr-2">{r.name}</span>
-                  {r.calories != null && <span className="text-emerald-600 font-semibold flex-none text-xs">{r.calories} kcal</span>}
+              <p className="px-3 pt-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Other matches</p>
+              {results.slice(1, 5).map((r, i) => (
+                <button key={i} onClick={() => setSelected(r)}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-xs text-left border-t border-gray-100 transition ${selected === r ? 'bg-emerald-50' : 'hover:bg-emerald-50'}`}>
+                  <span className="text-gray-700 truncate flex-1 pr-2">{r.name}</span>
+                  {r.calories != null && <span className="text-emerald-600 font-semibold flex-none">{r.calories} kcal</span>}
                 </button>
               ))}
             </div>
           )}
 
+          {/* Auto-calculated nutrition panel */}
           {selected && (
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 space-y-3">
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">
               <div>
-                <p className="font-semibold text-gray-900">{selected.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Per {selected.servingSize}</p>
+                <p className="font-semibold text-gray-900 text-sm">{selected.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Per {selected.servingSize}</p>
               </div>
+
+              {/* Main macros */}
               <div className="grid grid-cols-4 gap-2 text-center">
                 {[
-                  { label: 'Cal', value: selected.calories, unit: 'kcal' },
-                  { label: 'Protein', value: selected.protein, unit: 'g' },
-                  { label: 'Carbs', value: selected.carbs, unit: 'g' },
-                  { label: 'Fats', value: selected.fats, unit: 'g' },
+                  { label: 'Cal',     value: selected.calories, unit: 'kcal' },
+                  { label: 'Protein', value: selected.protein,  unit: 'g' },
+                  { label: 'Carbs',   value: selected.carbs,    unit: 'g' },
+                  { label: 'Fats',    value: selected.fats,     unit: 'g' },
                 ].map(({ label, value, unit }) => value != null && (
                   <div key={label} className="rounded-xl bg-white border border-gray-100 py-2">
                     <p className="text-sm font-bold text-gray-900">{value}</p>
@@ -190,16 +189,20 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
                   </div>
                 ))}
               </div>
+
+              {/* Secondary nutrients */}
               {(selected.saturatedFat != null || selected.sodium != null || selected.potassium != null || selected.fiber != null) && (
-                <div className="grid grid-cols-2 gap-1.5 text-xs">
-                  {selected.saturatedFat != null && <div className="flex justify-between"><span className="text-gray-500">Sat. fat</span><span className="font-medium">{selected.saturatedFat}g</span></div>}
-                  {selected.fiber != null && <div className="flex justify-between"><span className="text-gray-500">Fiber</span><span className="font-medium">{selected.fiber}g</span></div>}
-                  {selected.sodium != null && <div className="flex justify-between"><span className="text-gray-500">Sodium</span><span className="font-medium">{selected.sodium}mg</span></div>}
-                  {selected.potassium != null && <div className="flex justify-between"><span className="text-gray-500">Potassium</span><span className="font-medium">{selected.potassium}mg</span></div>}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  {selected.saturatedFat != null && <div className="flex justify-between"><span className="text-gray-500">Sat. fat</span><span className="font-medium text-gray-700">{selected.saturatedFat}g</span></div>}
+                  {selected.fiber       != null && <div className="flex justify-between"><span className="text-gray-500">Fiber</span><span className="font-medium text-gray-700">{selected.fiber}g</span></div>}
+                  {selected.sodium      != null && <div className="flex justify-between"><span className="text-gray-500">Sodium</span><span className="font-medium text-gray-700">{selected.sodium}mg</span></div>}
+                  {selected.potassium   != null && <div className="flex justify-between"><span className="text-gray-500">Potassium</span><span className="font-medium text-gray-700">{selected.potassium}mg</span></div>}
                 </div>
               )}
+
+              {/* Meal type */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Meal</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Meal</p>
                 <div className="flex gap-2">
                   {['breakfast', 'lunch', 'dinner', 'snack'].map(m => (
                     <button key={m} onClick={() => setMealType(m)}
@@ -209,11 +212,10 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} className="text-xs text-gray-400 hover:text-gray-600">← Back to results</button>
             </div>
           )}
 
-          {!searching && results.length === 0 && query.trim() && !selected && (
+          {!searching && !selected && query.trim() && (
             <p className="text-sm text-gray-400 text-center py-4">No results. Try a different name.</p>
           )}
         </div>
@@ -239,12 +241,12 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
   const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
   const TYPES = [
-    { value: 'running', emoji: '🏃', label: 'Run' },
-    { value: 'cycling', emoji: '🚴', label: 'Cycle' },
+    { value: 'running',  emoji: '🏃', label: 'Run' },
+    { value: 'cycling',  emoji: '🚴', label: 'Cycle' },
     { value: 'strength', emoji: '💪', label: 'Lift' },
-    { value: 'yoga', emoji: '🧘', label: 'Yoga' },
-    { value: 'sports', emoji: '⚽', label: 'Sport' },
-    { value: 'other', emoji: '🏋️', label: 'Other' },
+    { value: 'yoga',     emoji: '🧘', label: 'Yoga' },
+    { value: 'sports',   emoji: '⚽', label: 'Sport' },
+    { value: 'other',    emoji: '🏋️', label: 'Other' },
   ];
 
   const handleSave = async () => {
@@ -271,14 +273,14 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100';
+  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-100';
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <Dumbbell className="h-5 w-5 text-rose-500" />
+            <Dumbbell className="h-5 w-5 text-orange-400" />
             <p className="font-semibold text-gray-900">Log Workout</p>
           </div>
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
@@ -295,7 +297,7 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-3 gap-2">
               {TYPES.map(t => (
                 <button key={t.value} onClick={() => set('type', t.value)}
-                  className={`flex flex-col items-center gap-1 rounded-xl py-2.5 text-xs transition ${form.type === t.value ? 'bg-rose-50 ring-2 ring-rose-400 text-rose-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+                  className={`flex flex-col items-center gap-1 rounded-xl py-2.5 text-xs transition ${form.type === t.value ? 'bg-orange-50 ring-2 ring-orange-300 text-orange-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
                   <span className="text-lg">{t.emoji}</span>{t.label}
                 </button>
               ))}
@@ -315,7 +317,7 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition disabled:opacity-50">
+            className="flex-1 rounded-xl bg-orange-400 py-2.5 text-sm font-semibold text-white hover:bg-orange-500 transition disabled:opacity-50">
             {saving ? 'Saving...' : 'Log Workout'}
           </button>
         </div>
@@ -324,7 +326,7 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Quick Exercise (single exercise set) modal ────────────────────────────
+// ── Quick Exercise modal ──────────────────────────────────────────────────
 
 function QuickExerciseModal({ onClose }: { onClose: () => void }) {
   const today = new Date().toISOString().split('T')[0];
@@ -336,10 +338,9 @@ function QuickExerciseModal({ onClose }: { onClose: () => void }) {
     if (!form.name.trim()) { toast('Exercise name required', 'error'); return; }
     setSaving(true);
     try {
-      // Log as a strength workout with exercise name as notes
       const notes = [
-        form.sets && `${form.sets} sets`,
-        form.reps && `${form.reps} reps`,
+        form.sets   && `${form.sets} sets`,
+        form.reps   && `${form.reps} reps`,
         form.weight && `${form.weight}kg`,
       ].filter(Boolean).join(' × ');
 
@@ -413,10 +414,10 @@ function QuickExerciseModal({ onClose }: { onClose: () => void }) {
 type Modal = 'exercise' | 'workout' | 'food' | 'water' | null;
 
 const ACTIONS = [
-  { key: 'exercise' as const, label: 'Exercise',  emoji: '🏋️', bg: 'bg-violet-500 hover:bg-violet-600' },
-  { key: 'workout'  as const, label: 'Workout',   emoji: '💪',  bg: 'bg-rose-500 hover:bg-rose-600' },
-  { key: 'food'     as const, label: 'Food',      emoji: '🍎',  bg: 'bg-emerald-500 hover:bg-emerald-600' },
-  { key: 'water'    as const, label: 'Water',     emoji: '💧',  bg: 'bg-cyan-500 hover:bg-cyan-600' },
+  { key: 'exercise' as const, label: 'Exercise', emoji: '🏋️', bg: 'bg-violet-500 hover:bg-violet-600' },
+  { key: 'workout'  as const, label: 'Workout',  emoji: '💪',  bg: 'bg-orange-400 hover:bg-orange-500' },
+  { key: 'food'     as const, label: 'Food',     emoji: '🍎',  bg: 'bg-emerald-500 hover:bg-emerald-600' },
+  { key: 'water'    as const, label: 'Water',    emoji: '💧',  bg: 'bg-cyan-500 hover:bg-cyan-600' },
 ];
 
 export default function HealthFAB() {
@@ -438,15 +439,11 @@ export default function HealthFAB() {
   return (
     <>
       <div ref={ref} className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
-        {/* Action items */}
         {open && (
           <div className="flex flex-col items-end gap-2 mb-1">
             {ACTIONS.map(({ key, label, emoji, bg }) => (
-              <button
-                key={key}
-                onClick={() => openModal(key)}
-                className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition ${bg}`}
-              >
+              <button key={key} onClick={() => openModal(key)}
+                className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition ${bg}`}>
                 <span className="text-base leading-none">{emoji}</span>
                 {label}
               </button>
@@ -454,13 +451,10 @@ export default function HealthFAB() {
           </div>
         )}
 
-        {/* Main FAB button */}
-        <button
-          onClick={() => setOpen(v => !v)}
+        <button onClick={() => setOpen(v => !v)}
           className={`flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-all ${
-            open ? 'bg-gray-700 hover:bg-gray-800 rotate-45' : 'bg-rose-500 hover:bg-rose-600'
-          } text-white`}
-        >
+            open ? 'bg-gray-700 hover:bg-gray-800' : 'bg-slate-700 hover:bg-slate-800'
+          } text-white`}>
           {open ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
         </button>
       </div>
