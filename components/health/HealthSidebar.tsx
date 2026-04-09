@@ -4,16 +4,6 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-<<<<<<< HEAD
-import { Heart, LayoutDashboard, ClipboardList, Dumbbell, UtensilsCrossed, Settings, Apple, Search, Loader2, X, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
-import { toast } from '@/components/Toast';
-
-const menu = [
-  { label: 'Dashboard',  href: '/orbit/health',           Icon: LayoutDashboard },
-  { label: 'Log Today',  href: '/orbit/health/log',       Icon: ClipboardList },
-  { label: 'Workouts',   href: '/orbit/health/workouts',  Icon: Dumbbell },
-  { label: 'Nutrition',  href: '/orbit/health/nutrition', Icon: UtensilsCrossed },
-=======
 import {
   Heart, LayoutDashboard, ClipboardList,
   Dumbbell, UtensilsCrossed, Settings, User,
@@ -24,7 +14,6 @@ const menu = [
   { label: 'Log Today', href: '/orbit/health/log',       Icon: ClipboardList },
   { label: 'Workouts',  href: '/orbit/health/workouts',  Icon: Dumbbell },
   { label: 'Nutrition', href: '/orbit/health/nutrition', Icon: UtensilsCrossed },
->>>>>>> claude/objective-curie
 ];
 
 export default function HealthSidebar() {
