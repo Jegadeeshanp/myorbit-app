@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, X, Dumbbell, Droplets, Apple, Activity, Loader2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
+import { useHealth } from '@/lib/healthStore';
 
 // ── Quick Water Log modal ─────────────────────────────────────────────────
 
-function QuickWaterModal({ onClose }: { onClose: () => void }) {
+function QuickWaterModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [ml, setMl] = useState('250');
   const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().split('T')[0];
@@ -26,6 +27,7 @@ function QuickWaterModal({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error();
       toast(`💧 +${water}ml logged!`);
+      onSaved();
       onClose();
     } catch {
       toast('Failed to log water', 'error');
@@ -75,7 +77,7 @@ function QuickWaterModal({ onClose }: { onClose: () => void }) {
 
 // ── Quick Food Log modal ──────────────────────────────────────────────────
 
-function QuickFoodModal({ onClose }: { onClose: () => void }) {
+function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -117,6 +119,7 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
       });
       if (!r.ok) throw new Error();
       toast('🍎 Food logged!');
+      onSaved();
       onClose();
     } catch {
       toast('Failed to log food', 'error');
@@ -234,7 +237,7 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
 
 // ── Quick Workout modal ───────────────────────────────────────────────────
 
-function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
+function QuickWorkoutModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({ name: '', type: 'running', durationMins: '30', caloriesBurned: '' });
   const [saving, setSaving] = useState(false);
@@ -265,6 +268,7 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error();
       toast('💪 Workout logged!');
+      onSaved();
       onClose();
     } catch {
       toast('Failed to save', 'error');
@@ -328,7 +332,7 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
 
 // ── Quick Exercise modal ──────────────────────────────────────────────────
 
-function QuickExerciseModal({ onClose }: { onClose: () => void }) {
+function QuickExerciseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({ name: '', sets: '', reps: '', weight: '' });
   const [saving, setSaving] = useState(false);
@@ -355,6 +359,7 @@ function QuickExerciseModal({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error();
       toast('🏋️ Exercise logged!');
+      onSaved();
       onClose();
     } catch {
       toast('Failed to save', 'error');
@@ -424,6 +429,7 @@ export default function HealthFAB() {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const { reload } = useHealth();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -459,10 +465,10 @@ export default function HealthFAB() {
         </button>
       </div>
 
-      {modal === 'water'    && <QuickWaterModal    onClose={closeModal} />}
-      {modal === 'food'     && <QuickFoodModal     onClose={closeModal} />}
-      {modal === 'workout'  && <QuickWorkoutModal  onClose={closeModal} />}
-      {modal === 'exercise' && <QuickExerciseModal onClose={closeModal} />}
+      {modal === 'water'    && <QuickWaterModal    onClose={closeModal} onSaved={reload} />}
+      {modal === 'food'     && <QuickFoodModal     onClose={closeModal} onSaved={reload} />}
+      {modal === 'workout'  && <QuickWorkoutModal  onClose={closeModal} onSaved={reload} />}
+      {modal === 'exercise' && <QuickExerciseModal onClose={closeModal} onSaved={reload} />}
     </>
   );
 }
