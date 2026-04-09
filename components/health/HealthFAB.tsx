@@ -138,6 +138,7 @@ function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       });
       if (!r.ok) throw new Error();
       toast('🍎 Food logged!');
+      window.dispatchEvent(new CustomEvent('health:food-refresh'));
       onSaved();
       onClose();
     } catch {
@@ -292,6 +293,7 @@ function QuickWorkoutModal({ onClose, onSaved }: { onClose: () => void; onSaved:
       });
       if (!res.ok) throw new Error();
       toast('💪 Workout logged!');
+      window.dispatchEvent(new CustomEvent('health:workout-refresh'));
       onSaved();
       onClose();
     } catch {
@@ -383,6 +385,7 @@ function QuickExerciseModal({ onClose, onSaved }: { onClose: () => void; onSaved
       });
       if (!res.ok) throw new Error();
       toast('🏋️ Exercise logged!');
+      window.dispatchEvent(new CustomEvent('health:workout-refresh'));
       onSaved();
       onClose();
     } catch {

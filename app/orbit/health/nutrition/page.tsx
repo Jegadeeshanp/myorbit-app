@@ -354,6 +354,13 @@ export default function NutritionPage() {
 
   useEffect(() => { load(date); }, [date, load]);
 
+  // Refresh when food is logged from the FAB (on any page)
+  useEffect(() => {
+    const refresh = () => load(date);
+    window.addEventListener('health:food-refresh', refresh);
+    return () => window.removeEventListener('health:food-refresh', refresh);
+  }, [date, load]);
+
   function shiftDate(days: number) {
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() + days);
