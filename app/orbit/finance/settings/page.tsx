@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download, Trash2, Upload, Plus, Lock, Package, TrendingUp, Landmark, ArrowDownLeft, ArrowUpRight, X, ArrowLeft, Settings2, List, LayoutGrid, Database } from 'lucide-react';
+import { RefreshCw, Download, Trash2, Upload, Plus, Lock, Package, TrendingUp, Landmark, ArrowDownLeft, ArrowUpRight, X, ArrowLeft, Settings2, List, LayoutGrid, Database, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS } from '@/components/finance/CategoryPicker';
-import { useFinance } from '@/lib/financeStore';
+import { useFinance, type RecurringTemplate } from '@/lib/financeStore';
 import dynamic from 'next/dynamic';
 import {
   getAllExpenseCategories,
@@ -17,6 +17,113 @@ import {
 } from '@/lib/customCategoryStore';
 
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
+
+// ── Edit Recurring Modal ───────────────────────────────────────────────────
+
+function EditRecurringModal({
+  template,
+  onClose,
+  onSaved,
+}: {
+  template: RecurringTemplate;
+  onClose: () => void;
+  onSaved: (updated: RecurringTemplate) => void;
+}) {
+  const { updateRecurring } = useFinance();
+  const [description, setDescription] = useState(template.description);
+  const [category,    setCategory]    = useState(template.category);
+  const [amount,      setAmount]      = useState(String(Math.abs(template.amount)));
+  const [type,        setType]        = useState<'expense' | 'income'>(
+    template.type === 'SIP' ? 'expense' : template.type as 'expense' | 'income',
+  );
+  const [frequency,   setFrequency]   = useState(template.recurringConfig.frequency);
+  const [saving,      setSaving]      = useState(false);
+
+  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 bg-white';
+
+  const handleSave = async () => {
+    const amt = parseFloat(amount);
+    if (!description.trim() || isNaN(amt) || amt <= 0) return;
+    setSaving(true);
+    try {
+      await updateRecurring(template.id, {
+        description: description.trim(),
+        category,
+        amount: type === 'expense' ? -Math.abs(amt) : Math.abs(amt),
+        type,
+        recurringConfig: { ...template.recurringConfig, frequency },
+      });
+      onSaved({
+        ...template,
+        description: description.trim(),
+        category,
+        amount: type === 'expense' ? -Math.abs(amt) : Math.abs(amt),
+        type,
+        recurringConfig: { ...template.recurringConfig, frequency },
+      });
+    } catch {
+      // errors surfaced via toast in store
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <p className="font-semibold text-gray-900">Edit Recurring</p>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-5 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Description</label>
+            <input className={inputCls} value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Monthly rent" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Category</label>
+            <input className={inputCls} value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Rent, Salary" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Type</label>
+              <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                {(['expense', 'income'] as const).map(t => (
+                  <button key={t} onClick={() => setType(t)}
+                    className={`flex-1 py-2.5 text-xs font-semibold capitalize transition ${type === t ? t === 'expense' ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Frequency</label>
+              <select className={inputCls} value={frequency} onChange={e => setFrequency(e.target.value as any)}>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Amount (₹)</label>
+            <input className={inputCls} type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+          </div>
+        </div>
+        <div className="flex gap-3 px-5 pb-5">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={handleSave} disabled={saving || !description.trim() || !amount}
+            className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const TABS = [
   { id: 'Preferences' as const, label: 'Preferences', icon: Settings2  },
@@ -52,6 +159,7 @@ export default function FinanceSettingsPage() {
   const { state, cancelRecurring, cancelAssetSip } = useFinance();
   const [activeTab, setActiveTab] = useState<Tab>('Preferences' as Tab);
   const [showImport, setShowImport] = useState(false);
+  const [editingRecurring, setEditingRecurring] = useState<RecurringTemplate | null>(null);
 
   // Preferences state
   const [currency,    setCurrency]    = useState('INR');
@@ -407,13 +515,22 @@ export default function FinanceSettingsPage() {
                     <p className={`flex-none text-sm font-semibold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
                       {t.type === 'income' ? '+' : '-'}₹{Math.abs(t.amount).toLocaleString('en-IN')}
                     </p>
-                    <button
-                      onClick={() => cancelRecurring(t.id)}
-                      title="Cancel this recurring"
-                      className="h-7 w-7 flex-none flex items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => setEditingRecurring(t)}
+                        title="Edit"
+                        className="h-7 w-7 flex-none flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => cancelRecurring(t.id)}
+                        title="Cancel this recurring"
+                        className="h-7 w-7 flex-none flex items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -669,6 +786,13 @@ export default function FinanceSettingsPage() {
         </div>
       )}
       {showImport && <ImportWizard onClose={() => setShowImport(false)} onSuccess={() => { setShowImport(false); window.location.reload(); }} />}
+      {editingRecurring && (
+        <EditRecurringModal
+          template={editingRecurring}
+          onClose={() => setEditingRecurring(null)}
+          onSaved={() => setEditingRecurring(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Flame, CheckCircle2, X, Trash2, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Plus, Flame, CheckCircle2, X, Trash2, ChevronLeft, ChevronRight, Clock, Pencil } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
 type Habit = {
@@ -362,6 +362,178 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
           <button onClick={handleSave} disabled={saving}
             className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition disabled:opacity-50">
             {saving ? 'Saving...' : 'Create Habit'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit Habit Modal ─────────────────────────────────────────────────────────
+function EditHabitModal({ habit, onClose, onUpdated }: { habit: Habit; onClose: () => void; onUpdated: (h: Habit) => void }) {
+  const [name, setName] = useState(habit.name);
+  const [color, setColor] = useState(habit.color);
+  const [emoji, setEmoji] = useState(habit.iconEmoji);
+  const [timeOfDay, setTimeOfDay] = useState(habit.timeOfDay || 'all_day');
+  const [customTime, setCustomTime] = useState(habit.customTime || '09:00');
+  const [selectedDays, setSelectedDays] = useState<number[]>(() => {
+    try {
+      const parsed = JSON.parse(habit.daysOfWeek || '[0,1,2,3,4,5,6]');
+      return Array.isArray(parsed) ? parsed : [0,1,2,3,4,5,6];
+    } catch { return [0,1,2,3,4,5,6]; }
+  });
+  const [saving, setSaving] = useState(false);
+
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => {
+      if (prev.includes(day)) {
+        if (prev.length === 1) return prev;
+        return prev.filter(d => d !== day);
+      }
+      return [...prev, day].sort((a, b) => a - b);
+    });
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) { toast('Habit name is required', 'error'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/habits/${habit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          color,
+          iconEmoji: emoji,
+          timeOfDay,
+          customTime: timeOfDay === 'custom' ? customTime : null,
+          daysOfWeek: selectedDays,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const updated: Habit = await res.json();
+      toast('Habit updated!');
+      onUpdated(updated);
+    } catch {
+      toast('Failed to update habit', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+          <p className="font-semibold text-gray-900 dark:text-white">Edit Habit</p>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-5 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* Habit Name */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Habit Name *</label>
+            <input
+              autoFocus
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              placeholder="e.g. Morning run, Read 30 min..."
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSave()}
+            />
+          </div>
+
+          {/* Icon */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Icon</label>
+            <div className="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto pr-1">
+              {EMOJIS.map(e => (
+                <button key={e} onClick={() => setEmoji(e)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${emoji === e ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Color</label>
+            <div className="flex gap-2 flex-wrap">
+              {COLORS.map(c => (
+                <button key={c} onClick={() => setColor(c)}
+                  style={{ backgroundColor: c }}
+                  className={`h-8 w-8 rounded-full transition ${color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Time of Day */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Time of Day</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {TIME_OF_DAY_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setTimeOfDay(opt.value)}
+                  className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 text-xs font-medium transition border ${
+                    timeOfDay === opt.value
+                      ? 'bg-amber-50 border-amber-400 text-amber-700 dark:bg-amber-950 dark:border-amber-500 dark:text-amber-300'
+                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  {opt.time && <span className="text-[10px] mt-0.5 opacity-70">{opt.time}</span>}
+                </button>
+              ))}
+            </div>
+            {timeOfDay === 'custom' && (
+              <div className="mt-2">
+                <input
+                  type="time"
+                  value={customTime}
+                  onChange={e => setCustomTime(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Days of Week */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              Days of Week
+              <span className="ml-2 font-normal normal-case text-gray-400">({selectedDays.length}×/week)</span>
+            </label>
+            <div className="flex gap-1.5">
+              {WEEK_DAYS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleDay(value)}
+                  className={`flex-1 flex items-center justify-center h-9 rounded-xl text-xs font-bold transition border ${
+                    selectedDays.includes(value)
+                      ? 'bg-amber-500 border-amber-500 text-white'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 pb-5 flex gap-3">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -798,11 +970,12 @@ function TodayHabitsSection({ habits, today, onLog }: {
 }
 
 // ── Habit Card ──────────────────────────────────────────────────────────────
-function HabitCard({ habit, dates, onLog, onDelete }: {
+function HabitCard({ habit, dates, onLog, onDelete, onEdit }: {
   habit: Habit;
   dates: string[];
   onLog: (id: string, date: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (h: Habit) => void;
 }) {
   const logSet = new Set(habit.logs.map(l => l.logDate));
   const streak = getStreakCount(habit.logs);
@@ -851,6 +1024,9 @@ function HabitCard({ habit, dates, onLog, onDelete }: {
               style={todayDone ? { backgroundColor: habit.color } : {}}
             >
               <CheckCircle2 className="h-5 w-5" />
+            </button>
+            <button onClick={() => onEdit(habit)} className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 dark:text-gray-600 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950 transition">
+              <Pencil className="h-4 w-4" />
             </button>
             <button onClick={() => onDelete(habit.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 dark:text-gray-600 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition">
               <Trash2 className="h-4 w-4" />
@@ -913,6 +1089,7 @@ export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const dates = useMemo(() => getLast7Days(), []);
   const today = dates[dates.length - 1];
 
@@ -1035,7 +1212,7 @@ export default function HabitsPage() {
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {habits.map(habit => (
-            <HabitCard key={habit.id} habit={habit} dates={dates} onLog={handleLog} onDelete={handleDelete} />
+            <HabitCard key={habit.id} habit={habit} dates={dates} onLog={handleLog} onDelete={handleDelete} onEdit={setEditingHabit} />
           ))}
         </div>
       )}
@@ -1050,6 +1227,16 @@ export default function HabitsPage() {
         <AddHabitModal
           onClose={() => setShowModal(false)}
           onCreated={h => { setHabits(prev => [{ ...h, logs: [] }, ...prev]); setShowModal(false); }}
+        />
+      )}
+      {editingHabit && (
+        <EditHabitModal
+          habit={editingHabit}
+          onClose={() => setEditingHabit(null)}
+          onUpdated={updated => {
+            setHabits(prev => prev.map(h => h.id === updated.id ? { ...updated, logs: h.logs } : h));
+            setEditingHabit(null);
+          }}
         />
       )}
     </div>
