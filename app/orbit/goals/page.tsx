@@ -36,13 +36,51 @@ const GRADIENT_BY_CATEGORY: Record<string, string> = {
   Other:    'from-gray-400 to-gray-600',
 };
 
-const FREQ_LABELS: Record<string, string> = {
-  daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly',
-};
-const TIME_LABELS: Record<string, string> = {
-  all_day: 'All day', morning: 'Morning', noon: 'Noon',
-  evening: 'Evening', night: 'Night',
-};
+// ── Habit form constants (same as habits/page.tsx) ─────────────────────────
+const HABIT_COLORS = ['#78716C', '#6B7280', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DB2777', '#4F46E5', '#EF4444', '#EC4899', '#F97316', '#14B8A6'];
+const HABIT_EMOJIS = [
+  '✅', '🔥', '💪', '📚', '🧘', '🏃', '💧', '🥗', '😴', '🎯', '✍️', '🎵',
+  '🎨', '🏋️', '☕', '🚶', '🧠', '💊', '🌅', '🛌', '🌿', '❤️', '⭐', '🎓',
+  '💼', '🏊', '🚴', '🧹', '🪴', '🎮', '📝', '🌞', '💰', '🙏', '🎸', '📱',
+];
+const HABIT_TIME_OPTIONS = [
+  { value: 'all_day', label: 'All Day',  time: ''       },
+  { value: 'morning', label: 'Morning',  time: '9:00 AM' },
+  { value: 'noon',    label: 'Noon',     time: '12:00 PM' },
+  { value: 'evening', label: 'Evening',  time: '4:00 PM' },
+  { value: 'night',   label: 'Night',    time: '8:00 PM' },
+  { value: 'custom',  label: 'Custom',   time: ''       },
+];
+const HABIT_WEEK_DAYS = [
+  { label: 'S', value: 0 }, { label: 'M', value: 1 }, { label: 'T', value: 2 },
+  { label: 'W', value: 3 }, { label: 'T', value: 4 }, { label: 'F', value: 5 },
+  { label: 'S', value: 6 },
+];
+
+// ── Task repeat / reminder options (same as tasks/page.tsx) ────────────────
+const REPEAT_OPTIONS = [
+  { value: '',          label: 'No repeat'  },
+  { value: 'daily',     label: 'Daily'      },
+  { value: 'weekly',    label: 'Weekly'     },
+  { value: 'weekdays',  label: 'Weekdays'   },
+  { value: 'weekends',  label: 'Weekends'   },
+  { value: 'monthly',   label: 'Monthly'    },
+  { value: 'yearly',    label: 'Yearly'     },
+];
+const REMINDER_OPTIONS = [
+  { value: '',        label: 'No reminder' },
+  { value: 'on-time', label: 'On time'     },
+  { value: '5m',      label: '5 min before' },
+  { value: '30m',     label: '30 min before' },
+  { value: '1h',      label: '1 hour before' },
+  { value: '1d',      label: '1 day before' },
+];
+const PRIORITY_OPTIONS = [
+  { value: 'none',   label: 'None',   color: 'bg-gray-100 text-gray-600'   },
+  { value: 'low',    label: 'Low',    color: 'bg-blue-50 text-blue-600'    },
+  { value: 'medium', label: 'Medium', color: 'bg-amber-50 text-amber-600'  },
+  { value: 'high',   label: 'High',   color: 'bg-rose-50 text-rose-600'   },
+];
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,30 +99,37 @@ type PostGoalWizardProps = {
 };
 
 function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
-  type PWStep = 'choice' | 'habit' | 'task' | 'done';
+  type PWStep = 'choice' | 'habit' | 'task';
   const [step, setStep]             = useState<PWStep>('choice');
   const [saving, setSaving]         = useState(false);
   const [dupWarning, setDupWarning] = useState<string | null>(null);
 
-  // Habit form
-  const [habitName, setHabitName]           = useState('');
-  const [habitFreq, setHabitFreq]           = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [habitTime, setHabitTime]           = useState('all_day');
-  const [habitChecked, setHabitChecked]     = useState(false);
-  const [habitSaved, setHabitSaved]         = useState(false);
+  // ── Habit form state ──
+  const [habitName,      setHabitName]      = useState('');
+  const [habitEmoji,     setHabitEmoji]     = useState('🎯');
+  const [habitColor,     setHabitColor]     = useState('#6366F1');
+  const [habitTimeOfDay, setHabitTimeOfDay] = useState('all_day');
+  const [habitCustomTime,setHabitCustomTime]= useState('09:00');
+  const [habitDays,      setHabitDays]      = useState<number[]>([0,1,2,3,4,5,6]);
+  const [habitSaved,     setHabitSaved]     = useState(false);
 
-  // Task form
-  const [taskTitle, setTaskTitle]           = useState('');
-  const [taskFreq, setTaskFreq]             = useState<'daily' | 'weekly' | 'monthly'>('weekly');
-  const [taskTime, setTaskTime]             = useState('');
-  const [taskChecked, setTaskChecked]       = useState(false);
-  const [taskSaved, setTaskSaved]           = useState(false);
+  // ── Task form state ──
+  const [taskTitle,    setTaskTitle]    = useState('');
+  const [taskDueDate,  setTaskDueDate]  = useState('');
+  const [taskDueTime,  setTaskDueTime]  = useState('');
+  const [taskPriority, setTaskPriority] = useState('medium');
+  const [taskRepeat,   setTaskRepeat]   = useState('');
+  const [taskReminder, setTaskReminder] = useState('');
+  const [taskSaved,    setTaskSaved]    = useState(false);
 
   const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white';
   const labelCls = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5';
-  const selectCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white';
 
-  // Check for duplicate habit name
+  const toggleHabitDay = (day: number) =>
+    setHabitDays(prev => prev.includes(day)
+      ? prev.length === 1 ? prev : prev.filter(d => d !== day)
+      : [...prev, day].sort((a, b) => a - b));
+
   const checkHabitDup = async (name: string) => {
     if (!name.trim()) { setDupWarning(null); return; }
     try {
@@ -94,10 +139,8 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
       const dup = habits.find((h: any) => h.name.trim().toLowerCase() === name.trim().toLowerCase());
       setDupWarning(dup ? `A habit named "${dup.name}" already exists.` : null);
     } catch { /* ignore */ }
-    setHabitChecked(true);
   };
 
-  // Check for duplicate task title
   const checkTaskDup = async (title: string) => {
     if (!title.trim()) { setDupWarning(null); return; }
     try {
@@ -107,36 +150,27 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
       const dup = tasks.find((t: any) => t.title.trim().toLowerCase() === title.trim().toLowerCase());
       setDupWarning(dup ? `A task named "${dup.title}" already exists.` : null);
     } catch { /* ignore */ }
-    setTaskChecked(true);
   };
 
   const handleAddHabit = async () => {
     if (!habitName.trim()) { toast('Habit name is required', 'error'); return; }
     setSaving(true);
     try {
-      // Map frequency to daysOfWeek
-      let daysOfWeek: number[];
-      if (habitFreq === 'daily')   daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
-      else if (habitFreq === 'weekly') daysOfWeek = [1]; // Monday
-      else                         daysOfWeek = [1];     // 1st occurrence, monthly treated as weekly for habit model
-
       const res = await fetch('/api/habits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: habitName.trim(),
-          color: '#6366F1',
-          iconEmoji: '🎯',
-          goalPerDay: 1,
-          isCountBased: false,
-          daysOfWeek,
-          timeOfDay: habitTime,
-          customTime: null,
+          color: habitColor,
+          iconEmoji: habitEmoji,
+          daysOfWeek: habitDays,
+          timeOfDay: habitTimeOfDay,
+          customTime: habitTimeOfDay === 'custom' ? habitCustomTime : null,
         }),
       });
       if (!res.ok) throw new Error('Failed to create habit');
       setHabitSaved(true);
-      toast('Habit linked to goal!');
+      toast('Habit created!');
     } catch (err: any) {
       toast(err?.message || 'Failed to create habit', 'error');
     } finally {
@@ -148,28 +182,13 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
     if (!taskTitle.trim()) { toast('Task title is required', 'error'); return; }
     setSaving(true);
     try {
-      // Compute a reasonable due date based on frequency
-      const today = new Date();
-      let dueDate: string | null = null;
-      if (taskFreq === 'daily') {
-        dueDate = today.toISOString().split('T')[0];
-      } else if (taskFreq === 'weekly') {
-        const d = new Date(today); d.setDate(d.getDate() + 7);
-        dueDate = d.toISOString().split('T')[0];
-      } else {
-        const d = new Date(today); d.setMonth(d.getMonth() + 1);
-        dueDate = d.toISOString().split('T')[0];
-      }
-
       // Find or create the "Goals" task list
       let listId: string | null = null;
       try {
         const listsRes = await fetch('/api/task-lists');
         if (listsRes.ok) {
           const lists = await listsRes.json();
-          const existing = Array.isArray(lists)
-            ? lists.find((l: any) => l.name.toLowerCase() === 'goals')
-            : null;
+          const existing = Array.isArray(lists) ? lists.find((l: any) => l.name.toLowerCase() === 'goals') : null;
           if (existing) {
             listId = existing.id;
           } else {
@@ -178,30 +197,32 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name: 'Goals', emoji: '🎯', color: '#6366F1' }),
             });
-            if (createRes.ok) {
-              const newList = await createRes.json();
-              listId = newList.id;
-            }
+            if (createRes.ok) listId = (await createRes.json()).id;
           }
         }
       } catch { /* fall back to inbox */ }
+
+      // Build tags for repeat and reminder
+      const tags: string[] = [];
+      if (taskRepeat)   tags.push(`repeat:${taskRepeat}`);
+      if (taskReminder) tags.push(`reminder:${taskReminder}`);
 
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: taskTitle.trim(),
-          notes: `Related to goal: ${goal.title}`,
-          priority: 'medium',
-          dueDate,
-          dueTime: taskTime || null,
-          tags: [],
+          title:    taskTitle.trim(),
+          notes:    `Related to goal: ${goal.title}`,
+          priority: taskPriority,
+          dueDate:  taskDueDate || null,
+          dueTime:  taskDueTime || null,
+          tags,
           listId,
         }),
       });
       if (!res.ok) throw new Error('Failed to create task');
       setTaskSaved(true);
-      toast('Task linked to goal!');
+      toast('Task created!');
     } catch (err: any) {
       toast(err?.message || 'Failed to create task', 'error');
     } finally {
@@ -229,7 +250,7 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
           <div className="px-6 py-6 space-y-4">
             <div className="flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3">
               <CheckCircle2 className="h-5 w-5 text-indigo-500 flex-none" />
-              <p className="text-sm text-indigo-700 font-medium">Goal saved successfully. Build momentum now!</p>
+              <p className="text-sm text-indigo-700 font-medium">Goal saved! Build momentum now.</p>
             </div>
             <p className="text-sm font-semibold text-gray-700">What would you like to add?</p>
             <div className="grid grid-cols-2 gap-3">
@@ -264,178 +285,243 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
           </div>
         )}
 
-        {/* Habit step */}
+        {/* Habit step — full form same as Add Habit modal */}
         {step === 'habit' && (
-          <div className="px-6 py-5 space-y-4">
-            <div>
-              <p className="text-base font-semibold text-gray-900 mb-1">Add a Habit</p>
-              <p className="text-sm text-gray-500">A recurring routine to support this goal.</p>
-            </div>
-            {habitSaved ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                <p className="font-semibold text-gray-900">Habit Created!</p>
-                <p className="text-sm text-gray-500">{habitName}</p>
+          <div className="max-h-[80vh] overflow-y-auto">
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <p className="text-base font-semibold text-gray-900 mb-1">New Habit</p>
+                <p className="text-sm text-gray-500">A recurring routine to support this goal.</p>
               </div>
-            ) : (
-              <>
-                <div>
-                  <label className={labelCls}>Habit Name *</label>
-                  <input
-                    className={inputCls}
-                    placeholder="e.g. Morning run, Read 30 pages"
-                    value={habitName}
-                    onChange={e => { setHabitName(e.target.value); setHabitChecked(false); setDupWarning(null); }}
-                    onBlur={() => checkHabitDup(habitName)}
-                    autoFocus
-                  />
-                  {dupWarning && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
-                      <AlertCircle className="h-3.5 w-3.5 flex-none" />
-                      {dupWarning}
+              {habitSaved ? (
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                  <span className="text-5xl">{habitEmoji}</span>
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500 -mt-2" />
+                  <p className="font-semibold text-gray-900">Habit Created!</p>
+                  <p className="text-sm text-gray-500">{habitName}</p>
+                </div>
+              ) : (
+                <>
+                  {/* Name */}
+                  <div>
+                    <label className={labelCls}>Habit Name *</label>
+                    <input
+                      autoFocus
+                      className={inputCls}
+                      placeholder="e.g. Morning run, Read 30 min..."
+                      value={habitName}
+                      onChange={e => { setHabitName(e.target.value); setDupWarning(null); }}
+                      onBlur={() => checkHabitDup(habitName)}
+                    />
+                    {dupWarning && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                        <AlertCircle className="h-3.5 w-3.5 flex-none" />
+                        {dupWarning}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Icon */}
+                  <div>
+                    <label className={labelCls}>Icon</label>
+                    <div className="grid grid-cols-8 gap-1.5 max-h-28 overflow-y-auto pr-1">
+                      {HABIT_EMOJIS.map(e => (
+                        <button key={e} type="button" onClick={() => setHabitEmoji(e)}
+                          className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${habitEmoji === e ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                          {e}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
-                <div>
-                  <label className={labelCls}>Frequency</label>
-                  <select className={selectCls} value={habitFreq} onChange={e => setHabitFreq(e.target.value as any)}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Time of Day</label>
-                  <select className={selectCls} value={habitTime} onChange={e => setHabitTime(e.target.value)}>
-                    <option value="all_day">All day</option>
-                    <option value="morning">Morning</option>
-                    <option value="noon">Noon</option>
-                    <option value="evening">Evening</option>
-                    <option value="night">Night</option>
-                  </select>
-                </div>
-              </>
-            )}
-            <div className="flex gap-2 pt-1">
+                  </div>
+
+                  {/* Color */}
+                  <div>
+                    <label className={labelCls}>Color</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {HABIT_COLORS.map(c => (
+                        <button key={c} type="button" onClick={() => setHabitColor(c)}
+                          style={{ backgroundColor: c }}
+                          className={`h-8 w-8 rounded-full transition ${habitColor === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time of Day */}
+                  <div>
+                    <label className={labelCls}>Time of Day</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {HABIT_TIME_OPTIONS.map(opt => (
+                        <button key={opt.value} type="button" onClick={() => setHabitTimeOfDay(opt.value)}
+                          className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 text-xs font-medium transition border ${
+                            habitTimeOfDay === opt.value
+                              ? 'bg-amber-50 border-amber-400 text-amber-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}>
+                          <span>{opt.label}</span>
+                          {opt.time && <span className="text-[10px] mt-0.5 opacity-70">{opt.time}</span>}
+                        </button>
+                      ))}
+                    </div>
+                    {habitTimeOfDay === 'custom' && (
+                      <input type="time" value={habitCustomTime} onChange={e => setHabitCustomTime(e.target.value)}
+                        className={`mt-2 ${inputCls}`} />
+                    )}
+                  </div>
+
+                  {/* Days of Week */}
+                  <div>
+                    <label className={labelCls}>
+                      Days of Week
+                      <span className="ml-2 font-normal normal-case text-gray-400">({habitDays.length}×/week)</span>
+                    </label>
+                    <div className="flex gap-1.5">
+                      {HABIT_WEEK_DAYS.map(({ label, value }) => (
+                        <button key={value} type="button" onClick={() => toggleHabitDay(value)}
+                          className={`flex-1 flex items-center justify-center h-9 rounded-xl text-xs font-bold transition border ${
+                            habitDays.includes(value) ? 'bg-amber-500 border-amber-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                          }`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 px-6 pb-6">
               {!habitSaved && (
-                <button
-                  onClick={() => setStep('choice')}
-                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
-                >
+                <button onClick={() => setStep('choice')}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
                   Back
                 </button>
               )}
               {habitSaved ? (
-                <button
-                  onClick={() => { setStep('task'); setDupWarning(null); }}
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
-                >
-                  Add a Task too?
-                </button>
+                <>
+                  <button onClick={() => { setStep('task'); setDupWarning(null); }}
+                    className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition">
+                    Add a Task too?
+                  </button>
+                  <button onClick={onDone}
+                    className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                    Done
+                  </button>
+                </>
               ) : (
-                <button
-                  onClick={handleAddHabit}
-                  disabled={saving}
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition disabled:opacity-50"
-                >
+                <button onClick={handleAddHabit} disabled={saving}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition disabled:opacity-50">
                   {saving ? 'Saving...' : 'Create Habit'}
                 </button>
               )}
             </div>
-            {habitSaved && (
-              <button onClick={onDone} className="w-full rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
-                Done
-              </button>
-            )}
           </div>
         )}
 
-        {/* Task step */}
+        {/* Task step — full form with date, time, priority, repeat, reminder */}
         {step === 'task' && (
-          <div className="px-6 py-5 space-y-4">
-            <div>
-              <p className="text-base font-semibold text-gray-900 mb-1">Add a Task</p>
-              <p className="text-sm text-gray-500">A specific action tied to this goal.</p>
-            </div>
-            {taskSaved ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckSquare className="h-12 w-12 text-blue-500" />
-                <p className="font-semibold text-gray-900">Task Created!</p>
-                <p className="text-sm text-gray-500">{taskTitle}</p>
+          <div className="max-h-[80vh] overflow-y-auto">
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <p className="text-base font-semibold text-gray-900 mb-1">New Task</p>
+                <p className="text-sm text-gray-500">A specific action tied to this goal.</p>
               </div>
-            ) : (
-              <>
-                <div>
-                  <label className={labelCls}>Task Title *</label>
-                  <input
-                    className={inputCls}
-                    placeholder="e.g. Sign up for a gym, Buy running shoes"
-                    value={taskTitle}
-                    onChange={e => { setTaskTitle(e.target.value); setTaskChecked(false); setDupWarning(null); }}
-                    onBlur={() => checkTaskDup(taskTitle)}
-                    autoFocus={step === 'task' && !habitSaved}
-                  />
-                  {dupWarning && (
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
-                      <AlertCircle className="h-3.5 w-3.5 flex-none" />
-                      {dupWarning}
-                    </div>
-                  )}
+              {taskSaved ? (
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                  <CheckSquare className="h-12 w-12 text-blue-500" />
+                  <p className="font-semibold text-gray-900">Task Created!</p>
+                  <p className="text-sm text-gray-500">{taskTitle}</p>
                 </div>
-                <div>
-                  <label className={labelCls}>Recurrence</label>
-                  <select className={selectCls} value={taskFreq} onChange={e => setTaskFreq(e.target.value as any)}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">Due date will be set based on recurrence.</p>
-                </div>
-                <div>
-                  <label className={labelCls}>Time of Day (optional)</label>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              ) : (
+                <>
+                  {/* Title */}
+                  <div>
+                    <label className={labelCls}>Task Title *</label>
                     <input
-                      type="time"
-                      className={`${inputCls} pl-9`}
-                      value={taskTime}
-                      onChange={e => setTaskTime(e.target.value)}
+                      autoFocus
+                      className={inputCls}
+                      placeholder="e.g. Sign up for a gym, Buy running shoes"
+                      value={taskTitle}
+                      onChange={e => { setTaskTitle(e.target.value); setDupWarning(null); }}
+                      onBlur={() => checkTaskDup(taskTitle)}
                     />
+                    {dupWarning && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                        <AlertCircle className="h-3.5 w-3.5 flex-none" />
+                        {dupWarning}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </>
-            )}
-            <div className="flex gap-2 pt-1">
+
+                  {/* Due date + time */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Due Date</label>
+                      <input type="date" className={inputCls} value={taskDueDate}
+                        onChange={e => setTaskDueDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Due Time</label>
+                      <div className="relative">
+                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input type="time" className={`${inputCls} pl-9`} value={taskDueTime}
+                          onChange={e => setTaskDueTime(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Priority */}
+                  <div>
+                    <label className={labelCls}>Priority</label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {PRIORITY_OPTIONS.map(opt => (
+                        <button key={opt.value} type="button" onClick={() => setTaskPriority(opt.value)}
+                          className={`rounded-xl py-2 text-xs font-semibold transition border ${
+                            taskPriority === opt.value
+                              ? `${opt.color} border-current`
+                              : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                          }`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Repeat + Reminder */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Repeat</label>
+                      <select className={inputCls} value={taskRepeat} onChange={e => setTaskRepeat(e.target.value)}>
+                        {REPEAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Reminder</label>
+                      <select className={inputCls} value={taskReminder} onChange={e => setTaskReminder(e.target.value)}>
+                        {REMINDER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 px-6 pb-6">
               {!taskSaved && (
-                <button
-                  onClick={() => setStep(habitSaved ? 'habit' : 'choice')}
-                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
-                >
+                <button onClick={() => setStep(habitSaved ? 'habit' : 'choice')}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
                   Back
                 </button>
               )}
               {taskSaved ? (
-                <button
-                  onClick={onDone}
-                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
-                >
+                <button onClick={onDone}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition">
                   All Done!
                 </button>
               ) : (
-                <button
-                  onClick={handleAddTask}
-                  disabled={saving}
-                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50"
-                >
+                <button onClick={handleAddTask} disabled={saving}
+                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50">
                   {saving ? 'Saving...' : 'Create Task'}
                 </button>
               )}
             </div>
-            {taskSaved && (
-              <button onClick={onDone} className="w-full rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
-                Close
-              </button>
-            )}
           </div>
         )}
       </div>

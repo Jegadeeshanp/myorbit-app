@@ -105,6 +105,7 @@ type FinanceAction =
   | { type: 'addBudget'; payload: BudgetCategory }
   | { type: 'updateBudget'; payload: BudgetCategory }
   | { type: 'deleteBudget'; payload: string }
+  | { type: 'updateRecurringTemplate'; payload: RecurringTemplate }
   | { type: 'deleteRecurringTemplate'; payload: string };
 
 const defaultState: FinanceState = {
@@ -169,6 +170,8 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'updateBudget': return { ...state, budgets: state.budgets.map(b => b.id === action.payload.id ? action.payload : b) };
     case 'deleteBudget': return { ...state, budgets: state.budgets.filter(b => b.id !== action.payload) };
 
+    case 'updateRecurringTemplate':
+      return { ...state, recurringTemplates: state.recurringTemplates.map(r => r.id === action.payload.id ? action.payload : r) };
     case 'deleteRecurringTemplate':
       return { ...state, recurringTemplates: state.recurringTemplates.filter(r => r.id !== action.payload) };
 
@@ -197,6 +200,7 @@ type FinanceContextValue = {
   addBudget:              (b: Omit<BudgetCategory, 'id'>)  => Promise<void>;
   updateBudget:           (b: BudgetCategory)              => Promise<void>;
   deleteBudget:           (id: string)                     => Promise<void>;
+  updateRecurring:        (id: string, data: Partial<Pick<RecurringTemplate, 'description' | 'category' | 'notes' | 'amount' | 'type' | 'nextDate' | 'recurringConfig'>>) => Promise<void>;
   cancelRecurring:        (id: string)                     => Promise<void>;
   investAsset:            (assetId: string, amount: number, type: 'LUMPSUM' | 'SIP' | 'REDEMPTION', date: string, accountId?: string, note?: string) => Promise<void>;
   setupAssetSip:          (assetId: string, amount: number, dayOfMonth: number, accountId?: string, note?: string) => Promise<void>;
@@ -560,6 +564,13 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       dispatch({ type: 'deleteBudget', payload: id });
     },
 
+    updateRecurring: async (id, data) => {
+      const updated = await api<RecurringTemplate>(`/api/recurring-transactions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      dispatch({ type: 'updateRecurringTemplate', payload: updated });
+    },
     cancelRecurring: async (id) => {
       await api(`/api/recurring-transactions/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteRecurringTemplate', payload: id });
