@@ -193,18 +193,18 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
-          <div className="relative z-10 w-full max-w-md rounded-3xl bg-[#1a1a2e] border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="relative z-10 w-full max-w-md rounded-3xl bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
             {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-white/8">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600">
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-white">Smart Transaction</p>
-                <p className="text-xs text-gray-400">Type or speak to add a transaction</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Smart Transaction</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Type or speak to add a transaction</p>
               </div>
-              <button onClick={() => setOpen(false)} className="h-8 w-8 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition">
+              <button onClick={() => setOpen(false)} className="h-8 w-8 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -219,7 +219,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                   onChange={e => { setText(e.target.value); setParsed(null); }}
                   onKeyDown={e => e.key === 'Enter' && !parsing && handleParse()}
                   placeholder="e.g. 50 rupees office food sbi rupay card"
-                  className="flex-1 rounded-2xl bg-white/8 border border-white/10 px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/60 focus:bg-white/10 transition"
+                  className="flex-1 rounded-2xl bg-gray-50 dark:bg-white/8 border border-gray-200 dark:border-white/10 px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-violet-500/60 transition"
                 />
                 {/* Mic button */}
                 <button
@@ -228,7 +228,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                   className={`flex h-11 w-11 flex-none items-center justify-center rounded-2xl border transition ${
                     listening
                       ? 'border-rose-500 bg-rose-500/20 text-rose-400 animate-pulse'
-                      : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:border-white/20'
+                      : 'border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-white/20'
                   }`}
                   title="Hold to speak"
                 >
@@ -248,7 +248,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
               {/* Hint */}
               {!parsed && !parsing && (
                 <p className="text-xs text-gray-600 text-center">
-                  Press <kbd className="rounded bg-white/10 px-1 py-0.5 text-[10px] text-gray-400">Enter</kbd> or tap{' '}
+                  Press <kbd className="rounded bg-gray-100 dark:bg-white/10 px-1 py-0.5 text-[10px] text-gray-500 dark:text-gray-400">Enter</kbd> or tap{' '}
                   <Sparkles className="inline h-3 w-3 text-violet-400" /> to parse&nbsp;&nbsp;·&nbsp;&nbsp;
                   Hold <Mic className="inline h-3 w-3 text-gray-400" /> to speak
                 </p>
@@ -256,13 +256,13 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
 
               {/* Parsed result — editable confirmation card */}
               {parsed && (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-4 space-y-3">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Parsed result</p>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Parsed result</p>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      parsed.confidence === 'high'   ? 'bg-emerald-900/40 text-emerald-400'
-                      : parsed.confidence === 'medium' ? 'bg-amber-900/40 text-amber-400'
-                      : 'bg-rose-900/40 text-rose-400'
+                      parsed.confidence === 'high'   ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
+                      : parsed.confidence === 'medium' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                      : 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400'
                     }`}>
                       {parsed.confidence} confidence
                     </span>
@@ -275,7 +275,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                         className={`flex-1 rounded-xl py-2 text-xs font-semibold transition ${
                           editType === t
                             ? t === 'expense' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
-                            : 'bg-white/5 text-gray-400 hover:text-white'
+                            : 'bg-gray-200 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                         }`}>
                         {t === 'expense' ? '− Expense' : '+ Income'}
                       </button>
@@ -289,7 +289,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                       type="number"
                       value={editAmt}
                       onChange={e => setEditAmt(e.target.value)}
-                      className="mt-1 w-full rounded-xl bg-white/8 border border-white/10 px-3 py-2 text-lg font-bold text-white focus:outline-none focus:border-violet-500/60"
+                      className="mt-1 w-full rounded-xl bg-white dark:bg-white/8 border border-gray-200 dark:border-white/10 px-3 py-2 text-lg font-bold text-gray-900 dark:text-white focus:outline-none focus:border-violet-500/60"
                     />
                   </div>
 
@@ -299,7 +299,7 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                     <input
                       value={editDesc}
                       onChange={e => setEditDesc(e.target.value)}
-                      className="mt-1 w-full rounded-xl bg-white/8 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/60"
+                      className="mt-1 w-full rounded-xl bg-white dark:bg-white/8 border border-gray-200 dark:border-white/10 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-violet-500/60"
                     />
                   </div>
 
@@ -310,9 +310,9 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                       <select
                         value={editCat}
                         onChange={e => setEditCat(e.target.value)}
-                        className="w-full appearance-none rounded-xl bg-white/8 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/60"
+                        className="w-full appearance-none rounded-xl bg-white dark:bg-white/8 border border-gray-200 dark:border-white/10 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-violet-500/60"
                       >
-                        {CATEGORIES.map(c => <option key={c} value={c} className="bg-gray-900">{c}</option>)}
+                        {CATEGORIES.map(c => <option key={c} value={c} className="bg-white dark:bg-gray-900">{c}</option>)}
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                     </div>
@@ -326,11 +326,11 @@ export default function AiTransactionButton({ fabClassName }: { fabClassName?: s
                         <select
                           value={editAccId ?? ''}
                           onChange={e => setEditAccId(e.target.value || null)}
-                          className="w-full appearance-none rounded-xl bg-white/8 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/60"
+                          className="w-full appearance-none rounded-xl bg-white dark:bg-white/8 border border-gray-200 dark:border-white/10 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-violet-500/60"
                         >
-                          <option value="" className="bg-gray-900">No account</option>
+                          <option value="" className="bg-white dark:bg-gray-900">No account</option>
                           {parsed.accounts.map(a => (
-                            <option key={a.id} value={a.id} className="bg-gray-900">{a.name} ({a.type})</option>
+                            <option key={a.id} value={a.id} className="bg-white dark:bg-gray-900">{a.name} ({a.type})</option>
                           ))}
                         </select>
                         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />

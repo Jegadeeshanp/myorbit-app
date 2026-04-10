@@ -914,7 +914,7 @@ export default function TasksPage() {
         {/* CONTENT */}
         <div className="flex min-h-0 flex-1 gap-2 overflow-hidden px-4 pb-24 md:px-0 md:pb-0">
           {view === 'calendar' ? (
-            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#1A2029] shadow-sm">
+            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-[#1A2029] shadow-sm">
               <TaskCalendar tasks={[...tasks, ...completedTasks]} onOpenSidebar={() => setMobileSidebarOpen(true)} onTaskClick={t => setActiveTask(t)} />
             </div>
           ) : (
