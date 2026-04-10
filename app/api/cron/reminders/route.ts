@@ -111,11 +111,10 @@ export async function GET(req: NextRequest) {
     }
     const tokens = taskTokenCache[task.userId];
     if (!tokens.length) continue;
-    const listLabel = task.list ? `${task.list.emoji || '📋'} ${task.list.name}` : '📋 MyOrbit Task';
     try {
       await sendToTokens(tokens, {
         title:  task.title,
-        body:   listLabel,
+        body:   task.list ? `${task.list.emoji || '📋'} ${task.list.name}` : '',
         url:    `/orbit/tasks?task=${task.id}`,
         tag:    `task-${task.id}`,
         taskId: task.id,
@@ -146,11 +145,10 @@ export async function GET(req: NextRequest) {
     }
     const tokens = taskTokenCache[task.userId];
     if (!tokens.length) continue;
-    const listLabel = task.list ? `${task.list.emoji || '📋'} ${task.list.name}` : '📋 MyOrbit Task';
     try {
       await sendToTokens(tokens, {
         title:  task.title,
-        body:   `⏰ Snoozed reminder · ${listLabel}`,
+        body:   task.list ? `${task.list.emoji || '📋'} ${task.list.name}` : '',
         url:    `/orbit/tasks?task=${task.id}`,
         tag:    `task-${task.id}`,
         taskId: task.id,

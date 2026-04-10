@@ -56,7 +56,7 @@ export const transactionSchema = z.object({
   notes: z.string().max(1000).optional(),
   // Amount may be negative (expenses) or positive (income) — just not zero
   amount: z.number().finite().refine(v => v !== 0, { message: 'Amount must not be zero' }),
-  type: z.enum(['expense', 'income', 'transfer']),
+  type: z.enum(['expense', 'income', 'transfer', 'opening_balance', 'adjustment']),
   recurring: recurringSchema,
 });
 

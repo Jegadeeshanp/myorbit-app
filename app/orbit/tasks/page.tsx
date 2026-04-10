@@ -13,6 +13,7 @@ import {
 import TasksSidebar from '@/components/tasks/TasksSidebar';
 import TaskItem from '@/components/tasks/TaskItem';
 import TaskDetail from '@/components/tasks/TaskDetail';
+import TaskReminderModal from '@/components/tasks/TaskReminderModal';
 import TaskCalendar from '@/components/tasks/TaskCalendar';
 import { toast } from '@/components/Toast';
 import TasksMobileNav from '@/components/tasks/TasksMobileNav';
@@ -640,6 +641,7 @@ export default function TasksPage() {
   const [lists, setLists]             = useState<TaskList[]>([]);
   const [loading, setLoading]         = useState(true);
   const [activeTask, setActiveTask]   = useState<Task | null>(null);
+  const [reminderTask, setReminderTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingTask, setAddingTask]   = useState(false);
   const [refreshKey, setRefreshKey]   = useState(0);
@@ -696,14 +698,14 @@ export default function TasksPage() {
   useEffect(() => { fetchTasks(); fetchLists(); }, [fetchTasks, fetchLists]);
   useEffect(() => { if (searchParams.get('create') === '1') setShowFab(true); }, [searchParams]);
 
-  // Open a specific task when navigated to via ?task=ID (e.g. from a push notification).
+  // Open the reminder modal when navigated to via ?task=ID (e.g. from a push notification).
   // Fetch directly from API so it works regardless of which view is currently selected.
   useEffect(() => {
     const taskId = searchParams.get('task');
     if (!taskId) return;
     fetch(`/api/tasks/${taskId}`)
       .then(r => r.ok ? r.json() : null)
-      .then(task => { if (task?.id) setActiveTask(task); })
+      .then(task => { if (task?.id) setReminderTask(task); })
       .catch(() => {});
   }, [searchParams]);
 
@@ -1067,7 +1069,7 @@ export default function TasksPage() {
       {activeTask && (
         <div className="lg:hidden">
           <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setActiveTask(null)} />
-          <div className="fixed inset-x-2 z-[65] rounded-2xl bg-white dark:bg-[#1C1F26] border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col" style={{ bottom: '76px', height: '56vh' }}>
+          <div className="fixed inset-x-2 z-[65] rounded-2xl bg-white dark:bg-[#1C1F26] border border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col" style={{ bottom: '76px', height: '60vh' }}>
             <div className="flex justify-center pt-3 pb-1 flex-none"><div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" /></div>
             <div className="flex-1 overflow-hidden">
               <TaskDetail task={activeTask} lists={lists} onClose={() => setActiveTask(null)} onUpdated={handleTaskUpdated} onDeleted={handleTaskDeleted} onCompleted={handleTaskCompleted} />
@@ -1085,6 +1087,18 @@ export default function TasksPage() {
       )}
 
       <TasksMobileNav selected={selected} view={view} onSelect={v => setSelected(v)} onViewChange={setView} focusAdd={focusCreateTask} />
+
+      {/* Notification reminder modal — shown when app opens via push notification tap */}
+      {reminderTask && (
+        <TaskReminderModal
+          task={reminderTask}
+          onClose={() => setReminderTask(null)}
+          onDone={() => {
+            handleTaskCompleted(reminderTask.id);
+            setReminderTask(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -18,10 +18,10 @@ const messaging = firebase.messaging();
 
 // ── Notification actions (shown on long-press on iOS, expand on Android) ──
 var TASK_ACTIONS = [
-  { action: 'snooze-15', title: 'Snooze 15 min' },
-  { action: 'snooze-30', title: 'Snooze 30 min' },
+  { action: 'snooze-15', title: 'Snooze 15 minutes' },
+  { action: 'snooze-30', title: 'Snooze 30 minutes' },
   { action: 'snooze-60', title: 'Snooze 1 Hour' },
-  { action: 'done',      title: 'Done ✓' },
+  { action: 'done',      title: 'Done' },
 ];
 
 // ── Background push handler ───────────────────────────────────────────────
@@ -39,15 +39,16 @@ messaging.onBackgroundMessage(function (payload) {
   var taskId = data.taskId || '';
   var isTask = !!taskId;
 
-  self.registration.showNotification(title, {
-    body,
+  var notifOpts = {
     icon,
     badge:              '/icon',
+    body:               body || ' ',   // always set — empty body makes iOS append "from MyOrbit"
     data:               { url, taskId },
     tag:                data.tag || 'myorbit',
     requireInteraction: false,
     actions:            isTask ? TASK_ACTIONS : [],
-  });
+  };
+  self.registration.showNotification(title, notifOpts);
 });
 
 // ── Notification click / action handler ───────────────────────────────────
@@ -108,7 +109,7 @@ self.addEventListener('notificationclick', function (event) {
 });
 
 // ── PWA Caching ───────────────────────────────────────────────────────────
-var CACHE_NAME = 'myorbit-v4';
+var CACHE_NAME = 'myorbit-v5';
 var STATIC_ASSETS = ['/', '/orbit'];
 
 self.addEventListener('install', function (event) {

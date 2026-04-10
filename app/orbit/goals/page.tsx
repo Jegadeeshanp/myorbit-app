@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Target, Calendar, CheckCircle2, Zap, ChevronRight, X } from 'lucide-react';
+import {
+  Plus, Target, Calendar, CheckCircle2, Zap, ChevronRight, X,
+  Repeat, Clock, ListChecks, CheckSquare, AlertCircle,
+} from 'lucide-react';
 import { toast } from '@/components/Toast';
 
 type GoalMilestone = { id: string; title: string; horizon: string; isCompleted: boolean };
@@ -33,7 +36,15 @@ const GRADIENT_BY_CATEGORY: Record<string, string> = {
   Other:    'from-gray-400 to-gray-600',
 };
 
-// ── Add Goal Modal ─────────────────────────────────────────────────────────
+const FREQ_LABELS: Record<string, string> = {
+  daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly',
+};
+const TIME_LABELS: Record<string, string> = {
+  all_day: 'All day', morning: 'Morning', noon: 'Noon',
+  evening: 'Evening', night: 'Night',
+};
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 type WizardData = {
   title: string; category: string; why: string; metric: string; deadline: string;
@@ -41,6 +52,398 @@ type WizardData = {
   process1: string; process1freq: string;
   process2: string; process2freq: string;
 };
+
+// ── Post-Goal Wizard: Add Habit / Task ─────────────────────────────────────
+
+type PostGoalWizardProps = {
+  goal: Goal;
+  onDone: () => void;
+};
+
+function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
+  type PWStep = 'choice' | 'habit' | 'task' | 'done';
+  const [step, setStep]             = useState<PWStep>('choice');
+  const [saving, setSaving]         = useState(false);
+  const [dupWarning, setDupWarning] = useState<string | null>(null);
+
+  // Habit form
+  const [habitName, setHabitName]           = useState('');
+  const [habitFreq, setHabitFreq]           = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [habitTime, setHabitTime]           = useState('all_day');
+  const [habitChecked, setHabitChecked]     = useState(false);
+  const [habitSaved, setHabitSaved]         = useState(false);
+
+  // Task form
+  const [taskTitle, setTaskTitle]           = useState('');
+  const [taskFreq, setTaskFreq]             = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [taskTime, setTaskTime]             = useState('');
+  const [taskChecked, setTaskChecked]       = useState(false);
+  const [taskSaved, setTaskSaved]           = useState(false);
+
+  const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white';
+  const labelCls = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5';
+  const selectCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white';
+
+  // Check for duplicate habit name
+  const checkHabitDup = async (name: string) => {
+    if (!name.trim()) { setDupWarning(null); return; }
+    try {
+      const res = await fetch('/api/habits');
+      if (!res.ok) return;
+      const habits = await res.json();
+      const dup = habits.find((h: any) => h.name.trim().toLowerCase() === name.trim().toLowerCase());
+      setDupWarning(dup ? `A habit named "${dup.name}" already exists.` : null);
+    } catch { /* ignore */ }
+    setHabitChecked(true);
+  };
+
+  // Check for duplicate task title
+  const checkTaskDup = async (title: string) => {
+    if (!title.trim()) { setDupWarning(null); return; }
+    try {
+      const res = await fetch('/api/tasks?smartList=all');
+      if (!res.ok) return;
+      const tasks = await res.json();
+      const dup = tasks.find((t: any) => t.title.trim().toLowerCase() === title.trim().toLowerCase());
+      setDupWarning(dup ? `A task named "${dup.title}" already exists.` : null);
+    } catch { /* ignore */ }
+    setTaskChecked(true);
+  };
+
+  const handleAddHabit = async () => {
+    if (!habitName.trim()) { toast('Habit name is required', 'error'); return; }
+    setSaving(true);
+    try {
+      // Map frequency to daysOfWeek
+      let daysOfWeek: number[];
+      if (habitFreq === 'daily')   daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
+      else if (habitFreq === 'weekly') daysOfWeek = [1]; // Monday
+      else                         daysOfWeek = [1];     // 1st occurrence, monthly treated as weekly for habit model
+
+      const res = await fetch('/api/habits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: habitName.trim(),
+          color: '#6366F1',
+          iconEmoji: '🎯',
+          goalPerDay: 1,
+          isCountBased: false,
+          daysOfWeek,
+          timeOfDay: habitTime,
+          customTime: null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create habit');
+      setHabitSaved(true);
+      toast('Habit linked to goal!');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to create habit', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!taskTitle.trim()) { toast('Task title is required', 'error'); return; }
+    setSaving(true);
+    try {
+      // Compute a reasonable due date based on frequency
+      const today = new Date();
+      let dueDate: string | null = null;
+      if (taskFreq === 'daily') {
+        dueDate = today.toISOString().split('T')[0];
+      } else if (taskFreq === 'weekly') {
+        const d = new Date(today); d.setDate(d.getDate() + 7);
+        dueDate = d.toISOString().split('T')[0];
+      } else {
+        const d = new Date(today); d.setMonth(d.getMonth() + 1);
+        dueDate = d.toISOString().split('T')[0];
+      }
+
+      // Find or create the "Goals" task list
+      let listId: string | null = null;
+      try {
+        const listsRes = await fetch('/api/task-lists');
+        if (listsRes.ok) {
+          const lists = await listsRes.json();
+          const existing = Array.isArray(lists)
+            ? lists.find((l: any) => l.name.toLowerCase() === 'goals')
+            : null;
+          if (existing) {
+            listId = existing.id;
+          } else {
+            const createRes = await fetch('/api/task-lists', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'Goals', emoji: '🎯', color: '#6366F1' }),
+            });
+            if (createRes.ok) {
+              const newList = await createRes.json();
+              listId = newList.id;
+            }
+          }
+        }
+      } catch { /* fall back to inbox */ }
+
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: taskTitle.trim(),
+          notes: `Related to goal: ${goal.title}`,
+          priority: 'medium',
+          dueDate,
+          dueTime: taskTime || null,
+          tags: [],
+          listId,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      setTaskSaved(true);
+      toast('Task linked to goal!');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to create task', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <p className="font-semibold text-gray-900">Goal Created!</p>
+            <p className="text-xs text-gray-500 truncate max-w-[240px]">{goal.title}</p>
+          </div>
+          <button onClick={onDone} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Choice step */}
+        {step === 'choice' && (
+          <div className="px-6 py-6 space-y-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 text-indigo-500 flex-none" />
+              <p className="text-sm text-indigo-700 font-medium">Goal saved successfully. Build momentum now!</p>
+            </div>
+            <p className="text-sm font-semibold text-gray-700">What would you like to add?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setStep('habit'); setDupWarning(null); }}
+                className="flex flex-col items-center gap-2.5 rounded-2xl border-2 border-indigo-100 bg-indigo-50 px-4 py-5 text-center hover:border-indigo-300 hover:bg-indigo-100 transition"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600">
+                  <Repeat className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Add a Habit</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Recurring routine</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { setStep('task'); setDupWarning(null); }}
+                className="flex flex-col items-center gap-2.5 rounded-2xl border-2 border-blue-100 bg-blue-50 px-4 py-5 text-center hover:border-blue-300 hover:bg-blue-100 transition"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
+                  <ListChecks className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Add a Task</p>
+                  <p className="text-xs text-gray-500 mt-0.5">One-time action</p>
+                </div>
+              </button>
+            </div>
+            <button onClick={onDone} className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+              Skip for now
+            </button>
+          </div>
+        )}
+
+        {/* Habit step */}
+        {step === 'habit' && (
+          <div className="px-6 py-5 space-y-4">
+            <div>
+              <p className="text-base font-semibold text-gray-900 mb-1">Add a Habit</p>
+              <p className="text-sm text-gray-500">A recurring routine to support this goal.</p>
+            </div>
+            {habitSaved ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                <p className="font-semibold text-gray-900">Habit Created!</p>
+                <p className="text-sm text-gray-500">{habitName}</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className={labelCls}>Habit Name *</label>
+                  <input
+                    className={inputCls}
+                    placeholder="e.g. Morning run, Read 30 pages"
+                    value={habitName}
+                    onChange={e => { setHabitName(e.target.value); setHabitChecked(false); setDupWarning(null); }}
+                    onBlur={() => checkHabitDup(habitName)}
+                    autoFocus
+                  />
+                  {dupWarning && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                      <AlertCircle className="h-3.5 w-3.5 flex-none" />
+                      {dupWarning}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={labelCls}>Frequency</label>
+                  <select className={selectCls} value={habitFreq} onChange={e => setHabitFreq(e.target.value as any)}>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Time of Day</label>
+                  <select className={selectCls} value={habitTime} onChange={e => setHabitTime(e.target.value)}>
+                    <option value="all_day">All day</option>
+                    <option value="morning">Morning</option>
+                    <option value="noon">Noon</option>
+                    <option value="evening">Evening</option>
+                    <option value="night">Night</option>
+                  </select>
+                </div>
+              </>
+            )}
+            <div className="flex gap-2 pt-1">
+              {!habitSaved && (
+                <button
+                  onClick={() => setStep('choice')}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Back
+                </button>
+              )}
+              {habitSaved ? (
+                <button
+                  onClick={() => { setStep('task'); setDupWarning(null); }}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+                >
+                  Add a Task too?
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddHabit}
+                  disabled={saving}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Create Habit'}
+                </button>
+              )}
+            </div>
+            {habitSaved && (
+              <button onClick={onDone} className="w-full rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                Done
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Task step */}
+        {step === 'task' && (
+          <div className="px-6 py-5 space-y-4">
+            <div>
+              <p className="text-base font-semibold text-gray-900 mb-1">Add a Task</p>
+              <p className="text-sm text-gray-500">A specific action tied to this goal.</p>
+            </div>
+            {taskSaved ? (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <CheckSquare className="h-12 w-12 text-blue-500" />
+                <p className="font-semibold text-gray-900">Task Created!</p>
+                <p className="text-sm text-gray-500">{taskTitle}</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className={labelCls}>Task Title *</label>
+                  <input
+                    className={inputCls}
+                    placeholder="e.g. Sign up for a gym, Buy running shoes"
+                    value={taskTitle}
+                    onChange={e => { setTaskTitle(e.target.value); setTaskChecked(false); setDupWarning(null); }}
+                    onBlur={() => checkTaskDup(taskTitle)}
+                    autoFocus={step === 'task' && !habitSaved}
+                  />
+                  {dupWarning && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                      <AlertCircle className="h-3.5 w-3.5 flex-none" />
+                      {dupWarning}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className={labelCls}>Recurrence</label>
+                  <select className={selectCls} value={taskFreq} onChange={e => setTaskFreq(e.target.value as any)}>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">Due date will be set based on recurrence.</p>
+                </div>
+                <div>
+                  <label className={labelCls}>Time of Day (optional)</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="time"
+                      className={`${inputCls} pl-9`}
+                      value={taskTime}
+                      onChange={e => setTaskTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="flex gap-2 pt-1">
+              {!taskSaved && (
+                <button
+                  onClick={() => setStep(habitSaved ? 'habit' : 'choice')}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Back
+                </button>
+              )}
+              {taskSaved ? (
+                <button
+                  onClick={onDone}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+                >
+                  All Done!
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddTask}
+                  disabled={saving}
+                  className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Create Task'}
+                </button>
+              )}
+            </div>
+            {taskSaved && (
+              <button onClick={onDone} className="w-full rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                Close
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Add Goal Modal ─────────────────────────────────────────────────────────
 
 function AddGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: (g: Goal) => void }) {
   const [step, setStep] = useState(1);
@@ -89,7 +492,6 @@ function AddGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         throw new Error(errBody.error || 'Failed to create goal');
       }
       const goal = await res.json();
-      toast('Goal created!');
       onCreated(goal);
     } catch (err: any) {
       toast(err?.message || 'Failed to create goal', 'error');
@@ -306,9 +708,9 @@ function AddGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
-// ── Goal Card ──────────────────────────────────────────────────────────────
+// ── Goal List Row ──────────────────────────────────────────────────────────
 
-function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
+function GoalRow({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
   const totalMilestones     = goal.milestones.length;
   const progress            = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
@@ -319,42 +721,44 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="group relative cursor-pointer rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden"
+      className="group flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
     >
-      {/* Gradient top bar */}
-      <div className={`h-1.5 w-full bg-gradient-to-r ${gradient}`} />
+      {/* Left: gradient color bar */}
+      <div className={`h-10 w-1 flex-none rounded-full bg-gradient-to-b ${gradient}`} />
 
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-medium ${catColor}`}>
+      {/* Center: goal info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium ${catColor}`}>
             {goal.category}
           </span>
           {goal.status === 'completed' && (
-            <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-              <CheckCircle2 className="mr-1 h-3 w-3" /> Done
+            <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+              <CheckCircle2 className="h-3 w-3" /> Done
             </span>
           )}
           {goal.status === 'paused' && (
-            <span className="inline-flex items-center rounded-lg bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
               Paused
             </span>
           )}
         </div>
-
-        <h3 className="text-base font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-indigo-700 transition-colors">
+        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">
           {goal.title}
-        </h3>
-
+        </p>
         {goal.why && (
-          <p className="text-sm text-gray-500 italic mb-3 line-clamp-2">"{goal.why}"</p>
+          <p className="text-xs text-gray-400 italic truncate mt-0.5">"{goal.why}"</p>
         )}
+      </div>
 
-        {/* Progress */}
+      {/* Right: stats + progress */}
+      <div className="flex items-center gap-5 flex-none">
+        {/* Milestone progress */}
         {totalMilestones > 0 && (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-500">Milestones</span>
-              <span className="text-xs font-medium text-gray-700">{completedMilestones}/{totalMilestones}</span>
+          <div className="hidden sm:flex flex-col items-end gap-1 w-24">
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <span className="font-medium text-gray-700">{completedMilestones}/{totalMilestones}</span>
+              <span>milestones</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-gray-100">
               <div
@@ -365,23 +769,23 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {goal.processes.length > 0 && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <Zap className="h-3 w-3 text-indigo-400" />
-                {goal.processes.length} process{goal.processes.length !== 1 ? 'es' : ''}
-              </div>
-            )}
-            {goal.deadline && (
-              <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-600 font-medium' : 'text-gray-500'}`}>
-                <Calendar className="h-3 w-3" />
-                {goal.deadline}
-              </div>
-            )}
+        {/* Processes count */}
+        {goal.processes.length > 0 && (
+          <div className="hidden md:flex items-center gap-1 text-xs text-gray-500">
+            <Zap className="h-3.5 w-3.5 text-indigo-400" />
+            <span>{goal.processes.length}</span>
           </div>
-          <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-indigo-400 transition-colors" />
-        </div>
+        )}
+
+        {/* Deadline */}
+        {goal.deadline && (
+          <div className={`hidden md:flex items-center gap-1 text-xs ${isOverdue ? 'text-rose-600 font-medium' : 'text-gray-400'}`}>
+            <Calendar className="h-3.5 w-3.5" />
+            {goal.deadline}
+          </div>
+        )}
+
+        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-indigo-400 transition-colors" />
       </div>
     </div>
   );
@@ -389,11 +793,17 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
 
 // ── Stats Card ─────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
+function StatCard({ label, value, sub, color = 'indigo' }: { label: string; value: number; sub?: string; color?: string }) {
+  const colorMap: Record<string, string> = {
+    indigo: 'text-indigo-600 bg-indigo-50',
+    emerald: 'text-emerald-600 bg-emerald-50',
+    rose: 'text-rose-600 bg-rose-50',
+    amber: 'text-amber-600 bg-amber-50',
+  };
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm font-medium text-gray-700">{label}</p>
+    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-5 py-4">
+      <p className={`text-2xl font-bold ${colorMap[color]?.split(' ')[0] || 'text-gray-900'}`}>{value}</p>
+      <p className="text-sm font-medium text-gray-700 mt-0.5">{label}</p>
       {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
     </div>
   );
@@ -403,10 +813,11 @@ function StatCard({ label, value, sub }: { label: string; value: number; sub?: s
 
 export default function GoalsPage() {
   const router = useRouter();
-  const [goals, setGoals]         = useState<Goal[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [catFilter, setCatFilter] = useState('All');
+  const [goals, setGoals]               = useState<Goal[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [showModal, setShowModal]       = useState(false);
+  const [catFilter, setCatFilter]       = useState('All');
+  const [postGoal, setPostGoal]         = useState<Goal | null>(null);
 
   useEffect(() => {
     fetch('/api/goals')
@@ -427,12 +838,12 @@ export default function GoalsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Hero */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Your Goals</h1>
-          <p className="text-sm text-gray-600 mt-0.5">Track your life's GPS — Goal, Process, System</p>
+          <p className="text-sm text-gray-500 mt-0.5">Track your life's GPS — Goal, Process, System</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -445,10 +856,10 @@ export default function GoalsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total Goals"  value={stats.total}     />
-        <StatCard label="Active"       value={stats.active}    />
-        <StatCard label="Completed"    value={stats.completed} />
-        <StatCard label="Processes"    value={stats.processes} sub="recurring habits" />
+        <StatCard label="Total Goals"  value={stats.total}     color="indigo" />
+        <StatCard label="Active"       value={stats.active}    color="emerald" />
+        <StatCard label="Completed"    value={stats.completed} color="amber" />
+        <StatCard label="Processes"    value={stats.processes} color="indigo" sub="recurring habits" />
       </div>
 
       {/* Category filter */}
@@ -468,11 +879,18 @@ export default function GoalsPage() {
         ))}
       </div>
 
-      {/* Goals grid */}
+      {/* Goals list */}
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden divide-y divide-gray-100">
           {[1,2,3,4].map(i => (
-            <div key={i} className="h-44 rounded-2xl bg-gray-100 animate-pulse" />
+            <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
+              <div className="h-10 w-1 rounded-full bg-gray-200 flex-none" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-20 bg-gray-200 rounded" />
+                <div className="h-4 w-64 bg-gray-200 rounded" />
+              </div>
+              <div className="hidden sm:block h-1.5 w-24 bg-gray-200 rounded-full" />
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -491,9 +909,9 @@ export default function GoalsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden divide-y divide-gray-100">
           {filtered.map(goal => (
-            <GoalCard
+            <GoalRow
               key={goal.id}
               goal={goal}
               onClick={() => router.push(`/orbit/goals/${goal.id}`)}
@@ -510,13 +928,23 @@ export default function GoalsPage() {
         <Plus className="h-6 w-6" />
       </button>
 
+      {/* Add goal modal */}
       {showModal && (
         <AddGoalModal
           onClose={() => setShowModal(false)}
           onCreated={goal => {
             setGoals(prev => [goal, ...prev]);
             setShowModal(false);
+            setPostGoal(goal);
           }}
+        />
+      )}
+
+      {/* Post-goal wizard */}
+      {postGoal && (
+        <PostGoalWizard
+          goal={postGoal}
+          onDone={() => setPostGoal(null)}
         />
       )}
     </div>

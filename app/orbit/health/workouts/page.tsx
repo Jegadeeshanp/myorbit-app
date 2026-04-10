@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Dumbbell, X, Clock, Flame } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
@@ -106,12 +106,21 @@ export default function WorkoutsPage() {
   const [showModal, setShowModal] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
-  useEffect(() => {
+  const loadWorkouts = useCallback(() => {
+    setLoading(true);
     fetch('/api/workouts?limit=50')
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setWorkouts(d); })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadWorkouts(); }, [loadWorkouts]);
+
+  // Refresh when workout is logged from the FAB
+  useEffect(() => {
+    window.addEventListener('health:workout-refresh', loadWorkouts);
+    return () => window.removeEventListener('health:workout-refresh', loadWorkouts);
+  }, [loadWorkouts]);
 
   const totalMins = workouts.reduce((s, w) => s + w.durationMins, 0);
   const totalCals = workouts.reduce((s, w) => s + (w.caloriesBurned ?? 0), 0);

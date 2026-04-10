@@ -5,15 +5,15 @@ import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
-  Heart, LayoutDashboard, ClipboardList,
-  Dumbbell, UtensilsCrossed, Settings, User,
+  Heart, LayoutDashboard, Dumbbell,
+  UtensilsCrossed, Settings, User, RefreshCw,
 } from 'lucide-react';
 
 const menu = [
   { label: 'Dashboard', href: '/orbit/health',           Icon: LayoutDashboard },
-  { label: 'Log Today', href: '/orbit/health/log',       Icon: ClipboardList },
   { label: 'Workouts',  href: '/orbit/health/workouts',  Icon: Dumbbell },
   { label: 'Nutrition', href: '/orbit/health/nutrition', Icon: UtensilsCrossed },
+  { label: 'Sync',      href: '/orbit/health/sync',      Icon: RefreshCw },
 ];
 
 export default function HealthSidebar() {

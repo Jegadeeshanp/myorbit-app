@@ -34,9 +34,11 @@ model User {
   countdowns          Countdown[]
   healthEntries       HealthEntry[]
   workouts            Workout[]
+  foodEntries         FoodEntry[]
   foodLogs            FoodLog[]
   pushTokens            PushToken[]
   recurringTransactions RecurringTransaction[]
+  investmentTxs         InvestmentTransaction[]
 }
 
 model Session {
@@ -92,10 +94,33 @@ model Asset {
   accountId      String?
   investmentType String   @default("lump_sum")
   sipConfig      String?  // JSON: { frequency, startDate, endType, endAfterTimes?, endDate? }
+  // isExternallyOwned is derived client-side: !accountId — no DB column to avoid migration requirement
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentTxs  InvestmentTransaction[]
+  assetSips      RecurringTransaction[]
 
+  @@index([userId])
+}
+
+// ── Investment Transactions (per-asset money movements) ────────────────────
+// Every capital movement into/out of an asset is recorded here.
+// total_invested = SUM(amount WHERE type IN ('LUMPSUM','SIP'))
+// REDEMPTION amounts are always positive — represents withdrawal size.
+model InvestmentTransaction {
+  id        String   @id @default(cuid())
+  assetId   String
+  userId    String
+  type      String   // LUMPSUM | SIP | REDEMPTION
+  amount    String   // encrypted — always stored as a positive number
+  date      String   // YYYY-MM-DD
+  note      String?
+  createdAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
   @@index([userId])
 }
 
@@ -152,7 +177,7 @@ model PasswordResetToken {
 model UserPreferences {
   id        String   @id @default(cuid())
   userId    String   @unique
-  currency  String   @default("INR")   // ISO 4217 code
+  currency  String   @default("INR")    // ISO 4217 code
   theme     String   @default("system") // "light" | "dark" | "system"
   locale    String   @default("en-IN")
   // Financial Profile / Vitals
@@ -160,6 +185,11 @@ model UserPreferences {
   dependents  Int?
   termCover   Float?
   healthCover Float?
+  // Health daily targets
+  stepsGoal    Int?   // default 10000 steps
+  sleepGoal    Float? // default 7.5 hours
+  waterGoal    Int?   // default 2000 ml
+  caloriesGoal Int?   // default 2000 kcal
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -255,6 +285,8 @@ model Task {
   dueTime     String?   // HH:MM
   tags        String    @default("[]")     // JSON array of strings
   sortOrder   Int       @default(0)
+  habitId     String?
+  habit       Habit?    @relation(fields: [habitId], references: [id], onDelete: SetNull)
   completedAt DateTime?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -294,11 +326,13 @@ model Habit {
   daysOfWeek   String     @default("[1,2,3,4,5,6,7]") // JSON array
   sortOrder    Int        @default(0)
   isActive     Boolean    @default(true)
+  category     String     @default("general") // health | finance | productivity | general
   timeOfDay    String?    @default("all_day") // all_day | morning | noon | evening | night | custom
   customTime   String?    // HH:MM for custom time
   createdAt    DateTime   @default(now())
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs         HabitLog[]
+  tasks        Task[]
 
   @@index([userId])
 }
@@ -418,18 +452,20 @@ model FoodLog {
 model RecurringTransaction {
   id              String   @id @default(cuid())
   userId          String
-  accountId       String?
+  accountId       String?  // bank account to debit/credit for expense/income or asset SIP
+  assetId         String?  // set for asset SIP templates; null for regular recurring transactions
   category        String
   description     String
   notes           String?
   amount          String   // encrypted — same sign as the amount (negative for expense)
-  type            String   // expense | income
+  type            String   // expense | income | SIP (for asset SIP templates)
   recurringConfig String   // JSON: RecurringConfig { frequency, startDate, endType, ... }
   nextDate        String   // YYYY-MM-DD — date of the next occurrence to create
   occurrenceCount Int      @default(0) // how many times spawned so far (for endAfterTimes check)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset           Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([nextDate])
@@ -447,4 +483,31 @@ model PushToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ── Nutrition / Food Logging ───────────────────────────────────────────────
+
+model FoodEntry {
+  id             String   @id @default(cuid())
+  userId         String
+  date           String   // YYYY-MM-DD
+  name           String   // food item name
+  mealType       String   @default("snack") // breakfast | lunch | dinner | snack
+  calories       Float?
+  proteinG       Float?
+  carbsG         Float?
+  fatG           Float?
+  saturatedFatG  Float?
+  sodiumMg       Float?
+  potassiumMg    Float?
+  fiberG         Float?
+  waterMl        Float?
+  servingSize    String?  // e.g. "1 cup", "100g"
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
 }

@@ -52,18 +52,16 @@ export async function sendToToken(
   const app = getAdminApp();
   const message: Message = {
     token,
-    notification: { title: payload.title, body: payload.body },
+    // Data-only message — no notification field at any level.
+    // This prevents FCM from auto-displaying a notification; the service
+    // worker's onBackgroundMessage handler calls showNotification() exactly once.
     webpush: {
-      notification: {
-        title:  payload.title,
-        body:   payload.body,
-        icon:   payload.icon ?? '/icon',
-        badge:  '/icon',
-        tag:    payload.tag,
-      },
       fcmOptions: { link: payload.url ?? '/orbit/tasks' },
     },
     data: {
+      title:  payload.title,
+      body:   payload.body,
+      icon:   payload.icon ?? '/icon',
       ...(payload.url    ? { url:    payload.url    } : {}),
       ...(payload.tag    ? { tag:    payload.tag    } : {}),
       ...(payload.taskId ? { taskId: payload.taskId } : {}),
@@ -87,18 +85,16 @@ export async function sendToTokens(
   const app = getAdminApp();
   const message: MulticastMessage = {
     tokens,
-    notification: { title: payload.title, body: payload.body },
+    // Data-only message — no notification field at any level.
+    // This prevents FCM from auto-displaying a notification; the service
+    // worker's onBackgroundMessage handler calls showNotification() exactly once.
     webpush: {
-      notification: {
-        title:  payload.title,
-        body:   payload.body,
-        icon:   payload.icon ?? '/icon',
-        badge:  '/icon',
-        tag:    payload.tag,
-      },
       fcmOptions: { link: payload.url ?? '/orbit/tasks' },
     },
     data: {
+      title:  payload.title,
+      body:   payload.body,
+      icon:   payload.icon ?? '/icon',
       ...(payload.url    ? { url:    payload.url    } : {}),
       ...(payload.tag    ? { tag:    payload.tag    } : {}),
       ...(payload.taskId ? { taskId: payload.taskId } : {}),

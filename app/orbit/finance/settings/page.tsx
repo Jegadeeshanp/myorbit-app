@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download, Pencil, Trash2, MoreHorizontal, Upload, Plus, Lock, Package } from 'lucide-react';
+import { RefreshCw, Download, Trash2, Upload, Plus, Lock, Package, TrendingUp, Landmark, ArrowDownLeft, ArrowUpRight, X, ArrowLeft, Settings2, List, LayoutGrid, Database } from 'lucide-react';
+import Link from 'next/link';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS } from '@/components/finance/CategoryPicker';
 import { useFinance } from '@/lib/financeStore';
-import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import dynamic from 'next/dynamic';
 import {
-  DEFAULT_EXPENSE_CATEGORIES,
-  DEFAULT_INCOME_CATEGORIES,
   getAllExpenseCategories,
   getExcludedExpenseCategories,
   setExcludedExpenseCategories,
@@ -20,8 +18,13 @@ import {
 
 const ImportWizard = dynamic(() => import('@/components/finance/ImportWizard'), { ssr: false });
 
-const TABS = ['Preferences', 'Recurring', 'Categories', 'Data'] as const;
-type Tab = typeof TABS[number];
+const TABS = [
+  { id: 'Preferences' as const, label: 'Preferences', icon: Settings2  },
+  { id: 'Recurring'   as const, label: 'Recurring',   icon: RefreshCw  },
+  { id: 'Categories'  as const, label: 'Categories',  icon: LayoutGrid },
+  { id: 'Data'        as const, label: 'Data',        icon: Database   },
+] as const;
+type Tab = typeof TABS[number]['id'];
 
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
@@ -46,8 +49,8 @@ const DEFAULT_VIEWS = [
 ];
 
 export default function FinanceSettingsPage() {
-  const { state } = useFinance();
-  const [activeTab, setActiveTab] = useState<Tab>('Preferences');
+  const { state, cancelRecurring, cancelAssetSip } = useFinance();
+  const [activeTab, setActiveTab] = useState<Tab>('Preferences' as Tab);
   const [showImport, setShowImport] = useState(false);
 
   // Preferences state
@@ -82,40 +85,55 @@ export default function FinanceSettingsPage() {
     });
   }
 
-  // Real recurring data: liabilities (EMI) + assets with SIP config
-  const recurring = useMemo(() => {
-    const items: { id: string; description: string; amount: number; frequency: string; nextDate: string; category: string; type: 'expense' | 'income' }[] = [];
-    // Liabilities → monthly EMI payments
-    for (const l of state.liabilities) {
-      if (l.emisLeft > 0 && l.nextDueDate) {
-        items.push({
-          id: l.id,
-          description: l.name,
-          amount: l.monthlyEmi,
-          frequency: 'Monthly',
-          nextDate: l.nextDueDate,
-          category: 'Loan EMI',
-          type: 'expense',
-        });
-      }
-    }
-    // Assets with SIP config
-    for (const a of state.assets) {
-      if (a.investmentType === 'sip' && a.sipConfig) {
-        const cfg = a.sipConfig;
-        items.push({
-          id: a.id,
-          description: `SIP – ${a.name}`,
-          amount: a.invested,
-          frequency: cfg.frequency ? (cfg.frequency.charAt(0).toUpperCase() + cfg.frequency.slice(1)) : 'Monthly',
-          nextDate: cfg.startDate ?? new Date().toISOString().split('T')[0],
-          category: 'Investment',
-          type: 'expense',
-        });
-      }
-    }
-    return items;
-  }, [state.liabilities, state.assets]);
+  // ── Recurring data — all 3 sources ────────────────────────────────────────
+  // A. Expense / income recurring templates (not SIP)
+  const recurringTxns = useMemo(
+    () => state.recurringTemplates.filter(t => t.type === 'expense' || t.type === 'income'),
+    [state.recurringTemplates],
+  );
+
+  // B. SIP investments — from assets with investmentType='sip'
+  //    (assets created via AddAssetModal with SIP toggle)
+  //    Plus any SIP-type recurring templates that have an assetId
+  const sipItems = useMemo(() => {
+    // Templates created via /api/assets/[id]/sip route
+    const fromTemplates = state.recurringTemplates.filter(t => t.type === 'SIP');
+    const assetIdsInTemplates = new Set(fromTemplates.map(t => t.assetId).filter(Boolean));
+
+    // Assets added with SIP toggle that don't already have a template
+    const fromAssets = state.assets
+      .filter(a => a.investmentType === 'sip' && !assetIdsInTemplates.has(a.id))
+      .map(a => ({
+        kind:      'asset' as const,
+        id:        a.id,
+        name:      a.name,
+        amount:    a.invested,
+        frequency: a.sipConfig?.frequency ?? 'monthly',
+        startDate: a.sipConfig?.startDate ?? '',
+        category:  a.category,
+      }));
+
+    const fromTpls = fromTemplates.map(t => ({
+      kind:      'template' as const,
+      id:        t.id,
+      assetId:   t.assetId,
+      name:      t.description,
+      amount:    Math.abs(t.amount),
+      frequency: t.recurringConfig.frequency,
+      startDate: t.nextDate,
+      category:  t.category,
+    }));
+
+    return [...fromTpls, ...fromAssets];
+  }, [state.recurringTemplates, state.assets]);
+
+  // C. Active EMI liabilities
+  const emiItems = useMemo(
+    () => state.liabilities.filter(l => l.emisLeft > 0),
+    [state.liabilities],
+  );
+
+  const totalRecurringCount = recurringTxns.length + sipItems.length + emiItems.length;
 
   // Categories state
   const [catType, setCatType] = useState<'expense' | 'income'>('expense');
@@ -193,22 +211,35 @@ export default function FinanceSettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <FinanceTopBar />
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Link
+          href="/orbit/finance"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm transition hover:bg-gray-50"
+        >
+          <ArrowLeft className="h-4 w-4 text-gray-600" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Finance Settings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage your finance preferences and data</p>
+        </div>
+      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-2xl border border-gray-100 bg-gray-50/60 p-1">
-        {TABS.map(t => (
+      {/* Tab bar */}
+      <div className="flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
+        {TABS.map(({ id, label, icon: Icon }) => (
           <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
-              activeTab === t
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex flex-none items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition whitespace-nowrap ${
+              activeTab === id
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
-            {t}
+            <Icon className="h-4 w-4" />
+            {label}
           </button>
         ))}
       </div>
@@ -338,77 +369,123 @@ export default function FinanceSettingsPage() {
       {/* ── Recurring ── */}
       {activeTab === 'Recurring' && (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Recurring Transactions</h3>
-                <p className="text-xs text-gray-400 mt-0.5">{recurring.length} active recurring items</p>
-              </div>
-              <button className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 transition">
-                <RefreshCw className="h-3.5 w-3.5" /> Add recurring
-              </button>
-            </div>
-
-            {/* Desktop table */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-gray-50 bg-gray-50/60">
-                    {['Description', 'Frequency', 'Next Date', 'Amount', ''].map(h => (
-                      <th key={h} className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {recurring.map(r => (
-                    <tr key={r.id} className="group hover:bg-gray-50/50 transition">
-                      <td className="px-5 py-3.5">
-                        <p className="text-sm font-semibold text-gray-900">{r.description}</p>
-                        <p className="text-xs text-gray-400">{r.category}</p>
-                      </td>
-                      <td className="px-5 py-3.5 text-sm text-gray-500">{r.frequency}</td>
-                      <td className="px-5 py-3.5 text-sm text-gray-500">
-                        {new Date(r.nextDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-sm font-bold ${r.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                          {r.type === 'expense' ? '-' : '+'}₹{r.amount.toLocaleString('en-IN')}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3.5">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                          <button className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition"><Pencil className="h-3.5 w-3.5" /></button>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-400 transition"><Trash2 className="h-3.5 w-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile cards */}
-            <div className="sm:hidden divide-y divide-gray-100">
-              {recurring.map(r => (
-                <div key={r.id} className="flex items-center gap-3 px-4 py-3.5">
-                  <div className={`h-9 w-9 flex-none rounded-xl flex items-center justify-center ${r.type === 'expense' ? 'bg-rose-50' : 'bg-emerald-50'}`}>
-                    <RefreshCw className={`h-4 w-4 ${r.type === 'expense' ? 'text-rose-500' : 'text-emerald-600'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">{r.description}</p>
-                    <p className="text-xs text-gray-400">{r.frequency} · {r.category}</p>
-                  </div>
-                  <div className="text-right flex-none">
-                    <p className={`text-sm font-bold ${r.type === 'expense' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {r.type === 'expense' ? '-' : '+'}₹{r.amount.toLocaleString('en-IN')}
-                    </p>
-                    <p className="text-xs text-gray-400">Next {new Date(r.nextDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                  </div>
-                  <button className="h-8 w-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 flex-none"><MoreHorizontal className="h-4 w-4" /></button>
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-gray-400">{totalRecurringCount} active recurring items</p>
           </div>
+
+          {totalRecurringCount === 0 && (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-14 text-center">
+              <RefreshCw className="mb-3 h-7 w-7 text-gray-300" />
+              <p className="text-sm font-medium text-gray-400">No recurring items yet</p>
+              <p className="mt-1 text-xs text-gray-300">Add recurring transactions, SIP investments, or loans to see them here.</p>
+            </div>
+          )}
+
+          {/* A. Recurring income / expense transactions */}
+          {recurringTxns.length > 0 && (
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+                <RefreshCw className="h-3.5 w-3.5 text-gray-400" />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Transactions</h3>
+                <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">{recurringTxns.length}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {recurringTxns.map(t => (
+                  <div key={t.id} className="group flex items-center gap-3 px-4 py-3 hover:bg-gray-50/50 transition">
+                    <div className={`h-8 w-8 flex-none rounded-xl flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                      {t.type === 'income'
+                        ? <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+                        : <ArrowDownLeft className="h-3.5 w-3.5 text-rose-500" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-800">{t.description}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {t.category} · {t.recurringConfig.frequency.charAt(0).toUpperCase() + t.recurringConfig.frequency.slice(1)}
+                        · Next {t.nextDate}
+                      </p>
+                    </div>
+                    <p className={`flex-none text-sm font-semibold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      {t.type === 'income' ? '+' : '-'}₹{Math.abs(t.amount).toLocaleString('en-IN')}
+                    </p>
+                    <button
+                      onClick={() => cancelRecurring(t.id)}
+                      title="Cancel this recurring"
+                      className="h-7 w-7 flex-none flex items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* B. SIP investments */}
+          {sipItems.length > 0 && (
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+                <TrendingUp className="h-3.5 w-3.5 text-teal-500" />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Investments (SIP)</h3>
+                <span className="ml-auto rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-600">{sipItems.length}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {sipItems.map(s => (
+                  <div key={s.id} className="group flex items-center gap-3 px-4 py-3 hover:bg-gray-50/50 transition">
+                    <div className="h-8 w-8 flex-none rounded-xl flex items-center justify-center bg-teal-50">
+                      <TrendingUp className="h-3.5 w-3.5 text-teal-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-800">{s.name}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {s.category} · {s.frequency.charAt(0).toUpperCase() + s.frequency.slice(1)}
+                        {s.startDate ? ` · Since ${s.startDate}` : ''}
+                      </p>
+                    </div>
+                    <p className="flex-none text-sm font-semibold text-teal-700">
+                      ₹{s.amount.toLocaleString('en-IN')}
+                    </p>
+                    <button
+                      onClick={() => s.kind === 'template' ? cancelRecurring(s.id) : cancelAssetSip(s.id)}
+                      title="Cancel SIP"
+                      className="h-7 w-7 flex-none flex items-center justify-center rounded-lg text-gray-300 hover:bg-rose-50 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* C. EMI liabilities */}
+          {emiItems.length > 0 && (
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+                <Landmark className="h-3.5 w-3.5 text-orange-500" />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Liabilities (EMI)</h3>
+                <span className="ml-auto rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">{emiItems.length}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {emiItems.map(l => (
+                  <div key={l.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-8 w-8 flex-none rounded-xl flex items-center justify-center bg-orange-50">
+                      <Landmark className="h-3.5 w-3.5 text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-800">{l.name}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {l.lender ? `${l.lender} · ` : ''}Monthly · {l.emisLeft} EMIs left
+                        {l.nextDueDate ? ` · Due ${l.nextDueDate}` : ''}
+                      </p>
+                    </div>
+                    <p className="flex-none text-sm font-semibold text-orange-600">
+                      ₹{l.monthlyEmi.toLocaleString('en-IN')}/mo
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -452,9 +529,9 @@ export default function FinanceSettingsPage() {
                             className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
                               isSelected
                                 ? 'bg-emerald-100 dark:bg-emerald-900/50 ring-1 ring-emerald-400'
-                                : `${opt.color} hover:bg-gray-100 dark:hover:bg-gray-700`
+                                : `hover:bg-gray-100 dark:hover:bg-gray-700`
                             }`}>
-                            <Icon className="h-4 w-4" />
+                            <Icon className={`h-4 w-4 ${opt.color}`} />
                           </button>
                         );
                       })}
@@ -480,15 +557,14 @@ export default function FinanceSettingsPage() {
                 {catType === 'expense' ? 'Expense' : 'Income'} Categories
               </p>
               <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
-                {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).length + dbCats.filter(c => c.type === catType).length} total
+                {(catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).length + dbCats.filter(c => c.type === catType).length} total
               </span>
             </div>
 
             {/* Default (built-in) categories */}
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
-              {(catType === 'expense' ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES).map(name => {
-                const allCats = catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
-                const catDef = allCats.find(c => c.name === name);
+              {(catType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(catDef => {
+                const name = catDef.name;
                 const CatIcon = catDef?.icon ?? Package;
                 const iconColor = catDef?.color ?? 'text-gray-500';
                 const iconBg = catDef?.bg ?? 'bg-gray-100';

@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, X, Dumbbell, Droplets, Apple, Activity, Loader2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
+import { useHealth } from '@/lib/healthStore';
 
 // ── Quick Water Log modal ─────────────────────────────────────────────────
 
-function QuickWaterModal({ onClose }: { onClose: () => void }) {
+function QuickWaterModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [ml, setMl] = useState('250');
   const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().split('T')[0];
@@ -26,6 +27,7 @@ function QuickWaterModal({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error();
       toast(`💧 +${water}ml logged!`);
+      onSaved();
       onClose();
     } catch {
       toast('Failed to log water', 'error');
@@ -75,12 +77,18 @@ function QuickWaterModal({ onClose }: { onClose: () => void }) {
 
 // ── Quick Food Log modal ──────────────────────────────────────────────────
 
-function QuickFoodModal({ onClose }: { onClose: () => void }) {
+function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [selected, setSelected] = useState<any | null>(null);
-  const [mealType, setMealType] = useState('snack');
+  const [mealType, setMealType] = useState(() => {
+    const h = new Date().getHours();
+    if (h < 11) return 'morning';
+    if (h < 14) return 'noon';
+    if (h < 19) return 'evening';
+    return 'night';
+  });
   const [logging, setLogging] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = new Date().toISOString().split('T')[0];
@@ -110,13 +118,28 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
     if (!selected) return;
     setLogging(true);
     try {
-      const r = await fetch('/api/food-logs', {
+      const r = await fetch('/api/health/food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: today, foodName: selected.name, mealType, ...selected }),
+        body: JSON.stringify({
+          date: today,
+          name: selected.name,
+          mealType,
+          servingSize: selected.servingSize ?? null,
+          calories: selected.calories ?? null,
+          proteinG: selected.protein ?? null,
+          carbsG: selected.carbs ?? null,
+          fatG: selected.fats ?? null,
+          saturatedFatG: selected.saturatedFat ?? null,
+          sodiumMg: selected.sodium ?? null,
+          potassiumMg: selected.potassium ?? null,
+          fiberG: selected.fiber ?? null,
+        }),
       });
       if (!r.ok) throw new Error();
       toast('🍎 Food logged!');
+      window.dispatchEvent(new CustomEvent('health:food-refresh'));
+      onSaved();
       onClose();
     } catch {
       toast('Failed to log food', 'error');
@@ -203,11 +226,16 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
               {/* Meal type */}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Meal</p>
-                <div className="flex gap-2">
-                  {['breakfast', 'lunch', 'dinner', 'snack'].map(m => (
-                    <button key={m} onClick={() => setMealType(m)}
-                      className={`flex-1 rounded-xl py-1.5 text-xs font-medium capitalize transition ${mealType === m ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                      {m}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { key: 'morning', emoji: '🌅' },
+                    { key: 'noon',    emoji: '☀️' },
+                    { key: 'evening', emoji: '🌇' },
+                    { key: 'night',   emoji: '🌙' },
+                  ].map(({ key, emoji }) => (
+                    <button key={key} onClick={() => setMealType(key)}
+                      className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-xs font-medium capitalize transition ${mealType === key ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      <span>{emoji}</span>{key}
                     </button>
                   ))}
                 </div>
@@ -234,7 +262,7 @@ function QuickFoodModal({ onClose }: { onClose: () => void }) {
 
 // ── Quick Workout modal ───────────────────────────────────────────────────
 
-function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
+function QuickWorkoutModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({ name: '', type: 'running', durationMins: '30', caloriesBurned: '' });
   const [saving, setSaving] = useState(false);
@@ -265,6 +293,8 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error();
       toast('💪 Workout logged!');
+      window.dispatchEvent(new CustomEvent('health:workout-refresh'));
+      onSaved();
       onClose();
     } catch {
       toast('Failed to save', 'error');
@@ -328,7 +358,7 @@ function QuickWorkoutModal({ onClose }: { onClose: () => void }) {
 
 // ── Quick Exercise modal ──────────────────────────────────────────────────
 
-function QuickExerciseModal({ onClose }: { onClose: () => void }) {
+function QuickExerciseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({ name: '', sets: '', reps: '', weight: '' });
   const [saving, setSaving] = useState(false);
@@ -355,6 +385,8 @@ function QuickExerciseModal({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error();
       toast('🏋️ Exercise logged!');
+      window.dispatchEvent(new CustomEvent('health:workout-refresh'));
+      onSaved();
       onClose();
     } catch {
       toast('Failed to save', 'error');
@@ -424,6 +456,7 @@ export default function HealthFAB() {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const { reload } = useHealth();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -459,10 +492,10 @@ export default function HealthFAB() {
         </button>
       </div>
 
-      {modal === 'water'    && <QuickWaterModal    onClose={closeModal} />}
-      {modal === 'food'     && <QuickFoodModal     onClose={closeModal} />}
-      {modal === 'workout'  && <QuickWorkoutModal  onClose={closeModal} />}
-      {modal === 'exercise' && <QuickExerciseModal onClose={closeModal} />}
+      {modal === 'water'    && <QuickWaterModal    onClose={closeModal} onSaved={reload} />}
+      {modal === 'food'     && <QuickFoodModal     onClose={closeModal} onSaved={reload} />}
+      {modal === 'workout'  && <QuickWorkoutModal  onClose={closeModal} onSaved={reload} />}
+      {modal === 'exercise' && <QuickExerciseModal onClose={closeModal} onSaved={reload} />}
     </>
   );
 }

@@ -36,26 +36,27 @@ export default function AccountsPage() {
       .filter(a => a.type !== 'Credit Card')
       .reduce((s, a) => s + a.balance, 0);
 
-    // Credit Used = net debit on all credit card accounts from transactions
-    // (expenses reduce balance, OB/BA adjustments are included naturally)
-    const creditAccIds = new Set(
-      state.accounts.filter(a => a.type === 'Credit Card').map(a => a.id)
-    );
-    const creditNet = state.transactions
-      .filter(t => t.accountId && creditAccIds.has(t.accountId))
-      .reduce((s, t) => s + t.amount, 0); // expenses negative, income positive
-    // Positive owed = negative net (spent more than paid/adjusted)
-    const creditUsed = Math.max(-creditNet, 0);
+    // Credit Used = sum of absolute negative balances on credit card accounts only
+    // (balance < 0 means money owed; excludes wallets, banks, assets)
+    const creditUsed = state.accounts
+      .filter(a => a.type === 'Credit Card' && a.balance < 0)
+      .reduce((s, a) => s + Math.abs(a.balance), 0);
 
-    // Total Balance = Balance - Credit Used
+    // Total Balance = liquid balance minus credit card debt
     const totalBalance = liquidBalance - creditUsed;
 
-    // Spend = expenses excluding Opening Balance, Balance Adjustment, and user-excluded categories
-    const today2 = new Date().toISOString().slice(0, 10);
-    const SPEND_SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
+    // Spend = current month expenses only (date <= today, same month/year)
+    const now2         = new Date();
+    const today2       = now2.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const monthPrefix2 = today2.slice(0, 7); // YYYY-MM
     const excludedCats = getExcludedExpenseCategories();
     const totalExpenses = state.transactions
-      .filter(t => t.type === 'expense' && t.date <= today2 && !SPEND_SYSTEM_CATS.includes(t.category) && !excludedCats.includes(t.category))
+      .filter(t =>
+        t.type === 'expense' &&
+        t.date <= today2 &&
+        t.date.startsWith(monthPrefix2) &&
+        !excludedCats.includes(t.category)
+      )
       .reduce((s, t) => s + Math.abs(t.amount), 0);
 
     const byType: Record<Account['type'], Account[]> = {
@@ -73,7 +74,7 @@ export default function AccountsPage() {
   const metrics = [
     { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'All accounts (excl. credit)' },
     { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Net credit card spend' },
-    { label: 'Spend',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'All expenses (total)' },
+    { label: 'Spend',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month\'s expenses' },
   ];
 
   const filteredByType = useMemo(() => {
