@@ -161,6 +161,31 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
         dueDate = d.toISOString().split('T')[0];
       }
 
+      // Find or create the "Goals" task list
+      let listId: string | null = null;
+      try {
+        const listsRes = await fetch('/api/task-lists');
+        if (listsRes.ok) {
+          const lists = await listsRes.json();
+          const existing = Array.isArray(lists)
+            ? lists.find((l: any) => l.name.toLowerCase() === 'goals')
+            : null;
+          if (existing) {
+            listId = existing.id;
+          } else {
+            const createRes = await fetch('/api/task-lists', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'Goals', emoji: '🎯', color: '#6366F1' }),
+            });
+            if (createRes.ok) {
+              const newList = await createRes.json();
+              listId = newList.id;
+            }
+          }
+        }
+      } catch { /* fall back to inbox */ }
+
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,8 +195,8 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
           priority: 'medium',
           dueDate,
           dueTime: taskTime || null,
-          tags: [`goal:${goal.id}`],
-          listId: null,
+          tags: [],
+          listId,
         }),
       });
       if (!res.ok) throw new Error('Failed to create task');
