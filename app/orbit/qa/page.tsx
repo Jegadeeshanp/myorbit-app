@@ -1,11 +1,63 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Play, CheckCircle2, XCircle, Clock, Loader2,
   ChevronDown, ChevronRight, RotateCcw, PlayCircle,
   ShieldCheck, Zap, Layers, GitBranch, FlaskConical,
+  Lock, Unlock, FlaskConical as Flask,
 } from 'lucide-react';
+
+const QA_STORAGE_KEY = 'myorbit_qa_enabled';
+
+function QAGate({ children }: { children: React.ReactNode }) {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setEnabled(localStorage.getItem(QA_STORAGE_KEY) === 'true');
+  }, []);
+
+  const toggle = () => {
+    const next = !enabled;
+    localStorage.setItem(QA_STORAGE_KEY, String(next));
+    setEnabled(next);
+  };
+
+  if (enabled === null) return null; // hydrating
+
+  if (!enabled) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-6 text-center px-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-800 border border-gray-700">
+          <Lock className="h-7 w-7 text-gray-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-white">QA Dashboard is disabled</h1>
+          <p className="mt-1 text-sm text-gray-500">Enable it to run tests. Disable again when done.</p>
+        </div>
+        <button
+          onClick={toggle}
+          className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition"
+        >
+          <Unlock className="h-4 w-4" /> Enable QA Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {children}
+      {/* Floating disable button */}
+      <button
+        onClick={toggle}
+        className="fixed bottom-6 right-6 flex items-center gap-2 rounded-xl border border-red-800 bg-gray-900 px-4 py-2 text-xs font-medium text-red-400 hover:bg-red-950 transition shadow-lg z-50"
+      >
+        <Lock className="h-3.5 w-3.5" /> Disable QA
+      </button>
+    </>
+  );
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -664,7 +716,11 @@ function StatusBadge({ status }: { status: Status }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 
-export default function QADashboard() {
+export default function QAPage() {
+  return <QAGate><QADashboard /></QAGate>;
+}
+
+function QADashboard() {
   const [results, setResults] = useState<Record<string, TestResult>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [collapsedLayers, setCollapsedLayers] = useState<Record<number, boolean>>({});
