@@ -216,9 +216,7 @@ export default function Orbit() {
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
         <div className="text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm">
-            ⭑
-          </div>
+          <img src="/icons/top-icon.png" alt="MyOrbit" className="h-14 w-14 rounded-2xl object-cover shadow-sm" />
           <h1 className="mt-6 text-4xl font-bold tracking-tight sm:text-5xl">MyOrbit</h1>
           {userName && (
             <p className="mt-2 text-base text-emerald-700 font-medium">Welcome back, {userName}</p>

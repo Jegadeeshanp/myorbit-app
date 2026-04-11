@@ -881,7 +881,7 @@ export default function TasksPage() {
               <span className="text-lg font-bold text-gray-900 dark:text-white">Tasks</span>
             </button>
             <Link href="/orbit" className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-semibold text-gray-700 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800 transition">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 text-xs font-bold text-white shadow-sm">★</div>
+              <img src="/icons/top-icon.png" alt="MyOrbit" className="h-6 w-6 flex-none rounded-lg object-cover shadow-sm" />
               <span>MyOrbit</span>
             </Link>
           </div>
@@ -906,7 +906,7 @@ export default function TasksPage() {
             <p className="mt-0.5 hidden text-sm text-gray-500 dark:text-gray-400 sm:block">{view === 'calendar' ? 'Plan and review tasks across calendar views.' : listSubtitle}</p>
           </div>
           <Link href="/orbit" className="hidden md:inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800">
-            <div className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 text-sm font-bold leading-none text-white shadow-sm">★</div>
+            <img src="/icons/top-icon.png" alt="MyOrbit" className="h-7 w-7 flex-none rounded-lg object-cover shadow-sm" />
             <span className="text-base font-semibold text-gray-900 dark:text-white">MyOrbit</span>
           </Link>
         </div>

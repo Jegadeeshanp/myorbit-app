@@ -925,12 +925,8 @@ export default function GoalsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Your Goals</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track your life's GPS — Goal, Process, System</p>
-        </div>
+      {/* Actions row */}
+      <div className="flex justify-end">
         <button
           onClick={() => setShowModal(true)}
           className="hidden md:flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition"
