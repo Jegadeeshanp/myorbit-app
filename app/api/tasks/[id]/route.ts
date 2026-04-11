@@ -20,18 +20,35 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   }
 }
 
+const VALID_TASK_STATUSES = ['active', 'completed', 'wont_do'] as const;
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const userId = await requireUserId();
     const body = await req.json();
+
+    // Support isDone boolean as alias for status
+    let resolvedStatus = body.status;
+    if (body.isDone !== undefined && body.status === undefined) {
+      resolvedStatus = body.isDone ? 'completed' : 'active';
+    }
+
+    if (resolvedStatus !== undefined && !VALID_TASK_STATUSES.includes(resolvedStatus)) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${VALID_TASK_STATUSES.join(', ')}` },
+        { status: 400 },
+      );
+    }
+
     const result = await prisma.task.updateMany({
       where: { id: id, userId },
       data: {
         ...(body.title !== undefined && { title: body.title }),
         ...(body.notes !== undefined && { notes: body.notes }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.status === 'completed' && { completedAt: new Date() }),
+        ...(resolvedStatus !== undefined && { status: resolvedStatus }),
+        ...(resolvedStatus === 'completed' && { completedAt: new Date() }),
+        ...(resolvedStatus === 'active' && { completedAt: null }),
         ...(body.priority !== undefined && { priority: body.priority }),
         ...(body.dueDate !== undefined && { dueDate: body.dueDate }),
         ...(body.dueTime !== undefined && { dueTime: body.dueTime }),

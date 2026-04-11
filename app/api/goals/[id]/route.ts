@@ -23,11 +23,19 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   }
 }
 
+const VALID_GOAL_STATUSES = ['active', 'completed', 'paused'] as const;
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const userId = await requireUserId();
     const body = await req.json();
+    if (body.status !== undefined && !VALID_GOAL_STATUSES.includes(body.status)) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${VALID_GOAL_STATUSES.join(', ')}` },
+        { status: 400 },
+      );
+    }
     const result = await prisma.goal.updateMany({
       where: { id: id, userId },
       data: {
