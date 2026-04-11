@@ -6,7 +6,6 @@ import { StandardCard, CreditCardCard } from '@/components/finance/AccountCard';
 import AddAccountModal from '@/components/finance/AddAccountModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { Account, useFinance } from '@/lib/financeStore';
-import { getExcludedExpenseCategories } from '@/lib/customCategoryStore';
 import { AccountsSkeleton } from '@/components/finance/SkeletonLoader';
 
 function fmt(v: number) {
@@ -27,36 +26,35 @@ export default function AccountsPage() {
   const { state, addAccount } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [mobileSearch, setMobileSearch] = useState(false);
 
   // All hooks must be called before any early return (React rules of hooks)
   const { totalBalance, liquidBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
-    // Balance = sum of all non-credit accounts
-    const liquidBalance = state.accounts
-      .filter(a => a.type !== 'Credit Card')
-      .reduce((s, a) => s + a.balance, 0);
+    let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;
 
-    // Credit Used = sum of absolute negative balances on credit card accounts only
-    // (balance < 0 means money owed; excludes wallets, banks, assets)
-    const creditUsed = state.accounts
-      .filter(a => a.type === 'Credit Card' && a.balance < 0)
-      .reduce((s, a) => s + Math.abs(a.balance), 0);
+    state.accounts.forEach(a => {
+      if (a.type === 'Bank')        bank   += a.balance;
+      if (a.type === 'Credit Card') credit += a.balance;
+      if (a.type === 'Wallet')      wallet += a.balance;
+      if (a.type === 'Cash')        cash   += a.balance;
+      if (a.type === 'Debit Card')  debit  += a.balance;
+    });
 
-    // Total Balance = liquid balance minus credit card debt
-    const totalBalance = liquidBalance - creditUsed;
+    const creditUsed    = Math.abs(Math.min(credit, 0));
+    // Liquid = Bank + Debit + Wallets + Cash (no credit)
+    const liquidBalance = bank + wallet + cash + debit;
+    // Total = liquid minus what's owed on credit cards
+    const totalBalance  = liquidBalance - creditUsed;
 
-    // Spend = current month expenses only (date <= today, same month/year)
-    const now2         = new Date();
-    const today2       = now2.toLocaleDateString('en-CA'); // YYYY-MM-DD
-    const monthPrefix2 = today2.slice(0, 7); // YYYY-MM
-    const excludedCats = getExcludedExpenseCategories();
+    // Current-month expenses, excluding future-dated transactions (matches Transaction page "Spent")
+    const now2 = new Date();
+    const today2 = now2.toISOString().slice(0, 10);
     const totalExpenses = state.transactions
-      .filter(t =>
-        t.type === 'expense' &&
-        t.date <= today2 &&
-        t.date.startsWith(monthPrefix2) &&
-        !excludedCats.includes(t.category)
-      )
+      .filter(t => {
+        if (t.type !== 'expense') return false;
+        if (t.date > today2) return false; // exclude upcoming
+        const d = new Date(t.date);
+        return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear();
+      })
       .reduce((s, t) => s + Math.abs(t.amount), 0);
 
     const byType: Record<Account['type'], Account[]> = {
@@ -72,9 +70,9 @@ export default function AccountsPage() {
   }, [state.accounts, state.transactions]);
 
   const metrics = [
-    { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'All accounts (excl. credit)' },
-    { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Net credit card spend' },
-    { label: 'Spend',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month\'s expenses' },
+    { label: 'Balance',     value: fmt(liquidBalance), icon: Landmark,     color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', sub: 'Bank + Wallets + Cash' },
+    { label: 'Credit Used', value: fmt(creditUsed),    icon: CreditCard,   color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    sub: 'Outstanding balance' },
+    { label: 'Spent',       value: fmt(totalExpenses), icon: TrendingDown, color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  sub: 'This month' },
   ];
 
   const filteredByType = useMemo(() => {
@@ -94,10 +92,10 @@ export default function AccountsPage() {
       <FinanceTopBar />
 
       {/* ── Primary balance card ── */}
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 px-7 py-6 shadow-md">
-        <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300/70">Total Balance</p>
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
+        <p className="text-xs font-semibold uppercase tracking-wider text-white">Total Balance</p>
         <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
-        <p className="mt-1 text-xs text-white/80">Balance minus credit used</p>
+        <p className="mt-1 text-xs text-white/80">Liquid assets minus credit used</p>
       </div>
 
       {/* ── 3 metric cards ── */}
@@ -117,32 +115,16 @@ export default function AccountsPage() {
       </div>
 
       {/* ── Search (left) + Add (right) ── */}
-      <div className="flex items-center gap-2">
-        {mobileSearch ? (
-          <div className="flex sm:hidden flex-1 relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
-              onBlur={() => { if (!search) setMobileSearch(false); }}
-              placeholder="Search accounts…"
-              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
-          </div>
-        ) : (
-          <button onClick={() => setMobileSearch(true)}
-            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
-            <Search className="h-4 w-4" />
-          </button>
-        )}
-        <div className="relative hidden sm:flex w-64 flex-none">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search accounts…"
             className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
         </div>
-        <div className="ml-auto">
-          <button type="button" onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
-            <PlusCircle className="h-4 w-4" /> Add account
-          </button>
-        </div>
+        <button type="button" onClick={() => setModalOpen(true)}
+          className="inline-flex flex-none items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+          <PlusCircle className="h-4 w-4" /> Add account
+        </button>
       </div>
 
       {/* ── Bank Accounts ── */}

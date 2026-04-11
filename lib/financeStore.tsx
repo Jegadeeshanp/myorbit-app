@@ -8,29 +8,13 @@ import { useSession } from 'next-auth/react';
 import type {
   Account as AccountType, Transaction as TransactionType,
   Asset as AssetType, Liability as LiabilityType, BudgetCategory,
-  RecurringConfig,
 } from '@/lib/financeData';
-import { syncCategoriesFromDB } from '@/lib/customCategoryStore';
 
 export type AccountTypeName = 'Bank' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Wallet';
 export type Account = AccountType & { creditLimit?: number };
 export type Transaction = TransactionType;
 export type Asset = AssetType;
 export type Liability = LiabilityType;
-
-export type RecurringTemplate = {
-  id: string;
-  accountId?: string;
-  assetId?: string;       // set for asset SIP templates
-  category: string;
-  description: string;
-  notes?: string;
-  amount: number;
-  type: 'expense' | 'income' | 'SIP';
-  recurringConfig: RecurringConfig;
-  nextDate: string;
-  occurrenceCount: number;
-};
 
 // ── Serialization helpers ──────────────────────────────────────────────────
 
@@ -46,16 +30,6 @@ function serializeAsset(a: Record<string, any>) {
   }
   // null / undefined → key omitted entirely
   return out;
-}
-
-// ── Balance-adjustment guard ───────────────────────────────────────────────
-// Opening balance / adjustment transactions MUST only be created for Accounts.
-// Pass entityType explicitly; the function throws for assets or liabilities to
-// prevent silent side-effects from spreading to other entity types.
-function requireAccountEntity(entityType: 'account' | 'asset' | 'liability'): void {
-  if (entityType !== 'account') {
-    throw new Error(`balanceAdjustment is not allowed for entityType="${entityType}". Only "account" is permitted.`);
-  }
 }
 
 // ── API helper ─────────────────────────────────────────────────────────────
@@ -82,7 +56,6 @@ type FinanceState = {
   assets: Asset[];
   liabilities: Liability[];
   budgets: BudgetCategory[];
-  recurringTemplates: RecurringTemplate[];
   loadState: LoadState;
 };
 
@@ -104,45 +77,12 @@ type FinanceAction =
   | { type: 'deleteLiability'; payload: string }
   | { type: 'addBudget'; payload: BudgetCategory }
   | { type: 'updateBudget'; payload: BudgetCategory }
-  | { type: 'deleteBudget'; payload: string }
-  | { type: 'updateRecurringTemplate'; payload: RecurringTemplate }
-  | { type: 'deleteRecurringTemplate'; payload: string };
+  | { type: 'deleteBudget'; payload: string };
 
 const defaultState: FinanceState = {
   accounts: [], transactions: [], assets: [],
-  liabilities: [], budgets: [], recurringTemplates: [], loadState: 'idle',
+  liabilities: [], budgets: [], loadState: 'idle',
 };
-
-function calculateBudgetSpentForCurrentMonth(budget: BudgetCategory, transactions: Transaction[]) {
-  const now = new Date();
-  // Only count transactions that have already occurred (date <= today)
-  // Future-dated transactions are "upcoming", not "spent"
-  const todayStr = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
-  const cats = budget.category
-    ? budget.category.split(',').map(c => c.trim()).filter(Boolean)
-    : [];
-  const month = now.getMonth();
-  const year = now.getFullYear();
-  return transactions
-    .filter(t => t.type === 'expense')
-    .filter(t => t.date <= todayStr) // exclude upcoming/future-dated
-    .filter(t => {
-      const d = new Date(t.date);
-      return d.getMonth() === month && d.getFullYear() === year;
-    })
-    .filter(t => {
-      if (cats.length === 0) return true;
-      return cats.includes(t.category) || budget.name === t.category;
-    })
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-}
-
-function recalcBudgetsForCurrentMonth(budgets: BudgetCategory[], transactions: Transaction[]) {
-  return budgets.map(b => ({
-    ...b,
-    spent: Math.round(calculateBudgetSpentForCurrentMonth(b, transactions)),
-  }));
-}
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
@@ -170,11 +110,6 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'updateBudget': return { ...state, budgets: state.budgets.map(b => b.id === action.payload.id ? action.payload : b) };
     case 'deleteBudget': return { ...state, budgets: state.budgets.filter(b => b.id !== action.payload) };
 
-    case 'updateRecurringTemplate':
-      return { ...state, recurringTemplates: state.recurringTemplates.map(r => r.id === action.payload.id ? action.payload : r) };
-    case 'deleteRecurringTemplate':
-      return { ...state, recurringTemplates: state.recurringTemplates.filter(r => r.id !== action.payload) };
-
     default: return state;
   }
 }
@@ -183,10 +118,9 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
 
 type FinanceContextValue = {
   state: FinanceState;
-  addAccount:               (a: Omit<Account, 'id'>)        => Promise<void>;
-  updateAccount:            (a: Account)                     => Promise<void>;
-  deleteAccount:            (id: string)                     => Promise<void>;
-  reconcileOpeningBalance:  (accountId: string)              => Promise<void>;
+  addAccount:             (a: Omit<Account, 'id'>)        => Promise<void>;
+  updateAccount:          (a: Account)                     => Promise<void>;
+  deleteAccount:          (id: string)                     => Promise<void>;
   addTransaction:         (t: Omit<Transaction, 'id'>)     => Promise<void>;
   updateTransaction:      (t: Transaction)                  => Promise<void>;
   deleteTransaction:      (id: string)                     => Promise<void>;
@@ -200,12 +134,6 @@ type FinanceContextValue = {
   addBudget:              (b: Omit<BudgetCategory, 'id'>)  => Promise<void>;
   updateBudget:           (b: BudgetCategory)              => Promise<void>;
   deleteBudget:           (id: string)                     => Promise<void>;
-  updateRecurring:        (id: string, data: Partial<Pick<RecurringTemplate, 'description' | 'category' | 'notes' | 'amount' | 'type' | 'nextDate' | 'recurringConfig'>>) => Promise<void>;
-  cancelRecurring:        (id: string)                     => Promise<void>;
-  investAsset:            (assetId: string, amount: number, type: 'LUMPSUM' | 'SIP' | 'REDEMPTION', date: string, accountId?: string, note?: string) => Promise<void>;
-  setupAssetSip:          (assetId: string, amount: number, dayOfMonth: number, accountId?: string, note?: string) => Promise<void>;
-  cancelAssetSip:         (assetId: string)                => Promise<void>;
-  fixAccountBalance:      (accountId: string)              => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -221,44 +149,19 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     if (status === 'unauthenticated') dispatch({ type: 'reset' });
   }, [status]);
 
-  // Pick up transactions added via AiTransactionButton (which bypasses the store)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const tx = (e as CustomEvent).detail;
-      if (tx?.id) dispatch({ type: 'addTransaction', payload: tx });
-    };
-    window.addEventListener('orbit:transaction-added', handler);
-    return () => window.removeEventListener('orbit:transaction-added', handler);
-  }, []);
-
   // Only load data once the session is authenticated
   useEffect(() => {
     if (status !== 'authenticated') return;
 
     dispatch({ type: 'setLoadState', payload: 'loading' });
-
-    // Run one-time migration to update legacy category-based types to proper types.
-    // Fire-and-forget — load proceeds regardless of migration outcome.
-    fetch('/api/migrate-transactions', { method: 'POST' }).catch(() => {});
-
-    // Sync custom categories from DB into localStorage so they survive across devices/sessions.
-    syncCategoriesFromDB().catch(() => {});
-
-    // Fire-and-forget: process any overdue recurring transactions immediately
-    // so users don't need to wait for the 01:00 UTC cron.
-    fetch('/api/recurring-transactions', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
-
     Promise.all([
       api<Account[]>('/api/accounts'),
       api<Transaction[]>('/api/transactions'),
       api<Asset[]>('/api/assets'),
       api<Liability[]>('/api/liabilities'),
       api<BudgetCategory[]>('/api/budgets'),
-      // Non-critical — don't let a recurring-templates failure block finance data
-      api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => [] as RecurringTemplate[]),
-    ]).then(([accounts, transactions, assets, liabilities, budgets, recurringTemplates]) => {
-      const adjustedBudgets = recalcBudgetsForCurrentMonth(budgets, transactions);
-      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets: adjustedBudgets, recurringTemplates } });
+    ]).then(([accounts, transactions, assets, liabilities, budgets]) => {
+      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets } });
     }).catch((err) => {
       console.error('Failed to load finance data:', err);
       dispatch({ type: 'setLoadState', payload: 'error' });
@@ -269,7 +172,6 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     state,
 
     addAccount: async (a) => {
-      requireAccountEntity('account');
       const created = await api<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(a) });
       dispatch({ type: 'addAccount', payload: created });
       // Record Opening Balance transaction when account has a non-zero starting balance.
@@ -284,8 +186,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               date: today,
               category: 'Opening Balance',
               description: 'Opening Balance',
-              amount: created.balance,   // signed — negative for credit cards, positive for savings
-              type: 'opening_balance',
+              amount: created.balance,
+              type: created.balance > 0 ? 'income' : 'expense',
               accountId: created.id,
             }),
           });
@@ -294,7 +196,6 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       }
     },
     updateAccount: async (a) => {
-      requireAccountEntity('account');
       const existing = state.accounts.find(acc => acc.id === a.id);
       const updated = await api<Account>(`/api/accounts/${a.id}`, { method: 'PATCH', body: JSON.stringify(a) });
       dispatch({ type: 'updateAccount', payload: updated });
@@ -312,7 +213,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               category: 'Balance Adjustment',
               description: 'Balance Adjustment',
               amount: diff,
-              type: 'adjustment',
+              type: diff > 0 ? 'income' : 'expense',
               accountId: a.id,
             }),
           });
@@ -324,65 +225,6 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       await api(`/api/accounts/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteAccount', payload: id });
     },
-    reconcileOpeningBalance: async (accountId) => {
-      const account = state.accounts.find(a => a.id === accountId);
-      if (!account) return;
-      const txNetBalance = state.transactions
-        .filter(t => t.accountId === accountId)
-        .reduce((s, t) => {
-          if (t.type === 'income') return s + Math.abs(t.amount);
-          if (t.type === 'expense') return s - Math.abs(t.amount);
-          if (t.type === 'transfer') return s + t.amount; // negative for source, positive for destination
-          if (t.type === 'opening_balance') return s + t.amount; // always positive
-          if (t.type === 'adjustment') return s + t.amount; // positive or negative diff
-          return s;
-        }, 0);
-      const diff = account.balance - txNetBalance;
-      if (Math.abs(diff) < 1) return;
-      const today  = new Date().toISOString().slice(0, 10);
-      const amount = diff;   // signed — negative for credit cards, positive for savings
-      const existing = state.transactions
-        .filter(t => t.accountId === accountId && t.type === 'opening_balance')
-        .find(t => t.date === today);
-      if (existing) {
-        if (existing.amount !== amount) {
-          const updatedTx = await api<Transaction>(`/api/transactions/${existing.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-              amount,
-            }),
-          });
-          dispatch({ type: 'updateTransaction', payload: updatedTx });
-        }
-        return;
-      }
-      const txRow = await api<Transaction>('/api/transactions', {
-        method: 'POST',
-        body: JSON.stringify({
-          accountId,
-          date: today,
-          category: 'Opening Balance',
-          description: 'Opening balance',
-          amount,
-          type: 'opening_balance',
-        }),
-      });
-      dispatch({ type: 'addTransaction', payload: txRow });
-      // Intentionally NOT patching account.balance — it is already correct
-    },
-
-    fixAccountBalance: async (accountId) => {
-      const result = await api<{
-        ok: boolean;
-        diff: number;
-        message?: string;
-        transaction?: Transaction;
-      }>(`/api/accounts/${accountId}/fix-balance`, { method: 'POST' });
-      // If a new adjustment transaction was created, add it to state
-      if (result.transaction) {
-        dispatch({ type: 'addTransaction', payload: result.transaction });
-      }
-    },
 
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
@@ -390,51 +232,38 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       // Update linked account balance only if transaction date is today or in the past
       // Future-dated recurring transactions appear in the list but don't affect balance yet
       const today = new Date().toISOString().slice(0, 10);
-      if (created.date <= today) {
-        // income / expense / transfer: update the linked account by the transaction amount
-        // (transfer uses signed amount: negative for source side, positive for destination side)
-        // opening_balance / adjustment: caller manages account balance directly — skip here
-        if (t.accountId && (t.type === 'income' || t.type === 'expense' || t.type === 'transfer')) {
-          const account = state.accounts.find(a => a.id === t.accountId);
-          if (account) {
-            try {
-              const updated = await api<Account>(`/api/accounts/${account.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ balance: account.balance + created.amount }),
-              });
-              dispatch({ type: 'updateAccount', payload: updated });
-            } catch { /* non-critical */ }
-          }
+      if (t.accountId && (t.type === 'income' || t.type === 'expense') && created.date <= today) {
+        const account = state.accounts.find(a => a.id === t.accountId);
+        if (account) {
+          try {
+            const updated = await api<Account>(`/api/accounts/${account.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ balance: account.balance + created.amount }),
+            });
+            dispatch({ type: 'updateAccount', payload: updated });
+          } catch { /* non-critical */ }
         }
-
-        // Recalculate spent for ALL budgets from scratch using current-month expense transactions
+        // Auto-update matching budget's spent amount when an expense is recorded
+        // Only update if the transaction is in the current calendar month (budgets are month-isolated)
         const txDate = new Date(created.date);
         const nowDate = new Date();
         const isCurrentMonth = txDate.getMonth() === nowDate.getMonth() && txDate.getFullYear() === nowDate.getFullYear();
         if (created.type === 'expense' && isCurrentMonth) {
-          const allTx = [...state.transactions, created];
-          const monthTx = allTx.filter(t => {
-            const d = new Date(t.date);
-            return t.type === 'expense'
-              && d.getMonth() === nowDate.getMonth()
-              && d.getFullYear() === nowDate.getFullYear();
-          });
-          for (const budget of state.budgets) {
-            const cats = budget.category
-              ? budget.category.split(',').map(c => c.trim()).filter(Boolean)
+          const matchingBudget = state.budgets.find(b => {
+            const cats = b.category
+              ? b.category.split(',').map(c => c.trim()).filter(Boolean)
               : [];
-            const recalcSpent = monthTx
-              .filter(t => cats.includes(t.category) || budget.name === t.category)
-              .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-            if (recalcSpent !== budget.spent) {
-              try {
-                const updatedBudget = await api<BudgetCategory>(`/api/budgets/${budget.id}`, {
-                  method: 'PATCH',
-                  body: JSON.stringify({ spent: recalcSpent }),
-                });
-                dispatch({ type: 'updateBudget', payload: updatedBudget });
-              } catch { /* non-critical */ }
-            }
+            return cats.includes(created.category) || b.name === created.category;
+          });
+          if (matchingBudget) {
+            try {
+              const newSpent = matchingBudget.spent + Math.abs(created.amount);
+              const updatedBudget = await api<BudgetCategory>(`/api/budgets/${matchingBudget.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ spent: newSpent }),
+              });
+              dispatch({ type: 'updateBudget', payload: updatedBudget });
+            } catch { /* non-critical */ }
           }
         }
       }
@@ -450,13 +279,37 @@ export function FinanceProvider({ children }: PropsWithChildren) {
 
     addAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, any>);
-      // API is the single source of truth for funding transaction + account deduction.
-      const res = await api<{ asset: Asset; fundingTransaction: Transaction | null; updatedAccount: Account | null }>(
-        '/api/assets', { method: 'POST', body: JSON.stringify(payload) }
-      );
-      dispatch({ type: 'addAsset', payload: res.asset });
-      if (res.fundingTransaction) dispatch({ type: 'addTransaction', payload: res.fundingTransaction });
-      if (res.updatedAccount)     dispatch({ type: 'updateAccount',  payload: res.updatedAccount });
+      const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
+      dispatch({ type: 'addAsset', payload: created });
+      // When an account is linked, record the investment as an expense transaction and
+      // deduct the invested amount from the account balance.
+      // Direct API call (not store's addTransaction) to control balance update ourselves.
+      if (created.accountId) {
+        const account = state.accounts.find(acc => acc.id === created.accountId);
+        if (account) {
+          try {
+            const today = new Date().toISOString().slice(0, 10);
+            const tx = await api<Transaction>('/api/transactions', {
+              method: 'POST',
+              body: JSON.stringify({
+                date: today,
+                category: 'Investment',
+                description: created.name,
+                amount: -Math.abs(created.invested),
+                type: 'expense',
+                accountId: created.accountId,
+              }),
+            });
+            dispatch({ type: 'addTransaction', payload: tx });
+            // Deduct invested amount from the linked account
+            const updatedAcc = await api<Account>(`/api/accounts/${account.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ balance: account.balance - Math.abs(created.invested) }),
+            });
+            dispatch({ type: 'updateAccount', payload: updatedAcc });
+          } catch { /* non-critical — asset still saved */ }
+        }
+      }
     },
     updateAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, any>);
@@ -538,82 +391,12 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       dispatch({ type: 'addBudget', payload: created });
     },
     updateBudget: async (b) => {
-      // Recalculate spent from current-month transactions after category update
-      const nowDate = new Date();
-      const cats = b.category
-        ? b.category.split(',').map(c => c.trim()).filter(Boolean)
-        : [];
-      const recalcSpent = state.transactions
-        .filter(t => {
-          const d = new Date(t.date);
-          return t.type === 'expense'
-            && t.category !== 'Opening Balance'
-            && t.category !== 'Balance Adjustment'
-            && d.getMonth() === nowDate.getMonth()
-            && d.getFullYear() === nowDate.getFullYear()
-            && (cats.includes(t.category) || b.name === t.category);
-        })
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-      const payload = { ...b, spent: recalcSpent };
-      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(b) });
       dispatch({ type: 'updateBudget', payload: updated });
     },
     deleteBudget: async (id) => {
       await api(`/api/budgets/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteBudget', payload: id });
-    },
-
-    updateRecurring: async (id, data) => {
-      const updated = await api<RecurringTemplate>(`/api/recurring-transactions/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
-      dispatch({ type: 'updateRecurringTemplate', payload: updated });
-    },
-    cancelRecurring: async (id) => {
-      await api(`/api/recurring-transactions/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteRecurringTemplate', payload: id });
-    },
-
-    investAsset: async (assetId, amount, type, date, accountId, note) => {
-      await api(`/api/assets/${assetId}/invest`, {
-        method: 'POST',
-        body: JSON.stringify({ type, amount, date, accountId, note }),
-      });
-      // Reload the asset so `invested` reflects the new InvestmentTransaction total
-      const updated = await api<Asset>(`/api/assets/${assetId}`).catch(() => null);
-      if (updated) dispatch({ type: 'updateAsset', payload: updated as any });
-
-      // Mirror in accounts state if account was debited/credited
-      if (accountId) {
-        const accs = await api<Account[]>('/api/accounts').catch(() => null);
-        if (accs) accs.forEach(a => dispatch({ type: 'updateAccount', payload: a }));
-      }
-    },
-
-    setupAssetSip: async (assetId, amount, dayOfMonth, accountId, note) => {
-      await api(`/api/assets/${assetId}/sip`, {
-        method: 'POST',
-        body: JSON.stringify({ amount, dayOfMonth, accountId, note }),
-      });
-      // Refresh recurring templates list
-      const templates = await api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => null);
-      if (templates) {
-        // Re-hydrate just the recurring templates slice
-        templates.forEach(t => {
-          // Remove old, add fresh via deleteRecurringTemplate + manual splice isn't easy,
-          // so we do a full reload of the store's recurringTemplates on next load.
-          // For now, just reload the whole page state is not needed — the toast is enough.
-        });
-      }
-    },
-
-    cancelAssetSip: async (assetId) => {
-      await api(`/api/assets/${assetId}/sip`, { method: 'DELETE' });
-      // Reload the asset so state reflects the cleared SIP config
-      const updated = await api<Asset>(`/api/assets/${assetId}`).catch(() => null);
-      if (updated) dispatch({ type: 'updateAsset', payload: updated as any });
     },
   }), [state]);
 
