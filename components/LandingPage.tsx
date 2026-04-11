@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Wallet, Target, HeartPulse, CheckCircle2, ClipboardList, Lightbulb, Sparkles, Clock, Layers } from 'lucide-react';
 import ForceLightMode from '@/components/ForceLightMode';
+import OrbitIcon from '@/components/OrbitIcon';
 
 const NAV_LINKS = [
   { href: '#features', label: 'Features' },
@@ -19,7 +20,11 @@ function NavBar() {
     <header className="sticky top-0 z-50 w-full bg-white/70 backdrop-blur-md border-b border-white/40">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link href="#" className="flex items-center gap-2 text-lg font-bold tracking-tight text-gray-900">
-          <img src="/icons/top-icon.png" alt="MyOrbit" className="h-10 w-10 rounded-2xl object-cover shadow-sm" />
+          <OrbitIcon
+            src="/icons/top-icon.png"
+            className="h-10 w-10 rounded-2xl object-cover shadow-sm"
+            fallbackClassName="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-sm"
+          />
           <span className="leading-none">MyOrbit</span>
         </Link>
 

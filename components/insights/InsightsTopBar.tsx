@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import OrbitIcon from '@/components/OrbitIcon';
 
 const PAGE_TITLES: Record<string, string> = {
   '/orbit/insights':        'Life Score',
@@ -18,7 +19,7 @@ const MyOrbitBadge = () => (
     href="/orbit"
     className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
   >
-    <img src="/icons/top-icon.png" alt="MyOrbit" className="h-7 w-7 flex-none rounded-lg object-cover shadow-sm" />
+    <OrbitIcon src="/icons/top-icon.png" />
     <span className="text-base font-semibold text-gray-800">MyOrbit</span>
   </Link>
 );

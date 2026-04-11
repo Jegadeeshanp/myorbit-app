@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import OrbitIcon from '@/components/OrbitIcon';
 import { useSession } from 'next-auth/react';
 import {
   Sun, Inbox, CalendarDays, Plus, Settings, Calendar, User,
@@ -160,7 +161,7 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
         {/* Header */}
         <div className="mb-5 px-2">
           <div className="flex items-center gap-2.5">
-            <img src="/icons/dashboard-icon.png" alt="MyOrbit" className="h-8 w-8 rounded-lg object-cover shadow-sm" />
+            <OrbitIcon src="/icons/dashboard-icon.png" className="h-8 w-8 rounded-lg object-cover shadow-sm" fallbackClassName="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40" fallbackContent={<Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />} />
             <div>
               <div className="text-sm font-semibold text-gray-900 dark:text-white">Tasks</div>
               <div className="text-[11px] text-gray-400">Planner workspace</div>
