@@ -15,6 +15,19 @@ export type Account = AccountType & { creditLimit?: number };
 export type Transaction = TransactionType;
 export type Asset = AssetType;
 export type Liability = LiabilityType;
+export type RecurringTemplate = {
+  id: string;
+  accountId?: string;
+  assetId?: string;
+  category: string;
+  description: string;
+  notes?: string;
+  amount: number;
+  type: 'expense' | 'income' | 'SIP';
+  recurringConfig: import('@/lib/financeData').RecurringConfig;
+  nextDate: string;
+  occurrenceCount: number;
+};
 
 // ── Serialization helpers ──────────────────────────────────────────────────
 
@@ -56,6 +69,7 @@ type FinanceState = {
   assets: Asset[];
   liabilities: Liability[];
   budgets: BudgetCategory[];
+  recurringTemplates: RecurringTemplate[];
   loadState: LoadState;
 };
 
@@ -77,11 +91,14 @@ type FinanceAction =
   | { type: 'deleteLiability'; payload: string }
   | { type: 'addBudget'; payload: BudgetCategory }
   | { type: 'updateBudget'; payload: BudgetCategory }
-  | { type: 'deleteBudget'; payload: string };
+  | { type: 'deleteBudget'; payload: string }
+  | { type: 'addRecurring'; payload: RecurringTemplate }
+  | { type: 'updateRecurring'; payload: RecurringTemplate }
+  | { type: 'deleteRecurring'; payload: string };
 
 const defaultState: FinanceState = {
   accounts: [], transactions: [], assets: [],
-  liabilities: [], budgets: [], loadState: 'idle',
+  liabilities: [], budgets: [], recurringTemplates: [], loadState: 'idle',
 };
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
@@ -110,6 +127,10 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'updateBudget': return { ...state, budgets: state.budgets.map(b => b.id === action.payload.id ? action.payload : b) };
     case 'deleteBudget': return { ...state, budgets: state.budgets.filter(b => b.id !== action.payload) };
 
+    case 'addRecurring':    return { ...state, recurringTemplates: [...state.recurringTemplates, action.payload] };
+    case 'updateRecurring': return { ...state, recurringTemplates: state.recurringTemplates.map(r => r.id === action.payload.id ? action.payload : r) };
+    case 'deleteRecurring': return { ...state, recurringTemplates: state.recurringTemplates.filter(r => r.id !== action.payload) };
+
     default: return state;
   }
 }
@@ -134,6 +155,10 @@ type FinanceContextValue = {
   addBudget:              (b: Omit<BudgetCategory, 'id'>)  => Promise<void>;
   updateBudget:           (b: BudgetCategory)              => Promise<void>;
   deleteBudget:           (id: string)                     => Promise<void>;
+  updateRecurring:        (id: string, data: Partial<RecurringTemplate>) => Promise<void>;
+  cancelRecurring:        (id: string)                     => Promise<void>;
+  cancelAssetSip:         (assetId: string)                => Promise<void>;
+  fixAccountBalance:      (id: string)                     => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -160,8 +185,9 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       api<Asset[]>('/api/assets'),
       api<Liability[]>('/api/liabilities'),
       api<BudgetCategory[]>('/api/budgets'),
-    ]).then(([accounts, transactions, assets, liabilities, budgets]) => {
-      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets } });
+      api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => [] as RecurringTemplate[]),
+    ]).then(([accounts, transactions, assets, liabilities, budgets, recurringTemplates]) => {
+      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets, recurringTemplates } });
     }).catch((err) => {
       console.error('Failed to load finance data:', err);
       dispatch({ type: 'setLoadState', payload: 'error' });
@@ -397,6 +423,35 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     deleteBudget: async (id) => {
       await api(`/api/budgets/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteBudget', payload: id });
+    },
+
+    updateRecurring: async (id, data) => {
+      const updated = await api<RecurringTemplate>(`/api/recurring-transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+      dispatch({ type: 'updateRecurring', payload: updated });
+    },
+    cancelRecurring: async (id) => {
+      await api(`/api/recurring-transactions/${id}`, { method: 'DELETE' });
+      dispatch({ type: 'deleteRecurring', payload: id });
+    },
+    cancelAssetSip: async (assetId) => {
+      // Find and cancel any SIP recurring template linked to this asset
+      const template = state.recurringTemplates.find(t => t.assetId === assetId && t.type === 'SIP');
+      if (template) {
+        await api(`/api/recurring-transactions/${template.id}`, { method: 'DELETE' });
+        dispatch({ type: 'deleteRecurring', payload: template.id });
+      }
+    },
+    fixAccountBalance: async (id) => {
+      // Recalculate balance from transactions up to today and patch the account
+      const today = new Date().toLocaleDateString('en-CA');
+      const txNet = state.transactions
+        .filter(t => t.accountId === id && t.date <= today)
+        .reduce((s, t) => s + t.amount, 0);
+      const updated = await api<Account>(`/api/accounts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ balance: txNet }),
+      });
+      dispatch({ type: 'updateAccount', payload: updated });
     },
   }), [state]);
 
