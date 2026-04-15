@@ -55,16 +55,23 @@ export default function HealthPage() {
   async function handleCompleteTask(taskId: string) {
     setCompletingTask(taskId);
     try {
-      await completeHealthTask(taskId);
-      toast('Task completed & workout logged!', 'success', {
-        label: 'Undo',
-        onClick: async () => {
-          await undoHealthTask(taskId);
-          toast('Task undone', 'success');
-        },
-      });
+      const allTasks = [
+        ...(d?.healthTasks?.today ?? []),
+        ...(d?.healthTasks?.overdue ?? []),
+        ...(d?.healthTasks?.missed ?? []),
+      ];
+      const task = allTasks.find(t => t.id === taskId);
+      if (task?.status === 'completed') {
+        // Toggle back to incomplete
+        await undoHealthTask(taskId);
+        toast('Task marked incomplete', 'success');
+      } else {
+        // Mark as complete
+        await completeHealthTask(taskId);
+        toast('Task completed & workout logged!', 'success');
+      }
     } catch {
-      toast('Failed to complete task', 'error');
+      toast('Failed to update task', 'error');
     } finally {
       setCompletingTask(null);
     }
@@ -145,45 +152,129 @@ export default function HealthPage() {
       {/* Main 2-col grid */}
       <div className="grid gap-5 lg:grid-cols-2">
 
-        {/* Today's Health Tasks */}
+        {/* Today's Health Tasks - All sections (Today, Overdue, Missed) */}
         <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-          <p className="mb-3 text-sm font-semibold text-gray-900">Today's Health Tasks</p>
-          {(d?.healthTasks ?? []).length === 0 ? (
-            <div className="flex flex-col items-center py-6 text-center">
-              <CheckCircle2 className="h-8 w-8 text-gray-200 mb-2" />
-              <p className="text-xs text-gray-400">No health tasks scheduled today.</p>
-              <p className="text-xs text-gray-300 mt-0.5">Link tasks to health habits to see them here.</p>
-            </div>
+          {(d?.healthTasks?.today?.length ?? 0) === 0 && (d?.healthTasks?.overdue?.length ?? 0) === 0 && (d?.healthTasks?.missed?.length ?? 0) === 0 ? (
+            <>
+              <p className="mb-3 text-sm font-semibold text-gray-900">Today's Health Tasks</p>
+              <div className="flex flex-col items-center py-6 text-center">
+                <CheckCircle2 className="h-8 w-8 text-gray-200 mb-2" />
+                <p className="text-xs text-gray-400">No health tasks scheduled.</p>
+                <p className="text-xs text-gray-300 mt-0.5">Link tasks to health habits to see them here.</p>
+              </div>
+            </>
           ) : (
-            <div className="space-y-2">
-              {(d?.healthTasks ?? []).map(task => (
-                <div key={task.id}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${task.status === 'completed' ? 'bg-emerald-50' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                  <button
-                    onClick={() => task.status !== 'completed' && handleCompleteTask(task.id)}
-                    disabled={completingTask === task.id || task.status === 'completed'}
-                    className="flex-none"
-                  >
-                    {task.status === 'completed'
-                      ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      : completingTask === task.id
-                        ? <div className="h-5 w-5 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
-                        : <Circle className="h-5 w-5 text-gray-300 hover:text-rose-400 transition" />
-                    }
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                      {task.title}
-                    </p>
-                    {task.dueTime && (
-                      <p className="text-[11px] text-gray-400">{task.dueTime}</p>
-                    )}
+            <div className="space-y-4">
+              {/* Today's Tasks */}
+              {(d?.healthTasks?.today ?? []).length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Today</p>
+                  <div className="space-y-2">
+                    {(d?.healthTasks?.today ?? []).map(task => (
+                      <div key={task.id}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${task.status === 'completed' ? 'bg-emerald-50' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                        <button
+                          onClick={() => handleCompleteTask(task.id)}
+                          disabled={completingTask === task.id}
+                          className="flex-none hover:opacity-75 transition"
+                        >
+                          {task.status === 'completed'
+                            ? <CheckCircle2 className="h-5 w-5 text-emerald-500 hover:text-rose-400" />
+                            : completingTask === task.id
+                              ? <div className="h-5 w-5 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
+                              : <Circle className="h-5 w-5 text-gray-300 hover:text-rose-400 transition" />
+                          }
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            {task.title}
+                          </p>
+                          {task.dueTime && (
+                            <p className="text-[11px] text-gray-400">{task.dueTime}</p>
+                          )}
+                        </div>
+                        {task.habit && (
+                          <span className="text-sm flex-none">{task.habit.iconEmoji ?? '🏃'}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {task.habit && (
-                    <span className="text-sm flex-none">{task.habit.iconEmoji ?? '🏃'}</span>
-                  )}
                 </div>
-              ))}
+              )}
+
+              {/* Overdue Tasks (Due yesterday, show for 24h) */}
+              {(d?.healthTasks?.overdue ?? []).length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-orange-600 uppercase tracking-wide">⚠️ Overdue (1 day)</p>
+                  <div className="space-y-2">
+                    {(d?.healthTasks?.overdue ?? []).map(task => (
+                      <div key={task.id}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition border border-orange-100 ${task.status === 'completed' ? 'bg-emerald-50' : 'bg-orange-50 hover:bg-orange-100'}`}>
+                        <button
+                          onClick={() => handleCompleteTask(task.id)}
+                          disabled={completingTask === task.id}
+                          className="flex-none hover:opacity-75 transition"
+                        >
+                          {task.status === 'completed'
+                            ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                            : completingTask === task.id
+                              ? <div className="h-5 w-5 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
+                              : <Circle className="h-5 w-5 text-orange-400 hover:text-orange-600 transition" />
+                          }
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            {task.title}
+                          </p>
+                          {task.dueTime && (
+                            <p className="text-[11px] text-gray-400">{task.dueTime}</p>
+                          )}
+                        </div>
+                        {task.habit && (
+                          <span className="text-sm flex-none">{task.habit.iconEmoji ?? '🏃'}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Missed Tasks (2+ days old) */}
+              {(d?.healthTasks?.missed ?? []).length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-red-600 uppercase tracking-wide">❌ Missed</p>
+                  <div className="space-y-2">
+                    {(d?.healthTasks?.missed ?? []).map(task => (
+                      <div key={task.id}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition border border-red-100 ${task.status === 'completed' ? 'bg-emerald-50' : 'bg-red-50 hover:bg-red-100'}`}>
+                        <button
+                          onClick={() => handleCompleteTask(task.id)}
+                          disabled={completingTask === task.id}
+                          className="flex-none hover:opacity-75 transition"
+                        >
+                          {task.status === 'completed'
+                            ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                            : completingTask === task.id
+                              ? <div className="h-5 w-5 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+                              : <Circle className="h-5 w-5 text-red-400 hover:text-red-600 transition" />
+                          }
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            {task.title}
+                          </p>
+                          {task.dueTime && (
+                            <p className="text-[11px] text-gray-400">{task.dueTime}</p>
+                          )}
+                        </div>
+                        {task.habit && (
+                          <span className="text-sm flex-none">{task.habit.iconEmoji ?? '🏃'}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

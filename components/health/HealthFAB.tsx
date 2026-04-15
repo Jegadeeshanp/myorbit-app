@@ -118,27 +118,36 @@ function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     if (!selected) return;
     setLogging(true);
     try {
+      const payload: any = {
+        date: today,
+        name: selected.name,
+        mealType,
+      };
+      if (selected.servingSize) payload.servingSize = selected.servingSize;
+      if (selected.calories != null) payload.calories = selected.calories;
+      if (selected.protein != null) payload.proteinG = selected.protein;
+      if (selected.carbs != null) payload.carbsG = selected.carbs;
+      if (selected.fats != null) payload.fatG = selected.fats;
+      if (selected.saturatedFat != null) payload.saturatedFatG = selected.saturatedFat;
+      if (selected.sodium != null) payload.sodiumMg = selected.sodium;
+      if (selected.potassium != null) payload.potassiumMg = selected.potassium;
+      if (selected.fiber != null) payload.fiberG = selected.fiber;
+
       const r = await fetch('/api/health/food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: today,
-          name: selected.name,
-          mealType,
-          servingSize: selected.servingSize ?? null,
-          calories: selected.calories ?? null,
-          proteinG: selected.protein ?? null,
-          carbsG: selected.carbs ?? null,
-          fatG: selected.fats ?? null,
-          saturatedFatG: selected.saturatedFat ?? null,
-          sodiumMg: selected.sodium ?? null,
-          potassiumMg: selected.potassium ?? null,
-          fiberG: selected.fiber ?? null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!r.ok) {
         const errData = await r.json().catch(() => ({}));
-        const errMsg = errData.error || `HTTP ${r.status}`;
+        let errMsg = errData.error || `HTTP ${r.status}`;
+        if (errData.details) {
+          // Extract field validation errors from Zod
+          const fieldErrors = Object.entries(errData.details.fieldErrors || {})
+            .map(([field, errors]: any) => `${field}: ${errors?.[0] || 'invalid'}`)
+            .join(', ');
+          if (fieldErrors) errMsg = fieldErrors;
+        }
         throw new Error(errMsg);
       }
       toast('🍎 Food logged!');
