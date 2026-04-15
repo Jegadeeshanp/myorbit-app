@@ -94,7 +94,11 @@ export type DashboardData = {
   todayEntry: HealthEntry | null;
   todayWorkouts: Workout[];
   healthHabits: HealthHabit[];
-  healthTasks: HealthTask[];
+  healthTasks: {
+    today: HealthTask[];
+    overdue: HealthTask[];
+    missed: HealthTask[];
+  };
   healthGoals: HealthGoal[];
   weeklyStats: WeeklyStats;
 };
