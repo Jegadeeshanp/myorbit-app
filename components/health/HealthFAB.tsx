@@ -136,13 +136,19 @@ function QuickFoodModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           fiberG: selected.fiber ?? null,
         }),
       });
-      if (!r.ok) throw new Error();
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({}));
+        const errMsg = errData.error || `HTTP ${r.status}`;
+        throw new Error(errMsg);
+      }
       toast('🍎 Food logged!');
       window.dispatchEvent(new CustomEvent('health:food-refresh'));
       onSaved();
       onClose();
-    } catch {
-      toast('Failed to log food', 'error');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to log food';
+      console.error('[QuickFoodModal]', msg);
+      toast(msg, 'error');
     } finally {
       setLogging(false);
     }

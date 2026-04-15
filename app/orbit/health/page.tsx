@@ -20,7 +20,7 @@ const WORKOUT_EMOJI: Record<string, string> = {
 const MOOD_LABELS = ['', '😞', '😕', '😐', '😊', '😄'];
 
 export default function HealthPage() {
-  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask } = useHealth();
+  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask, undoHealthTask } = useHealth();
 
   const [logOpen, setLogOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
@@ -56,9 +56,15 @@ export default function HealthPage() {
     setCompletingTask(taskId);
     try {
       await completeHealthTask(taskId);
-      toast('Task completed & workout logged!');
+      toast('Task completed & workout logged!', 'success', {
+        label: 'Undo',
+        onClick: async () => {
+          await undoHealthTask(taskId);
+          toast('Task undone', 'success');
+        },
+      });
     } catch {
-      toast('Failed to complete task');
+      toast('Failed to complete task', 'error');
     } finally {
       setCompletingTask(null);
     }
