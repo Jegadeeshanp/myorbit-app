@@ -48,8 +48,10 @@ export default function ToastContainer() {
           {t.action && (
             <button
               onClick={() => {
-                t.action.onClick();
-                setToasts(prev => prev.filter(x => x.id !== t.id));
+                if (t.action) {
+                  t.action.onClick();
+                  setToasts(prev => prev.filter(x => x.id !== t.id));
+                }
               }}
               className="ml-2 flex-none rounded px-2 py-1 text-xs font-semibold bg-white/20 hover:bg-white/30 transition"
             >
