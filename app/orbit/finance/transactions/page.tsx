@@ -94,18 +94,7 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-5">
-      <FinanceTopBar action={
-        <div className="flex gap-2">
-          <button type="button" onClick={() => setIncomeOpen(true)}
-            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
-            + Income
-          </button>
-          <button type="button" onClick={() => setExpenseOpen(true)}
-            className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-            + Expense
-          </button>
-        </div>
-      } />
+      <FinanceTopBar action={<div />} />
 
       <TransactionSummaryCard transactions={transactions} />
       
@@ -113,6 +102,18 @@ export default function TransactionsPage() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">All Transactions</h2>
         <TransactionList transactions={transactions} />
+      </div>
+
+      {/* Add Transaction Buttons */}
+      <div className="flex gap-2 justify-center">
+        <button type="button" onClick={() => setIncomeOpen(true)}
+          className="rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+          + Income
+        </button>
+        <button type="button" onClick={() => setExpenseOpen(true)}
+          className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+          + Expense
+        </button>
       </div>
 
       {/* Recurring Transactions Section */}
