@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Coffee, CreditCard, FileText, Film, ShoppingBag,
-  Truck, Search, Trash2, ChevronDown, TrendingUp,
+  Truck, Trash2, ChevronDown, TrendingUp, Check,
   Landmark, Wallet, Banknote, ArrowLeftRight, Pencil,
   ArrowUpRight, ArrowDownLeft, Stethoscope, GraduationCap,
   Plane, MoreHorizontal,
@@ -227,15 +227,29 @@ function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function TransactionList({ transactions, onAdd }: { transactions: Transaction[]; onAdd?: () => void }) {
   const { state, deleteTransaction, updateTransaction } = useFinance();
-  const [activeTab, setActiveTab]   = useState('All');
-  const [period, setPeriod]         = useState<PeriodValue>('month');
-  const [search, setSearch]         = useState('');
+  const [activeTab, setActiveTab]       = useState('All');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [overlayOpen, setOverlayOpen]   = useState(false);
+  const [period, setPeriod]             = useState<PeriodValue>('month');
   const [dropdownOpen, setDropdown]     = useState(false);
   const [editTarget, setEditTarget]     = useState<Transaction | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   // Today's date string for upcoming vs past split
   const today = new Date().toISOString().slice(0, 10);
+
+  // Close overlay on outside click
+  useEffect(() => {
+    if (!overlayOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
+        setOverlayOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [overlayOpen]);
 
   // Build account lookup: accountId → account type tab key
   const accountTabMap = useMemo(() => {
@@ -246,52 +260,68 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     return map;
   }, [state.accounts]);
 
+  // Accounts grouped by type tab key (for overlay list)
+  const accountsByTab = useMemo(() => {
+    const map = new Map<string, typeof state.accounts>();
+    state.accounts.forEach(a => {
+      const key = ACCOUNT_TYPE_TAB[a.type] ?? 'All';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
+    });
+    return map;
+  }, [state.accounts]);
+
   // Split into upcoming (future) and past
   const { pastTxs, upcomingTxs } = useMemo(() => ({
     pastTxs:     transactions.filter(tx => tx.date <= today),
     upcomingTxs: transactions.filter(tx => tx.date >  today),
   }), [transactions, today]);
 
-  // Derive which tabs are available based on past transactions only
+  // Tabs available = types that have ≥1 configured account (Income always shown)
   const availableTabs = useMemo(() => {
-    const tabs = new Set<string>(['All', 'Income']);
-    pastTxs.forEach(tx => {
-      if (tx.accountId) {
-        const tab = accountTabMap.get(tx.accountId);
-        if (tab) tabs.add(tab);
-      }
-    });
+    const typesWithAccounts = new Set(state.accounts.map(a => ACCOUNT_TYPE_TAB[a.type]).filter(Boolean));
     return ['All', 'Income', 'Bank', 'Credit', 'Debit', 'Wallet', 'Cash']
-      .filter(t => tabs.has(t));
-  }, [pastTxs, accountTabMap]);
+      .filter(t => t === 'All' || t === 'Income' || typesWithAccounts.has(t));
+  }, [state.accounts]);
 
-  // Ensure active tab stays valid
+  // Ensure active tab stays valid when accounts change
   const safeTab = availableTabs.includes(activeTab) ? activeTab : 'All';
 
-  // Apply tab + search filter helper
-  function applyTabSearch(txs: Transaction[]) {
+  // Accounts for the current overlay (the active type tab)
+  const overlayAccounts = accountsByTab.get(safeTab) ?? [];
+
+  const handleTabClick = (tab: string) => {
+    if (tab === activeTab && tab !== 'All') {
+      // Re-click same tab → toggle overlay
+      setOverlayOpen(o => !o);
+      return;
+    }
+    setActiveTab(tab);
+    setSelectedAccountId('');
+    setOverlayOpen(tab !== 'All' && tab !== 'Income');
+  };
+
+  // Apply tab + account filter
+  function applyFilter(txs: Transaction[]) {
     if (safeTab === 'Income') {
       txs = txs.filter(t => t.type === 'income');
     } else if (safeTab !== 'All') {
-      txs = txs.filter(t => t.accountId && accountTabMap.get(t.accountId) === safeTab);
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      txs = txs.filter(t =>
-        t.description.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q)
-      );
+      if (selectedAccountId) {
+        txs = txs.filter(t => t.accountId === selectedAccountId);
+      } else {
+        txs = txs.filter(t => t.accountId && accountTabMap.get(t.accountId) === safeTab);
+      }
     }
     return txs;
   }
 
   const filtered = useMemo(() => {
-    return applyTabSearch(filterByPeriod(pastTxs, period));
-  }, [pastTxs, period, safeTab, search, accountTabMap]);
+    return applyFilter(filterByPeriod(pastTxs, period));
+  }, [pastTxs, period, safeTab, selectedAccountId, accountTabMap]);
 
   const filteredUpcoming = useMemo(() => {
-    return applyTabSearch([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
-  }, [upcomingTxs, safeTab, search, accountTabMap]);
+    return applyFilter([...upcomingTxs].sort((a, b) => a.date.localeCompare(b.date)));
+  }, [upcomingTxs, safeTab, selectedAccountId, accountTabMap]);
 
   const groups = useMemo(() => groupByMonth(filtered), [filtered]);
 
@@ -307,18 +337,78 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   return (
     <div className="space-y-4">
 
-      {/* ── Row 1: Search | Add | Filter ── */}
+      {/* ── Row 1: Account type tabs | Add | Period filter ── */}
       <div className="flex items-center gap-2">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search transactions…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
-          />
+
+        {/* Account type tab strip + overlay */}
+        <div ref={overlayRef} className="relative flex-1 min-w-0">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+            {availableTabs.map(tab => {
+              const cfg = TAB_CONFIG[tab];
+              const Icon = cfg.icon;
+              const isActive = safeTab === tab;
+              const periodPast = filterByPeriod(pastTxs, period);
+              const count = tab === 'All'
+                ? periodPast.length
+                : tab === 'Income'
+                ? periodPast.filter(t => t.type === 'income').length
+                : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => handleTabClick(tab)}
+                  className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
+                    isActive
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
+                  {tab}
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                    {count}
+                  </span>
+                  {isActive && tab !== 'All' && tab !== 'Income' && (
+                    <ChevronDown className={`h-3 w-3 transition-transform ${overlayOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Account overlay dropdown */}
+          {overlayOpen && safeTab !== 'All' && safeTab !== 'Income' && overlayAccounts.length > 0 && (
+            <div className="absolute left-0 top-full z-30 mt-1.5 min-w-[200px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+              <div className="border-b border-gray-50 px-4 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{safeTab} accounts</p>
+              </div>
+              {/* All of this type */}
+              <button
+                onClick={() => { setSelectedAccountId(''); setOverlayOpen(false); }}
+                className={`flex w-full items-center justify-between px-4 py-2.5 text-sm transition hover:bg-gray-50 ${
+                  !selectedAccountId ? 'text-emerald-700 font-semibold bg-emerald-50/60' : 'text-gray-700'
+                }`}
+              >
+                <span>All {safeTab}s</span>
+                {!selectedAccountId && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+              </button>
+              {/* Individual accounts */}
+              {overlayAccounts.map(acc => (
+                <button
+                  key={acc.id}
+                  onClick={() => { setSelectedAccountId(acc.id); setOverlayOpen(false); }}
+                  className={`flex w-full items-center justify-between px-4 py-2.5 text-sm transition hover:bg-gray-50 ${
+                    selectedAccountId === acc.id ? 'text-emerald-700 font-semibold bg-emerald-50/60' : 'text-gray-700'
+                  }`}
+                >
+                  <span>{acc.name}</span>
+                  {selectedAccountId === acc.id && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
         {/* Add button */}
         {onAdd && (
           <button onClick={onAdd}
@@ -327,7 +417,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             <span className="hidden sm:inline">Add</span>
           </button>
         )}
-        {/* Filter / period dropdown */}
+
+        {/* Period dropdown */}
         <div className="relative flex-none">
           <button
             onClick={() => setDropdown(o => !o)}
@@ -352,31 +443,6 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             </div>
           )}
         </div>
-      </div>
-
-      {/* ── Row 2: Tabs ── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-        {availableTabs.map(tab => {
-          const cfg = TAB_CONFIG[tab];
-          const Icon = cfg.icon;
-          const isActive = safeTab === tab;
-          const periodPast = filterByPeriod(pastTxs, period);
-          const count = tab === 'All'
-            ? periodPast.length
-            : tab === 'Income'
-            ? periodPast.filter(t => t.type === 'income').length
-            : periodPast.filter(t => t.accountId && accountTabMap.get(t.accountId) === tab).length;
-          return (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
-                isActive ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
-              }`}>
-              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-              {tab}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* ── Upcoming transactions ── */}
