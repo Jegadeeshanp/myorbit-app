@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useFinance } from '@/lib/financeStore';
 import OnboardingWizard from '@/components/OnboardingWizard';
+import OrbitIcon from '@/components/OrbitIcon';
 
 const MODULES = [
   {
@@ -82,7 +83,7 @@ function InstallModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
-      <div className="w-full max-w-sm rounded-3xl bg-[#1a1a2e] text-white shadow-2xl overflow-hidden">
+      <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1a1a2e] text-gray-900 dark:text-white shadow-2xl overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
@@ -97,7 +98,7 @@ function InstallModal({
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-gray-400 transition hover:bg-white/20"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 transition hover:bg-gray-200 dark:hover:bg-white/20"
           >
             <X className="h-4 w-4" />
           </button>
@@ -111,30 +112,30 @@ function InstallModal({
             { icon: Lock,             text: 'Same app, same data — nothing changes'   },
           ].map(({ icon: Icon, text }) => (
             <div key={text} className="flex items-center gap-3">
-              <Icon className="h-4 w-4 flex-none text-emerald-400" />
-              <p className="text-sm text-gray-200">{text}</p>
+              <Icon className="h-4 w-4 flex-none text-emerald-600 dark:text-emerald-400" />
+              <p className="text-sm text-gray-600 dark:text-gray-200">{text}</p>
             </div>
           ))}
         </div>
 
         {/* Divider */}
-        <div className="mx-6 border-t border-white/10" />
+        <div className="mx-6 border-t border-gray-200 dark:border-white/10" />
 
         {/* Instructions */}
         <div className="px-6 py-5 space-y-3">
-          <p className="text-sm font-semibold text-gray-300">To install, use your browser menu:</p>
+          <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">To install, use your browser menu:</p>
 
           <div className="flex items-start gap-3">
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-600 text-xs font-bold">1</span>
-            <p className="text-sm text-gray-200 pt-0.5">
-              Tap the <span className="inline-flex items-center gap-0.5 font-semibold text-white">⋮</span> <span className="font-semibold text-white">menu</span> in your browser
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">1</span>
+            <p className="text-sm text-gray-600 dark:text-gray-200 pt-0.5">
+              Tap the <span className="inline-flex items-center gap-0.5 font-semibold text-gray-900 dark:text-white">⋮</span> <span className="font-semibold text-gray-900 dark:text-white">menu</span> in your browser
             </p>
           </div>
 
           <div className="flex items-start gap-3">
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-600 text-xs font-bold">2</span>
-            <p className="text-sm text-gray-200 pt-0.5">
-              Tap <span className="inline-flex items-center gap-1 rounded-md border border-white/20 bg-white/10 px-1.5 py-0.5 text-xs font-medium text-white">⊞ Install app</span> or <span className="font-semibold text-white">Add to Home Screen</span>
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">2</span>
+            <p className="text-sm text-gray-600 dark:text-gray-200 pt-0.5">
+              Tap <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 dark:border-white/20 bg-gray-100 dark:bg-white/10 px-1.5 py-0.5 text-xs font-medium text-gray-700 dark:text-white">⊞ Install app</span> or <span className="font-semibold text-gray-900 dark:text-white">Add to Home Screen</span>
             </p>
           </div>
         </div>
@@ -151,7 +152,7 @@ function InstallModal({
           )}
           <button
             onClick={onClose}
-            className="w-full rounded-2xl bg-white/10 py-3 text-sm font-medium text-gray-300 transition hover:bg-white/15"
+            className="w-full rounded-2xl bg-gray-100 dark:bg-white/10 py-3 text-sm font-medium text-gray-600 dark:text-gray-300 transition hover:bg-gray-200 dark:hover:bg-white/15"
           >
             Maybe later
           </button>
@@ -215,10 +216,12 @@ export default function Orbit() {
       )}
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
-        <div className="text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm">
-            ⭑
-          </div>
+        <div className="flex flex-col items-center text-center">
+          <OrbitIcon
+            src="/icons/top-icon.png"
+            className="h-14 w-14 rounded-2xl object-cover shadow-sm"
+            fallbackClassName="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm"
+          />
           <h1 className="mt-6 text-4xl font-bold tracking-tight sm:text-5xl">MyOrbit</h1>
           {userName && (
             <p className="mt-2 text-base text-emerald-700 font-medium">Welcome back, {userName}</p>

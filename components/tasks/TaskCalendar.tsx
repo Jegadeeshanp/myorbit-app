@@ -50,12 +50,12 @@ const WEEKDAY_LABELS = [
 ];
 
 const EVENT_TONES = [
-  'bg-sky-500/20 text-sky-100 border-sky-300/30',
-  'bg-indigo-500/25 text-indigo-100 border-indigo-300/30',
-  'bg-rose-500/20 text-rose-100 border-rose-300/30',
-  'bg-amber-500/20 text-amber-100 border-amber-300/30',
-  'bg-emerald-500/20 text-emerald-100 border-emerald-300/30',
-  'bg-violet-500/20 text-violet-100 border-violet-300/30',
+  'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/20 dark:text-sky-100 dark:border-sky-300/30',
+  'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/25 dark:text-indigo-100 dark:border-indigo-300/30',
+  'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-100 dark:border-rose-300/30',
+  'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-300/30',
+  'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-100 dark:border-emerald-300/30',
+  'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-100 dark:border-violet-300/30',
 ];
 
 const HOURS = Array.from({ length: 16 }, (_, index) => 6 + index);
@@ -238,43 +238,43 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#1A2029] text-white">
-      <div className="border-b border-white/8 px-4 py-2">
+    <div className="flex h-full flex-col bg-gray-100 text-gray-900 dark:bg-[#1A2029] dark:text-white">
+      <div className="border-b border-gray-200 dark:border-white/8 px-4 py-2">
         <div className="flex items-center gap-3">
           {onOpenSidebar ? (
             <button
               type="button"
               onClick={onOpenSidebar}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-white md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 transition hover:bg-gray-200 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white md:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
           ) : null}
 
           <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-lg font-semibold text-white">{headerTitle}</p>
-            {headerSubtitle ? <p className="truncate text-xs text-slate-400">{headerSubtitle}</p> : null}
+            <p className="truncate text-lg font-semibold text-gray-900 dark:text-white">{headerTitle}</p>
+            {headerSubtitle ? <p className="truncate text-xs text-gray-500 dark:text-slate-400">{headerSubtitle}</p> : null}
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 dark:border-white/10 text-gray-500 dark:text-slate-400 transition hover:bg-gray-200 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
               onClick={() => navigate(1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 dark:border-white/10 text-gray-500 dark:text-slate-400 transition hover:bg-gray-200 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
               type="button"
               onClick={togglePanelMode}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 dark:border-white/10 text-gray-500 dark:text-slate-400 transition hover:bg-gray-200 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
               title="Toggle view"
             >
               {panelMode === 'calendar' ? <List className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
@@ -284,14 +284,14 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
       </div>
 
       {panelMode === 'calendar' ? (
-        <div className="flex-1 overflow-auto bg-[#12161D]">
+        <div className="flex-1 overflow-auto bg-white dark:bg-[#12161D]">
           {(calendarView === 'week' || calendarView === '3days' || calendarView === 'day') ? (
-            <div className="overflow-hidden border-0 bg-[#161B23]">
+            <div className="overflow-hidden border-0 bg-gray-50 dark:bg-[#161B23]">
               <div
-                className="grid border-b border-white/8"
+                className="grid border-b border-gray-200 dark:border-white/8"
                 style={{ gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
               >
-                <div className="border-r border-white/8 px-3 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+                <div className="border-r border-gray-200 dark:border-white/8 px-3 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-gray-400 dark:text-slate-500">
                   Time
                 </div>
                 {visibleDays.map(day => {
@@ -304,11 +304,11 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                       key={dayKey}
                       type="button"
                       onClick={() => selectDate(day)}
-                      className={`border-r border-white/8 px-2 py-2 text-left last:border-r-0 ${
-                        isSelected ? 'bg-white/5' : 'hover:bg-white/[0.03]'
+                      className={`border-r border-gray-200 dark:border-white/8 px-2 py-2 text-left last:border-r-0 ${
+                        isSelected ? 'bg-gray-200 dark:bg-white/5' : 'hover:bg-gray-100 dark:hover:bg-white/[0.03]'
                       }`}
                     >
-                      <p className={`text-sm font-medium leading-tight ${isToday ? 'text-emerald-400' : 'text-slate-200'}`}>
+                      <p className={`text-sm font-medium leading-tight ${isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-800 dark:text-slate-200'}`}>
                         <span className="block text-[10px] uppercase tracking-wide opacity-70">{day.toLocaleDateString('en-IN', { weekday: 'short' })}</span>
                         <span className="block text-sm font-bold">{day.getDate()}</span>
                       </p>
@@ -318,10 +318,10 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
               </div>
 
               <div
-                className="grid border-b border-white/8"
+                className="grid border-b border-gray-200 dark:border-white/8"
                 style={{ gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
               >
-                <div className="border-r border-white/8 px-3 py-3 text-xs text-slate-500">All day</div>
+                <div className="border-r border-gray-200 dark:border-white/8 px-3 py-3 text-xs text-gray-400 dark:text-slate-500">All day</div>
                 {visibleDays.map(day => {
                   const dayKey = formatDateKey(day);
                   const untimedTasks = (tasksByDate.get(dayKey) ?? []).filter(task => !task.dueTime);
@@ -330,8 +330,8 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                   return (
                     <div
                       key={`${dayKey}-all-day`}
-                      className={`min-h-[64px] border-r border-white/8 px-2 py-2 last:border-r-0 ${
-                        isSelected ? 'bg-white/[0.03]' : ''
+                      className={`min-h-[64px] border-r border-gray-200 dark:border-white/8 px-2 py-2 last:border-r-0 ${
+                        isSelected ? 'bg-gray-100/50 dark:bg-white/[0.03]' : ''
                       }`}
                     >
                       <div className="space-y-1">
@@ -339,7 +339,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                           <TaskPill key={task.id} task={task} onClick={() => onTaskClick?.(task)} />
                         ))}
                         {untimedTasks.length > 2 ? (
-                          <p className="text-[11px] text-slate-500">+{untimedTasks.length - 2} more</p>
+                          <p className="text-[11px] text-gray-400 dark:text-slate-500">+{untimedTasks.length - 2} more</p>
                         ) : null}
                       </div>
                     </div>
@@ -353,7 +353,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                   className="grid"
                   style={{ gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(0, 1fr))` }}
                 >
-                  <div className="border-r border-t border-white/8 px-3 py-3 text-xs text-slate-500">
+                  <div className="border-r border-t border-gray-200 dark:border-white/8 px-3 py-3 text-xs text-gray-400 dark:text-slate-500">
                     {formatHour(hour)}
                   </div>
                   {visibleDays.map(day => {
@@ -368,8 +368,8 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                     return (
                       <div
                         key={`${dayKey}-${hour}`}
-                        className={`min-h-[68px] border-r border-t border-white/8 px-2 py-2 last:border-r-0 ${
-                          isSelected ? 'bg-white/[0.03]' : ''
+                        className={`min-h-[68px] border-r border-t border-gray-200 dark:border-white/8 px-2 py-2 last:border-r-0 ${
+                          isSelected ? 'bg-gray-100/50 dark:bg-white/[0.03]' : ''
                         }`}
                       >
                         <div className="space-y-1">
@@ -386,10 +386,10 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
           ) : null}
 
           {calendarView === 'month' ? (
-            <div className="overflow-hidden border-0 bg-[#161B23]">
-              <div className="grid grid-cols-7 border-b border-white/8">
+            <div className="overflow-hidden border-0 bg-gray-50 dark:bg-[#161B23]">
+              <div className="grid grid-cols-7 border-b border-gray-200 dark:border-white/8">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(label => (
-                  <p key={label} className="border-r border-white/8 px-3 py-2 text-xs text-slate-400 last:border-r-0">
+                  <p key={label} className="border-r border-gray-200 dark:border-white/8 px-3 py-2 text-xs text-gray-500 dark:text-slate-400 last:border-r-0">
                     {label}
                   </p>
                 ))}
@@ -409,18 +409,18 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                       tabIndex={0}
                       onClick={() => selectDate(day)}
                       onKeyDown={e => e.key === 'Enter' && selectDate(day)}
-                      className={`min-h-[120px] cursor-pointer border-r border-t border-white/8 px-2 py-2 text-left align-top transition last:border-r-0 ${
-                        isSelected ? 'bg-white/5' : 'hover:bg-white/[0.03]'
+                      className={`min-h-[120px] cursor-pointer border-r border-t border-gray-200 dark:border-white/8 px-2 py-2 text-left align-top transition last:border-r-0 ${
+                        isSelected ? 'bg-gray-200 dark:bg-white/5' : 'hover:bg-gray-100 dark:hover:bg-white/[0.03]'
                       } ${!isCurrentMonth ? 'opacity-45' : ''}`}
                     >
-                      <p className={`mb-2 text-sm font-medium ${isToday ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      <p className={`mb-2 text-sm font-medium ${isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-slate-300'}`}>
                         {day.getDate()}
                       </p>
                       <div className="space-y-1">
                         {dayTasks.slice(0, 2).map(task => (
                           <TaskPill key={task.id} task={task} onClick={() => onTaskClick?.(task)} />
                         ))}
-                        {dayTasks.length > 2 ? <p className="text-[11px] text-slate-500">+{dayTasks.length - 2} more</p> : null}
+                        {dayTasks.length > 2 ? <p className="text-[11px] text-gray-400 dark:text-slate-500">+{dayTasks.length - 2} more</p> : null}
                       </div>
                     </div>
                   );
@@ -436,11 +436,11 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                 const days = buildMonthGrid(monthDate).slice(0, 35);
 
                 return (
-                  <div key={monthIndex} className="border border-white/8 bg-[#161B23] p-3">
-                    <p className="mb-3 text-lg font-semibold text-white">
+                  <div key={monthIndex} className="border border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-[#161B23] p-3">
+                    <p className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
                       {monthDate.toLocaleDateString('en-IN', { month: 'long' })}
                     </p>
-                    <div className="mb-2 grid grid-cols-7 gap-1 text-[11px] text-slate-500">
+                    <div className="mb-2 grid grid-cols-7 gap-1 text-[11px] text-gray-400 dark:text-slate-500">
                       {WEEKDAY_LABELS.map(({ key, label }) => (
                         <span key={`${monthIndex}-${key}`} className="text-center">{label}</span>
                       ))}
@@ -460,9 +460,9 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
                             onClick={() => selectDate(day)}
                             className={`flex h-8 w-8 items-center justify-center rounded-md text-xs transition ${
                               isSelected ? 'bg-emerald-500 text-white' :
-                              isToday ? 'bg-emerald-500/15 text-emerald-300' :
-                              hasTasks ? 'bg-white/5 text-slate-200' :
-                              isCurrentMonth ? 'text-slate-500 hover:bg-white/5' : 'text-slate-700'
+                              isToday ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' :
+                              hasTasks ? 'bg-gray-200 text-gray-700 dark:bg-white/5 dark:text-slate-200' :
+                              isCurrentMonth ? 'text-gray-500 dark:text-slate-500 hover:bg-gray-200 dark:hover:bg-white/5' : 'text-gray-300 dark:text-slate-700'
                             }`}
                           >
                             {day.getDate()}
@@ -479,10 +479,10 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
       ) : null}
 
       {panelMode === 'timeline' ? (
-        <div className="flex-1 overflow-auto bg-[#12161D] p-3">
+        <div className="flex-1 overflow-auto bg-white dark:bg-[#12161D] p-3">
           <div className="mb-3">
-            <p className="text-sm font-semibold text-slate-200">{headerSubtitle || 'Selected day'}</p>
-            <p className="text-xs text-slate-500">
+            <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{headerSubtitle || 'Selected day'}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500">
               {selectedDateValue.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
@@ -491,7 +491,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
             <div className="space-y-2">
               {timelineTimedTasks.map(task => (
                 <div key={task.id} className="grid grid-cols-[72px_minmax(0,1fr)] items-start gap-3">
-                  <div className="flex items-center gap-2 pt-3 text-xs font-medium text-sky-400">
+                  <div className="flex items-center gap-2 pt-3 text-xs font-medium text-sky-600 dark:text-sky-400">
                     <Clock className="h-3.5 w-3.5" />
                     <span>{task.dueTime}</span>
                   </div>
@@ -510,14 +510,14 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
 
           {timelineUntimedTasks.length > 0 ? (
             <div className={timelineTimedTasks.length > 0 ? 'mt-5' : ''}>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">No specific time</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">No specific time</p>
               <div className="space-y-2">
                 {timelineUntimedTasks.map(task => (
                   <button
                     key={task.id}
                     type="button"
                     onClick={() => onTaskClick?.(task)}
-                    className="w-full rounded-xl border border-white/8 bg-[#161B23] px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-white/5"
+                    className="w-full rounded-xl border border-gray-200 dark:border-white/8 bg-white dark:bg-[#161B23] px-4 py-3 text-left text-sm text-gray-800 dark:text-slate-200 transition hover:bg-gray-50 dark:hover:bg-white/5"
                   >
                     <p className="font-medium">{task.title}</p>
                   </button>
@@ -527,7 +527,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
           ) : null}
 
           {timelineTimedTasks.length === 0 && timelineUntimedTasks.length === 0 ? (
-            <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/8 bg-[#161B23] text-sm text-slate-500">
+            <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-[#161B23] text-sm text-gray-400 dark:text-slate-500">
               No tasks for this date
             </div>
           ) : null}
@@ -535,10 +535,10 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
       ) : null}
 
       {panelMode === 'today-list' ? (
-        <div className="flex-1 overflow-auto bg-[#12161D] p-3">
+        <div className="flex-1 overflow-auto bg-white dark:bg-[#12161D] p-3">
           <div className="mb-3">
-            <p className="text-base font-semibold text-white">{headerSubtitle || 'Selected day'}</p>
-            <p className="text-xs text-slate-500">
+            <p className="text-base font-semibold text-gray-900 dark:text-white">{headerSubtitle || 'Selected day'}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500">
               {selectedDateValue.toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
@@ -561,11 +561,11 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
               <button
                 type="button"
                 onClick={() => setCompletedOpen(open => !open)}
-                className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
+                className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-slate-300 transition hover:text-gray-900 dark:hover:text-white"
               >
                 <ChevronRight className={`h-4 w-4 transition ${completedOpen ? 'rotate-90' : ''}`} />
                 Completed
-                <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-400">{completedTasks.length}</span>
+                <span className="rounded-full bg-gray-100 dark:bg-white/5 px-2 py-0.5 text-xs text-gray-500 dark:text-slate-400">{completedTasks.length}</span>
               </button>
 
               {completedOpen ? (
@@ -584,14 +584,14 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
           ) : null}
 
           {activeTasks.length === 0 && completedTasks.length === 0 ? (
-            <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/8 bg-[#161B23] text-sm text-slate-500">
+            <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-gray-200 dark:border-white/8 bg-gray-50 dark:bg-[#161B23] text-sm text-gray-400 dark:text-slate-500">
               No tasks for this date
             </div>
           ) : null}
         </div>
       ) : null}
 
-      <div className="border-t border-white/8 bg-[#1A2029] px-4 py-1">
+      <div className="border-t border-gray-200 dark:border-white/8 bg-gray-100 dark:bg-[#1A2029] px-4 py-1">
         <div className="mx-auto flex w-fit items-center justify-center gap-5">
           {CALENDAR_VIEWS.map(view => (
             <button
@@ -600,8 +600,8 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
               onClick={() => { setCalendarView(view.key); setPanelMode('calendar'); }}
               className={`border-b px-0 py-1 text-sm font-medium transition ${
                 panelMode === 'calendar' && calendarView === view.key
-                  ? 'border-emerald-400 text-white'
-                  : 'border-transparent text-slate-400 hover:text-white'
+                  ? 'border-emerald-500 text-gray-900 dark:text-white'
+                  : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               {view.label}

@@ -1,42 +1,89 @@
+/**
+ * lib/taskInstanceGenerator.ts
+ * Generates TaskInstance records for recurring tasks and tasks with due dates.
+ * Called from the Today API and daily cleanup cron.
+ */
+
 import { prisma } from '@/lib/prisma';
 
-/** Pure helper — no external libraries */
-function dayOfWeek(dateStr: string): number {
-  return new Date(dateStr).getDay(); // 0=Sun … 6=Sat
-}
-
 /**
- * Generates TaskInstance rows for a given user + date.
- * - Recurring tasks: creates an instance if the date's day-of-week is in recurrenceDays.
- * - Non-recurring tasks with dueDate === date: creates an instance.
- * Uses createMany with skipDuplicates so it is safe to call multiple times.
+ * Generates TaskInstance records for a given date.
+ * 1. Creates instances for recurring tasks that match the day-of-week
+ * 2. Creates instances for non-recurring tasks with a dueDate matching the date
  */
-export async function generateInstancesForDate(
-  userId: string,
-  date: string,
-): Promise<void> {
-  const tasks = await prisma.task.findMany({
-    where: { userId, isDeleted: false, isActive: true },
-  });
+export async function generateInstancesForDate(userId: string, date: string): Promise<void> {
+  try {
+    // Get day of week (0-6, Sunday=0)
+    const dateObj = new Date(date + 'T00:00:00Z');
+    const dayOfWeek = dateObj.getUTCDay();
 
-  const dow = dayOfWeek(date);
-  const instancesData: Array<{ userId: string; taskId: string; date: string }> = [];
+    // 1. Fetch all recurring active tasks for this user
+    const recurringTasks = await prisma.task.findMany({
+      where: {
+        userId,
+        isDeleted: false,
+        isRecurring: true,
+        isActive: true,
+      },
+    });
 
-  for (const task of tasks) {
-    if (task.isRecurring) {
-      const days = task.recurrenceDays as number[] | null;
-      if (Array.isArray(days) && days.includes(dow)) {
-        instancesData.push({ userId, taskId: task.id, date });
-      }
-    } else if (task.dueDate === date) {
-      instancesData.push({ userId, taskId: task.id, date });
-    }
+    // Create instances for matching recurring tasks
+    const recurringInstances = recurringTasks
+      .filter((task) => {
+        if (!task.recurrenceDays) return false;
+
+        // Parse recurrenceDays as number array
+        let daysArray: number[] = [];
+        try {
+          if (Array.isArray(task.recurrenceDays)) {
+            daysArray = task.recurrenceDays as number[];
+          } else if (typeof task.recurrenceDays === 'object' && task.recurrenceDays !== null) {
+            // If it's a JSON object, convert values to array
+            daysArray = Object.values(task.recurrenceDays).filter((v): v is number => typeof v === 'number');
+          }
+        } catch {
+          return false;
+        }
+
+        return daysArray.includes(dayOfWeek);
+      })
+      .map((task) => ({
+        userId,
+        taskId: task.id,
+        date,
+        status: 'pending' as const,
+      }));
+
+    // 2. Fetch all non-recurring active tasks with dueDate = date
+    const nonRecurringTasks = await prisma.task.findMany({
+      where: {
+        userId,
+        isDeleted: false,
+        isRecurring: false,
+        isActive: true,
+        dueDate: date,
+      },
+    });
+
+    const nonRecurringInstances = nonRecurringTasks.map((task) => ({
+      userId,
+      taskId: task.id,
+      date,
+      status: 'pending' as const,
+    }));
+
+    // Combine and upsert all instances
+    const allInstances = [...recurringInstances, ...nonRecurringInstances];
+
+    if (allInstances.length === 0) return;
+
+    // Use createMany with skipDuplicates to skip existing instances
+    await prisma.taskInstance.createMany({
+      data: allInstances,
+      skipDuplicates: true,
+    });
+  } catch (error) {
+    console.error('[generateInstancesForDate] error:', error);
+    throw error;
   }
-
-  if (instancesData.length === 0) return;
-
-  await prisma.taskInstance.createMany({
-    data: instancesData,
-    skipDuplicates: true,
-  });
 }

@@ -231,23 +231,23 @@ function PostGoalWizard({ goal, onDone }: PostGoalWizardProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4">
+      <div className="w-full max-h-[90vh] sm:max-h-none rounded-2xl bg-white shadow-2xl overflow-hidden flex flex-col sm:max-w-md">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex-none">
           <div>
-            <p className="font-semibold text-gray-900">Goal Created!</p>
-            <p className="text-xs text-gray-500 truncate max-w-[240px]">{goal.title}</p>
+            <p className="font-semibold text-gray-900 text-sm sm:text-base">Goal Created!</p>
+            <p className="text-xs text-gray-500 truncate max-w-[180px] sm:max-w-[240px]">{goal.title}</p>
           </div>
-          <button onClick={onDone} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+          <button onClick={onDone} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex-none">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Choice step */}
         {step === 'choice' && (
-          <div className="px-6 py-6 space-y-4">
+          <div className="px-4 sm:px-6 py-5 sm:py-6 space-y-4 overflow-y-auto">
             <div className="flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3">
               <CheckCircle2 className="h-5 w-5 text-indigo-500 flex-none" />
               <p className="text-sm text-indigo-700 font-medium">Goal saved! Build momentum now.</p>
@@ -925,12 +925,8 @@ export default function GoalsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Your Goals</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track your life's GPS — Goal, Process, System</p>
-        </div>
+      {/* Actions row */}
+      <div className="flex justify-end">
         <button
           onClick={() => setShowModal(true)}
           className="hidden md:flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition"

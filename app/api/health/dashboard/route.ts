@@ -59,6 +59,28 @@ export async function GET(req: NextRequest) {
         })
       : [];
 
+    // Categorize tasks into today/overdue/missed
+    const todayDate = today;
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+    
+    const twoDaysAgoDate = new Date();
+    twoDaysAgoDate.setDate(twoDaysAgoDate.getDate() - 2);
+    const twoDaysAgoStr = twoDaysAgoDate.toISOString().split('T')[0];
+
+    const todayTasks = healthTasks.filter(t => 
+      !t.dueDate || t.dueDate === todayDate || t.dueDate > todayDate
+    );
+    
+    const overdueTasks = healthTasks.filter(t => 
+      t.dueDate === yesterdayStr
+    );
+    
+    const missedTasks = healthTasks.filter(t => 
+      t.dueDate && t.dueDate < yesterdayStr
+    );
+
     // Shape habits with completedToday flag
     const shapedHabits = healthHabits.map(h => ({
       id: h.id,
@@ -92,7 +114,11 @@ export async function GET(req: NextRequest) {
       todayEntry,
       todayWorkouts,
       healthHabits: shapedHabits,
-      healthTasks,
+      healthTasks: {
+        today: todayTasks,
+        overdue: overdueTasks,
+        missed: missedTasks,
+      },
       healthGoals,
       weeklyStats: {
         habitsCompletedThisWeek,

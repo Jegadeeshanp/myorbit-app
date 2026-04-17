@@ -86,7 +86,7 @@ export default function TaskReminderModal({ task, onClose, onDone }: Props) {
 
       {/* Card */}
       <div
-        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-[#1C1C1E] shadow-2xl"
+        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white dark:bg-[#1C1C1E] shadow-2xl"
         style={{ animation: 'reminderSlideUp 0.25s cubic-bezier(0.34,1.56,0.64,1) both' }}
       >
         {/* ── Top row: date+repeat (left) · list name (center) · pin+close (right) ── */}
@@ -104,10 +104,10 @@ export default function TaskReminderModal({ task, onClose, onDone }: Props) {
 
           {/* Pin + close */}
           <div className="flex items-center gap-1">
-            <button className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 transition hover:bg-white/10">
+            <button className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:hover:bg-white/10">
               <Pin className="h-4 w-4" />
             </button>
-            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 transition hover:bg-white/10">
+            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:hover:bg-white/10">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -115,18 +115,18 @@ export default function TaskReminderModal({ task, onClose, onDone }: Props) {
 
         {/* ── Task title ── */}
         <div className="px-5 pb-8 pt-2">
-          <h2 className="text-3xl font-bold leading-tight text-white">{task.title}</h2>
+          <h2 className="text-3xl font-bold leading-tight text-gray-900 dark:text-white">{task.title}</h2>
         </div>
 
         {/* ── Snooze options (shown when Snooze tapped) ── */}
         {showSnooze && (
-          <div className="mx-4 mb-3 overflow-hidden rounded-2xl bg-[#2C2C2E]">
+          <div className="mx-4 mb-3 overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#2C2C2E]">
             {SNOOZE_OPTIONS.map((opt, i) => (
               <button
                 key={opt.minutes}
                 disabled={loading}
                 onClick={() => handleSnooze(opt.minutes)}
-                className={`flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50 ${i > 0 ? 'border-t border-white/10' : ''}`}
+                className={`flex w-full items-center gap-2.5 px-4 py-3.5 text-left text-sm font-medium text-gray-900 dark:text-white transition hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-50 ${i > 0 ? 'border-t border-gray-200 dark:border-white/10' : ''}`}
               >
                 <Clock className="h-4 w-4 text-amber-500 flex-none" />
                 {opt.label}
@@ -134,7 +134,7 @@ export default function TaskReminderModal({ task, onClose, onDone }: Props) {
             ))}
             <button
               onClick={() => setShowSnooze(false)}
-              className="flex w-full items-center justify-center border-t border-white/10 py-3 text-sm text-gray-400 transition hover:bg-white/10"
+              className="flex w-full items-center justify-center border-t border-gray-200 dark:border-white/10 py-3 text-sm text-gray-500 dark:text-gray-400 transition hover:bg-gray-200 dark:hover:bg-white/10"
             >
               Cancel
             </button>
@@ -146,7 +146,7 @@ export default function TaskReminderModal({ task, onClose, onDone }: Props) {
           <div className="flex gap-3 px-4 pb-5">
             <button
               onClick={() => setShowSnooze(true)}
-              className="flex-1 rounded-2xl bg-[#2C2C2E] py-4 text-base font-semibold text-gray-300 transition hover:bg-[#3A3A3C] active:scale-95"
+              className="flex-1 rounded-2xl bg-gray-100 dark:bg-[#2C2C2E] py-4 text-base font-semibold text-gray-700 dark:text-gray-300 transition hover:bg-gray-200 dark:hover:bg-[#3A3A3C] active:scale-95"
             >
               Snooze
             </button>

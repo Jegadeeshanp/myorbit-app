@@ -9,7 +9,7 @@ interface ThemeContextValue {
   setTheme: (t: Theme) => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: 'system', setTheme: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({ theme: 'dark', setTheme: () => {} });
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -28,12 +28,12 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
+  const [theme, setThemeState] = useState<Theme>('dark');
 
-  // On mount: read saved preference and apply
+  // On mount: read saved preference and apply (default = dark)
   useEffect(() => {
     const stored = localStorage.getItem('theme') as Theme | null;
-    const t: Theme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+    const t: Theme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark';
     setThemeState(t);
     applyTheme(t);
   }, []);

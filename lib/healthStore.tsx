@@ -94,7 +94,11 @@ export type DashboardData = {
   todayEntry: HealthEntry | null;
   todayWorkouts: Workout[];
   healthHabits: HealthHabit[];
-  healthTasks: HealthTask[];
+  healthTasks: {
+    today: HealthTask[];
+    overdue: HealthTask[];
+    missed: HealthTask[];
+  };
   healthGoals: HealthGoal[];
   weeklyStats: WeeklyStats;
 };
@@ -212,6 +216,7 @@ type HealthContextValue = HealthState & {
   updateWorkout: (id: string, data: Partial<Workout>) => Promise<Workout>;
   deleteWorkout: (id: string) => Promise<void>;
   completeHealthTask: (taskId: string, steps?: number, durationMins?: number) => Promise<any>;
+  undoHealthTask: (taskId: string) => Promise<any>;
   reload: () => Promise<void>;
 };
 
@@ -295,6 +300,17 @@ export function HealthProvider({ children }: PropsWithChildren) {
     return result;
   };
 
+  const undoHealthTask = async (taskId: string) => {
+    const result = await api<any>('/api/health/undo-task', {
+      method: 'POST',
+      body: JSON.stringify({ taskId }),
+    });
+    // Refresh dashboard after undo
+    const dashboard = await api<DashboardData>('/api/health/dashboard');
+    dispatch({ type: 'patchDashboard', payload: dashboard });
+    return result;
+  };
+
   return (
     <HealthContext.Provider
       value={{
@@ -305,6 +321,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
         updateWorkout,
         deleteWorkout,
         completeHealthTask,
+        undoHealthTask,
         reload: load,
       }}
     >

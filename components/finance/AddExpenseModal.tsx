@@ -5,8 +5,8 @@ import Modal, { SectionLabel, OptionalBadge, inputCls } from './Modal';
 import { toast } from '@/components/Toast';
 import { Transaction } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
-import { Plus, X, Package, Check, Repeat2 } from 'lucide-react';
-import { getCustomExpenseCategoryDefs, addCustomExpenseCategoryDB } from '@/lib/customCategoryStore';
+import { Plus, X, Package, Check } from 'lucide-react';
+import { getCustomExpenseCategoryDefs, addCustomExpenseCategory } from '@/lib/customCategoryStore';
 
 export type AddExpenseProps = {
   open: boolean;
@@ -53,7 +53,7 @@ function CategoryGrid({
     };
     setExtras(prev => [...prev, newCat]);
     const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
-    addCustomExpenseCategoryDB(newCat.name, iconName); // persist to localStorage + DB
+    addCustomExpenseCategory(newCat.name, iconName); // persist name + icon to central store
     onChange(newCat.name);
     setCustomName('');
     setCustomIcon(Package);
@@ -174,8 +174,11 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
   const [note,        setNote]      = useState('');
   const [amount,      setAmount]    = useState('');
   const [accountId,   setAccountId] = useState(accounts[0]?.id ?? '');
-  // Recurring: default frequency = monthly on selected date
-  const [isRecurring, setRecurring] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency,   setFrequency] = useState('monthly');
+  const [endType,     setEndType]   = useState<'never' | 'on_date' | 'after'>('never');
+  const [endDate,     setEndDate]   = useState('');
+  const [endTimes,    setEndTimes]  = useState('');
 
   useEffect(() => {
     if (open) {
@@ -185,7 +188,11 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
       setNote(initial?.notes ?? '');
       setAmount(initial ? String(Math.abs(initial.amount)) : '');
       setAccountId(initial?.accountId ?? accounts[0]?.id ?? '');
-      setRecurring(false);
+      setIsRecurring(false);
+      setFrequency('monthly');
+      setEndType('never');
+      setEndDate('');
+      setEndTimes('');
     }
   }, [open]);
 
@@ -193,16 +200,50 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
     !!date && !!category && !!description.trim() && Number(amount) > 0 && !!accountId,
   [date, category, description, amount, accountId]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    // If recurring, attach a monthly config starting from selected date
-    const recurring = isRecurring && !initial ? {
-      frequency:  'monthly' as const,
-      startDate:   date,
-      endType:     'never' as const,
-    } : undefined;
-    onSave({ date, category, description: description.trim(), notes: note.trim() || undefined, amount: -Math.abs(Number(amount)), type: 'expense', accountId, ...(recurring ? { recurring } : {}) } as any);
-    toast(initial ? 'Expense updated' : isRecurring ? 'Recurring expense added' : 'Expense recorded');
+    
+    const payload: any = {
+      date,
+      category,
+      description: description.trim(),
+      notes: note.trim() || undefined,
+      amount: -Math.abs(Number(amount)),
+      type: 'expense',
+      accountId,
+    };
+
+    if (isRecurring && !initial) {  // Only create recurring if new transaction
+      try {
+        const res = await fetch('/api/recurring-transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId,
+            category,
+            description: description.trim(),
+            notes: note || null,
+            amount: -Math.abs(Number(amount)),
+            type: 'expense',
+            recurringConfig: {
+              frequency,
+              startDate: date,
+              endType,
+              endDate: endType === 'on_date' ? endDate : null,
+              endAfterTimes: endType === 'after' ? parseInt(endTimes) : null,
+            },
+          }),
+        });
+        if (!res.ok) throw new Error();
+        toast('Recurring transaction created', 'success');
+      } catch (err) {
+        toast('Failed to create recurring transaction', 'error');
+        return;
+      }
+    }
+
+    onSave(payload);
+    toast(initial ? 'Expense updated' : 'Expense recorded');
     onClose();
   };
 
@@ -262,27 +303,66 @@ export default function AddExpenseModal({ open, onClose, accounts, onSave, initi
               </label>
               <input value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Add a note…" className={inputCls} />
             </div>
+          </div>
+        </div>
 
-            {/* Repeat monthly toggle — hidden when editing an existing transaction */}
-            {!initial && (
-              <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                <Repeat2 className="h-4 w-4 flex-none text-gray-400" />
-                <span className="flex-1 text-sm font-medium text-gray-700">Repeat monthly on this date</span>
-                <button
-                  type="button"
-                  onClick={() => setRecurring(v => !v)}
-                  className={`relative inline-flex h-6 w-10 flex-none items-center rounded-full transition-colors ${
-                    isRecurring ? 'bg-rose-500' : 'bg-gray-200'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                    isRecurring ? 'translate-x-5' : 'translate-x-1'
-                  }`} />
-                </button>
+        {/* Recurring */}
+        {!isEdit && (
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <input type="checkbox" id="recurring" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="w-4 h-4 rounded border-gray-300" />
+              <label htmlFor="recurring" className="text-sm font-medium text-gray-700 cursor-pointer">Make this recurring</label>
+            </div>
+            
+            {isRecurring && (
+              <div className="space-y-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Frequency</label>
+                  <select value={frequency} onChange={e => setFrequency(e.target.value)} className={inputCls}>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">End type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['never', 'on_date', 'after'] as const).map(opt => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setEndType(opt)}
+                        className={`px-3 py-2 text-xs font-medium rounded-lg transition ${
+                          endType === opt
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-white border border-emerald-200 text-gray-700 hover:bg-emerald-50'
+                        }`}
+                      >
+                        {opt === 'never' ? 'Never' : opt === 'on_date' ? 'On date' : 'After'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {endType === 'on_date' && (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">End date</label>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputCls} />
+                  </div>
+                )}
+
+                {endType === 'after' && (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">Number of times</label>
+                    <input type="number" value={endTimes} onChange={e => setEndTimes(e.target.value)} min="1" placeholder="12" className={inputCls} />
+                  </div>
+                )}
               </div>
             )}
           </div>
-        </div>
+        )}
 
       </div>
     </Modal>

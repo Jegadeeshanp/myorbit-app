@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import OrbitIcon from '@/components/OrbitIcon';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { useSession } from 'next-auth/react';
@@ -35,9 +36,7 @@ export default function GoalsSidebar() {
     <aside className="sticky top-0 hidden h-screen w-56 flex-none flex-col overflow-y-auto border-r border-gray-100 bg-white px-3 py-5 md:flex">
       <div className="mb-5 px-2">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
-            <Target className="h-4 w-4 text-emerald-600" />
-          </div>
+          <OrbitIcon src="/icons/dashboard-icon.png" className="h-8 w-8 rounded-lg object-cover shadow-sm" fallbackClassName="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100" fallbackContent={<Target className="h-4 w-4 text-emerald-600" />} />
           <div>
             <div className="text-sm font-semibold text-gray-900">Goals</div>
             <div className="text-[11px] text-gray-400">Goal tracking workspace</div>
