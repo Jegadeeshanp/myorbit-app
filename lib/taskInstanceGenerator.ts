@@ -31,10 +31,20 @@ export async function generateInstancesForDate(userId: string, date: string): Pr
     const recurringInstances = recurringTasks
       .filter((task) => {
         if (!task.recurrenceDays) return false;
-        const daysArray = Array.isArray(task.recurrenceDays)
-          ? task.recurrenceDays
-          : (task.recurrenceDays as { [key: string]: number } | number[]).valueOf?.() ||
-            Object.values(task.recurrenceDays);
+
+        // Parse recurrenceDays as number array
+        let daysArray: number[] = [];
+        try {
+          if (Array.isArray(task.recurrenceDays)) {
+            daysArray = task.recurrenceDays as number[];
+          } else if (typeof task.recurrenceDays === 'object' && task.recurrenceDays !== null) {
+            // If it's a JSON object, convert values to array
+            daysArray = Object.values(task.recurrenceDays).filter((v): v is number => typeof v === 'number');
+          }
+        } catch {
+          return false;
+        }
+
         return daysArray.includes(dayOfWeek);
       })
       .map((task) => ({
