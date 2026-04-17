@@ -11,6 +11,11 @@
     {
       "path": "/api/cron/cleanup-missed-tasks",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-task-instances",
+      "schedule": "0 1 * * *"
     }
   ]
 }
+
