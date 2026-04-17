@@ -27,8 +27,12 @@ export async function GET(_: NextRequest) {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // Generate instances for today (idempotent – skips duplicates)
-    await generateInstancesForDate(userId, today);
+    // Generate instances for today + past 6 days (idempotent – skips duplicates).
+    // This ensures tasks with past due dates show up in Overdue / Missed sections
+    // even if the user hasn't opened the app every day since the task was created.
+    const datesToGenerate: string[] = [];
+    for (let i = 0; i <= 6; i++) datesToGenerate.push(subDays(today, i));
+    await Promise.all(datesToGenerate.map(d => generateInstancesForDate(userId, d)));
 
     const yesterdayDate = subDays(today, 1);
     const sevenDaysAgo  = subDays(today, 7);

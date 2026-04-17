@@ -83,7 +83,7 @@ export async function generateInstancesForDate(userId: string, date: string): Pr
       skipDuplicates: true,
     });
   } catch (error) {
-    console.error('[generateInstancesForDate] error:', error);
-    throw error;
+    // Log but don't rethrow — a failure for one date should not break Today view
+    console.error('[generateInstancesForDate] error for date', date, error);
   }
 }
