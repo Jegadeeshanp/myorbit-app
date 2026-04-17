@@ -19,6 +19,7 @@ import AddIncomeModal  from '@/components/finance/AddIncomeModal';
 import ConfirmDialog   from '@/components/ConfirmDialog';
 import { Transaction } from '@/lib/financeData';
 import { getExcludedExpenseCategories } from '@/lib/customCategoryStore';
+import TransactionFilterBar from '@/components/finance/TransactionFilterBar';
 
 // ── Category icon + color maps (expense categories) ───────────────────────
 const EXPENSE_ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -240,6 +241,27 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [upcomingOpen, setUpcomingOpen] = useState(true);
 
+  // ── Account-type / account filter ────────────────────────────────────────
+  const [selectedType, setSelectedType]           = useState('All');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+
+  const handleTypeChange = (type: string) => {
+    setSelectedType(type);
+    setSelectedAccountId(''); // always reset account when switching type
+  };
+
+  // Transactions filtered by account type / specific account (applied first)
+  const accountFilteredTxs = useMemo(() => {
+    if (selectedType === 'All' && !selectedAccountId) return transactions;
+    const typeIds = new Set(
+      state.accounts
+        .filter(a => selectedType === 'All' || a.type === selectedType)
+        .map(a => a.id)
+    );
+    const targetIds = selectedAccountId ? new Set([selectedAccountId]) : typeIds;
+    return transactions.filter(t => t.accountId && targetIds.has(t.accountId));
+  }, [transactions, state.accounts, selectedType, selectedAccountId]);
+
   // Today's date string for upcoming vs past split
   const today = new Date().toISOString().slice(0, 10);
 
@@ -266,11 +288,11 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
     return `₹${abs.toLocaleString('en-IN')}`;
   }
 
-  // Split into upcoming (future) and past
+  // Split into upcoming (future) and past — from account-filtered set
   const { pastTxs, upcomingTxs } = useMemo(() => ({
-    pastTxs:     transactions.filter(tx => tx.date <= today),
-    upcomingTxs: transactions.filter(tx => tx.date >  today),
-  }), [transactions, today]);
+    pastTxs:     accountFilteredTxs.filter(tx => tx.date <= today),
+    upcomingTxs: accountFilteredTxs.filter(tx => tx.date >  today),
+  }), [accountFilteredTxs, today]);
 
   // Apply search filter
   function applySearch(txs: Transaction[]) {
@@ -350,7 +372,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
         ))}
       </div>
 
-      {/* ── Row 1: Search (left) | Add + Filter (right) ── */}
+      {/* ── ROW 1: Search (left) | Add button (right) ── */}
       <div className="flex items-center gap-2">
         {/* Search — icon only on mobile, full input on sm+ */}
         {mobileSearch ? (
@@ -383,10 +405,8 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           />
         </div>
 
-        {/* Spacer pushes buttons to the right */}
         <div className="flex-1" />
 
-        {/* Add button */}
         {onAdd && (
           <button onClick={onAdd}
             className="flex flex-none items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 active:scale-95">
@@ -394,7 +414,19 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             Add transaction
           </button>
         )}
-        {/* Filter / period dropdown */}
+      </div>
+
+      {/* ── ROW 2: Account-type filter tabs (left) | Period dropdown (right) ── */}
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <TransactionFilterBar
+            accounts={state.accounts}
+            selectedType={selectedType}
+            selectedAccountId={selectedAccountId}
+            onTypeChange={handleTypeChange}
+            onAccountChange={setSelectedAccountId}
+          />
+        </div>
         <div className="relative flex-none">
           <button
             onClick={() => setDropdown(o => !o)}
@@ -496,11 +528,21 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
       {/* ── Transaction table (single card, headers inside) ── */}
       {groups.length === 0 ? (
-        <EmptyState
-          icon={CreditCard}
-          title="No transactions found"
-          subtitle="Try a different tab, period, or search term"
-        />
+        selectedType !== 'All' || selectedAccountId ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-800 mb-3">
+              <CreditCard className="h-5 w-5 text-gray-500" />
+            </div>
+            <p className="text-sm font-medium text-gray-400">No transactions</p>
+            <p className="text-xs text-gray-600 mt-1">No transactions for this account</p>
+          </div>
+        ) : (
+          <EmptyState
+            icon={CreditCard}
+            title="No transactions found"
+            subtitle="Try a different tab, period, or search term"
+          />
+        )
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
