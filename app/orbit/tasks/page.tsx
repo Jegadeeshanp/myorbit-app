@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import TasksSidebar from '@/components/tasks/TasksSidebar';
 import TaskItem from '@/components/tasks/TaskItem';
+import type { TaskInstanceWithTask, TodayResponse } from '@/lib/taskTypes';
 import TaskDetail from '@/components/tasks/TaskDetail';
 import TaskReminderModal from '@/components/tasks/TaskReminderModal';
 import TaskCalendar from '@/components/tasks/TaskCalendar';
@@ -638,7 +639,7 @@ export default function TasksPage() {
   const [view, setView]               = useState<'tasks' | 'calendar'>('tasks');
   const [selected, setSelected]       = useState('today');
   const [tasks, setTasks]             = useState<Task[]>([]);
-  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
+  const [todayData, setTodayData]     = useState<TodayResponse | null>(null);
   const [lists, setLists]             = useState<TaskList[]>([]);
   const [loading, setLoading]         = useState(true);
   const [activeTask, setActiveTask]   = useState<Task | null>(null);
@@ -648,7 +649,6 @@ export default function TasksPage() {
   const [refreshKey, setRefreshKey]   = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [completedOpen, setCompletedOpen] = useState(false);
   const [showFab, setShowFab]         = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen]   = useState(false);
@@ -689,10 +689,26 @@ export default function TasksPage() {
 
   const fetchTasks = useCallback(() => {
     setLoading(true);
-    const url = view === 'calendar' ? '/api/tasks?smartList=all' : selected.startsWith('list:') ? `/api/tasks?listId=${selected.replace('list:', '')}` : `/api/tasks?smartList=${selected}`;
-    Promise.all([fetch(url).then(r => r.json()).catch(() => []), fetch('/api/tasks?smartList=completed').then(r => r.json()).catch(() => [])])
-      .then(([active, completed]) => { setTasks(Array.isArray(active) ? active : []); setCompletedTasks(Array.isArray(completed) ? completed.filter((t: Task) => belongsToCurrentSelection(t, selected)) : []); })
-      .catch(() => toast('Failed to load tasks', 'error')).finally(() => setLoading(false));
+    // Today view: use TaskInstance-based API
+    if (selected === 'today' && view !== 'calendar') {
+      fetch('/api/tasks/today')
+        .then(r => r.json())
+        .then((data: TodayResponse) => setTodayData(data))
+        .catch(() => toast('Failed to load tasks', 'error'))
+        .finally(() => setLoading(false));
+      return;
+    }
+    // All other views: use Task-based API
+    const url = view === 'calendar'
+      ? '/api/tasks?smartList=all'
+      : selected.startsWith('list:')
+        ? `/api/tasks?listId=${selected.replace('list:', '')}`
+        : `/api/tasks?smartList=${selected}`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => setTasks(Array.isArray(data) ? data : []))
+      .catch(() => toast('Failed to load tasks', 'error'))
+      .finally(() => setLoading(false));
   }, [selected, view]);
 
   const fetchLists = useCallback(() => { fetch('/api/task-lists').then(r => r.json()).then(d => { if (Array.isArray(d)) setLists(d); }).catch(() => {}); }, []);
@@ -758,12 +774,12 @@ export default function TasksPage() {
     } catch { toast('Failed to add task', 'error'); return null; } finally { setAddingTask(false); }
   };
 
+  // ── List view handlers (work on Task records) ────────────────────────────
   const handleComplete = async (id: string) => {
     const ct = tasks.find(t => t.id === id);
     try {
       const res = await fetch(`/api/tasks/${id}/complete`, { method: 'PATCH' }); if (!res.ok) throw new Error();
       setTasks(prev => prev.filter(t => t.id !== id));
-      if (ct && belongsToCurrentSelection(ct, selected)) setCompletedTasks(prev => [{ ...ct, status: 'completed' }, ...prev]);
       setRefreshKey(k => k + 1); toast('Task completed!');
     } catch { toast('Failed to complete', 'error'); return; }
 
@@ -775,11 +791,7 @@ export default function TasksPage() {
         if (habitTag) {
           const habitId = habitTag.replace('habit:', '');
           const today = new Date().toISOString().split('T')[0];
-          await fetch(`/api/habits/${habitId}/log`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: today }),
-          });
+          await fetch(`/api/habits/${habitId}/log`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: today }) });
         }
       } catch { /* habit log failure must not affect task UX */ }
     }
@@ -789,18 +801,71 @@ export default function TasksPage() {
       const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       setTasks(p => p.filter(t => t.id !== id));
-      setCompletedTasks(p => p.filter(t => t.id !== id));
       toast('Moved to deleted');
-    }
-    catch { toast('Failed to delete', 'error'); }
+    } catch { toast('Failed to delete', 'error'); }
   };
   const handleTaskUpdated = (updated: Task) => {
-    if (updated.status === 'completed') { setTasks(p => p.filter(t => t.id !== updated.id)); if (belongsToCurrentSelection(updated, selected)) setCompletedTasks(p => [updated, ...p.filter(t => t.id !== updated.id)]); }
-    else { setTasks(p => p.map(t => t.id === updated.id ? updated : t)); setCompletedTasks(p => p.filter(t => t.id !== updated.id)); }
+    if (updated.status === 'completed') { setTasks(p => p.filter(t => t.id !== updated.id)); }
+    else { setTasks(p => p.map(t => t.id === updated.id ? updated : t)); }
     setActiveTask(updated); setRefreshKey(k => k + 1);
   };
   const handleTaskDeleted = async (id: string) => { await handleDelete(id); setActiveTask(null); };
   const handleTaskCompleted = (id: string) => { handleComplete(id); setActiveTask(null); };
+
+  // ── Today view handlers (work on TaskInstance records) ───────────────────
+  const handleInstanceComplete = async (instanceId: string) => {
+    try {
+      const res = await fetch(`/api/tasks/instances/${instanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      if (!res.ok) throw new Error();
+      toast('Task completed!');
+      fetchTasks();
+    } catch { toast('Failed to complete', 'error'); }
+  };
+
+  const handleInstanceDelete = async (instanceId: string) => {
+    try {
+      const res = await fetch(`/api/tasks/instances/${instanceId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      toast('Removed from today');
+      // Optimistic: remove from todayData state
+      setTodayData(prev => {
+        if (!prev) return prev;
+        const remove = (arr: TaskInstanceWithTask[]) => arr.filter(i => i.id !== instanceId);
+        return { overdue: remove(prev.overdue), today: remove(prev.today), missed: remove(prev.missed), completed: remove(prev.completed) };
+      });
+    } catch { toast('Failed to remove', 'error'); }
+  };
+
+  // Click an instance → open TaskDetail with the underlying Task
+  const handleInstanceClick = async (inst: TaskInstanceWithTask) => {
+    setShowFab(false);
+    try {
+      const res = await fetch(`/api/tasks/${inst.taskId}`);
+      if (res.ok) { const task = await res.json(); setActiveTask(task); }
+    } catch { /* silently ignore */ }
+  };
+
+  // Map a TaskInstance to the Task shape that TaskItem expects
+  function instanceToDisplayTask(inst: TaskInstanceWithTask): Task {
+    return {
+      id:       inst.id,
+      title:    inst.task.title,
+      priority: inst.task.priority,
+      dueDate:  inst.date,
+      dueTime:  inst.task.dueTime ?? undefined,
+      tags:     inst.task.tags,
+      listId:   inst.task.listId ?? undefined,
+      status:   inst.status === 'completed' ? 'completed' : 'active',
+      list:     inst.task.list
+        ? { id: inst.task.list.id, name: inst.task.list.name, color: inst.task.list.color ?? undefined, emoji: inst.task.list.emoji ?? undefined }
+        : undefined,
+      subtasks: [],
+    };
+  }
   const toggleGroup = (label: string) => { setCollapsedGroups(p => { const n = new Set(p); n.has(label) ? n.delete(label) : n.add(label); return n; }); };
 
   const todayStr = todayString();
@@ -826,21 +891,16 @@ export default function TasksPage() {
 
   const groupedTasks = useMemo((): TaskGroup[] => {
     const filtered = searchQuery ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())) : tasks;
-    if (selected === 'inbox') return [{ label: 'Inbox', tasks: sortTaskList(filtered) }];
+    // next7: group by day
     if (selected === 'next7') {
       const order = [0,1,2,3,4,5,6,7].map(i => todayString(i));
       const grouped = new Map<string, Task[]>();
       for (const t of filtered) { const key = t.dueDate || todayStr; grouped.set(key, [...(grouped.get(key) ?? []), t]); }
       return order.filter(d => grouped.has(d)).map(d => ({ label: next7Label(d), tasks: sortTaskList(grouped.get(d) ?? []) }));
     }
-    const overdue: Task[] = [], todayTasks: Task[] = [], upcoming: Task[] = [];
-    for (const t of filtered) { if (!t.dueDate || t.dueDate === todayStr) todayTasks.push(t); else if (t.dueDate < todayStr) overdue.push(t); else upcoming.push(t); }
-    const groups: TaskGroup[] = [];
-    if (overdue.length) groups.push({ label: 'Overdue', tasks: sortTaskList(overdue) });
-    if (todayTasks.length) groups.push({ label: `Today ${todayTasks.length}`, tasks: sortTaskList(todayTasks) });
-    if (upcoming.length) groups.push({ label: 'Upcoming', tasks: sortTaskList(upcoming) });
-    if (groups.length === 0) groups.push({ label: 'Today', tasks: [] });
-    return groups;
+    // All other list views: single flat group — no overdue/completed sections
+    const label = selected === 'inbox' ? 'Inbox' : getListName(selected);
+    return [{ label, tasks: sortTaskList(filtered) }];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, selected, todayStr, searchQuery, sortBy]);
 
@@ -855,7 +915,7 @@ export default function TasksPage() {
     return SMART_LABELS[v] || v;
   };
   const listLabel = getListName(selected);
-  const listSubtitle = selected === 'today' ? 'Only tasks due today are shown here.' : selected === 'next7' ? 'Tasks grouped from today through next seven days.' : selected === 'inbox' ? 'Tasks waiting to be scheduled.' : 'Tasks inside the selected list.';
+  const listSubtitle = selected === 'today' ? 'Overdue, today, missed and completed task instances.' : selected === 'next7' ? 'Tasks grouped from today through next seven days.' : selected === 'inbox' ? 'Tasks waiting to be scheduled.' : 'Tasks inside the selected list.';
   const focusCreateTask = () => { setView('tasks'); setActiveTask(null); if (typeof window !== 'undefined' && window.innerWidth < 768) setShowFab(true); else window.setTimeout(() => inputRef.current?.focus(), 80); };
 
   return (
@@ -916,7 +976,7 @@ export default function TasksPage() {
         <div className="flex min-h-0 flex-1 gap-2 overflow-hidden px-4 pb-24 md:px-0 md:pb-0">
           {view === 'calendar' ? (
             <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-[#1A2029] shadow-sm">
-              <TaskCalendar tasks={[...tasks, ...completedTasks]} onOpenSidebar={() => setMobileSidebarOpen(true)} onTaskClick={t => setActiveTask(t)} />
+              <TaskCalendar tasks={tasks} onOpenSidebar={() => setMobileSidebarOpen(true)} onTaskClick={t => setActiveTask(t)} />
             </div>
           ) : (
             <>
@@ -983,17 +1043,77 @@ export default function TasksPage() {
                   </div>
                   {loading ? (
                     <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="flex animate-pulse items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700/60 dark:bg-[#1C1F26]"><div className="h-5 w-5 flex-none rounded-md bg-gray-200 dark:bg-gray-700" /><div className="h-4 flex-1 rounded bg-gray-200 dark:bg-gray-700" /></div>)}</div>
-                  ) : tasks.length === 0 && completedTasks.length === 0 ? (
+
+                  ) : selected === 'today' ? (
+                    /* ── TODAY VIEW: 4 TaskInstance sections ─────────────────── */
+                    (() => {
+                      const td = todayData;
+                      const totalPending = (td?.overdue.length ?? 0) + (td?.today.length ?? 0) + (td?.missed.length ?? 0);
+                      const totalCompleted = td?.completed.length ?? 0;
+
+                      if (!td || (totalPending === 0 && totalCompleted === 0)) {
+                        return (
+                          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-20 text-center dark:border-gray-700/60 dark:bg-[#1C1F26]">
+                            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-900/20">
+                              <Sun className="h-8 w-8 text-amber-500" />
+                            </div>
+                            <p className="font-semibold text-gray-900 dark:text-white">All caught up!</p>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">No pending tasks for today</p>
+                          </div>
+                        );
+                      }
+
+                      const SECTIONS = [
+                        { key: 'overdue',   label: 'Overdue',   instances: td.overdue,   headerCls: 'text-rose-600 dark:text-rose-400',     badgeCls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',     borderCls: 'border-rose-200 dark:border-rose-800/30' },
+                        { key: 'today',     label: 'Today',     instances: td.today,     headerCls: 'text-emerald-700 dark:text-emerald-400', badgeCls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', borderCls: 'border-emerald-200 dark:border-emerald-800/30' },
+                        { key: 'missed',    label: 'Missed',    instances: td.missed,    headerCls: 'text-amber-600 dark:text-amber-400',    badgeCls: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',    borderCls: 'border-amber-200 dark:border-amber-800/30' },
+                        { key: 'completed', label: 'Completed', instances: td.completed, headerCls: 'text-gray-500 dark:text-gray-400',      badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',        borderCls: 'border-gray-200 dark:border-gray-700/40' },
+                      ] as const;
+
+                      return (
+                        <div className="space-y-2">
+                          {SECTIONS.filter(s => s.instances.length > 0).map(section => (
+                            <div key={section.key} className={`overflow-hidden rounded-2xl border bg-white dark:bg-[#1C1F26] ${section.borderCls}`}>
+                              <button onClick={() => toggleGroup(section.key)} className="flex w-full items-center gap-2 px-4 py-3 text-left">
+                                <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${!collapsedGroups.has(section.key) ? 'rotate-90' : ''}`} />
+                                <span className={`text-sm font-semibold ${section.headerCls}`}>{section.label}</span>
+                                <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-medium ${section.badgeCls}`}>{section.instances.length}</span>
+                              </button>
+                              {!collapsedGroups.has(section.key) && (
+                                <div className="space-y-0.5 px-2 pb-2">
+                                  {section.instances.map(inst => (
+                                    <TaskItem
+                                      key={inst.id}
+                                      task={instanceToDisplayTask(inst)}
+                                      onComplete={section.key !== 'completed' ? handleInstanceComplete : undefined}
+                                      onDelete={handleInstanceDelete}
+                                      onClick={() => handleInstanceClick(inst)}
+                                      isActive={activeTask?.id === inst.taskId}
+                                      showList
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()
+
+                  ) : tasks.length === 0 ? (
+                    /* ── LIST VIEW EMPTY STATE ───────────────────────────────── */
                     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-20 text-center dark:border-gray-700/60 dark:bg-[#1C1F26]">
                       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-800">
-                        {selected === 'today' ? <Sun className="h-8 w-8 text-amber-500" /> : selected === 'inbox' ? <Inbox className="h-8 w-8 text-sky-500" /> : <CalendarDays className="h-8 w-8 text-indigo-500" />}
+                        {selected === 'inbox' ? <Inbox className="h-8 w-8 text-sky-500" /> : <CalendarDays className="h-8 w-8 text-indigo-500" />}
                       </div>
                       <p className="font-semibold text-gray-900 dark:text-white">No tasks here</p>
                       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Tap + to add your first task</p>
                     </div>
+
                   ) : (
+                    /* ── LIST VIEW: flat task list, no completed/overdue sections ── */
                     <div className="space-y-2">
-                      {groupedTasks.map(group => (
+                      {groupedTasks.map((group, gi) => (
                         <div key={group.label} className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700/60 dark:bg-[#1C1F26]">
                           <div className="flex items-center pr-2">
                             <button onClick={() => toggleGroup(group.label)} className="flex flex-1 items-center gap-2 px-4 py-3 text-left">
@@ -1002,7 +1122,7 @@ export default function TasksPage() {
                               <span className="ml-1 text-sm text-gray-400">{group.tasks.length}</span>
                             </button>
                             {/* Sort icon — only on first group */}
-                            {groupedTasks.indexOf(group) === 0 && (
+                            {gi === 0 && (
                               <div className="relative flex-none">
                                 <button
                                   onClick={e => { e.stopPropagation(); setShowSortMenu(v => !v); }}
@@ -1030,19 +1150,23 @@ export default function TasksPage() {
                               </div>
                             )}
                           </div>
-                          {!collapsedGroups.has(group.label) && <div className="space-y-0.5 px-2 pb-2">{group.tasks.map(task => <TaskItem key={task.id} task={task} onComplete={handleComplete} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} showList={!selected.startsWith('list:')} />)}</div>}
+                          {!collapsedGroups.has(group.label) && (
+                            <div className="space-y-0.5 px-2 pb-2">
+                              {group.tasks.map(task => (
+                                <TaskItem
+                                  key={task.id}
+                                  task={task}
+                                  onComplete={handleComplete}
+                                  onDelete={handleDelete}
+                                  onClick={() => { setShowFab(false); setActiveTask(task); }}
+                                  isActive={activeTask?.id === task.id}
+                                  showList={!selected.startsWith('list:')}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
-                      {completedTasks.length > 0 && (
-                        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700/60 dark:bg-[#1C1F26]">
-                          <button onClick={() => setCompletedOpen(v => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left">
-                            <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${completedOpen ? 'rotate-90' : ''}`} />
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">Completed</span>
-                            <span className="ml-1 text-sm text-gray-400">{completedTasks.length}</span>
-                          </button>
-                          {completedOpen && <div className="space-y-0.5 px-2 pb-2">{completedTasks.map(task => <TaskItem key={task.id} task={task} onDelete={handleDelete} onClick={() => { setShowFab(false); setActiveTask(task); }} isActive={activeTask?.id === task.id} showList={!selected.startsWith('list:')} />)}</div>}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
