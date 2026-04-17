@@ -639,7 +639,7 @@ export default function TasksPage() {
   const [view, setView]               = useState<'tasks' | 'calendar'>('tasks');
   const [selected, setSelected]       = useState('today');
   const [tasks, setTasks]             = useState<Task[]>([]);
-  const [todayData, setTodayData]     = useState<TodayResponse | null>(null);
+  const [todayData, setTodayData]     = useState<TodayResponse>({ overdue: [], today: [], missed: [], completed: [] });
   const [lists, setLists]             = useState<TaskList[]>([]);
   const [loading, setLoading]         = useState(true);
   const [activeTask, setActiveTask]   = useState<Task | null>(null);
@@ -692,9 +692,23 @@ export default function TasksPage() {
     // Today view: use TaskInstance-based API
     if (selected === 'today' && view !== 'calendar') {
       fetch('/api/tasks/today')
-        .then(r => r.json())
-        .then((data: TodayResponse) => setTodayData(data))
-        .catch(() => toast('Failed to load tasks', 'error'))
+        .then(r => {
+          if (!r.ok) throw new Error(`${r.status}`);
+          return r.json() as Promise<TodayResponse>;
+        })
+        .then(data => {
+          // Guard: ensure the response has the expected shape
+          setTodayData({
+            overdue:   Array.isArray(data?.overdue)   ? data.overdue   : [],
+            today:     Array.isArray(data?.today)     ? data.today     : [],
+            missed:    Array.isArray(data?.missed)    ? data.missed    : [],
+            completed: Array.isArray(data?.completed) ? data.completed : [],
+          });
+        })
+        .catch(() => {
+          setTodayData({ overdue: [], today: [], missed: [], completed: [] });
+          toast('Failed to load today\'s tasks', 'error');
+        })
         .finally(() => setLoading(false));
       return;
     }
