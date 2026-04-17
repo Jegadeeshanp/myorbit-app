@@ -942,18 +942,21 @@ export default function TasksPage() {
   };
   const listLabel = getListName(selected);
   const listSubtitle = selected === 'today' ? 'Overdue, today, missed and completed task instances.' : selected === 'next7' ? 'Tasks grouped from today through next seven days.' : selected === 'inbox' ? 'Tasks waiting to be scheduled.' : 'Tasks inside the selected list.';
+  // Clear the active task detail panel whenever the user switches list/section
+  const handleSelectList = (v: string) => { setSelected(v); setActiveTask(null); };
+
   const focusCreateTask = () => { setView('tasks'); setActiveTask(null); if (typeof window !== 'undefined' && window.innerWidth < 768) setShowFab(true); else window.setTimeout(() => inputRef.current?.focus(), 80); };
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F6F8FB] text-gray-900 dark:bg-[#12161D] dark:text-gray-100">
       <div className="hidden md:flex">
-        <TasksSidebar selected={selected} onSelect={v => setSelected(v)} refreshKey={refreshKey} view={view} onViewChange={setView} />
+        <TasksSidebar selected={selected} onSelect={handleSelectList} refreshKey={refreshKey} view={view} onViewChange={setView} />
       </div>
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-[55] md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileSidebarOpen(false)} />
           <div className="absolute left-0 top-0 h-full w-[80%] max-w-sm overflow-y-auto shadow-2xl animate-slide-in-left">
-            <TasksSidebar mobile selected={selected} onSelect={v => { setSelected(v); setMobileSidebarOpen(false); }} refreshKey={refreshKey} view={view} onViewChange={v => { setView(v); setMobileSidebarOpen(false); }} />
+            <TasksSidebar mobile selected={selected} onSelect={v => { handleSelectList(v); setMobileSidebarOpen(false); }} refreshKey={refreshKey} view={view} onViewChange={v => { setView(v); setMobileSidebarOpen(false); }} />
           </div>
         </div>
       )}
@@ -1237,7 +1240,7 @@ export default function TasksPage() {
         </button>
       )}
 
-      <TasksMobileNav selected={selected} view={view} onSelect={v => setSelected(v)} onViewChange={setView} focusAdd={focusCreateTask} />
+      <TasksMobileNav selected={selected} view={view} onSelect={handleSelectList} onViewChange={setView} focusAdd={focusCreateTask} />
 
       {/* Notification reminder modal — shown when app opens via push notification tap */}
       {reminderTask && (
