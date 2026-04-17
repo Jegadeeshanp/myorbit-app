@@ -899,10 +899,22 @@ export default function TasksPage() {
       return order.filter(d => grouped.has(d)).map(d => ({ label: next7Label(d), tasks: sortTaskList(grouped.get(d) ?? []) }));
     }
     // All other list views: single flat group — no overdue/completed sections
-    const label = selected === 'inbox' ? 'Inbox' : getListName(selected);
+    // (inline label logic — avoids TDZ from calling getListName before it's initialized)
+    let label = 'Inbox';
+    if (selected.startsWith('list:')) {
+      const found = lists.find(l => l.id === selected.replace('list:', ''));
+      if (found) {
+        const isActualEmoji = found.emoji && [...found.emoji].length <= 2;
+        label = isActualEmoji ? `${found.emoji} ${found.name}` : found.name;
+      } else {
+        label = 'List';
+      }
+    } else if (selected !== 'inbox') {
+      label = SMART_LABELS[selected] || selected;
+    }
     return [{ label, tasks: sortTaskList(filtered) }];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, selected, todayStr, searchQuery, sortBy]);
+  }, [tasks, lists, selected, todayStr, searchQuery, sortBy]);
 
   const getListName = (v: string) => {
     if (v.startsWith('list:')) {
