@@ -74,11 +74,17 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const userId = await requireUserId();
-    // Soft delete
-    await prisma.task.updateMany({
-      where: { id: id, userId },
-      data: { isActive: false },
-    });
+    // Hard soft-delete: mark task + all its instances as deleted
+    await prisma.$transaction([
+      prisma.task.updateMany({
+        where: { id, userId },
+        data: { isDeleted: true },
+      }),
+      prisma.taskInstance.updateMany({
+        where: { taskId: id, userId },
+        data: { isDeleted: true, status: 'deleted' },
+      }),
+    ]);
     return NextResponse.json({ deleted: true });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

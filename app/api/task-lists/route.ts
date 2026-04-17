@@ -11,7 +11,7 @@ export async function GET() {
       where: { userId, isActive: true },
       orderBy: { sortOrder: 'asc' },
       include: {
-        _count: { select: { tasks: { where: { status: 'active', isActive: true } } } },
+        _count: { select: { tasks: { where: { status: 'active', isActive: true, isDeleted: false } } } },
       },
     });
     return NextResponse.json(lists);

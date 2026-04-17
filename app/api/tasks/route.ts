@@ -14,16 +14,16 @@ export async function GET(req: NextRequest) {
     const today = new Date().toISOString().split('T')[0];
     const next7 = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    let where: Record<string, unknown> = { userId };
+    let where: Record<string, unknown> = { userId, isDeleted: false };
 
-    if (smartList === 'today')     where = { userId, dueDate: today, status: 'active', isActive: true };
-    else if (smartList === 'inbox')     where = { userId, listId: null, status: 'active', isActive: true };
-    else if (smartList === 'next7')     where = { userId, status: 'active', isActive: true, dueDate: { gte: today, lte: next7 } };
-    else if (smartList === 'completed') where = { userId, status: 'completed', isActive: true };
-    else if (smartList === 'trash')     where = { userId, isActive: false };
-    else if (smartList === 'all')       where = { userId, status: 'active', isActive: true };
-    else if (listId)                    where = { userId, listId, status: 'active', isActive: true };
-    else                                where = { userId, isActive: true };
+    if (smartList === 'today')          where = { userId, isDeleted: false, dueDate: today, status: 'active', isActive: true };
+    else if (smartList === 'inbox')     where = { userId, isDeleted: false, listId: null, status: 'active', isActive: true };
+    else if (smartList === 'next7')     where = { userId, isDeleted: false, status: 'active', isActive: true, dueDate: { gte: today, lte: next7 } };
+    else if (smartList === 'completed') where = { userId, isDeleted: false, status: 'completed', isActive: true };
+    else if (smartList === 'trash')     where = { userId, isDeleted: false, isActive: false };
+    else if (smartList === 'all')       where = { userId, isDeleted: false, status: 'active', isActive: true };
+    else if (listId)                    where = { userId, isDeleted: false, listId, status: 'active', isActive: true };
+    else                                where = { userId, isDeleted: false, isActive: true };
 
     const tasks = await prisma.task.findMany({
       where,
