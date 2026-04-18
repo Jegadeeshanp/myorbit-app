@@ -1,0 +1,41 @@
+import { apiRequest } from './client';
+import type {
+  Task, TaskList, TaskInstance, TodayResponse, CreateTaskInput,
+} from './types';
+
+export const getTodayTasks = (): Promise<TodayResponse> =>
+  apiRequest<TodayResponse>('/api/tasks/today');
+
+export const getAllTasks = (listId?: string): Promise<Task[]> => {
+  const url = listId
+    ? `/api/tasks?listId=${listId}`
+    : '/api/tasks?smartList=all';
+  return apiRequest<Task[]>(url);
+};
+
+export const getTaskLists = (): Promise<TaskList[]> =>
+  apiRequest<TaskList[]>('/api/task-lists');
+
+export const createTask = (data: CreateTaskInput): Promise<Task> =>
+  apiRequest<Task>('/api/tasks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const updateTask = (id: string, data: Partial<Task>): Promise<Task> =>
+  apiRequest<Task>(`/api/tasks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+export const deleteTask = (id: string): Promise<void> =>
+  apiRequest<void>(`/api/tasks/${id}`, { method: 'DELETE' });
+
+export const completeInstance = (instanceId: string): Promise<TaskInstance> =>
+  apiRequest<TaskInstance>(`/api/tasks/instances/${instanceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'completed' }),
+  });
+
+export const deleteInstance = (instanceId: string): Promise<void> =>
+  apiRequest<void>(`/api/tasks/instances/${instanceId}`, { method: 'DELETE' });

@@ -3,6 +3,8 @@ import Credentials from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { jwtVerify } from 'jose';
+import { headers } from 'next/headers';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -60,7 +62,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 });
 
 export async function requireUserId(): Promise<string> {
+  // 1. Cookie-based auth (web — NextAuth session)
   const session = await auth();
-  if (!session?.user?.id) throw new Error('Unauthorized');
-  return session.user.id;
+  if (session?.user?.id) return session.user.id;
+
+  // 2. Bearer token fallback (mobile — JWT issued by /api/mobile/auth)
+  try {
+    const reqHeaders = await headers();
+    const authHeader = reqHeaders.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token  = authHeader.slice(7);
+      const secret = new TextEncoder().encode(
+        process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET
+      );
+      const { payload } = await jwtVerify(token, secret);
+      if (payload.userId) return payload.userId as string;
+    }
+  } catch {
+    // Invalid or expired token falls through to Unauthorized
+  }
+
+  throw new Error('Unauthorized');
 }

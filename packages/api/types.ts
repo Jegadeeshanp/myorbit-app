@@ -1,0 +1,230 @@
+/**
+ * packages/api/types.ts
+ * Plain TypeScript interfaces for all MyOrbit entities.
+ * No Prisma imports. Safe for web, iOS, Android.
+ */
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+
+export interface TaskList {
+  id: string;
+  userId: string;
+  name: string;
+  emoji?: string | null;
+  color?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface TaskSubtask {
+  id: string;
+  taskId: string;
+  userId: string;
+  title: string;
+  notes?: string | null;
+  isDone: boolean;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  tags: string;
+  sortOrder: number;
+}
+
+export interface Task {
+  id: string;
+  userId: string;
+  listId?: string | null;
+  title: string;
+  notes?: string | null;
+  status: 'active' | 'completed' | 'wont_do';
+  priority: 'none' | 'low' | 'medium' | 'high';
+  dueDate?: string | null;
+  dueTime?: string | null;
+  tags: string;
+  sortOrder: number;
+  completedAt?: string | null;
+  isActive: boolean;
+  isDeleted: boolean;
+  isRecurring: boolean;
+  recurrenceDays?: number[] | null;
+  subtasks?: TaskSubtask[];
+  list?: TaskList | null;
+}
+
+export interface TaskInstance {
+  id: string;
+  userId: string;
+  taskId: string;
+  date: string;
+  status: 'pending' | 'completed' | 'deleted';
+  isDeleted: boolean;
+  completedAt: string | null;
+  task: {
+    id: string;
+    title: string;
+    priority: string;
+    dueTime: string | null;
+    tags: string;
+    listId: string | null;
+    list?: { id: string; name: string; color: string | null; emoji: string | null } | null;
+  };
+}
+
+export interface TodayResponse {
+  overdue:   TaskInstance[];
+  today:     TaskInstance[];
+  missed:    TaskInstance[];
+  completed: TaskInstance[];
+}
+
+// ── Finance ──────────────────────────────────────────────────────────────────
+
+export interface Account {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'Bank' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Wallet';
+  balance: number;
+  creditLimit?: number | null;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  accountId?: string | null;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense' | 'transfer' | 'opening_balance' | 'adjustment';
+  notes?: string | null;
+}
+
+// ── Goals ─────────────────────────────────────────────────────────────────────
+
+export interface GoalMilestone {
+  id: string;
+  goalId: string;
+  userId: string;
+  title: string;
+  horizon: '1m' | '3m' | '6m';
+  isCompleted: boolean;
+  dueDate?: string | null;
+}
+
+export interface GoalProcess {
+  id: string;
+  goalId: string;
+  userId: string;
+  title: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  isActive: boolean;
+}
+
+export interface Goal {
+  id: string;
+  userId: string;
+  title: string;
+  category: 'Finance' | 'Health' | 'Career' | 'Learning' | 'Personal' | 'Other';
+  why?: string | null;
+  metric?: string | null;
+  deadline?: string | null;
+  status: 'active' | 'completed' | 'paused';
+  milestones?: GoalMilestone[];
+  processes?: GoalProcess[];
+}
+
+// ── Habits ───────────────────────────────────────────────────────────────────
+
+export interface HabitLog {
+  id: string;
+  habitId: string;
+  userId: string;
+  logDate: string;
+  value: number;
+}
+
+export interface Habit {
+  id: string;
+  userId: string;
+  name: string;
+  color?: string | null;
+  iconEmoji?: string | null;
+  goalPerDay: number;
+  isCountBased: boolean;
+  daysOfWeek: number[];
+  sortOrder: number;
+  isActive: boolean;
+  logs?: HabitLog[];
+}
+
+// ── Health ───────────────────────────────────────────────────────────────────
+
+export interface HealthEntry {
+  id: string;
+  userId: string;
+  date: string;
+  steps?: number | null;
+  sleepHours?: number | null;
+  waterMl?: number | null;
+  weightKg?: number | null;
+  mood?: number | null;
+  energyLevel?: number | null;
+  heartRate?: number | null;
+  notes?: string | null;
+}
+
+export interface Workout {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'running' | 'cycling' | 'strength' | 'yoga' | 'sports' | 'other';
+  durationMins: number;
+  caloriesBurned?: number | null;
+  distanceKm?: number | null;
+  date: string;
+  notes?: string | null;
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+export interface UserPreferences {
+  id: string;
+  userId: string;
+  currency: string;
+  theme: string;
+  dateFormat: string;
+  weekStartDay: number;
+  timezone: string;
+  onboardingCompleted: boolean;
+}
+
+// ── Insights ─────────────────────────────────────────────────────────────────
+
+export interface InsightScores {
+  finance: number;
+  habits:  number;
+  health:  number;
+  goals:   number;
+  overall: number;
+}
+
+// ── Input types for mutations ─────────────────────────────────────────────────
+
+export interface CreateTaskInput {
+  title: string;
+  listId?: string | null;
+  dueDate?: string | null;
+  dueTime?: string | null;
+  priority?: string;
+  tags?: string[];
+}
+
+export interface CreateTransactionInput {
+  accountId?: string;
+  date: string;
+  category: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense' | 'transfer';
+  notes?: string;
+}
