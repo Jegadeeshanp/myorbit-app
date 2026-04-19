@@ -13,10 +13,12 @@ export async function GET() {
   }
 
   const result: Record<string, any> = {
-    DATABASE_URL:    parseUrl(process.env.DATABASE_URL),
-    DIRECT_URL:      parseUrl(process.env.DIRECT_URL),
-    AUTH_SECRET:     process.env.AUTH_SECRET     ? 'set' : 'MISSING',
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'set' : 'MISSING',
+    DATABASE_URL:        parseUrl(process.env.DATABASE_URL),
+    DATABASE_URL_FULL:   process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'MISSING',
+    DIRECT_URL:          parseUrl(process.env.DIRECT_URL),
+    DIRECT_URL_FULL:     process.env.DIRECT_URL ? process.env.DIRECT_URL.substring(0, 50) + '...' : 'MISSING',
+    AUTH_SECRET:         process.env.AUTH_SECRET     ? 'set' : 'MISSING',
+    NEXTAUTH_SECRET:     process.env.NEXTAUTH_SECRET ? 'set' : 'MISSING',
   };
 
   try {
