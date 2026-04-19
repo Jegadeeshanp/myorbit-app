@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 
 export const runtime = 'nodejs';
 
@@ -13,20 +13,32 @@ export async function GET() {
   }
 
   const result: Record<string, any> = {
-    DATABASE_URL:        parseUrl(process.env.DATABASE_URL),
-    DATABASE_URL_FULL:   process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'MISSING',
-    DIRECT_URL:          parseUrl(process.env.DIRECT_URL),
-    DIRECT_URL_FULL:     process.env.DIRECT_URL ? process.env.DIRECT_URL.substring(0, 50) + '...' : 'MISSING',
-    AUTH_SECRET:         process.env.AUTH_SECRET     ? 'set' : 'MISSING',
-    NEXTAUTH_SECRET:     process.env.NEXTAUTH_SECRET ? 'set' : 'MISSING',
+    DATABASE_URL: parseUrl(process.env.DATABASE_URL),
+    DIRECT_URL:   parseUrl(process.env.DIRECT_URL),
+    AUTH_SECRET:  process.env.AUTH_SECRET     ? 'set' : 'MISSING',
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'set' : 'MISSING',
   };
 
+  // Test 1: default prisma client (uses DATABASE_URL)
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    result.db = 'ok';
+    const p1 = new PrismaClient();
+    await p1.$queryRaw`SELECT 1`;
+    await p1.$disconnect();
+    result.db_pooler = 'ok';
   } catch (e: any) {
-    result.db = 'error';
-    result.dbError = e?.message ?? String(e);
+    result.db_pooler = 'error: ' + (e?.message ?? String(e)).slice(0, 200);
+  }
+
+  // Test 2: direct connection (uses DIRECT_URL as the url)
+  try {
+    const p2 = new PrismaClient({
+      datasources: { db: { url: process.env.DIRECT_URL } },
+    });
+    await p2.$queryRaw`SELECT 1`;
+    await p2.$disconnect();
+    result.db_direct = 'ok';
+  } catch (e: any) {
+    result.db_direct = 'error: ' + (e?.message ?? String(e)).slice(0, 200);
   }
 
   return NextResponse.json(result);
