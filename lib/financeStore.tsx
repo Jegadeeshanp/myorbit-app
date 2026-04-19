@@ -442,10 +442,17 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       }
     },
     fixAccountBalance: async (id) => {
+      // Guard: refuse to run until all transactions are loaded.
+      // Clicking Fix while data is still loading would compute txNet = 0
+      // and incorrectly zero-out the account balance.
+      if (state.loadState !== 'ready') return;
+      const acctTxs = state.transactions.filter(t => t.accountId === id);
+      if (acctTxs.length === 0) return; // nothing to recalculate from — skip silently
+
       // Recalculate balance from transactions up to today and patch the account
       const today = new Date().toLocaleDateString('en-CA');
-      const txNet = state.transactions
-        .filter(t => t.accountId === id && t.date <= today)
+      const txNet = acctTxs
+        .filter(t => t.date <= today)
         .reduce((s, t) => s + t.amount, 0);
       const updated = await api<Account>(`/api/accounts/${id}`, {
         method: 'PATCH',
