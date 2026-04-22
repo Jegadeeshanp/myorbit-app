@@ -1,0 +1,20 @@
+-- Step 1: Find old Neon userId (run this against your Neon DB)
+SELECT id FROM "User" WHERE email = 'user@example.com';
+-- e.g. returns: old_neon_user_id = 'clxxx...'
+
+-- Step 2: Find new Supabase userId (run this against Supabase)
+SELECT id FROM "User" WHERE email = 'user@example.com';
+-- e.g. returns: new_supabase_user_id = 'clyyy...'
+
+-- Step 3: Export accounts from Neon, import into Supabase
+-- (replace OLD_USER_ID and NEW_USER_ID)
+INSERT INTO "Account" (id, "userId", name, type, balance, currency, "createdAt", "updatedAt")
+SELECT id, 'NEW_USER_ID', name, type, balance, currency, "createdAt", "updatedAt"
+FROM "Account"
+WHERE "userId" = 'OLD_USER_ID';
+
+-- Step 4: Export transactions from Neon, import into Supabase
+INSERT INTO "Transaction" (id, "userId", "accountId", date, category, description, notes, amount, type, "createdAt")
+SELECT id, 'NEW_USER_ID', "accountId", date, category, description, notes, amount, type, "createdAt"
+FROM "Transaction"
+WHERE "userId" = 'OLD_USER_ID';

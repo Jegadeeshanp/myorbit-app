@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { signUpSchema } from '@/lib/validation';
 import { rateLimit } from '@/lib/rateLimit';
 import bcrypt from 'bcryptjs';
+import { SignJWT } from 'jose';
 
 export const runtime = 'nodejs';
 
@@ -38,7 +39,16 @@ export async function POST(req: NextRequest) {
       select: { id: true, email: true, name: true },
     });
 
-    return NextResponse.json({ user }, { status: 201 });
+    // Sign a 30-day JWT so mobile clients are immediately authenticated after signup
+    const secret = new TextEncoder().encode(
+      process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET
+    );
+    const token = await new SignJWT({ userId: user.id, email: user.email })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('30d')
+      .sign(secret);
+
+    return NextResponse.json({ token, user }, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Service unavailable. Please try again later.' }, { status: 503 });
   }

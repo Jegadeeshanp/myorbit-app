@@ -1,34 +1,25 @@
+import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
 
 interface TodaySectionHeaderProps {
-  label:     string;
-  count:     number;
-  color:     string;
-  collapsed: boolean;
-  onToggle:  () => void;
+  title: string;
+  count?: number;
+  color?: string;
+  bg?: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
-export default function TodaySectionHeader({
-  label, count, color, collapsed, onToggle,
-}: TodaySectionHeaderProps) {
+export default function TodaySectionHeader({ title, count, color = '#10B981', bg = '#10B98122', collapsed, onToggle }: TodaySectionHeaderProps) {
   return (
-    <TouchableOpacity
-      onPress={onToggle}
-      className="flex-row items-center gap-2 px-4 py-3"
-      activeOpacity={0.7}
-    >
-      <ChevronRight
-        size={16}
-        color="#9CA3AF"
-        style={{ transform: [{ rotate: collapsed ? '0deg' : '90deg' }] }}
-      />
-      <Text className="text-sm font-semibold" style={{ color }}>{label}</Text>
-      <View
-        className="rounded-full px-2 py-0.5"
-        style={{ backgroundColor: color + '20' }}
-      >
-        <Text className="text-xs font-medium" style={{ color }}>{count}</Text>
+    <TouchableOpacity onPress={onToggle} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10, backgroundColor: bg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 11, fontWeight: '600', color }}>{title}</Text>
+        {count !== undefined && (
+          <View style={{ borderRadius: 20, paddingHorizontal: 6, backgroundColor: color + '33' }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color }}>{count}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
