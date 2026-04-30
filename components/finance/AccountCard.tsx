@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Account, useFinance } from '@/lib/financeStore';
-import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Landmark, CreditCard, Wallet, Banknote, Pencil, Check, X, Trash2 } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
@@ -26,15 +26,23 @@ const TYPE_CONFIG: Record<Account['type'], { icon: React.ReactNode; color: strin
 };
 
 function EditableBalance({ account }: { account: Account }) {
-  const { updateAccount } = useFinance();
+  const { addTransaction } = useFinance();
   const [editing, setEditing]   = useState(false);
   const [inputVal, setInputVal] = useState(String(account.balance));
   const isNegative = account.balance < 0;
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const newBal = Number(inputVal);
     if (!isNaN(newBal) && newBal !== account.balance) {
-      await updateAccount({ ...account, balance: newBal });
+      const diff = newBal - account.balance;
+      addTransaction({
+        date: new Date().toISOString().split('T')[0],
+        category: 'Adjustment',
+        description: `Balance adjustment — ${account.name}`,
+        amount: diff,
+        type: diff > 0 ? 'income' : 'expense',
+        accountId: account.id,
+      });
     }
     setEditing(false);
   };
@@ -73,64 +81,32 @@ function EditableBalance({ account }: { account: Account }) {
 }
 
 export function StandardCard({ account }: { account: Account }) {
-  const { deleteAccount, fixAccountBalance, state } = useFinance();
+  const { deleteAccount } = useFinance();
   const cfg   = TYPE_CONFIG[account.type] ?? TYPE_CONFIG['Bank'];
   const label = ACCOUNT_LABEL[account.type];
   const [showConfirm, setShowConfirm] = useState(false);
-  const [fixing, setFixing] = useState(false);
-
-  // Use raw signed sum — only count transactions up to today (future-dated excluded)
-  const needsReconcile = useMemo(() => {
-    const today = new Date().toLocaleDateString('en-CA');
-    const txNet = state.transactions
-      .filter(t => t.accountId === account.id && t.date <= today)
-      .reduce((s, t) => s + t.amount, 0);
-    return Math.abs(account.balance - txNet) >= 1;
-  }, [account, state.transactions]);
-
-  const handleFix = async () => {
-    setFixing(true);
-    try { await fixAccountBalance(account.id); } finally { setFixing(false); }
-  };
 
   return (
-    <div className={`group rounded-2xl border ${cfg.border} bg-white shadow-sm transition hover:shadow-md`}>
-      <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${cfg.bg}`}>
-            <span className={cfg.color}>{cfg.icon}</span>
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">{account.name}</p>
-            <p className="text-xs text-gray-400">{label}</p>
-          </div>
+    <div className={`group flex items-center justify-between gap-3 rounded-2xl border ${cfg.border} bg-white px-4 py-3.5 shadow-sm transition hover:shadow-md`}>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${cfg.bg}`}>
+          <span className={cfg.color}>{cfg.icon}</span>
         </div>
-        <div className="flex flex-none items-center gap-1.5">
-          <EditableBalance account={account} />
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
-            title="Delete account"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-900">{account.name}</p>
+          <p className="text-xs text-gray-400">{label}</p>
         </div>
       </div>
-      {needsReconcile && (
-        <div className="flex items-center justify-between gap-2 rounded-b-2xl border-t border-amber-100 bg-amber-50 px-4 py-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <AlertTriangle className="h-3.5 w-3.5 flex-none text-amber-500" />
-            <span className="text-xs font-medium text-amber-700 truncate">Balance mismatch</span>
-          </div>
-          <button
-            onClick={handleFix}
-            disabled={fixing}
-            className="flex flex-none items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition disabled:opacity-50"
-          >
-            Fix Now <ArrowRight className="h-3 w-3" />
-          </button>
-        </div>
-      )}
+      <div className="flex flex-none items-center gap-1.5">
+        <EditableBalance account={account} />
+        <button
+          onClick={() => setShowConfirm(true)}
+          className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+          title="Delete account"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
       <ConfirmDialog
         open={showConfirm}
         title="Delete account"
@@ -144,47 +120,15 @@ export function StandardCard({ account }: { account: Account }) {
 }
 
 export function CreditCardCard({ account }: { account: Account }) {
-  const { deleteAccount, updateAccount, fixAccountBalance, state } = useFinance();
+  const { deleteAccount } = useFinance();
   const outstanding  = Math.abs(account.balance);
+  // Use stored creditLimit if available, otherwise fall back to 1.5× as a default
   const creditLimit  = account.creditLimit ?? outstanding * 1.5;
   const available    = Math.max(0, creditLimit - outstanding);
   const utilization  = creditLimit > 0 ? Math.round((outstanding / creditLimit) * 100) : 0;
   const barColor     = utilization > 70 ? 'bg-rose-500' : utilization > 40 ? 'bg-amber-400' : 'bg-emerald-500';
   const utilColor    = utilization > 70 ? 'text-rose-500' : utilization > 40 ? 'text-amber-500' : 'text-emerald-600';
   const [showConfirm, setShowConfirm] = useState(false);
-  const [editing, setEditing]         = useState(false);
-  const [editBal,  setEditBal]        = useState('');
-  const [editLimit, setEditLimit]     = useState('');
-  const [fixing, setFixing]           = useState(false);
-
-  // Use raw signed sum — only count transactions up to today (future-dated excluded)
-  const needsReconcile = useMemo(() => {
-    const today = new Date().toLocaleDateString('en-CA');
-    const txNet = state.transactions
-      .filter(t => t.accountId === account.id && t.date <= today)
-      .reduce((s, t) => s + t.amount, 0);
-    return Math.abs(account.balance - txNet) >= 1;
-  }, [account, state.transactions]);
-
-  const startEdit = () => {
-    setEditBal(String(outstanding));
-    setEditLimit(String(Math.round(creditLimit)));
-    setEditing(true);
-  };
-
-  const saveEdit = async () => {
-    const newBal   = Number(editBal);
-    const newLimit = Number(editLimit);
-    if (!isNaN(newBal) && !isNaN(newLimit)) {
-      await updateAccount({ ...account, balance: -Math.abs(newBal), creditLimit: newLimit });
-    }
-    setEditing(false);
-  };
-
-  const handleFix = async () => {
-    setFixing(true);
-    try { await fixAccountBalance(account.id); } finally { setFixing(false); }
-  };
 
   return (
     <div className="group rounded-2xl border border-rose-100 bg-white p-4 shadow-sm transition hover:shadow-md">
@@ -198,76 +142,29 @@ export function CreditCardCard({ account }: { account: Account }) {
             <p className="text-xs text-gray-400">Credit Card</p>
           </div>
         </div>
-        {!editing && (
-          <div className="flex items-center gap-1.5">
-            <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
-            <button onClick={startEdit}
-              className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500"
-              title="Edit balance & limit">
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => setShowConfirm(true)}
-              className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
-              title="Delete account">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <p className="flex-none text-base font-bold text-rose-600">-{fmt(outstanding)}</p>
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="opacity-0 group-hover:opacity-100 flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+            title="Delete account"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
-      {editing ? (
-        <div className="mt-3 space-y-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Outstanding balance (₹)</label>
-            <input autoFocus value={editBal} onChange={e => setEditBal(e.target.value)} type="number" min="0"
-              onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(false); }}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Credit limit (₹)</label>
-            <input value={editLimit} onChange={e => setEditLimit(e.target.value)} type="number" min="0"
-              onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(false); }}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-100" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setEditing(false)}
-              className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
-              Cancel
-            </button>
-            <button onClick={saveEdit}
-              className="rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600">
-              Save
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-400">
-            <span>Limit {fmt(creditLimit)}</span>
-            <span className="text-gray-200">•</span>
-            <span className={`font-semibold ${utilColor}`}>Used {utilization}%</span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-            <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(utilization, 100)}%` }} />
-          </div>
-          <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
-          {needsReconcile && (
-            <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <AlertTriangle className="h-3.5 w-3.5 flex-none text-amber-500" />
-                <span className="text-xs font-medium text-amber-700 truncate">Balance mismatch</span>
-              </div>
-              <button
-                onClick={handleFix}
-                disabled={fixing}
-                className="flex flex-none items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition disabled:opacity-50"
-              >
-                Fix Now <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <div className="mt-2.5 flex items-center gap-1.5 text-xs text-gray-400">
+        <span>Limit {fmt(creditLimit)}</span>
+        <span className="text-gray-200">•</span>
+        <span className={`font-semibold ${utilColor}`}>Used {utilization}%</span>
+      </div>
+
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+        <div className={`h-1.5 rounded-full transition-all ${barColor}`} style={{ width: `${Math.min(utilization, 100)}%` }} />
+      </div>
+
+      <p className="mt-1.5 text-xs text-gray-400">Available {fmt(available)}</p>
 
       <ConfirmDialog
         open={showConfirm}

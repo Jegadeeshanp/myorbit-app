@@ -4,6 +4,31 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
+function getRecurrenceFromTags(tags: string[] | string, dueDate?: string | null): { isRecurring: boolean; recurrenceDays: number[] | null } {
+  let arr: string[] = [];
+  try {
+    if (Array.isArray(tags)) arr = tags;
+    else { const p = JSON.parse(tags); if (Array.isArray(p)) arr = p; }
+  } catch { /* ignore */ }
+
+  const repeatTag = arr.find(t => t.startsWith('repeat:'));
+  if (!repeatTag) return { isRecurring: false, recurrenceDays: null };
+  const repeatType = repeatTag.replace('repeat:', '');
+
+  switch (repeatType) {
+    case 'daily':    return { isRecurring: true, recurrenceDays: [0,1,2,3,4,5,6] };
+    case 'weekdays': return { isRecurring: true, recurrenceDays: [1,2,3,4,5] };
+    case 'weekends': return { isRecurring: true, recurrenceDays: [0,6] };
+    case 'weekly': {
+      const dateStr = dueDate ?? new Date().toISOString().split('T')[0];
+      const dow = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+      return { isRecurring: true, recurrenceDays: [dow] };
+    }
+    default:
+      return { isRecurring: false, recurrenceDays: null };
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const userId = await requireUserId();
@@ -58,6 +83,9 @@ export async function POST(req: NextRequest) {
     const { title, notes, priority, dueDate, dueTime, tags, listId } = body;
     if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 });
 
+    const tagsRaw = Array.isArray(tags) ? JSON.stringify(tags) : (typeof tags === 'string' ? tags : '[]');
+    const { isRecurring, recurrenceDays } = getRecurrenceFromTags(tags ?? [], dueDate);
+
     const task = await prisma.task.create({
       data: {
         userId,
@@ -66,8 +94,10 @@ export async function POST(req: NextRequest) {
         priority: priority || 'none',
         dueDate: dueDate || null,
         dueTime: dueTime || null,
-        tags:    Array.isArray(tags) ? JSON.stringify(tags) : (typeof tags === 'string' ? tags : '[]'),
+        tags:    tagsRaw,
         listId:  listId || null,
+        isRecurring,
+        ...(recurrenceDays !== null && { recurrenceDays }),
       },
       include: { subtasks: true, list: true },
     });

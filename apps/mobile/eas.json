@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 12.0.0"
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -8,31 +9,43 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://project-al5r1.vercel.app",
+        "APP_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "ios": {
         "simulator": false
       },
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://project-al5r1.vercel.app",
+        "APP_ENV": "preview"
+      }
+    },
+    "simulator": {
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://project-al5r1.vercel.app",
         "APP_ENV": "preview"
       }
     },
     "production": {
       "distribution": "store",
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://project-al5r1.vercel.app",
         "APP_ENV": "production"
       }
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "jegadeeshan.p@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
-      }
-    }
+    "production": {}
   }
 }

@@ -4,8 +4,9 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Wallet, Target, HeartPulse, CheckCircle, ClipboardList,
-  Lightbulb, Sparkles, Clock, Layers, Star,
+  Lightbulb, Sparkles, Clock, Layers,
 } from 'lucide-react-native';
+import Svg, { Rect, Circle, Text as SvgText } from 'react-native-svg';
 import { useAuthStore } from '@/lib/authStore';
 
 const E = '#059669';   // emerald-700 — primary green
@@ -104,13 +105,19 @@ export default function LandingScreen() {
         {/* ── NAV BAR ────────────────────────────────────────────────────── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.85)' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: E, alignItems: 'center', justifyContent: 'center' }}>
-              <Star size={20} color="white" fill="white" />
-            </View>
+            <Svg width={40} height={40} viewBox="0 0 40 40">
+              <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#16A34A" />
+              <Circle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
+              <Circle cx="20" cy="7" r="2.5" fill="white" />
+              <Circle cx="33" cy="20" r="2.5" fill="white" />
+              <Circle cx="20" cy="33" r="2.5" fill="white" />
+              <Circle cx="7" cy="20" r="2.5" fill="white" />
+              <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
+            </Svg>
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>MyOrbit</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}
               style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Sign In</Text>
             </TouchableOpacity>
@@ -131,7 +138,7 @@ export default function LandingScreen() {
           </Text>
 
           {/* Get Started */}
-          <TouchableOpacity onPress={() => router.push('/(auth)/login')}
+          <TouchableOpacity onPress={() => router.push('/(auth)/register')}
             style={{ backgroundColor: E, borderRadius: 50, paddingVertical: 15, alignItems: 'center', marginBottom: 32, shadowColor: E, shadowOpacity: 0.35, shadowRadius: 12, elevation: 4 }}
             activeOpacity={0.88}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: 'white' }}>Get Started</Text>
@@ -273,7 +280,7 @@ export default function LandingScreen() {
           </Text>
 
           <View style={{ gap: 12, width: '100%' }}>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}
               style={{ backgroundColor: 'white', borderRadius: 50, paddingVertical: 15, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, elevation: 4 }}
               activeOpacity={0.88}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#059669' }}>Get Started</Text>
@@ -289,9 +296,15 @@ export default function LandingScreen() {
         {/* ── FOOTER ─────────────────────────────────────────────────────── */}
         <View style={{ backgroundColor: '#F7F7F5', paddingHorizontal: 20, paddingVertical: 32, borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#059669', alignItems: 'center', justifyContent: 'center' }}>
-              <Star size={16} color="white" fill="white" />
-            </View>
+            <Svg width={36} height={36} viewBox="0 0 40 40">
+              <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#16A34A" />
+              <Circle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
+              <Circle cx="20" cy="7" r="2.5" fill="white" />
+              <Circle cx="33" cy="20" r="2.5" fill="white" />
+              <Circle cx="20" cy="33" r="2.5" fill="white" />
+              <Circle cx="7" cy="20" r="2.5" fill="white" />
+              <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
+            </Svg>
             <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>MyOrbit</Text>
           </View>
           <Text style={{ fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 20 }}>

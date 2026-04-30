@@ -224,7 +224,7 @@ export const GoalDetailScreen: React.FC = () => {
               </Text>
             </View>
           </View>
-          <View style={[styles.processRow, { borderTopColor: COLORS.border, borderTopWidth: 1, paddingTopColor: SPACING.md }]}>
+          <View style={[styles.processRow, { borderTopColor: COLORS.border, borderTopWidth: 1, paddingTop: SPACING.md }]}>
             <View style={[styles.processDot, { backgroundColor: COLORS.blue }]} />
             <View style={{ flex: 1 }}>
               <Text style={[TYPOGRAPHY.body, { color: COLORS.textPrimary }]}>

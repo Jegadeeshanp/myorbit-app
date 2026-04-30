@@ -1095,8 +1095,8 @@ export default function TasksPage() {
                       const SECTIONS = [
                         { key: 'overdue',   label: 'Overdue',   instances: td.overdue,   headerCls: 'text-rose-600 dark:text-rose-400',     badgeCls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',     borderCls: 'border-rose-200 dark:border-rose-800/30' },
                         { key: 'today',     label: 'Today',     instances: td.today,     headerCls: 'text-emerald-700 dark:text-emerald-400', badgeCls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', borderCls: 'border-emerald-200 dark:border-emerald-800/30' },
-                        { key: 'missed',    label: 'Missed',    instances: td.missed,    headerCls: 'text-amber-600 dark:text-amber-400',    badgeCls: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',    borderCls: 'border-amber-200 dark:border-amber-800/30' },
                         { key: 'completed', label: 'Completed', instances: td.completed, headerCls: 'text-gray-500 dark:text-gray-400',      badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',        borderCls: 'border-gray-200 dark:border-gray-700/40' },
+                        { key: 'missed',    label: 'Missed',    instances: td.missed,    headerCls: 'text-amber-600 dark:text-amber-400',    badgeCls: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',    borderCls: 'border-amber-200 dark:border-amber-800/30' },
                       ] as const;
 
                       return (

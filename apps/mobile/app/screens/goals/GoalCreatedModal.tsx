@@ -8,7 +8,7 @@ import {
   Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { X, RefreshCw, CheckList } from 'lucide-react-native';
+import { X, RefreshCw, CheckSquare } from 'lucide-react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../../../lib/theme';
 import { Card, Button } from '../../../components/common';
 
@@ -105,7 +105,7 @@ export const GoalCreatedModal: React.FC = () => {
                     { backgroundColor: COLORS.blue + '20' },
                   ]}
                 >
-                  <CheckList size={28} color={COLORS.blue} />
+                  <CheckSquare size={28} color={COLORS.blue} />
                 </View>
                 <Text style={[TYPOGRAPHY.h4, { color: COLORS.textPrimary, marginTop: SPACING.md }]}>
                   Add a Task
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
   },
   successBanner: {
-    backgroundColor: COLORS.blue,
+    backgroundColor: COLORS.goals,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.md,

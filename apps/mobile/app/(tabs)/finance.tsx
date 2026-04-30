@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { router } from 'expo-router';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -8,9 +8,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  getAccounts, getTransactions, createTransaction, deleteTransaction,
+  getAccounts, updateAccount, deleteAccount,
+  getTransactions, createTransaction, updateTransaction, deleteTransaction,
   getAssets, createAsset, updateAsset, deleteAsset,
   getLiabilities, createLiability, updateLiability, deleteLiability,
+  apiRequest,
 } from '@myorbit/api';
 import type {
   Account, Transaction, CreateTransactionInput,
@@ -32,6 +34,7 @@ import {
 } from 'lucide-react-native';
 import AppHeader from '@/components/shared/AppHeader';
 import { Svg, Path } from 'react-native-svg';
+import { useTheme, useThemeStore } from '@/lib/themeStore';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -204,9 +207,10 @@ function budgetStatusColor(ratio: number) {
 function SubNav({ active, onSelect, onMore }: {
   active: SubTab; onSelect: (t: SubTab) => void; onMore: () => void;
 }) {
+  const navTheme = useTheme();
   const isMoreActive = !SUB_TABS.some(t => t.key === active);
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: SCREEN_BG, borderTopWidth: 1, borderTopColor: BORDER }}>
+    <View style={{ flexDirection: 'row', backgroundColor: navTheme.bg, borderTopWidth: 1, borderTopColor: navTheme.border }}>
       {SUB_TABS.map(({ key, label, Icon }) => {
         const isActive = active === key;
         return (
@@ -295,45 +299,95 @@ function AccountCard({ account }: { account: Account }) {
 
 // ── Account Row (vertical list) ────────────────────────────────────────────────
 
-function AccountRow({ account }: { account: Account }) {
+function AccountRow({ account, onOptions }: { account: Account; onOptions?: () => void }) {
   const color = ACCOUNT_COLORS[account.type] ?? '#64748B';
   const Icon = ACCOUNT_ICONS[account.type] ?? Wallet;
+  const isCreditCard = account.type === 'Credit Card';
+  const creditUsed = isCreditCard ? Math.abs(Math.min(account.balance, 0)) : 0;
+  const creditLimit = account.creditLimit ?? 0;
+  const creditAvailable = isCreditCard && creditLimit ? Math.max(0, creditLimit - creditUsed) : 0;
+  const usedPct = isCreditCard && creditLimit > 0 ? Math.min(Math.round((creditUsed / creditLimit) * 100), 100) : 0;
+  const barColor = usedPct >= 90 ? '#EF4444' : usedPct >= 75 ? '#F59E0B' : '#10B981';
+
   return (
-    <View style={{ backgroundColor: SURFACE, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11, marginBottom: 8, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
-      <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: color + '22', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-        <Icon size={17} color={color} />
+    <View style={{ backgroundColor: SURFACE, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: color + '22', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+          <Icon size={20} color={color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{account.name}</Text>
+          <Text style={{ fontSize: 13, color: MUTED, marginTop: 2 }}>{account.type}</Text>
+        </View>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: isCreditCard ? (account.balance < 0 ? '#EF4444' : '#10B981') : (account.balance >= 0 ? '#10B981' : '#EF4444'), marginRight: 8 }}>
+          {isCreditCard && account.balance < 0 ? '−' : ''}{formatINR(Math.abs(account.balance))}
+        </Text>
+        <TouchableOpacity onPress={onOptions} style={{ padding: 6 }}>
+          <MoreHorizontal size={18} color="#6B7280" />
+        </TouchableOpacity>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{account.name}</Text>
-        <Text style={{ fontSize: 16, color: MUTED, marginTop: 2 }}>{account.type}</Text>
-      </View>
-      <Text style={{ fontSize: 14, fontWeight: '700', color: account.balance >= 0 ? '#10B981' : '#EF4444' }}>{formatINR(account.balance)}</Text>
+      {isCreditCard && creditLimit > 0 && (
+        <View style={{ marginTop: 12 }}>
+          <Text style={{ fontSize: 13, marginBottom: 8 }}>
+            <Text style={{ color: MUTED }}>Limit {formatINR(creditLimit)} · </Text>
+            <Text style={{ color: barColor, fontWeight: '600' }}>Used {usedPct}%</Text>
+          </Text>
+          <View style={{ height: 5, backgroundColor: BORDER, borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+            <View style={{ width: `${usedPct}%` as `${number}%`, height: 5, backgroundColor: barColor }} />
+          </View>
+          <Text style={{ fontSize: 13, color: '#10B981', fontWeight: '600' }}>
+            Available {formatINR(creditAvailable)}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
 // ── Transaction Item ───────────────────────────────────────────────────────────
 
-function TxItem({ tx, onDelete }: { tx: Transaction; onDelete: (id: string) => void }) {
+function TxItem({ tx, accountName, onMenuOpen }: {
+  tx: Transaction; accountName?: string;
+  onMenuOpen: (tx: Transaction, y: number) => void;
+}) {
+  const btnRef = useRef<any>(null);
   const isIncome   = tx.type === 'income';
   const isTransfer = tx.type === 'transfer';
-  const Icon  = isTransfer ? ArrowLeftRight : isIncome ? TrendingUp : TrendingDown;
   const color = isTransfer ? '#3B82F6' : isIncome ? '#10B981' : '#EF4444';
+  const cfg   = getCatIcon(tx.category);
+  const CIcon = cfg.Icon;
+  const shortDate = tx.date
+    ? new Date(tx.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    : '';
+
+  const handleMenuOpen = () => {
+    btnRef.current?.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+      onMenuOpen(tx, y + h / 2);
+    });
+  };
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: color + '15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-        <Icon size={14} color={color} />
+    <View style={{ paddingHorizontal: 14, paddingVertical: 13, backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+          <CIcon size={18} color={cfg.color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }} numberOfLines={1}>{tx.description}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6, flexWrap: 'wrap' }}>
+            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: cfg.bg }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: cfg.color }}>{tx.category}</Text>
+            </View>
+            <Text style={{ fontSize: 12, color: MUTED }}>{[accountName, shortDate].filter(Boolean).join(' · ')}</Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 15, fontWeight: '700', color, marginRight: 8 }}>
+          {isIncome ? '+' : isTransfer ? '' : '−'}{formatINR(tx.amount)}
+        </Text>
+        <TouchableOpacity ref={btnRef} onPress={handleMenuOpen} style={{ padding: 6 }}>
+          <MoreHorizontal size={18} color="#6B7280" />
+        </TouchableOpacity>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 16, fontWeight: '500', color: '#FFFFFF' }} numberOfLines={1}>{tx.description}</Text>
-        <Text style={{ fontSize: 16, color: MUTED, marginTop: 2 }}>{tx.category} - {tx.date}</Text>
-      </View>
-      <Text style={{ fontSize: 14, fontWeight: '700', color, marginRight: 8 }}>
-        {isIncome ? '+' : isTransfer ? '' : '-'}{formatINR(tx.amount)}
-      </Text>
-      <TouchableOpacity onPress={() => onDelete(tx.id)} style={{ padding: 4 }}>
-        <Trash2 size={15} color="#EF4444" />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -345,51 +399,66 @@ function AssetCard({ asset, onEdit, onDelete }: {
   onEdit: (a: Asset) => void;
   onDelete: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const color = catColor(asset.category);
   const pnl   = asset.value - asset.invested;
   const pnlPct = asset.invested > 0 ? ((pnl / asset.invested) * 100).toFixed(1) : '0';
   return (
-    <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-        <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: color + '20', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-          <Tag size={18} color={color} />
+    <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, marginBottom: 10, overflow: 'hidden' }}>
+      <TouchableOpacity onPress={() => setExpanded(v => !v)} activeOpacity={0.7}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14 }}>
+        <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: color + '18', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+          <Tag size={16} color={color + 'CC'} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }} numberOfLines={1}>{asset.name}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 6 }}>
-            <View style={{ backgroundColor: color + '20', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color }}>{asset.category}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }} numberOfLines={1}>{asset.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 6 }}>
+            <View style={{ backgroundColor: color + '18', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: color + 'CC' }}>{asset.category}</Text>
             </View>
             {asset.units != null && asset.units > 0 && (
-              <Text style={{ fontSize: 16, color: '#9CA3AF' }}>{asset.units} units</Text>
+              <Text style={{ fontSize: 12, color: MUTED }}>{asset.units} units</Text>
             )}
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={() => onEdit(asset)} style={{ padding: 4 }}>
-            <Pencil size={15} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onDelete(asset.id)} style={{ padding: 4 }}>
-            <Trash2 size={15} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', marginTop: 14, gap: 8 }}>
-        <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 2 }}>Invested</Text>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#E5E7EB' }}>{formatINR(asset.invested)}</Text>
-        </View>
-        <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 2 }}>Current Value</Text>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#10B981' }}>{formatINR(asset.value)}</Text>
-        </View>
-        <View style={{ flex: 1, backgroundColor: pnl >= 0 ? '#10B98122' : '#EF444422', borderRadius: 10, padding: 10 }}>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 2 }}>P&L</Text>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: pnl >= 0 ? '#10B981' : '#EF4444' }}>
-            {pnl >= 0 ? '+' : '−'}{formatINR(pnl)} ({pnl >= 0 ? '+' : ''}{pnlPct}%)
+        <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#10B981' }}>{formatINR(asset.value)}</Text>
+          <Text style={{ fontSize: 12, color: pnl >= 0 ? '#10B981' : '#EF4444', marginTop: 2 }}>
+            {pnl >= 0 ? '+' : '−'}{pnlPct}%
           </Text>
         </View>
-      </View>
+        <ChevronDown size={16} color={MUTED} style={{ marginLeft: 8, transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+      </TouchableOpacity>
+      {expanded && (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: '#252B35' }}>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+            <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
+              <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>Invested</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#E5E7EB' }}>{formatINR(asset.invested)}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
+              <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>Current</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>{formatINR(asset.value)}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: pnl >= 0 ? '#10B98118' : '#EF444418', borderRadius: 10, padding: 10 }}>
+              <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>P&L</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: pnl >= 0 ? '#10B981' : '#EF4444' }}>
+                {pnl >= 0 ? '+' : '−'}{formatINR(Math.abs(pnl))}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
+            <TouchableOpacity onPress={() => onEdit(asset)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#2A2A2A' }}>
+              <Pencil size={13} color={MUTED} />
+              <Text style={{ fontSize: 13, color: MUTED }}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onDelete(asset.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: '#EF444418' }}>
+              <Trash2 size={13} color="#EF4444" />
+              <Text style={{ fontSize: 13, color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -402,6 +471,7 @@ function LiabilityCard({ liability, onPay, onEdit, onDelete }: {
   onEdit:   (l: Liability) => void;
   onDelete: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const days    = daysUntil(liability.nextDueDate);
   const overdue = days !== null && days < 0;
   const dueSoon = days !== null && days <= 7 && days >= 0;
@@ -410,67 +480,315 @@ function LiabilityCard({ liability, onPay, onEdit, onDelete }: {
     : 0;
 
   return (
-    <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-        <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#EF444422', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-          <CreditCard size={18} color="#EF4444" />
+    <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, marginBottom: 10, overflow: 'hidden' }}>
+      <TouchableOpacity onPress={() => setExpanded(v => !v)} activeOpacity={0.7}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14 }}>
+        <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#EF444418', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+          <CreditCard size={16} color="#EF4444CC" />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{liability.name}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }} numberOfLines={1}>{liability.name}</Text>
           {!!liability.lender && (
-            <Text style={{ fontSize: 16, color: '#9CA3AF', marginTop: 1 }}>{liability.lender}</Text>
+            <Text style={{ fontSize: 12, color: MUTED, marginTop: 1 }} numberOfLines={1}>{liability.lender}</Text>
           )}
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={() => onPay(liability)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10B98122', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <CheckCircle size={12} color={ACCENT} />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>Pay</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onEdit(liability)} style={{ padding: 4 }}>
-            <Pencil size={15} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onDelete(liability.id)} style={{ padding: 4 }}>
-            <Trash2 size={15} color="#EF4444" />
-          </TouchableOpacity>
+        <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#EF4444' }}>{formatINR(liability.outstanding)}</Text>
+          <Text style={{ fontSize: 12, color: MUTED }}>{paidPct}% repaid</Text>
         </View>
-      </View>
+        <ChevronDown size={16} color={MUTED} style={{ marginLeft: 8, transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+      </TouchableOpacity>
 
-      {/* Progress bar */}
-      <View style={{ marginTop: 12, marginBottom: 8 }}>
-        <View style={{ height: 6, backgroundColor: '#2A2A2A', borderRadius: 3, overflow: 'hidden' }}>
-          <View style={{ height: 6, width: `${paidPct}%` as `${number}%`, backgroundColor: ACCENT, borderRadius: 3 }} />
-        </View>
-        <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 4 }}>{paidPct}% repaid</Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 2 }}>Outstanding</Text>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>{formatINR(liability.outstanding)}</Text>
-        </View>
-        <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
-          <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 2 }}>EMI / mo</Text>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#E5E7EB' }}>{formatINR(liability.monthlyEmi)}</Text>
-        </View>
-        <View style={{ flex: 1, backgroundColor: overdue ? '#EF444422' : dueSoon ? '#D9770622' : '#242424', borderRadius: 10, padding: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 }}>
-            <CalendarDays size={10} color={overdue ? '#EF4444' : dueSoon ? '#D97706' : '#9CA3AF'} />
-            <Text style={{ fontSize: 14, color: overdue ? '#EF4444' : dueSoon ? '#D97706' : '#9CA3AF' }}>Next due</Text>
+      {expanded && (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: '#252B35' }}>
+          {/* Progress bar */}
+          <View style={{ marginTop: 12, marginBottom: 10 }}>
+            <View style={{ height: 6, backgroundColor: '#2A2A2A', borderRadius: 3, overflow: 'hidden' }}>
+              <View style={{ height: 6, width: `${paidPct}%` as `${number}%`, backgroundColor: ACCENT, borderRadius: 3 }} />
+            </View>
           </View>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: overdue ? '#EF4444' : dueSoon ? '#D97706' : '#E5E7EB' }}>
-            {fmtDate(liability.nextDueDate)}
-          </Text>
-        </View>
-      </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-        <Text style={{ fontSize: 14, color: '#9CA3AF' }}>
-          {liability.emisLeft} EMIs left · Borrowed {formatINR(liability.borrowed)}
-        </Text>
-        <Text style={{ fontSize: 14, color: '#10B981' }}>Repaid {formatINR(liability.totalRepaid)}</Text>
-      </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
+              <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>Outstanding</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#EF4444' }}>{formatINR(liability.outstanding)}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
+              <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>EMI / mo</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#E5E7EB' }}>{formatINR(liability.monthlyEmi)}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: overdue ? '#EF444422' : dueSoon ? '#D9770622' : '#242424', borderRadius: 10, padding: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 }}>
+                <CalendarDays size={10} color={overdue ? '#EF4444' : dueSoon ? '#D97706' : MUTED} />
+                <Text style={{ fontSize: 11, color: overdue ? '#EF4444' : dueSoon ? '#D97706' : MUTED }}>Next due</Text>
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: overdue ? '#EF4444' : dueSoon ? '#D97706' : '#E5E7EB' }}>
+                {fmtDate(liability.nextDueDate)}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 12, color: MUTED, marginTop: 10 }}>
+            {liability.emisLeft} EMIs left · Borrowed {formatINR(liability.borrowed)} · Repaid {formatINR(liability.totalRepaid)}
+          </Text>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+            <TouchableOpacity onPress={() => onPay(liability)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: '#10B98118' }}>
+              <CheckCircle size={13} color={ACCENT} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>Pay</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onEdit(liability)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#2A2A2A' }}>
+              <Pencil size={13} color={MUTED} />
+              <Text style={{ fontSize: 13, color: MUTED }}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onDelete(liability.id)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: '#EF444418' }}>
+              <Trash2 size={13} color="#EF4444" />
+              <Text style={{ fontSize: 13, color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
+  );
+}
+
+// ── Finance Date Picker ───────────────────────────────────────────────────────
+
+function FinanceDatePicker({ visible, value, onConfirm, onClose }: {
+  visible: boolean; value: string; onConfirm: (v: string) => void; onClose: () => void;
+}) {
+  const todayStr = () => new Date().toLocaleDateString('en-CA');
+
+  const parseDate = (s: string) => {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
+  const [viewYear,  setViewYear]  = useState(() => parseDate(value).getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => parseDate(value).getMonth());
+  const [selected,  setSelected]  = useState(value || todayStr());
+
+  useEffect(() => {
+    if (visible) {
+      const d = parseDate(value || todayStr());
+      setSelected(value || todayStr());
+      setViewYear(d.getFullYear());
+      setViewMonth(d.getMonth());
+    }
+  }, [visible, value]);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDow    = new Date(viewYear, viewMonth, 1).getDay();
+  const leadingBlanks = firstDow === 0 ? 6 : firstDow - 1;
+  const cells = Array.from({ length: leadingBlanks + daysInMonth }, (_, i) =>
+    i < leadingBlanks ? null : i - leadingBlanks + 1
+  );
+
+  const monthNames = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+  const dayLabels  = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+  const setQuick = (offsetDays: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const s = d.toLocaleDateString('en-CA');
+    setSelected(s);
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth());
+  };
+
+  const cellDate = (day: number) =>
+    `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }} onPress={onClose} />
+      <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 36 }}>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>Select Date</Text>
+          <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+            <X size={20} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick chips */}
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          {[['Today', 0], ['Yesterday', -1], ['Last Week', -7]] .map(([label, offset]) => {
+            const s = (() => { const d = new Date(); d.setDate(d.getDate() + Number(offset)); return d.toLocaleDateString('en-CA'); })();
+            const active = selected === s;
+            return (
+              <TouchableOpacity key={String(label)} onPress={() => setQuick(Number(offset))}
+                style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1,
+                  borderColor: active ? ACCENT : '#2A2A2A', backgroundColor: active ? ACCENT + '22' : '#242424' }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? ACCENT : MUTED }}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Month nav */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <TouchableOpacity onPress={prevMonth} style={{ padding: 6 }}>
+            <ChevronLeft size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#E5E7EB' }}>
+            {monthNames[viewMonth]} {viewYear}
+          </Text>
+          <TouchableOpacity onPress={nextMonth} style={{ padding: 6 }}>
+            <ChevronRight size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Day-of-week headers */}
+        <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+          {dayLabels.map(d => (
+            <Text key={d} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>{d}</Text>
+          ))}
+        </View>
+
+        {/* Calendar grid */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {cells.map((day, i) => {
+            if (day === null) return <View key={`b${i}`} style={{ width: `${100/7}%`, aspectRatio: 1 }} />;
+            const iso = cellDate(day);
+            const isSelected = selected === iso;
+            const isToday = iso === todayStr();
+            return (
+              <TouchableOpacity key={iso} onPress={() => setSelected(iso)}
+                style={{ width: `${100/7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: isSelected ? ACCENT : 'transparent',
+                  borderWidth: isToday && !isSelected ? 1 : 0, borderColor: ACCENT }}>
+                  <Text style={{ fontSize: 14, fontWeight: isSelected || isToday ? '700' : '400',
+                    color: isSelected ? '#FFFFFF' : isToday ? ACCENT : '#E5E7EB' }}>{day}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Confirm */}
+        <TouchableOpacity onPress={() => { onConfirm(selected); onClose(); }}
+          style={{ marginTop: 16, alignItems: 'center', paddingVertical: 14, borderRadius: 14, backgroundColor: ACCENT }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Confirm</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Simple Account Dropdown ───────────────────────────────────────────────────
+
+function SimpleAccountDropdown({ value, onChange, accounts, placeholder = 'Select account (optional)' }: {
+  value: string; onChange: (id: string) => void;
+  accounts: Account[]; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = accounts.find(a => a.id === value);
+  return (
+    <>
+      <TouchableOpacity onPress={() => setOpen(true)}
+        style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: value ? ACCENT : '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12 }}>
+        <Landmark size={15} color={value ? ACCENT : '#6B7280'} />
+        <Text style={{ flex: 1, fontSize: 14, color: value ? '#E5E7EB' : '#9CA3AF', marginLeft: 8 }} numberOfLines={1}>
+          {selected ? `${selected.name} · ${selected.type}` : placeholder}
+        </Text>
+        {value ? (
+          <TouchableOpacity onPress={() => onChange('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <X size={15} color="#6B7280" />
+          </TouchableOpacity>
+        ) : (
+          <ChevronDown size={15} color="#6B7280" />
+        )}
+      </TouchableOpacity>
+      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }} onPress={() => setOpen(false)} />
+        <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 16, paddingBottom: 36 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF', paddingHorizontal: 20, marginBottom: 8 }}>Select Account</Text>
+          <TouchableOpacity onPress={() => { onChange(''); setOpen(false); }}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#2A2A2A', backgroundColor: !value ? '#10B98115' : 'transparent' }}>
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: !value ? ACCENT : '#E5E7EB' }}>None</Text>
+            {!value && <Text style={{ color: ACCENT, fontWeight: '700' }}>✓</Text>}
+          </TouchableOpacity>
+          {accounts.map((a, i) => (
+            <TouchableOpacity key={a.id} onPress={() => { onChange(a.id); setOpen(false); }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: i < accounts.length - 1 ? 1 : 0, borderBottomColor: '#2A2A2A', backgroundColor: value === a.id ? '#10B98115' : 'transparent' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: value === a.id ? ACCENT : '#E5E7EB' }}>{a.name}</Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 1 }}>{a.type}</Text>
+              </View>
+              {value === a.id && <Text style={{ color: ACCENT, fontWeight: '700' }}>✓</Text>}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+// ── Account Overlay Picker ────────────────────────────────────────────────────
+
+function AccountOverlay({ label, value, onChange, dropKey, accounts, activeDropdown, openDropdown, closeDropdown }: {
+  label: string; value: string; onChange: (id: string) => void; dropKey: 'from' | 'to' | 'acct';
+  accounts: Account[]; activeDropdown: 'from' | 'to' | 'acct' | null;
+  openDropdown: (key: 'from' | 'to' | 'acct') => void; closeDropdown: () => void;
+}) {
+  const selected = accounts.find(a => a.id === value);
+  const isOpen = activeDropdown === dropKey;
+  return (
+    <>
+      <TouchableOpacity onPress={() => openDropdown(dropKey)}
+        style={{ borderWidth: 1, borderColor: value ? ACCENT : '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+        {selected ? (
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#E5E7EB' }} numberOfLines={1}>{selected.name}</Text>
+            <Text style={{ fontSize: 11, color: MUTED }}>{selected.type}</Text>
+          </View>
+        ) : (
+          <Text style={{ flex: 1, fontSize: 13, color: '#4B5563' }}>{label}</Text>
+        )}
+        <ChevronDown size={14} color={value ? ACCENT : '#4B5563'} />
+      </TouchableOpacity>
+      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={closeDropdown}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }} onPress={closeDropdown} />
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 36, borderTopWidth: 1, borderTopColor: '#2A2A2A' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#2A2A2A' }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>{label}</Text>
+            <TouchableOpacity onPress={closeDropdown} style={{ padding: 4 }}>
+              <X size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={() => { onChange(''); closeDropdown(); }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#2A2A2A', backgroundColor: !value ? '#10B98115' : 'transparent' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: !value ? ACCENT : '#9CA3AF' }}>None</Text>
+            {!value && <Text style={{ fontSize: 14, color: ACCENT }}>✓</Text>}
+          </TouchableOpacity>
+          {accounts.map((a, i) => (
+            <TouchableOpacity key={a.id} onPress={() => { onChange(a.id); closeDropdown(); }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: i < accounts.length - 1 ? 1 : 0, borderBottomColor: '#2A2A2A', backgroundColor: value === a.id ? '#10B98115' : 'transparent' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: value === a.id ? ACCENT : '#E5E7EB' }}>{a.name}</Text>
+                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 1 }}>{a.type}</Text>
+              </View>
+              {value === a.id && <Text style={{ fontSize: 14, color: ACCENT, fontWeight: '700' }}>✓</Text>}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -505,7 +823,8 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
     const amt = parseFloat(amount);
     if (type === 'transfer') {
       if (!amt || !fromAccId || !toAccId) return;
-      onSave({ type, amount: Math.abs(amt), description: desc.trim() || 'Transfer', category: 'Transfer', date, accountId: fromAccId, toAccountId: toAccId } as any);
+      onSave({ type, amount: -Math.abs(amt), description: desc.trim() || 'Transfer', category: 'Transfer', date, accountId: fromAccId });
+      onSave({ type, amount: Math.abs(amt), description: desc.trim() || 'Transfer', category: 'Transfer', date, accountId: toAccId });
     } else {
       if (!amt || !category) return;
       onSave({ type, amount: type === 'expense' ? -Math.abs(amt) : Math.abs(amt), description: desc.trim() || category, category, date, accountId: accountId || undefined });
@@ -513,27 +832,14 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
     reset(); onClose();
   };
 
-  const AccountPicker = ({ label, value, onChange }: { label: string; value: string; onChange: (id: string) => void }) => (
-    <View style={{ flex: 1 }}>
-      <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 6 }}>{label}</Text>
-      <View style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', overflow: 'hidden' }}>
-        {accounts.length === 0 ? (
-          <View style={{ padding: 12 }}><Text style={{ color: '#6B7280', fontSize: 14 }}>No accounts</Text></View>
-        ) : (
-          accounts.map((a, i) => (
-            <TouchableOpacity key={a.id} onPress={() => onChange(a.id)}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: i < accounts.length - 1 ? 1 : 0, borderBottomColor: '#2A2A2A', backgroundColor: value === a.id ? '#10B98115' : 'transparent' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: value === a.id ? '#10B981' : '#E5E7EB' }} numberOfLines={1}>{a.name}</Text>
-                <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 1 }}>{a.type}</Text>
-              </View>
-              <ChevronDown size={14} color={value === a.id ? '#10B981' : '#4B5563'} />
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </View>
-  );
+  const [activeDropdown,   setActiveDropdown]   = useState<'from' | 'to' | 'acct' | null>(null);
+  const [showDatePicker,   setShowDatePicker]   = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showCustomCat,    setShowCustomCat]    = useState(false);
+  const [customCatText,    setCustomCatText]    = useState('');
+
+  const openDropdown = (key: 'from' | 'to' | 'acct') => setActiveDropdown(key);
+  const closeDropdown = () => setActiveDropdown(null);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -565,15 +871,28 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
               <>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 14 }}>TRANSFER DETAILS</Text>
                 <View style={{ flexDirection: 'row', gap: 12, marginBottom: 18 }}>
-                  <AccountPicker label="From account" value={fromAccId} onChange={setFromAccId} />
-                  <AccountPicker label="To account"   value={toAccId}   onChange={setToAccId}   />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 6 }}>From account</Text>
+                    <AccountOverlay label="From account" value={fromAccId} onChange={setFromAccId} dropKey="from" accounts={accounts} activeDropdown={activeDropdown} openDropdown={openDropdown} closeDropdown={closeDropdown} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 6 }}>To account</Text>
+                    <AccountOverlay label="To account" value={toAccId} onChange={setToAccId} dropKey="to" accounts={accounts} activeDropdown={activeDropdown} openDropdown={openDropdown} closeDropdown={closeDropdown} />
+                  </View>
                 </View>
 
                 <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB', marginBottom: 8 }}>Amount (₹)</Text>
                 <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 20, fontWeight: '700', color: 'white', marginBottom: 18 }} placeholder="0" placeholderTextColor="#4B5563" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
 
                 <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB', marginBottom: 6 }}>Date</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 18 }} value={date} onChangeText={setDate} />
+                <TouchableOpacity onPress={() => setShowDatePicker(true)}
+                  style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
+                  <CalendarDays size={16} color={date ? ACCENT : '#6B7280'} style={{ marginRight: 8 }} />
+                  <Text style={{ flex: 1, fontSize: 15, color: date ? '#E5E7EB' : '#6B7280' }}>
+                    {date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
+                  </Text>
+                  <ChevronRight size={14} color="#6B7280" />
+                </TouchableOpacity>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>Note </Text>
@@ -622,38 +941,46 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                       </TouchableOpacity>
                     );
                   })}
-                  <TouchableOpacity style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: '#2A2A2A', borderStyle: 'dashed' }}>
+                  {customCategories.map((c) => {
+                    const isSelected = category === c;
+                    return (
+                      <TouchableOpacity key={c} onPress={() => setCategory(c)}
+                        style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : '#1A1A1A' }}>
+                        <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Tag size={17} color={isSelected ? typeColor : '#9CA3AF'} />
+                        </View>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? typeColor : '#D1D5DB', flex: 1 }} numberOfLines={1}>{c}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <TouchableOpacity onPress={() => { setCustomCatText(''); setShowCustomCat(true); }}
+                    style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: '#2A2A2A', borderStyle: 'dashed' }}>
                     <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center' }}>
-                      <Plus size={17} color="#6B7280" />
+                      <Plus size={17} color={ACCENT} />
                     </View>
-                    <Text style={{ fontSize: 13, color: '#6B7280' }}>Add new</Text>
+                    <Text style={{ fontSize: 13, color: ACCENT }}>Add new</Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Account */}
+                {/* Account dropdown */}
                 {accounts.length > 0 && (
                   <>
                     <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB', marginBottom: 8 }}>Account</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
-                      <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={() => setAccId('')}
-                          style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: !accountId ? ACCENT : '#2A2A2A', backgroundColor: !accountId ? '#10B98122' : '#1E1E1E' }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: !accountId ? ACCENT : '#6B7280' }}>None</Text>
-                        </TouchableOpacity>
-                        {accounts.map((a) => (
-                          <TouchableOpacity key={a.id} onPress={() => setAccId(a.id)}
-                            style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: accountId === a.id ? ACCENT : '#2A2A2A', backgroundColor: accountId === a.id ? '#10B98122' : '#1E1E1E' }}>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: accountId === a.id ? ACCENT : '#6B7280' }}>{a.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
+                    <AccountOverlay label="Select account" value={accountId} onChange={setAccId} dropKey="acct" accounts={accounts} activeDropdown={activeDropdown} openDropdown={openDropdown} closeDropdown={closeDropdown} />
+                    <View style={{ marginBottom: 18 }} />
                   </>
                 )}
 
                 {/* Date */}
                 <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB', marginBottom: 8 }}>Date</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 22 }} placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} keyboardType="numbers-and-punctuation" />
+                <TouchableOpacity onPress={() => setShowDatePicker(true)}
+                  style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
+                  <CalendarDays size={16} color={date ? ACCENT : '#6B7280'} style={{ marginRight: 8 }} />
+                  <Text style={{ flex: 1, fontSize: 15, color: date ? '#E5E7EB' : '#6B7280' }}>
+                    {date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
+                  </Text>
+                  <ChevronRight size={14} color="#6B7280" />
+                </TouchableOpacity>
               </>
             )}
 
@@ -672,6 +999,244 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+      <FinanceDatePicker visible={showDatePicker} value={date} onConfirm={setDate} onClose={() => setShowDatePicker(false)} />
+      {/* Add Custom Category Sheet */}
+      <Modal visible={showCustomCat} animationType="slide" transparent onRequestClose={() => setShowCustomCat(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }} onPress={() => setShowCustomCat(false)} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 24, paddingBottom: 36 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF', marginBottom: 16 }}>Add Custom Category</Text>
+            <TextInput
+              value={customCatText}
+              onChangeText={setCustomCatText}
+              placeholder="e.g. Hobbies, Pet Care…"
+              placeholderTextColor="#4B5563"
+              autoFocus
+              style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 16 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity onPress={() => setShowCustomCat(false)}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A' }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#6B7280' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  const cat = customCatText.trim();
+                  if (!cat) return;
+                  if (!customCategories.includes(cat)) setCustomCategories(prev => [...prev, cat]);
+                  setCategory(cat);
+                  setShowCustomCat(false);
+                }}
+                disabled={!customCatText.trim()}
+                style={{ flex: 2, alignItems: 'center', paddingVertical: 13, borderRadius: 12, backgroundColor: ACCENT, opacity: customCatText.trim() ? 1 : 0.4 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: 'white' }}>Add Category</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </Modal>
+  );
+}
+
+// ── Edit Transaction Modal ────────────────────────────────────────────────────
+
+function EditTxModal({ visible, tx, accounts, onClose, onSave }: {
+  visible: boolean; tx: Transaction | null; accounts: Account[];
+  onClose: () => void; onSave: (id: string, data: Partial<CreateTransactionInput>) => void;
+}) {
+  const [amount,         setAmount]         = useState('');
+  const [desc,           setDesc]           = useState('');
+  const [category,       setCategory]       = useState('');
+  const [date,           setDate]           = useState('');
+  const [accountId,      setAccId]          = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  useEffect(() => {
+    if (tx) {
+      setAmount(String(Math.abs(tx.amount)));
+      setDesc(tx.description);
+      setCategory(tx.category);
+      setDate(tx.date);
+      setAccId(tx.accountId ?? '');
+    }
+  }, [tx?.id]);
+
+  if (!tx) return null;
+
+  const isTransfer = tx.type === 'transfer';
+  const typeColor  = isTransfer ? '#3B82F6' : tx.type === 'income' ? '#10B981' : '#EF4444';
+  const typeLabel  = isTransfer ? 'transfer' : tx.type === 'income' ? 'income' : 'expense';
+  const categories = tx.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
+  const save = () => {
+    const amt = parseFloat(amount);
+    if (!amt) return;
+    onSave(tx.id, {
+      amount: tx.type === 'expense' ? -Math.abs(amt) : Math.abs(amt),
+      description: desc.trim() || tx.description,
+      category,
+      date,
+      accountId: accountId || undefined,
+    });
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={{ backgroundColor: '#141414', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 16, paddingBottom: 36 }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 16 }}>
+              <View>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: '#FFFFFF' }}>
+                  Edit {typeLabel}
+                </Text>
+                <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 3 }}>{isTransfer ? 'Transfer between accounts' : tx.type === 'income' ? 'Update income record' : 'Update payment record'}</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 540 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+
+              {/* Amount */}
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 8 }}>AMOUNT (₹)</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 22, fontWeight: '700', color: 'white', marginBottom: 18 }}
+                placeholder="0.00" placeholderTextColor="#4B5563"
+                value={amount} onChangeText={setAmount} keyboardType="decimal-pad"
+              />
+
+              {/* Description */}
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 8 }}>DESCRIPTION</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 18 }}
+                placeholder="e.g. Grocery shopping" placeholderTextColor="#4B5563"
+                value={desc} onChangeText={setDesc}
+              />
+
+              {/* Category grid */}
+              {!isTransfer && (
+                <>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 12 }}>CATEGORY</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+                    {categories.map((c) => {
+                      const cfg = getCatIcon(c);
+                      const CIcon = cfg.Icon;
+                      const isSelected = category === c;
+                      return (
+                        <TouchableOpacity key={c} onPress={() => setCategory(c)}
+                          style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : '#1A1A1A' }}>
+                          <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <CIcon size={17} color={cfg.color} strokeWidth={1.8} />
+                          </View>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: isSelected ? typeColor : '#D1D5DB', flex: 1 }} numberOfLines={1}>{c}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              {/* Account chips */}
+              {accounts.length > 0 && (
+                <>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 8 }}>ACCOUNT</Text>
+                  <SimpleAccountDropdown value={accountId} onChange={setAccId} accounts={accounts} />
+                </>
+              )}
+
+              {/* Date */}
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 8 }}>DATE</Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(true)}
+                style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
+                <CalendarDays size={16} color={date ? ACCENT : '#6B7280'} style={{ marginRight: 8 }} />
+                <Text style={{ flex: 1, fontSize: 15, color: date ? '#E5E7EB' : '#6B7280' }}>
+                  {date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
+                </Text>
+                <ChevronRight size={14} color="#6B7280" />
+              </TouchableOpacity>
+
+              {/* Buttons */}
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                <TouchableOpacity onPress={onClose}
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 15, borderRadius: 14, borderWidth: 1, borderColor: '#2A2A2A' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#6B7280' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={save}
+                  style={{ flex: 2, alignItems: 'center', paddingVertical: 15, borderRadius: 14, backgroundColor: typeColor, opacity: amount ? 1 : 0.4 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: 'white' }}>
+                    Update {typeLabel}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+      <FinanceDatePicker visible={showDatePicker} value={date} onConfirm={setDate} onClose={() => setShowDatePicker(false)} />
+    </Modal>
+  );
+}
+
+// ── Edit Account Modal ────────────────────────────────────────────────────────
+
+function EditAccountModal({ visible, account, onClose, onSave }: {
+  visible: boolean; account: Account | null;
+  onClose: () => void; onSave: (id: string, balance: number) => void;
+}) {
+  const [balance, setBalance] = useState('');
+
+  useEffect(() => {
+    if (account) setBalance(String(account.balance));
+  }, [account?.id]);
+
+  if (!account) return null;
+
+  const color = ACCOUNT_COLORS[account.type] ?? '#64748B';
+  const Icon  = ACCOUNT_ICONS[account.type] ?? Wallet;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={{ backgroundColor: '#141414', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 16, paddingBottom: 40 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: color + '22', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon size={18} color={color} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>{account.name}</Text>
+                  <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{account.type}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ paddingHorizontal: 20 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 8 }}>BALANCE (₹)</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 22, fontWeight: '700', color: 'white', marginBottom: 24 }}
+                value={balance} onChangeText={setBalance} keyboardType="numbers-and-punctuation" autoFocus
+              />
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity onPress={onClose} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#2A2A2A' }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#6B7280' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { const b = parseFloat(balance); if (!isNaN(b)) { onSave(account.id, b); onClose(); } }}
+                  style={{ flex: 2, alignItems: 'center', paddingVertical: 14, borderRadius: 14, backgroundColor: ACCENT }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: 'white' }}>Update Balance</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -694,6 +1259,16 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
   const [value,    setValue]    = useState('');
   const [accountId,setAccId]    = useState('');
   const [invType,  setInvType]  = useState<'lump_sum' | 'sip'>('lump_sum');
+  // SIP-specific fields
+  type SipFreq    = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  type SipEndType = 'forever' | 'after' | 'on_date';
+  const [sipFreq,         setSipFreq]         = useState<SipFreq>('monthly');
+  const [sipStart,        setSipStart]        = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [sipEndType,      setSipEndType]      = useState<SipEndType>('forever');
+  const [sipEndAfter,     setSipEndAfter]     = useState('');
+  const [sipEndDate,      setSipEndDate]      = useState('');
+  const [showSipStart,    setShowSipStart]    = useState(false);
+  const [showSipEndDate,  setShowSipEndDate]  = useState(false);
 
   // Populate / reset fields whenever the modal opens or the target asset changes
   useEffect(() => {
@@ -712,6 +1287,8 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
     } else {
       setName(''); setCategory(ASSET_CATEGORY_LIST[0]); setInvested('');
       setValue(''); setUnits(''); setPerUnit(''); setAccId(''); setInvType('lump_sum');
+      setSipFreq('monthly'); setSipStart(new Date().toLocaleDateString('en-CA'));
+      setSipEndType('forever'); setSipEndAfter(''); setSipEndDate('');
     }
   }, [visible, initial?.id]);  // re-run when modal opens or edit target changes
 
@@ -724,6 +1301,13 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
     const computedValue = numUnits && numPerUnit
       ? numUnits * numPerUnit
       : Number(value) > 0 ? Number(value) : Number(invested);
+    const sipCfg = invType === 'sip' ? {
+      frequency: sipFreq,
+      startDate: sipStart,
+      endType: sipEndType,
+      endAfterTimes: sipEndType === 'after' && sipEndAfter ? Number(sipEndAfter) : undefined,
+      endDate: sipEndType === 'on_date' && sipEndDate ? sipEndDate : undefined,
+    } : null;
     onSave({
       name: name.trim(),
       category,
@@ -732,7 +1316,8 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
       units: numUnits ?? null,
       accountId: accountId || undefined,
       investmentType: invType,
-    });
+      ...(sipCfg ? { sipConfig: sipCfg } : {}),
+    } as any);
     onClose();
   };
 
@@ -804,24 +1389,88 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
               ))}
             </View>
 
+            {/* SIP Schedule (shown only when SIP selected) */}
+            {invType === 'sip' && (
+              <View style={{ backgroundColor: '#10B98112', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#10B98133' }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT, letterSpacing: 1, marginBottom: 14 }}>SIP SCHEDULE</Text>
+
+                {/* Frequency */}
+                <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 8 }}>Frequency</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                  {([['daily','Daily'],['weekly','Weekly'],['monthly','Monthly'],['yearly','Yearly'],['custom','Custom']] as const).map(([v, l]) => (
+                    <TouchableOpacity key={v} onPress={() => setSipFreq(v as any)}
+                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: sipFreq === v ? ACCENT : '#242424', borderWidth: 1, borderColor: sipFreq === v ? ACCENT : '#2A2A2A' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: sipFreq === v ? 'white' : '#9CA3AF' }}>{l}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Start Date */}
+                <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 6 }}>Start Date</Text>
+                <TouchableOpacity onPress={() => setShowSipStart(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 14, paddingVertical: 11, marginBottom: 14 }}>
+                  <CalendarDays size={15} color={ACCENT} />
+                  <Text style={{ flex: 1, fontSize: 14, color: '#E5E7EB', marginLeft: 8 }}>
+                    {sipStart ? new Date(sipStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select start date'}
+                  </Text>
+                  <ChevronRight size={14} color="#6B7280" />
+                </TouchableOpacity>
+
+                {/* Duration / End */}
+                <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 8 }}>Duration</Text>
+                <View style={{ gap: 8 }}>
+                  {/* Forever */}
+                  <TouchableOpacity onPress={() => setSipEndType('forever')}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: sipEndType === 'forever' ? ACCENT : '#2A2A2A', borderRadius: 12, backgroundColor: sipEndType === 'forever' ? '#10B98115' : '#242424', paddingHorizontal: 14, paddingVertical: 11 }}>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: sipEndType === 'forever' ? ACCENT : '#6B7280', alignItems: 'center', justifyContent: 'center' }}>
+                      {sipEndType === 'forever' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT }} />}
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: sipEndType === 'forever' ? '#E5E7EB' : '#9CA3AF' }}>Forever</Text>
+                  </TouchableOpacity>
+                  {/* After N times */}
+                  <TouchableOpacity onPress={() => setSipEndType('after')}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: sipEndType === 'after' ? ACCENT : '#2A2A2A', borderRadius: 12, backgroundColor: sipEndType === 'after' ? '#10B98115' : '#242424', paddingHorizontal: 14, paddingVertical: 11 }}>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: sipEndType === 'after' ? ACCENT : '#6B7280', alignItems: 'center', justifyContent: 'center' }}>
+                      {sipEndType === 'after' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT }} />}
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: sipEndType === 'after' ? '#E5E7EB' : '#9CA3AF', marginRight: 8 }}>After</Text>
+                    <TextInput
+                      value={sipEndAfter}
+                      onChangeText={v => { setSipEndAfter(v); setSipEndType('after'); }}
+                      keyboardType="number-pad"
+                      placeholder="12"
+                      placeholderTextColor="#4B5563"
+                      style={{ width: 50, borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 8, backgroundColor: '#1A1A1A', paddingHorizontal: 8, paddingVertical: 5, fontSize: 14, color: 'white', textAlign: 'center' }}
+                    />
+                    <Text style={{ fontSize: 14, color: '#9CA3AF' }}>times</Text>
+                  </TouchableOpacity>
+                  {/* On date */}
+                  <TouchableOpacity onPress={() => setSipEndType('on_date')}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: sipEndType === 'on_date' ? ACCENT : '#2A2A2A', borderRadius: 12, backgroundColor: sipEndType === 'on_date' ? '#10B98115' : '#242424', paddingHorizontal: 14, paddingVertical: 11 }}>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: sipEndType === 'on_date' ? ACCENT : '#6B7280', alignItems: 'center', justifyContent: 'center' }}>
+                      {sipEndType === 'on_date' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT }} />}
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: sipEndType === 'on_date' ? '#E5E7EB' : '#9CA3AF', marginRight: 8 }}>On date</Text>
+                    {sipEndType === 'on_date' && (
+                      <TouchableOpacity onPress={() => setShowSipEndDate(true)}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 8, backgroundColor: '#1A1A1A', paddingHorizontal: 10, paddingVertical: 5 }}>
+                        <Text style={{ flex: 1, fontSize: 13, color: sipEndDate ? '#E5E7EB' : '#4B5563' }}>
+                          {sipEndDate ? new Date(sipEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pick date'}
+                        </Text>
+                        <CalendarDays size={13} color={ACCENT} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {/* Account */}
             {accounts.length > 0 && (
               <>
-                <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 8 }}>Fund from Account (optional)</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity onPress={() => setAccId('')}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: !accountId ? ACCENT : '#2A2A2A', backgroundColor: !accountId ? '#10B98122' : '#242424' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '500', color: !accountId ? ACCENT : '#6B7280' }}>None</Text>
-                    </TouchableOpacity>
-                    {accounts.map((a) => (
-                      <TouchableOpacity key={a.id} onPress={() => setAccId(a.id)}
-                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: accountId === a.id ? ACCENT : '#2A2A2A', backgroundColor: accountId === a.id ? '#10B98122' : '#242424' }}>
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: accountId === a.id ? ACCENT : '#6B7280' }}>{a.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
+                <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 6 }}>Fund from Account</Text>
+                <SimpleAccountDropdown value={accountId} onChange={setAccId} accounts={accounts} placeholder="Select account (optional)" />
+                <View style={{ marginBottom: 4 }} />
               </>
             )}
 
@@ -837,6 +1486,8 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+      <FinanceDatePicker visible={showSipStart} value={sipStart} onConfirm={setSipStart} onClose={() => setShowSipStart(false)} />
+      <FinanceDatePicker visible={showSipEndDate} value={sipEndDate} onConfirm={setSipEndDate} onClose={() => setShowSipEndDate(false)} />
     </Modal>
   );
 }
@@ -851,15 +1502,16 @@ function LiabilityModal({ visible, initial, accounts, onClose, onSave }: {
   onSave: (data: CreateLiabilityInput) => void;
 }) {
   const isEdit = !!initial;
-  const [name,       setName]       = useState('');
-  const [lender,     setLender]     = useState('');
-  const [borrowed,   setBorrowed]   = useState('');
-  const [outstanding,setOutstanding]= useState('');
-  const [totalRepaid,setTotalRepaid]= useState('0');
-  const [emi,        setEmi]        = useState('');
-  const [emisLeft,   setEmisLeft]   = useState('');
-  const [nextDue,    setNextDue]    = useState('');
-  const [repAccId,   setRepAccId]   = useState('');
+  const [name,           setName]           = useState('');
+  const [lender,         setLender]         = useState('');
+  const [borrowed,       setBorrowed]       = useState('');
+  const [outstanding,    setOutstanding]    = useState('');
+  const [totalRepaid,    setTotalRepaid]    = useState('0');
+  const [emi,            setEmi]            = useState('');
+  const [emisLeft,       setEmisLeft]       = useState('');
+  const [nextDue,        setNextDue]        = useState('');
+  const [repAccId,       setRepAccId]       = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Populate / reset fields whenever the modal opens or the target liability changes
   useEffect(() => {
@@ -935,26 +1587,20 @@ function LiabilityModal({ visible, initial, accounts, onClose, onSave }: {
               </View>
             </View>
 
-            <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 4 }}>Next Due Date (YYYY-MM-DD)</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 12 }} placeholder="2025-02-01" value={nextDue} onChangeText={setNextDue} keyboardType="numbers-and-punctuation" />
+            <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 4 }}>Next Due Date</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)}
+              style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <CalendarDays size={15} color={nextDue ? ACCENT : '#6B7280'} style={{ marginRight: 8 }} />
+              <Text style={{ flex: 1, fontSize: 14, color: nextDue ? '#E5E7EB' : '#6B7280' }}>
+                {nextDue ? new Date(nextDue).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select due date'}
+              </Text>
+              <ChevronRight size={14} color="#6B7280" />
+            </TouchableOpacity>
 
             {accounts.length > 0 && (
               <>
-                <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 8 }}>Repayment Account (optional)</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity onPress={() => setRepAccId('')}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: !repAccId ? ACCENT : '#2A2A2A', backgroundColor: !repAccId ? '#10B98122' : '#242424' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '500', color: !repAccId ? ACCENT : '#6B7280' }}>None</Text>
-                    </TouchableOpacity>
-                    {accounts.map((a) => (
-                      <TouchableOpacity key={a.id} onPress={() => setRepAccId(a.id)}
-                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: repAccId === a.id ? ACCENT : '#2A2A2A', backgroundColor: repAccId === a.id ? '#10B98122' : '#242424' }}>
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: repAccId === a.id ? ACCENT : '#6B7280' }}>{a.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
+                <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 6 }}>Repayment Account</Text>
+                <SimpleAccountDropdown value={repAccId} onChange={setRepAccId} accounts={accounts} placeholder="Select account (optional)" />
               </>
             )}
 
@@ -970,6 +1616,7 @@ function LiabilityModal({ visible, initial, accounts, onClose, onSave }: {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+      <FinanceDatePicker visible={showDatePicker} value={nextDue} onConfirm={setNextDue} onClose={() => setShowDatePicker(false)} />
     </Modal>
   );
 }
@@ -1107,7 +1754,8 @@ function getHealthScore(txs: Transaction[], totalAssets: number, totalLiab: numb
 
   const savingsScore  = Math.max(0, Math.min(25, Math.round(rate * 0.8)));
   const debtScore     = totalAssets === 0 ? 0 : totalLiab < totalAssets * 0.3 ? 25 : totalLiab < totalAssets * 0.5 ? 18 : 10;
-  const conScore      = txs.length > 5 ? 25 : Math.round(txs.length * 5);
+  const realTxCount   = txs.filter(t => t.type !== 'opening_balance' && t.type !== 'adjustment').length;
+  const conScore      = realTxCount > 5 ? 25 : Math.round(realTxCount * 5);
   const divScore      = totalAssets > 0 ? 25 : 0;
   const total = savingsScore + debtScore + conScore + divScore;
 
@@ -1475,22 +2123,36 @@ export default function FinanceScreen() {
 
   // Modal state
   const [showAddTx,      setShowAddTx]      = useState(false);
+  const [editTx,         setEditTx]         = useState<Transaction | null>(null);
   const [showAddAsset,   setShowAddAsset]   = useState(false);
   const [editAsset,      setEditAsset]      = useState<Asset | null>(null);
   const [showAddLiab,    setShowAddLiab]    = useState(false);
   const [editLiability,  setEditLiability]  = useState<Liability | null>(null);
   const [payLiability,   setPayLiability]   = useState<Liability | null>(null);
+  const [editAccount,    setEditAccount]    = useState<Account | null>(null);
+  const [txMenu, setTxMenu] = useState<{ tx: Transaction; y: number } | null>(null);
 
   // Assets category filter + search
   const [assetCategoryFilter, setAssetCategoryFilter] = useState('All');
   const [assetSearch, setAssetSearch] = useState('');
+
+  // Transactions filter + search
+  const [txSearch, setTxSearch] = useState('');
+  const [txAccountFilter, setTxAccountFilter] = useState('All');
+
+  // Liabilities search
+  const [liabSearch, setLiabSearch] = useState('');
+
+  // Theme
+  const { isDark } = useThemeStore();
+  const th = useTheme();
 
   const qc = useQueryClient();
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
   const { data: accounts     = [], refetch: refetchAccounts } = useQuery({ queryKey: ['accounts'],     queryFn: getAccounts });
-  const { data: transactions = [], isLoading: txLoading, refetch: refetchTx } = useQuery({ queryKey: ['transactions'], queryFn: getTransactions });
+  const { data: transactions = [], isLoading: txLoading, refetch: refetchTx } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() });
   const { data: assets       = [], isLoading: assetsLoading, refetch: refetchAssets } = useQuery({ queryKey: ['assets'],       queryFn: getAssets });
   const { data: liabilities  = [], isLoading: liabLoading,   refetch: refetchLiab } = useQuery({ queryKey: ['liabilities'],  queryFn: getLiabilities });
 
@@ -1504,13 +2166,53 @@ export default function FinanceScreen() {
   // ── Mutations ──────────────────────────────────────────────────────────────
 
   const createTxMut     = useMutation({ mutationFn: createTransaction,  onSuccess: () => { qc.invalidateQueries({ queryKey: ['transactions'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); } });
+  const updateTxMut     = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateTransactionInput> }) => updateTransaction(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['transactions'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); } });
   const deleteTxMut     = useMutation({ mutationFn: deleteTransaction,  onSuccess: () => { qc.invalidateQueries({ queryKey: ['transactions'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); } });
   const createAssetMut  = useMutation({ mutationFn: createAsset,        onSuccess: () => invalidateAll() });
   const updateAssetMut  = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateAssetInput> }) => updateAsset(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }) });
   const deleteAssetMut  = useMutation({ mutationFn: deleteAsset,        onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }) });
   const createLiabMut   = useMutation({ mutationFn: createLiability,    onSuccess: () => qc.invalidateQueries({ queryKey: ['liabilities'] }) });
   const updateLiabMut   = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateLiabilityInput> }) => updateLiability(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['liabilities'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); qc.invalidateQueries({ queryKey: ['transactions'] }); } });
-  const deleteLiabMut   = useMutation({ mutationFn: deleteLiability,    onSuccess: () => qc.invalidateQueries({ queryKey: ['liabilities'] }) });
+  const deleteLiabMut      = useMutation({ mutationFn: deleteLiability,    onSuccess: () => qc.invalidateQueries({ queryKey: ['liabilities'] }) });
+  const updateAccountMut   = useMutation({ mutationFn: ({ id, data }: { id: string; data: { balance: number } }) => updateAccount(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }) });
+  const deleteAccountMut   = useMutation({ mutationFn: deleteAccount,      onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }) });
+
+  // ── Vitals profile (persisted in /api/settings) ───────────────────────────
+  const [vitalsProfile, setVitalsProfile] = useState({ age: 0, dependents: 0, termCover: 0, healthCover: 0 });
+  const [vitalsProfileLoaded, setVitalsProfileLoaded] = useState(false);
+  const [vitalsProfileSaving, setVitalsProfileSaving] = useState(false);
+  const [vitalsProfileOpen, setVitalsProfileOpen] = useState(true);
+  const vitalsProfileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    apiRequest<{ preferences: { age: number | null; dependents: number | null; termCover: number | null; healthCover: number | null } }>('/api/settings')
+      .then(data => {
+        const p = data?.preferences ?? {};
+        setVitalsProfile({
+          age:        typeof p.age        === 'number' ? p.age        : 0,
+          dependents: typeof p.dependents === 'number' ? p.dependents : 0,
+          termCover:  typeof p.termCover  === 'number' ? p.termCover  : 0,
+          healthCover:typeof p.healthCover=== 'number' ? p.healthCover: 0,
+        });
+        setVitalsProfileLoaded(true);
+      })
+      .catch(() => setVitalsProfileLoaded(true));
+  }, []);
+
+  const updateVitalsProfile = useCallback((key: keyof typeof vitalsProfile, val: number) => {
+    setVitalsProfile(prev => {
+      const next = { ...prev, [key]: val };
+      if (vitalsProfileTimer.current) clearTimeout(vitalsProfileTimer.current);
+      vitalsProfileTimer.current = setTimeout(() => {
+        setVitalsProfileSaving(true);
+        apiRequest('/api/settings', {
+          method: 'PATCH',
+          body: JSON.stringify({ [key]: val === 0 ? null : val }),
+        }).finally(() => setVitalsProfileSaving(false));
+      }, 600);
+      return next;
+    });
+  }, []);
 
   // ── Computed values ────────────────────────────────────────────────────────
 
@@ -1519,6 +2221,17 @@ export default function FinanceScreen() {
   const income   = useMemo(() => monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [monthTx]);
   const expense  = useMemo(() => monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0), [monthTx]);
   const net      = income - expense;
+
+  const filteredMonthTx = useMemo(() => {
+    const acctMap = Object.fromEntries(accounts.map(a => [a.id, a.name]));
+    let list = monthTx.filter(t => t.type !== 'opening_balance' && t.type !== 'adjustment');
+    if (txAccountFilter !== 'All') list = list.filter(t => (t.accountId ? acctMap[t.accountId] : null) === txAccountFilter);
+    if (txSearch.trim()) {
+      const q = txSearch.toLowerCase();
+      list = list.filter(t => t.description.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+    }
+    return list;
+  }, [monthTx, txAccountFilter, txSearch, accounts]);
 
   const totalAssetsValue = useMemo(() => assets.reduce((s, a) => s + a.value, 0), [assets]);
   const totalInvested    = useMemo(() => assets.reduce((s, a) => s + a.invested, 0), [assets]);
@@ -1571,6 +2284,17 @@ export default function FinanceScreen() {
         ...(repayAccountId ? { repaymentAccountId: repayAccountId } : {}),
       },
     });
+    const accId = repayAccountId ?? l.repaymentAccountId;
+    if (accId) {
+      createTxMut.mutate({
+        date: new Date().toLocaleDateString('en-CA'),
+        category: 'Loan',
+        description: `${l.name} EMI`,
+        amount: -Math.abs(amount),
+        type: 'expense',
+        accountId: accId,
+      });
+    }
     setPayLiability(null);
   };
 
@@ -1589,7 +2313,7 @@ export default function FinanceScreen() {
   };
 
   // Which FAB action to show for current tab
-  const fabVisible = ['transactions', 'assets', 'liabilities'].includes(activeTab);
+  const fabVisible = false;
   const onFabPress = () => {
     if (activeTab === 'transactions') setShowAddTx(true);
     else if (activeTab === 'assets')  setShowAddAsset(true);
@@ -1605,17 +2329,17 @@ export default function FinanceScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_BG }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: th.bg }}>
       {/* Header — shows the current sub-tab name; tapping MyOrbit goes home */}
       <AppHeader title={PAGE_TITLES[activeTab]} showBack={false} />
 
       {/* Content */}
-      <View style={{ flex: 1, backgroundColor: SCREEN_BG }}>
+      <View style={{ flex: 1, backgroundColor: th.bg }}>
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 92 }}
+          contentContainerStyle={{ paddingBottom: 92, paddingTop: 12 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refetchAccounts(); refetchTx(); refetchAssets(); refetchLiab(); }} tintColor={ACCENT} />}
         >
 
@@ -1633,12 +2357,13 @@ export default function FinanceScreen() {
 
             const catSpend: Record<string, number> = {};
             transactions.filter(t => t.type === 'expense').forEach(t => { catSpend[t.category] = (catSpend[t.category] ?? 0) + Math.abs(t.amount); });
-            const SPENDING_EXCLUDE = ['Investment', 'EPF / PPF / NPS', 'SSY', 'Bonds', 'Debt Funds', 'Mutual Funds', 'Stocks & Equity'];
+            const SPENDING_EXCLUDE = ['Investment', 'EPF / PPF / NPS', 'SSY', 'Bonds', 'Debt Funds', 'Mutual Funds', 'Stocks & Equity', 'Opening Balance', 'Adjustment', 'Balance Adjustment', 'Opening balance', 'Balance adjustment'];
             const topCategories = Object.entries(catSpend).filter(([cat]) => !SPENDING_EXCLUDE.includes(cat)).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const maxCatSpend   = topCategories[0]?.[1] ?? 1;
 
             const moSpend: Record<string, number> = {};
             thisMoTx.filter(t => t.type === 'expense').forEach(t => { moSpend[t.category] = (moSpend[t.category] ?? 0) + Math.abs(t.amount); });
+            const visibleTx = transactions.filter(t => t.type !== 'opening_balance' && t.type !== 'adjustment');
             const topMonthExp = Object.entries(moSpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const maxMoSpend  = topMonthExp[0]?.[1] ?? 1;
 
@@ -1681,8 +2406,14 @@ export default function FinanceScreen() {
                           <View style={{ width: `${liabW}%` as `${number}%`, backgroundColor: '#EF4444' }} />
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                          <Text style={{ fontSize: 14, color: '#10B981' }}>Assets {fmtCompact(totalAssetsValue)}</Text>
-                          <Text style={{ fontSize: 14, color: '#EF4444' }}>Liabilities {fmtCompact(totalLiabilities)}</Text>
+                          <View>
+                            <Text style={{ fontSize: 14, color: '#10B981' }}>Assets {fmtCompact(totalAssetsValue)}</Text>
+                            <Text style={{ fontSize: 11, color: '#10B981', opacity: 0.7 }}>{assetW}% assets</Text>
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={{ fontSize: 14, color: '#EF4444' }}>Liabilities {fmtCompact(totalLiabilities)}</Text>
+                            <Text style={{ fontSize: 11, color: '#EF4444', opacity: 0.7 }}>{liabW}% liabilities</Text>
+                          </View>
                         </View>
                       </View>
                     );
@@ -1697,16 +2428,16 @@ export default function FinanceScreen() {
                     { label: 'Account Balance', sub: 'Bank, wallets & cash',                  val: availableBalance, color: '#10B981', bg: '#10B98122', Icon: Landmark,   tab: 'accounts'    as SubTab },
                   ].map((m) => (
                     <TouchableOpacity key={m.label} onPress={() => setActiveTab(m.tab)}
-                      style={{ backgroundColor: SURFACE, borderRadius: 15, paddingHorizontal: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: m.bg }}>
-                      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: m.bg, alignItems: 'center', justifyContent: 'center' }}>
-                        <m.Icon size={17} color={m.color} />
+                      style={{ backgroundColor: SURFACE, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderColor: m.bg }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: m.bg, alignItems: 'center', justifyContent: 'center' }}>
+                        <m.Icon size={20} color={m.color} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 16, color: MUTED }}>{m.label}</Text>
-                        <Text style={{ fontSize: 18, fontWeight: '700', color: m.color }} numberOfLines={1}>{fmtCompact(m.val)}</Text>
-                        <Text style={{ fontSize: 16, color: SUBTLE, marginTop: 1 }}>{m.sub}</Text>
+                        <Text style={{ fontSize: 13, color: MUTED }}>{m.label}</Text>
+                        <Text style={{ fontSize: 20, fontWeight: '700', color: m.color }} numberOfLines={1}>{fmtCompact(m.val)}</Text>
+                        <Text style={{ fontSize: 12, color: SUBTLE, marginTop: 2 }}>{m.sub}</Text>
                       </View>
-                      <ChevronRight size={16} color="#4B5563" />
+                      <ChevronRight size={18} color="#4B5563" />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -1830,20 +2561,23 @@ export default function FinanceScreen() {
                 <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Recent Transactions</Text>
-                    {transactions.length > 5 && (
+                    {visibleTx.length > 5 && (
                       <TouchableOpacity onPress={() => setActiveTab('transactions')}>
                         <Text style={{ fontSize: 14, color: ACCENT }}>View all →</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                   <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, overflow: 'hidden' }}>
-                    {transactions.length === 0 ? (
+                    {visibleTx.length === 0 ? (
                       <View style={{ paddingVertical: 32, alignItems: 'center' }}>
                         <Text style={{ fontSize: 28, marginBottom: 8 }}>💸</Text>
                         <Text style={{ fontSize: 14, color: '#9CA3AF' }}>No transactions yet</Text>
                       </View>
                     ) : (
-                      transactions.slice(0, 5).map((tx) => <TxItem key={tx.id} tx={tx} onDelete={deleteTxMut.mutate} />)
+                      visibleTx.slice(0, 5).map((tx) => {
+                        const ovAcctMap = Object.fromEntries(accounts.map(a => [a.id, a.name]));
+                        return <TxItem key={tx.id} tx={tx} accountName={tx.accountId ? ovAcctMap[tx.accountId] : undefined} onMenuOpen={(t, y) => setTxMenu({ tx: t, y })} />;
+                      })
                     )}
                   </View>
                 </View>
@@ -1979,49 +2713,88 @@ export default function FinanceScreen() {
           })()}
 
           {/* ── TRANSACTIONS ──────────────────────────────────────────────── */}
-          {activeTab === 'transactions' && (
+          {activeTab === 'transactions' && (() => {
+            const acctMap = Object.fromEntries(accounts.map(a => [a.id, a.name]));
+            const txAccountOptions = ['All', ...Array.from(new Set(monthTx.map(t => t.accountId ? acctMap[t.accountId] : null).filter((n): n is string => Boolean(n))))];
+            return (
             <>
-              {/* Month selector */}
-              <MonthSelector year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
-
               {/* Summary row */}
-              <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 14 }}>
                 {[
                   { label: 'Income',  val: income,           color: '#10B981', Icon: TrendingUp   },
                   { label: 'Expense', val: expense,          color: '#EF4444', Icon: TrendingDown },
                   { label: 'Net',     val: Math.abs(net),    color: net >= 0 ? '#10B981' : '#EF4444', Icon: ArrowLeftRight },
                 ].map((s) => (
-                  <View key={s.label} style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 12, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 }}>
-                    <s.Icon size={14} color={s.color} />
-                    <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 4 }}>{s.label}</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: s.color }}>{formatINR(s.val)}</Text>
+                  <View key={s.label} style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 14, alignItems: 'center' }}>
+                    <s.Icon size={16} color={s.color} />
+                    <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 5 }}>{s.label}</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: s.color, marginTop: 2 }}>{fmtCompact(s.val)}</Text>
                   </View>
                 ))}
               </View>
 
+              {/* Search + Add row */}
+              <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 10 }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A', paddingHorizontal: 10 }}>
+                  <Search size={14} color="#6B7280" />
+                  <TextInput
+                    value={txSearch}
+                    onChangeText={setTxSearch}
+                    placeholder="Search transactions…"
+                    placeholderTextColor="#4B5563"
+                    style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 8, fontSize: 14, color: '#FFFFFF' }}
+                  />
+                </View>
+                <TouchableOpacity onPress={() => setShowAddTx(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }}>
+                  <Plus size={14} color="white" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: 'white' }}>Add</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Filter chips */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 16, marginBottom: 12 }} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+                {txAccountOptions.map((opt) => {
+                  const active = txAccountFilter === opt;
+                  return (
+                    <TouchableOpacity key={opt} onPress={() => setTxAccountFilter(opt)}
+                      style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: active ? ACCENT : '#1A1A1A', borderWidth: 1, borderColor: active ? ACCENT : '#2A2A2A' }}>
+                      <Text style={{ fontSize: 13, fontWeight: active ? '600' : '400', color: active ? 'white' : '#9CA3AF' }}>{opt}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
               {/* Transaction list */}
-              <View style={{ marginHorizontal: 20, backgroundColor: '#1A1A1A', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+              <View style={{ marginHorizontal: 16, backgroundColor: '#1A1A1A', borderRadius: 16 }}>
                 <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#2A2A2A', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB' }}>{monthLabel(year, month)}</Text>
-                  <Text style={{ fontSize: 14, color: '#9CA3AF' }}>{monthTx.length} transactions</Text>
+                  <Text style={{ fontSize: 13, color: '#9CA3AF' }}>{filteredMonthTx.length} transactions</Text>
                 </View>
                 {txLoading ? (
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}><ActivityIndicator color={ACCENT} /></View>
-                ) : monthTx.length === 0 ? (
+                ) : filteredMonthTx.length === 0 ? (
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                     <Text style={{ fontSize: 28, marginBottom: 8 }}>💸</Text>
-                    <Text style={{ fontSize: 14, color: '#9CA3AF' }}>No transactions this month</Text>
-                    <TouchableOpacity onPress={() => setShowAddTx(true)}
-                      style={{ marginTop: 12, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: ACCENT }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>+ Add Transaction</Text>
-                    </TouchableOpacity>
+                    <Text style={{ fontSize: 14, color: '#9CA3AF' }}>
+                      {txSearch || txAccountFilter !== 'All' ? 'No matching transactions' : 'No transactions this month'}
+                    </Text>
+                    {!txSearch && txAccountFilter === 'All' && (
+                      <TouchableOpacity onPress={() => setShowAddTx(true)}
+                        style={{ marginTop: 12, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: ACCENT }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>+ Add Transaction</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : (
-                  monthTx.map((tx) => <TxItem key={tx.id} tx={tx} onDelete={deleteTxMut.mutate} />)
+                  filteredMonthTx.map((tx) => (
+                    <TxItem key={tx.id} tx={tx} accountName={tx.accountId ? acctMap[tx.accountId] : undefined} onMenuOpen={(t, y) => setTxMenu({ tx: t, y })} />
+                  ))
                 )}
               </View>
             </>
-          )}
+            );
+          })()}
 
           {/* ── ASSETS ────────────────────────────────────────────────────── */}
           {activeTab === 'assets' && (() => {
@@ -2043,9 +2816,9 @@ export default function FinanceScreen() {
                       { label: 'Current Value', val: formatINR(totalAssetsValue),       color: '#10B981', bg: '#10B98122' },
                       { label: `P&L (${pnl >= 0 ? '+' : ''}${pnlPct}%)`, val: formatINR(Math.abs(pnl)), color: pnl >= 0 ? '#10B981' : '#EF4444', bg: pnl >= 0 ? '#10B98122' : '#EF444422' },
                     ].map((m) => (
-                      <View key={m.label} style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 10, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: m.bg }}>
-                        <Text style={{ fontSize: 9, color: '#9CA3AF', marginBottom: 4 }}>{m.label}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: m.color }} numberOfLines={1}>{m.val}</Text>
+                      <View key={m.label} style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: m.bg }}>
+                        <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 6 }}>{m.label}</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: m.color }} numberOfLines={1}>{m.val}</Text>
                       </View>
                     ))}
                   </View>
@@ -2222,7 +2995,7 @@ export default function FinanceScreen() {
 
           {/* ── LIABILITIES ───────────────────────────────────────────────── */}
           {activeTab === 'liabilities' && (
-            <View style={{ padding: 20 }}>
+            <View style={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 6 }}>
               {/* Summary cards */}
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                 {[
@@ -2230,25 +3003,44 @@ export default function FinanceScreen() {
                   { label: 'Total Repaid',   val: formatINR(liabSummary.repaid),      color: '#10B981', bg: '#10B98122' },
                   { label: 'Outstanding',    val: formatINR(liabSummary.outstanding), color: '#EF4444', bg: '#EF444422' },
                 ].map((m) => (
-                  <View key={m.label} style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 10, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: m.bg }}>
-                    <Text style={{ fontSize: 9, color: '#9CA3AF', marginBottom: 4 }}>{m.label}</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: m.color }} numberOfLines={1}>{m.val}</Text>
+                  <View key={m.label} style={{ flex: 1, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: m.bg }}>
+                    <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 6 }}>{m.label}</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: m.color }} numberOfLines={1}>{m.val}</Text>
                   </View>
                 ))}
               </View>
 
               {/* Repayment progress */}
               {liabilities.length > 0 && (
-                <View style={{ backgroundColor: '#1A1A1A', borderRadius: 14, padding: 14, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#E5E7EB' }}>Overall repayment progress</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>{repaidPct}% paid</Text>
+                <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5E7EB' }}>Overall repayment progress</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>{repaidPct}% paid</Text>
                   </View>
                   <View style={{ height: 8, backgroundColor: '#2A2A2A', borderRadius: 4, overflow: 'hidden' }}>
                     <View style={{ height: 8, width: `${repaidPct}%` as `${number}%`, backgroundColor: ACCENT, borderRadius: 4 }} />
                   </View>
                 </View>
               )}
+
+              {/* Search + Add row */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A', paddingHorizontal: 10 }}>
+                  <Search size={14} color="#6B7280" />
+                  <TextInput
+                    value={liabSearch}
+                    onChangeText={setLiabSearch}
+                    placeholder="Search loans…"
+                    placeholderTextColor="#4B5563"
+                    style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, color: '#FFFFFF' }}
+                  />
+                </View>
+                <TouchableOpacity onPress={() => setShowAddLiab(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}>
+                  <Plus size={14} color="white" />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>Add</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Liability list */}
               {liabLoading ? (
@@ -2263,15 +3055,25 @@ export default function FinanceScreen() {
                     <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>+ Add Loan</Text>
                   </TouchableOpacity>
                 </View>
-              ) : (
-                liabilities.map((l) => (
+              ) : (() => {
+                const filtered = liabSearch.trim()
+                  ? liabilities.filter(l => l.name.toLowerCase().includes(liabSearch.toLowerCase()) || (l.lender ?? '').toLowerCase().includes(liabSearch.toLowerCase()))
+                  : liabilities;
+                if (filtered.length === 0) {
+                  return (
+                    <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, color: '#9CA3AF' }}>No loans match "{liabSearch}"</Text>
+                    </View>
+                  );
+                }
+                return filtered.map((l) => (
                   <LiabilityCard key={l.id} liability={l}
                     onPay={setPayLiability}
                     onEdit={setEditLiability}
                     onDelete={handleDeleteLiability}
                   />
-                ))
-              )}
+                ));
+              })()}
             </View>
           )}
 
@@ -2303,26 +3105,26 @@ export default function FinanceScreen() {
             return (
               <View style={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 6 }}>
                 {/* Green gradient hero card (matching web) */}
-                <View style={{ borderRadius: 16, padding: 14, marginBottom: 10, backgroundColor: '#10B981', shadowColor: '#10B981', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(255,255,255,0.8)' }}>Total Balance</Text>
-                  <Text style={{ fontSize: 30, fontWeight: '800', color: 'white', marginTop: 5 }}>{formatINR(availableBalance)}</Text>
-                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.72)', marginTop: 1 }}>Bank, cash and wallet balances</Text>
+                <View style={{ borderRadius: 20, padding: 22, marginBottom: 14, backgroundColor: '#10B981', shadowColor: '#10B981', shadowOpacity: 0.3, shadowRadius: 14, elevation: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, color: 'rgba(255,255,255,0.8)' }}>Total Balance</Text>
+                  <Text style={{ fontSize: 38, fontWeight: '800', color: 'white', marginTop: 6, letterSpacing: -1 }}>{formatINR(availableBalance)}</Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>Bank, cash and wallet balances</Text>
                 </View>
 
                 {/* 3 metric cards */}
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
                   {[
                     { label: 'Balance',     val: formatINR(availableBalance), color: '#10B981', bg: '#10B98122', sub: 'Bank + Wallets + Cash', Icon: Landmark     },
                     { label: 'Credit Used', val: formatINR(creditUsed),       color: '#EF4444', bg: '#EF444422', sub: 'Outstanding balance',   Icon: CreditCard   },
                     { label: 'Spent',       val: formatINR(spentThisMonth),   color: '#F97316', bg: '#F9731622', sub: 'This month',             Icon: TrendingDown },
                   ].map((m) => (
-                    <View key={m.label} style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 10, borderWidth: 1, borderColor: BORDER }}>
-                      <View style={{ width: 26, height: 26, borderRadius: 8, backgroundColor: m.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                        <m.Icon size={13} color={m.color} />
+                    <View key={m.label} style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 16, padding: 12, borderWidth: 1, borderColor: BORDER }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: m.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                        <m.Icon size={16} color={m.color} />
                       </View>
-                      <Text style={{ fontSize: 8, color: MUTED, marginBottom: 2 }}>{m.label}</Text>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: m.color }} numberOfLines={1}>{m.val}</Text>
-                      <Text style={{ fontSize: 8, color: SUBTLE, marginTop: 2 }}>{m.sub}</Text>
+                      <Text style={{ fontSize: 11, color: MUTED, marginBottom: 3 }}>{m.label}</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: m.color }} numberOfLines={1}>{m.val}</Text>
+                      <Text style={{ fontSize: 10, color: SUBTLE, marginTop: 3 }}>{m.sub}</Text>
                     </View>
                   ))}
                 </View>
@@ -2344,7 +3146,17 @@ export default function FinanceScreen() {
                           <Text style={{ fontSize: 14, color: MUTED }}>{byType[key]?.length ?? 0}</Text>
                         </View>
                       </View>
-                      {(byType[key] ?? []).map((a) => <AccountRow key={a.id} account={a} />)}
+                      {(byType[key] ?? []).map((a) => (
+                        <AccountRow
+                          key={a.id}
+                          account={a}
+                          onOptions={() => Alert.alert(a.name, a.type, [
+                            { text: 'Edit', onPress: () => setEditAccount(a) },
+                            { text: 'Delete', style: 'destructive', onPress: () => Alert.alert('Delete Account', `Delete "${a.name}"? All associated data will be removed.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteAccountMut.mutate(a.id) }]) },
+                            { text: 'Cancel', style: 'cancel' },
+                          ])}
+                        />
+                      ))}
                     </View>
                   ))
                 )}
@@ -2355,14 +3167,15 @@ export default function FinanceScreen() {
           {/* ── BUDGET ────────────────────────────────────────────────────── */}
           {activeTab === 'budget' && (() => {
             const now3 = new Date();
-            const monthTx = transactions.filter((t) => {
-              if (t.type !== 'expense') return false;
+            const allBudgetMonthTx = transactions.filter((t) => {
               const d = new Date(t.date);
               return d.getMonth() === now3.getMonth() && d.getFullYear() === now3.getFullYear();
             });
+            const budgetExpTx  = allBudgetMonthTx.filter(t => t.type === 'expense');
+            const budgetInflow = allBudgetMonthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
 
             const spentByCategory: Record<string, number> = {};
-            monthTx.forEach((t) => {
+            budgetExpTx.forEach((t) => {
               spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + Math.abs(t.amount);
             });
 
@@ -2370,69 +3183,92 @@ export default function FinanceScreen() {
               const spent = item.categories.reduce((sum, category) => sum + (spentByCategory[category] ?? 0), 0);
               const progress = item.limit > 0 ? spent / item.limit : 0;
               const remaining = item.limit - spent;
-              return {
-                ...item,
-                spent,
-                progress,
-                remaining,
-                statusColor: budgetStatusColor(progress),
-              };
+              return { ...item, spent, progress, remaining, statusColor: budgetStatusColor(progress) };
             });
 
             const totalBudget = budgetCards.reduce((sum, item) => sum + item.limit, 0);
-            const totalSpent = budgetCards.reduce((sum, item) => sum + item.spent, 0);
+            const totalSpent  = budgetCards.reduce((sum, item) => sum + item.spent, 0);
+            const netBalance  = budgetInflow - totalSpent;
 
             return (
               <View style={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 6 }}>
-              <View style={{ display: 'none' }}>
-                <Text style={{ fontSize: 36 }}>🎯</Text>
-              </View>
-              <Text style={{ fontSize: 14, color: MUTED }}>Monthly Budget</Text>
-              <Text style={{ fontSize: 27, fontWeight: '800', color: '#FFFFFF', marginTop: 4 }}>{formatINR(totalBudget)}</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-                <View style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 12, padding: 10 }}>
-                  <Text style={{ fontSize: 14, color: MUTED }}>Spent</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444', marginTop: 2 }}>{formatINR(totalSpent)}</Text>
-                </View>
-                <View style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 12, padding: 10 }}>
-                  <Text style={{ fontSize: 14, color: MUTED }}>Remaining</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#10B981', marginTop: 2 }}>{formatINR(Math.max(totalBudget - totalSpent, 0))}</Text>
-                </View>
-              </View>
-              {budgetCards.map((item) => (
-                <View key={item.key} style={{ backgroundColor: SURFACE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 14, marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <View style={{ flex: 1, paddingRight: 10 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{item.label}</Text>
-                      <Text style={{ fontSize: 15, color: MUTED, marginTop: 2 }}>{item.categories.join(', ')}</Text>
+
+                {/* Summary row: Inflow / Planned / Net */}
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                  {[
+                    { label: 'Inflow',  val: budgetInflow,        color: '#10B981', bg: '#10B98122' },
+                    { label: 'Planned', val: totalBudget,          color: '#3B82F6', bg: '#3B82F622' },
+                    { label: 'Net',     val: Math.abs(netBalance), color: netBalance >= 0 ? '#10B981' : '#EF4444', bg: netBalance >= 0 ? '#10B98122' : '#EF444422' },
+                  ].map((m) => (
+                    <View key={m.label} style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: m.bg }}>
+                      <Text style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>{m.label}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: m.color }} numberOfLines={1}>{fmtCompact(m.val)}</Text>
                     </View>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>{formatINR(item.limit)}</Text>
-                  </View>
-                  <View style={{ height: 6, backgroundColor: BORDER, borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
-                    <View style={{ width: `${Math.min(item.progress * 100, 100)}%` as `${number}%`, height: 6, backgroundColor: item.statusColor }} />
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <Text style={{ fontSize: 14, color: item.statusColor }}>
-                      {item.progress >= 1 ? 'Over budget' : `${Math.round(item.progress * 100)}% used`}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: MUTED }}>
-                      {item.remaining >= 0 ? `${formatINR(item.remaining)} left` : `${formatINR(Math.abs(item.remaining))} over`}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <View style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 12, padding: 9 }}>
-                      <Text style={{ fontSize: 9, color: MUTED }}>Spent</Text>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', marginTop: 2 }}>{formatINR(item.spent)}</Text>
-                    </View>
-                    <View style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 12, padding: 9 }}>
-                      <Text style={{ fontSize: 9, color: MUTED }}>Status</Text>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: item.statusColor, marginTop: 2 }}>
-                        {item.progress >= 1 ? 'Alert' : item.progress >= 0.75 ? 'Watch' : 'On track'}
-                      </Text>
-                    </View>
-                  </View>
+                  ))}
                 </View>
-              ))}
+
+                {/* Search + Add row */}
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A', paddingHorizontal: 10 }}>
+                    <Search size={14} color="#6B7280" />
+                    <TextInput
+                      placeholder="Search budgets…"
+                      placeholderTextColor="#4B5563"
+                      style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 8, fontSize: 14, color: '#FFFFFF' }}
+                    />
+                  </View>
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }}>
+                    <Plus size={14} color="white" />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: 'white' }}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Budget cards */}
+                {budgetCards.map((item) => (
+                  <View key={item.key} style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                    {/* Header row */}
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{item.label}</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                          {item.categories.map(cat => (
+                            <View key={cat} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: item.color + '22' }}>
+                              <Text style={{ fontSize: 11, color: item.color, fontWeight: '600' }}>{cat}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>{formatINR(item.limit)}</Text>
+                        <TouchableOpacity style={{ padding: 4 }}>
+                          <Pencil size={15} color="#9CA3AF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ padding: 4 }}>
+                          <Trash2 size={15} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {/* Progress bar */}
+                    <View style={{ height: 6, backgroundColor: BORDER, borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
+                      <View style={{ width: `${Math.min(item.progress * 100, 100)}%` as `${number}%`, height: 6, backgroundColor: item.statusColor }} />
+                    </View>
+                    {/* Stats row */}
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
+                        <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>Spent</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: item.statusColor }}>{fmtCompact(item.spent)}</Text>
+                      </View>
+                      <View style={{ flex: 1, backgroundColor: '#242424', borderRadius: 10, padding: 10 }}>
+                        <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>Used</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: item.statusColor }}>{Math.round(item.progress * 100)}%</Text>
+                      </View>
+                      <View style={{ flex: 1, backgroundColor: item.remaining >= 0 ? '#10B98122' : '#EF444422', borderRadius: 10, padding: 10 }}>
+                        <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>{item.remaining >= 0 ? 'Left' : 'Over'}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: item.remaining >= 0 ? '#10B981' : '#EF4444' }}>{fmtCompact(Math.abs(item.remaining))}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
               </View>
             );
           })()}
@@ -2440,9 +3276,11 @@ export default function FinanceScreen() {
           {/* ── VITALS ────────────────────────────────────────────────────── */}
           {activeTab === 'vitals' && (() => {
             const _now = new Date();
+            const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'opening_balance', 'adjustment'];
             const thisMonthTx = transactions.filter(t => {
               const d = new Date(t.date);
-              return d.getMonth() === _now.getMonth() && d.getFullYear() === _now.getFullYear();
+              return d.getMonth() === _now.getMonth() && d.getFullYear() === _now.getFullYear()
+                && !SYSTEM_CATS.includes(t.category) && t.type !== 'opening_balance' && t.type !== 'adjustment';
             });
             const monthlyIncome  = thisMonthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
             const monthlyExpense = thisMonthTx.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -2459,50 +3297,76 @@ export default function FinanceScreen() {
             const debtRatio      = totalAss > 0 ? totalLiab / totalAss : 0;
             const fiYears        = savings > 0 ? Math.round((monthlyExpense * 12 * 25) / (savings * 12)) : null;
 
+            const idealTerm  = Math.max(0, (monthlyExpense * 12 * 25) - netWorth);
+            const healthRec  = vitalsProfile.dependents >= 3 ? 2500000 : 1500000;
+
             // Scores (each /2, total /10)
-            const sEF  = runwayMonths >= 6 ? 2 : runwayMonths >= 3 ? 1.5 : runwayMonths >= 1 ? 1 : 0.5;
-            const sSR  = savingsRate >= 0.40 ? 2 : savingsRate >= 0.25 ? 1.5 : savingsRate >= 0.10 ? 1 : 0.5;
-            const sDR  = debtRatio < 0.20 ? 2 : debtRatio < 0.30 ? 1.5 : debtRatio < 0.50 ? 1 : 0.5;
-            const totalScore = Math.round((sEF + sSR + sDR + 0.5 + 0.5) * 10) / 10; // insurance defaults to 0.5 without profile
-            const scoreColor = totalScore >= 7 ? '#10B981' : totalScore >= 5 ? '#F59E0B' : '#EF4444';
-            const scoreLabel = totalScore >= 7 ? 'Good' : totalScore >= 5 ? 'Fair' : 'Needs Work';
+            const sEF     = runwayMonths >= 6 ? 2 : runwayMonths >= 3 ? 1.5 : runwayMonths >= 1 ? 1 : 0.5;
+            const sSR     = savingsRate >= 0.40 ? 2 : savingsRate >= 0.25 ? 1.5 : savingsRate >= 0.10 ? 1 : 0.5;
+            const sDR     = debtRatio < 0.20 ? 2 : debtRatio < 0.30 ? 1.5 : debtRatio < 0.50 ? 1 : 0.5;
+            const sTerm   = (() => { const r = idealTerm > 0 ? vitalsProfile.termCover / idealTerm : (vitalsProfile.termCover > 0 ? 1 : 0); return r >= 1 ? 2 : r >= 0.7 ? 1.5 : r >= 0.4 ? 1 : 0.5; })();
+            const sHealth = (() => { const r = vitalsProfile.healthCover / healthRec; return r >= 1 ? 2 : r >= 0.7 ? 1.5 : r >= 0.4 ? 1 : 0.5; })();
+            const totalScore = Math.round((sEF + sSR + sDR + sTerm + sHealth) * 10) / 10;
+            const scoreColor = totalScore >= 8 ? '#10B981' : totalScore >= 6 ? '#3B82F6' : totalScore >= 4 ? '#F59E0B' : '#EF4444';
+            const scoreLabel = totalScore >= 8 ? 'Excellent' : totalScore >= 6 ? 'Good' : totalScore >= 4 ? 'Fair' : 'Needs Work';
 
             const barC = (s: number) => s >= 1.5 ? '#10B981' : s >= 1 ? '#F59E0B' : '#EF4444';
 
+            const completeness = Math.round(
+              ([vitalsProfile.age > 0, vitalsProfile.termCover > 0, vitalsProfile.healthCover > 0,
+                monthlyIncome > 0, monthlyExpense > 0, liquidAssets > 0].filter(Boolean).length / 6) * 100
+            );
+            const completenessColor = completeness >= 80 ? '#10B981' : completeness >= 50 ? '#F59E0B' : '#EF4444';
+
             const topActions = [
-              { cond: runwayMonths < 6,      label: 'Build emergency fund',   detail: `Need ${fmtCompact(Math.max(0, monthlyExpense * (6 - runwayMonths)))} more for 6-month safety net` },
-              { cond: savingsRate < 0.25,    label: 'Increase savings rate',  detail: `Aim for 25%+ — currently ${Math.round(savingsRate * 100)}%` },
-              { cond: debtRatio >= 0.20,     label: 'Reduce debt',            detail: `Debt ratio is ${Math.round(debtRatio * 100)}% — target below 20%` },
-            ].filter(a => a.cond);
+              { score: sEF,    cond: runwayMonths < 6,        label: 'Build emergency fund',      detail: `Need ${fmtCompact(Math.max(0, monthlyExpense * (6 - runwayMonths)))} more for 6-month safety net` },
+              { score: sSR,    cond: savingsRate < 0.25,      label: 'Increase savings rate',     detail: `Aim for 25%+ — currently ${Math.round(savingsRate * 100)}%` },
+              { score: sTerm,  cond: sTerm < 2,               label: 'Increase term insurance',   detail: `Ideal cover is ${fmtCompact(idealTerm)}; enter your policy in Financial Profile` },
+              { score: sHealth,cond: sHealth < 2,             label: 'Improve health insurance',  detail: `Recommended cover: ${fmtCompact(healthRec)}` },
+              { score: sDR,    cond: debtRatio >= 0.20,       label: 'Reduce debt',               detail: `Debt ratio is ${Math.round(debtRatio * 100)}% — target below 20%` },
+            ].filter(a => a.cond).sort((a, b) => a.score - b.score).slice(0, 3);
+
+            const weakest = [
+              { name: 'emergency fund', score: sEF },
+              { name: 'savings rate',   score: sSR },
+              { name: 'debt ratio',     score: sDR },
+              { name: 'term insurance', score: sTerm },
+              { name: 'health cover',   score: sHealth },
+            ].sort((a, b) => a.score - b.score)[0];
+            const insightText = totalScore >= 8
+              ? 'Your finances are in excellent shape. Keep maintaining these habits.'
+              : `Focus on improving your ${weakest.name} to boost your Vital score.`;
 
             return (
-              <View style={{ padding: 20 }}>
+              <View style={{ padding: 16 }}>
                 {/* Hero Score Card */}
                 <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                     <Activity size={16} color={scoreColor} />
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Vital Score</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF', flex: 1 }}>Vital Score</Text>
                     <View style={{ backgroundColor: scoreColor + '22', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: scoreColor }}>{scoreLabel}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: scoreColor }}>{scoreLabel}</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                     {/* Score ring */}
-                    <View style={{ width: 94, height: 94, borderRadius: 47, borderWidth: 9, borderColor: scoreColor, alignItems: 'center', justifyContent: 'center', backgroundColor: SCREEN_BG }}>
-                      <Text style={{ fontSize: 24, fontWeight: '800', color: scoreColor }}>{totalScore}</Text>
-                      <Text style={{ fontSize: 14, color: '#6B7280' }}>/10</Text>
+                    <View style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 8, borderColor: scoreColor, alignItems: 'center', justifyContent: 'center', backgroundColor: SCREEN_BG, flexShrink: 0 }}>
+                      <Text style={{ fontSize: 22, fontWeight: '800', color: scoreColor }}>{totalScore}</Text>
+                      <Text style={{ fontSize: 11, color: MUTED }}>/10</Text>
                     </View>
                     {/* Factor bars */}
-                    <View style={{ flex: 1, gap: 8 }}>
+                    <View style={{ flex: 1, gap: 7 }}>
                       {[
                         { label: 'Emergency Fund', score: sEF },
                         { label: 'Savings Rate',   score: sSR },
                         { label: 'Debt Ratio',     score: sDR },
+                        { label: 'Term Insurance', score: sTerm },
+                        { label: 'Health Cover',   score: sHealth },
                       ].map((f) => (
                         <View key={f.label}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <Text style={{ fontSize: 14, color: '#9CA3AF' }}>{f.label}</Text>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: barC(f.score) }}>{f.score}/2</Text>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 11, color: MUTED }}>{f.label}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: barC(f.score) }}>{f.score}/2</Text>
                           </View>
                           <View style={{ height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, overflow: 'hidden' }}>
                             <View style={{ height: 4, width: `${(f.score / 2) * 100}%` as `${number}%`, backgroundColor: barC(f.score), borderRadius: 2 }} />
@@ -2511,133 +3375,212 @@ export default function FinanceScreen() {
                       ))}
                     </View>
                   </View>
+                  <View style={{ backgroundColor: SURFACE_ALT, borderRadius: 10, padding: 12, marginTop: 14 }}>
+                    <Text style={{ fontSize: 12, color: MUTED, lineHeight: 18 }}>{insightText}</Text>
+                  </View>
                 </View>
 
-                {/* Profile quick-stats */}
-                <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    <Activity size={16} color="#9CA3AF" />
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Financial Profile</Text>
+                {/* Financial Profile (collapsible) */}
+                <View style={{ backgroundColor: SURFACE, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' }}>
+                  <TouchableOpacity onPress={() => setVitalsProfileOpen(v => !v)} activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14 }}>
+                    <Activity size={15} color={MUTED} />
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF', flex: 1 }}>Financial Profile</Text>
+                    <Text style={{ fontSize: 12, color: completenessColor, marginRight: 6 }}>{completeness}% complete</Text>
+                    <ChevronDown size={15} color={MUTED} style={{ transform: [{ rotate: vitalsProfileOpen ? '180deg' : '0deg' }] }} />
+                  </TouchableOpacity>
+                  {/* Completeness bar */}
+                  <View style={{ height: 3, backgroundColor: '#2A2A2A' }}>
+                    <View style={{ height: 3, width: `${completeness}%` as `${number}%`, backgroundColor: completenessColor }} />
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {[
-                      { label: 'Monthly Income',  val: fmtCompact(monthlyIncome),  color: '#10B981', sub: 'This month' },
-                      { label: 'Monthly Expense', val: fmtCompact(monthlyExpense), color: '#EF4444', sub: 'This month' },
-                      { label: 'Liquid Assets',   val: fmtCompact(liquidAssets),   color: '#3B82F6', sub: 'Bank + Wallets' },
-                    ].map((t) => (
-                      <View key={t.label} style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 12, padding: 10 }}>
-                        <Text style={{ fontSize: 9, color: '#9CA3AF', marginBottom: 2 }}>{t.label}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: t.color }}>{t.val}</Text>
-                        <Text style={{ fontSize: 9, color: '#6B7280', marginTop: 2 }}>{t.sub}</Text>
+
+                  {vitalsProfileOpen && (
+                    <View style={{ padding: 14, paddingTop: 12 }}>
+                      {/* Auto-pulled stats */}
+                      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                        {[
+                          { label: 'Monthly Income',  val: fmtCompact(monthlyIncome),  color: '#10B981', sub: 'This month' },
+                          { label: 'Monthly Expense', val: fmtCompact(monthlyExpense), color: '#EF4444', sub: 'This month' },
+                          { label: 'Liquid Assets',   val: fmtCompact(liquidAssets),   color: '#3B82F6', sub: 'Bank + Wallets' },
+                        ].map((t) => (
+                          <View key={t.label} style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 10, padding: 10 }}>
+                            <Text style={{ fontSize: 9, color: MUTED, marginBottom: 2 }}>{t.label}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: t.color }}>{t.val}</Text>
+                            <Text style={{ fontSize: 9, color: SUBTLE, marginTop: 2 }}>{t.sub}</Text>
+                          </View>
+                        ))}
                       </View>
-                    ))}
-                  </View>
-                </View>
 
-                {/* Emergency Fund */}
-                <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>Emergency Fund</Text>
-                    <View style={{ backgroundColor: barC(sEF) + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: barC(sEF) }}>{sEF}/2</Text>
-                    </View>
-                  </View>
-                  <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 4 }}>
-                    Cash & Savings: <Text style={{ fontWeight: '700', color: '#E5E7EB' }}>{fmtCompact(emergencyFund)}</Text>
-                  </Text>
-                  <Text style={{ fontSize: 14, color: runwayMonths >= 6 ? '#10B981' : '#F59E0B' }}>
-                    Monthly runway: <Text style={{ fontWeight: '700' }}>{runwayMonths.toFixed(1)} months</Text>
-                  </Text>
-                  <View style={{ height: 6, backgroundColor: '#2A2A2A', borderRadius: 3, overflow: 'hidden', marginTop: 10 }}>
-                    <View style={{ height: 6, width: `${Math.min((runwayMonths / 12) * 100, 100)}%` as `${number}%`, backgroundColor: barC(sEF), borderRadius: 3 }} />
-                  </View>
-                  <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                    {runwayMonths < 6 ? `Build ${fmtCompact(Math.max(0, monthlyExpense * (6 - runwayMonths)))} more for a 6-month safety net` : '6-month emergency fund is in place ✓'}
-                  </Text>
-                </View>
+                      {/* User inputs */}
+                      <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                        {([
+                          { key: 'age' as const,        label: 'Age',          suffix: 'yrs',  placeholder: '30' },
+                          { key: 'dependents' as const, label: 'Dependents',   suffix: '',     placeholder: '0' },
+                          { key: 'termCover' as const,  label: 'Term Cover',   suffix: '₹',    placeholder: '1Cr' },
+                          { key: 'healthCover' as const,label: 'Health Cover', suffix: '₹',    placeholder: '15L' },
+                        ] as const).map((field) => (
+                          <View key={field.key} style={{ width: '46%' }}>
+                            <Text style={{ fontSize: 11, color: MUTED, marginBottom: 5 }}>{field.label}</Text>
+                            <View style={{ borderWidth: 1, borderColor: vitalsProfile[field.key] > 0 ? ACCENT : BORDER, borderRadius: 10, backgroundColor: SURFACE_ALT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8 }}>
+                              <TextInput
+                                style={{ flex: 1, fontSize: 13, color: '#E5E7EB' }}
+                                keyboardType="numeric"
+                                value={vitalsProfile[field.key] > 0 ? String(vitalsProfile[field.key]) : ''}
+                                onChangeText={v => updateVitalsProfile(field.key, v ? Number(v) : 0)}
+                                placeholder={field.placeholder}
+                                placeholderTextColor={SUBTLE}
+                              />
+                              {!!field.suffix && <Text style={{ fontSize: 11, color: SUBTLE }}>{field.suffix}</Text>}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
 
-                {/* Savings Rate */}
-                <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>Savings Rate</Text>
-                    <View style={{ backgroundColor: barC(sSR) + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: barC(sSR) }}>{sSR}/2</Text>
+                      <Text style={{ fontSize: 11, color: SUBTLE, marginTop: 10 }}>
+                        {!vitalsProfileLoaded ? 'Loading...' : vitalsProfileSaving ? 'Saving...' : 'Changes auto-saved to your account.'}
+                      </Text>
                     </View>
-                  </View>
-                  <Text style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 4 }}>
-                    Income: <Text style={{ color: '#10B981', fontWeight: '600' }}>{fmtCompact(monthlyIncome)}</Text>
-                    {'  '}Expense: <Text style={{ color: '#EF4444', fontWeight: '600' }}>{fmtCompact(monthlyExpense)}</Text>
-                  </Text>
-                  <Text style={{ fontSize: 14, color: savingsRate >= 0.2 ? '#10B981' : '#F59E0B' }}>
-                    Saving <Text style={{ fontWeight: '700' }}>{Math.round(savingsRate * 100)}%</Text> of income this month
-                  </Text>
-                  {fiYears !== null && (
-                    <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>FI estimate at current pace: ~{fiYears} yrs</Text>
                   )}
-                  <View style={{ height: 6, backgroundColor: '#2A2A2A', borderRadius: 3, overflow: 'hidden', marginTop: 10 }}>
-                    <View style={{ height: 6, width: `${Math.min(savingsRate * 200, 100)}%` as `${number}%`, backgroundColor: barC(sSR), borderRadius: 3 }} />
+                </View>
+
+                {/* Core Vitals — Emergency Fund */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: MUTED, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Core Vitals</Text>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                  {/* Emergency Fund */}
+                  <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Emergency Fund</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: barC(sEF) }}>{sEF}/2</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: MUTED }}>Cash & Savings: <Text style={{ color: '#E5E7EB', fontWeight: '600' }}>{fmtCompact(emergencyFund)}</Text></Text>
+                    <Text style={{ fontSize: 11, color: runwayMonths >= 6 ? '#10B981' : '#F59E0B', marginTop: 2 }}>
+                      Runway: <Text style={{ fontWeight: '700' }}>{runwayMonths.toFixed(1)} mo</Text>
+                    </Text>
+                    <View style={{ height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                      <View style={{ height: 4, width: `${Math.min((runwayMonths / 12) * 100, 100)}%` as `${number}%`, backgroundColor: barC(sEF), borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ fontSize: 10, color: SUBTLE, marginTop: 4 }}>
+                      {runwayMonths < 6 ? `${fmtCompact(Math.max(0, monthlyExpense * (6 - runwayMonths)))} more for 6-mo` : '6-month fund in place ✓'}
+                    </Text>
+                  </View>
+
+                  {/* Savings Rate */}
+                  <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Savings Rate</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: barC(sSR) }}>{sSR}/2</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: MUTED }}>Income: <Text style={{ color: '#10B981', fontWeight: '600' }}>{fmtCompact(monthlyIncome)}</Text></Text>
+                    <Text style={{ fontSize: 11, color: savingsRate >= 0.2 ? '#10B981' : '#F59E0B', marginTop: 2 }}>
+                      Saving <Text style={{ fontWeight: '700' }}>{Math.round(savingsRate * 100)}%</Text> this month
+                    </Text>
+                    <View style={{ height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                      <View style={{ height: 4, width: `${Math.min(savingsRate * 200, 100)}%` as `${number}%`, backgroundColor: barC(sSR), borderRadius: 2 }} />
+                    </View>
+                    {fiYears !== null && (
+                      <Text style={{ fontSize: 10, color: SUBTLE, marginTop: 4 }}>FI at current pace: ~{fiYears} yrs</Text>
+                    )}
                   </View>
                 </View>
 
                 {/* Debt Ratio */}
                 {(totalAss > 0 || totalLiab > 0) && (
-                  <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <Shield size={16} color="#9CA3AF" />
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF', flex: 1 }}>Debt Ratio</Text>
-                      <View style={{ backgroundColor: barC(sDR) + '22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: barC(sDR) }}>{sDR}/2</Text>
+                  <View style={{ backgroundColor: SURFACE, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <Shield size={14} color={MUTED} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF', flex: 1 }}>Debt Ratio</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: barC(sDR) }}>{sDR}/2</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                      <Text style={{ fontSize: 28, fontWeight: '800', color: barC(sDR) }}>{Math.round(debtRatio * 100)}%</Text>
+                      <View style={{ flex: 1, gap: 4 }}>
+                        {[
+                          { label: 'Assets',      val: fmtCompact(totalAss),  color: '#10B981' },
+                          { label: 'Liabilities', val: fmtCompact(totalLiab), color: '#EF4444' },
+                          { label: 'Net Worth',   val: fmtCompact(netWorth),  color: netWorth >= 0 ? '#10B981' : '#EF4444' },
+                        ].map((r) => (
+                          <View key={r.label} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 11, color: MUTED }}>{r.label}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: r.color }}>{r.val}</Text>
+                          </View>
+                        ))}
                       </View>
                     </View>
-                    <Text style={{ fontSize: 32, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 }}>
-                      {Math.round(debtRatio * 100)}%
-                    </Text>
-                    <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 12 }}>Liabilities ÷ Total Assets</Text>
-                    <View style={{ gap: 6 }}>
-                      {[
-                        { label: 'Total Assets',      val: fmtCompact(totalAss),  color: '#10B981' },
-                        { label: 'Total Liabilities', val: fmtCompact(totalLiab), color: '#EF4444' },
-                        { label: 'Net Worth',         val: fmtCompact(netWorth),  color: netWorth >= 0 ? '#10B981' : '#EF4444' },
-                      ].map((r) => (
-                        <View key={r.label} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                          <Text style={{ fontSize: 14, color: '#9CA3AF' }}>{r.label}</Text>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: r.color }}>{r.val}</Text>
-                        </View>
-                      ))}
+                    <View style={{ height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, overflow: 'hidden', marginTop: 10 }}>
+                      <View style={{ height: 4, width: `${Math.min(debtRatio * 100, 100)}%` as `${number}%`, backgroundColor: barC(sDR), borderRadius: 2 }} />
                     </View>
-                    <View style={{ height: 6, backgroundColor: '#2A2A2A', borderRadius: 3, overflow: 'hidden', marginTop: 12 }}>
-                      <View style={{ height: 6, width: `${Math.min(debtRatio * 100, 100)}%` as `${number}%`, backgroundColor: barC(sDR), borderRadius: 3 }} />
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
-                      <Text style={{ fontSize: 14, color: '#10B981' }}>● &lt;20% Good</Text>
-                      <Text style={{ fontSize: 14, color: '#F59E0B' }}>● 20–30% Fair</Text>
-                      <Text style={{ fontSize: 14, color: '#EF4444' }}>● &gt;50% High</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 5 }}>
+                      <Text style={{ fontSize: 10, color: '#10B981' }}>● &lt;20% Good</Text>
+                      <Text style={{ fontSize: 10, color: '#F59E0B' }}>● 20–30% Fair</Text>
+                      <Text style={{ fontSize: 10, color: '#EF4444' }}>● &gt;50% High</Text>
                     </View>
                   </View>
                 )}
 
+                {/* Protection */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: MUTED, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Protection</Text>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                  {/* Term Insurance */}
+                  <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Term Insurance</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: barC(sTerm) }}>{sTerm}/2</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: MUTED }}>Current: <Text style={{ color: '#E5E7EB', fontWeight: '600' }}>{vitalsProfile.termCover > 0 ? fmtCompact(vitalsProfile.termCover) : '—'}</Text></Text>
+                    <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Ideal: <Text style={{ color: '#E5E7EB', fontWeight: '600' }}>{idealTerm > 0 ? fmtCompact(idealTerm) : '—'}</Text></Text>
+                    <View style={{ height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                      <View style={{ height: 4, width: `${Math.min(idealTerm > 0 ? (vitalsProfile.termCover / idealTerm) * 100 : (vitalsProfile.termCover > 0 ? 100 : 0), 100)}%` as `${number}%`, backgroundColor: barC(sTerm), borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ fontSize: 10, color: SUBTLE, marginTop: 4 }}>
+                      {vitalsProfile.termCover === 0 ? 'Enter amount in Financial Profile' :
+                        vitalsProfile.termCover >= idealTerm ? 'Fully covered ✓' :
+                        `Gap: ${fmtCompact(idealTerm - vitalsProfile.termCover)}`}
+                    </Text>
+                  </View>
+
+                  {/* Health Insurance */}
+                  <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>Health Insurance</Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: barC(sHealth) }}>{sHealth}/2</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: MUTED }}>Current: <Text style={{ color: '#E5E7EB', fontWeight: '600' }}>{vitalsProfile.healthCover > 0 ? fmtCompact(vitalsProfile.healthCover) : '—'}</Text></Text>
+                    <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Recommended: <Text style={{ color: '#E5E7EB', fontWeight: '600' }}>{fmtCompact(healthRec)}</Text></Text>
+                    <View style={{ height: 4, backgroundColor: '#2A2A2A', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                      <View style={{ height: 4, width: `${Math.min((vitalsProfile.healthCover / healthRec) * 100, 100)}%` as `${number}%`, backgroundColor: barC(sHealth), borderRadius: 2 }} />
+                    </View>
+                    <Text style={{ fontSize: 10, color: SUBTLE, marginTop: 4 }}>
+                      {vitalsProfile.healthCover === 0 ? 'Enter amount in Financial Profile' :
+                        vitalsProfile.healthCover >= healthRec ? 'Covered ✓' :
+                        `Gap: ${fmtCompact(healthRec - vitalsProfile.healthCover)}`}
+                    </Text>
+                  </View>
+                </View>
+
                 {/* Future Impact */}
                 {monthlyIncome > 0 && monthlyExpense > 0 && (
-                  <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <TrendingUp size={16} color="#3B82F6" />
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>Future Impact</Text>
+                  <View style={{ backgroundColor: SURFACE, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <TrendingUp size={14} color="#3B82F6" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>Future Impact</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <View style={{ flex: 1, backgroundColor: '#3B82F622', borderRadius: 12, padding: 14 }}>
-                        <Text style={{ fontSize: 14, color: '#93C5FD', marginBottom: 4 }}>At {Math.round(savingsRate * 100)}% savings</Text>
-                        <Text style={{ fontSize: 18, fontWeight: '800', color: '#DBEAFE' }}>{fiYears !== null ? `${fiYears} yrs` : 'N/A'}</Text>
-                        <Text style={{ fontSize: 14, color: '#93C5FD', marginTop: 2 }}>to Financial Independence</Text>
+                      <View style={{ flex: 1, backgroundColor: '#3B82F618', borderRadius: 12, padding: 12 }}>
+                        <Text style={{ fontSize: 10, color: '#93C5FD', marginBottom: 4 }}>At {Math.round(savingsRate * 100)}% savings</Text>
+                        <Text style={{ fontSize: 17, fontWeight: '800', color: '#DBEAFE' }}>{fiYears !== null ? `${fiYears} yrs` : 'N/A'}</Text>
+                        <Text style={{ fontSize: 10, color: '#93C5FD', marginTop: 2 }}>to Financial Independence</Text>
                       </View>
-                      <View style={{ flex: 1, backgroundColor: '#10B98122', borderRadius: 12, padding: 14 }}>
-                        <Text style={{ fontSize: 14, color: '#6EE7B7', marginBottom: 4 }}>If savings = 30%</Text>
+                      <View style={{ flex: 1, backgroundColor: '#10B98118', borderRadius: 12, padding: 12 }}>
+                        <Text style={{ fontSize: 10, color: '#6EE7B7', marginBottom: 4 }}>If savings = 30%</Text>
                         {(() => {
                           const s30 = monthlyIncome * 0.30;
                           const fi30 = s30 > 0 ? Math.round((monthlyExpense * 12 * 25) / (s30 * 12)) : null;
                           return (
                             <>
-                              <Text style={{ fontSize: 18, fontWeight: '800', color: '#D1FAE5' }}>{fi30 !== null ? `${fi30} yrs` : '—'}</Text>
-                              <Text style={{ fontSize: 14, color: '#6EE7B7', marginTop: 2 }}>
+                              <Text style={{ fontSize: 17, fontWeight: '800', color: '#D1FAE5' }}>{fi30 !== null ? `${fi30} yrs` : '—'}</Text>
+                              <Text style={{ fontSize: 10, color: '#6EE7B7', marginTop: 2 }}>
                                 {s30 > savings ? `Save ${fmtCompact(s30 - savings)} more/mo` : 'Already at target ✓'}
                               </Text>
                             </>
@@ -2650,19 +3593,19 @@ export default function FinanceScreen() {
 
                 {/* Top Actions */}
                 {topActions.length > 0 && (
-                  <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <Zap size={16} color="#F59E0B" />
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>Top Actions</Text>
+                  <View style={{ backgroundColor: SURFACE, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <Zap size={14} color="#F59E0B" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>Top Actions</Text>
                     </View>
                     {topActions.map((a, i) => (
-                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: SURFACE_ALT, borderRadius: 12, padding: 12, marginBottom: i < topActions.length - 1 ? 8 : 0 }}>
-                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#F59E0B22', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#F59E0B' }}>{i + 1}</Text>
+                      <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: SURFACE_ALT, borderRadius: 10, padding: 10, marginBottom: i < topActions.length - 1 ? 8 : 0 }}>
+                        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#F59E0B22', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>{i + 1}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB' }}>{a.label}</Text>
-                          {!!a.detail && <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 2 }}>{a.detail}</Text>}
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#E5E7EB' }}>{a.label}</Text>
+                          {!!a.detail && <Text style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{a.detail}</Text>}
                         </View>
                       </View>
                     ))}
@@ -2676,6 +3619,9 @@ export default function FinanceScreen() {
           {activeTab === 'settings' && <FinanceSettings transactions={transactions} assets={assets} liabilities={liabilities} accounts={accounts} />}
 
         </ScrollView>
+        {activeTab === 'transactions' && (
+          <MonthSelector year={year} month={month} onPrev={prevMonth} onNext={nextMonth} />
+        )}
       </View>
 
       {/* Bottom Nav */}
@@ -2689,9 +3635,43 @@ export default function FinanceScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Transaction context popup */}
+      {txMenu && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setTxMenu(null)}>
+          <Pressable style={{ flex: 1 }} onPress={() => setTxMenu(null)} />
+          <View style={{
+            position: 'absolute',
+            top: Math.max(60, txMenu.y - 44),
+            right: 16,
+            backgroundColor: '#1E2330',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: '#2A3040',
+            shadowColor: '#000',
+            shadowOpacity: 0.4,
+            shadowRadius: 12,
+            elevation: 14,
+            minWidth: 140,
+            overflow: 'hidden',
+          }}>
+            <TouchableOpacity onPress={() => { setTxMenu(null); setEditTx(txMenu.tx); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#2A3040' }}>
+              <Pencil size={15} color="#E5E7EB" />
+              <Text style={{ fontSize: 14, fontWeight: '500', color: '#E5E7EB' }}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setTxMenu(null); deleteTxMut.mutate(txMenu.tx.id); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14 }}>
+              <Trash2 size={15} color="#EF4444" />
+              <Text style={{ fontSize: 14, fontWeight: '500', color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      )}
+
       {/* Modals */}
       <MoreSheet visible={showMore} active={activeTab} onSelect={setActiveTab} onClose={() => setShowMore(false)} />
       <AddTxModal visible={showAddTx} onClose={() => setShowAddTx(false)} accounts={accounts} onSave={(data) => createTxMut.mutate(data)} />
+      <EditTxModal visible={!!editTx} tx={editTx} accounts={accounts} onClose={() => setEditTx(null)} onSave={(id, data) => updateTxMut.mutate({ id, data })} />
       <AssetModal visible={showAddAsset} accounts={accounts} onClose={() => setShowAddAsset(false)}
         onSave={(data) => createAssetMut.mutate(data)} />
       <AssetModal visible={!!editAsset} initial={editAsset} accounts={accounts}
@@ -2704,6 +3684,8 @@ export default function FinanceScreen() {
         onSave={(data) => { if (editLiability) updateLiabMut.mutate({ id: editLiability.id, data }); setEditLiability(null); }} />
       <RecordPaymentModal visible={!!payLiability} liability={payLiability} accounts={accounts}
         onClose={() => setPayLiability(null)} onPay={handleRecordPayment} />
+      <EditAccountModal visible={!!editAccount} account={editAccount} onClose={() => setEditAccount(null)}
+        onSave={(id, balance) => updateAccountMut.mutate({ id, data: { balance } })} />
     </SafeAreaView>
   );
 }

@@ -4,6 +4,31 @@ import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
+function getRecurrenceFromTags(tags: string[] | string, dueDate?: string | null): { isRecurring: boolean; recurrenceDays: number[] | null } {
+  let arr: string[] = [];
+  try {
+    if (Array.isArray(tags)) arr = tags;
+    else { const p = JSON.parse(tags); if (Array.isArray(p)) arr = p; }
+  } catch { /* ignore */ }
+
+  const repeatTag = arr.find(t => t.startsWith('repeat:'));
+  if (!repeatTag) return { isRecurring: false, recurrenceDays: null };
+  const repeatType = repeatTag.replace('repeat:', '');
+
+  switch (repeatType) {
+    case 'daily':    return { isRecurring: true, recurrenceDays: [0,1,2,3,4,5,6] };
+    case 'weekdays': return { isRecurring: true, recurrenceDays: [1,2,3,4,5] };
+    case 'weekends': return { isRecurring: true, recurrenceDays: [0,6] };
+    case 'weekly': {
+      const dateStr = dueDate ?? new Date().toISOString().split('T')[0];
+      const dow = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+      return { isRecurring: true, recurrenceDays: [dow] };
+    }
+    default:
+      return { isRecurring: false, recurrenceDays: null };
+  }
+}
+
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -41,6 +66,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       );
     }
 
+    // Derive recurrence fields when tags are being updated
+    let recurrenceUpdate: Record<string, unknown> = {};
+    if (body.tags !== undefined) {
+      const { isRecurring, recurrenceDays } = getRecurrenceFromTags(body.tags, body.dueDate);
+      recurrenceUpdate = {
+        isRecurring,
+        recurrenceDays: recurrenceDays ?? [],
+      };
+    }
+
     const result = await prisma.task.updateMany({
       where: { id: id, userId },
       data: {
@@ -56,6 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.listId !== undefined && { listId: body.listId }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
         ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
+        ...recurrenceUpdate,
       },
     });
     if (result.count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });

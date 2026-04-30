@@ -111,13 +111,13 @@ export default function HomeScreen() {
           >
             <Star size={28} color="white" fill="white" />
           </View>
-          <Text style={{ fontSize: 32, fontWeight: '800', color: T.text, letterSpacing: -0.5 }}>
+          <Text style={{ fontSize: 26, fontWeight: '800', color: T.text, letterSpacing: -0.5 }}>
             MyOrbit
           </Text>
-          <Text style={{ fontSize: 17, color: '#10B981', fontWeight: '600', marginTop: 6 }}>
+          <Text style={{ fontSize: 14, color: '#10B981', fontWeight: '600', marginTop: 4 }}>
             Welcome back, {user?.name ?? 'there'}
           </Text>
-          <Text style={{ fontSize: 15, color: T.subText, marginTop: 4, textAlign: 'center' }}>
+          <Text style={{ fontSize: 13, color: T.subText, marginTop: 3, textAlign: 'center' }}>
             Choose what you want to manage today.
           </Text>
         </View>
@@ -130,34 +130,34 @@ export default function HomeScreen() {
               key={m.key}
               style={{
                 backgroundColor: T.cardBg,
-                borderRadius: 20,
-                paddingHorizontal: 18,
-                paddingVertical: 18,
-                marginBottom: 12,
+                borderRadius: 24,
+                paddingHorizontal: 22,
+                paddingVertical: 24,
+                marginBottom: 16,
                 borderWidth: 1,
                 borderColor: T.border,
               }}
             >
               {/* Icon + Title on same line */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 14 }}>
                 <View
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
+                    width: 58,
+                    height: 58,
+                    borderRadius: 18,
                     backgroundColor: `${m.color}22`,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon size={24} color={m.color} />
+                  <Icon size={28} color={m.color} />
                 </View>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: T.text, flex: 1 }}>
+                <Text style={{ fontSize: 19, fontWeight: '700', color: T.text, flex: 1 }}>
                   {m.label}
                 </Text>
               </View>
 
-              <Text style={{ fontSize: 15, color: T.subText, lineHeight: 22, marginBottom: 14 }}>
+              <Text style={{ fontSize: 13, color: T.subText, lineHeight: 20, marginBottom: 16 }}>
                 {m.description}
               </Text>
 
@@ -166,12 +166,12 @@ export default function HomeScreen() {
                 style={{
                   backgroundColor: '#10B981',
                   borderRadius: 999,
-                  paddingVertical: 13,
+                  paddingVertical: 12,
                   alignItems: 'center',
                 }}
                 activeOpacity={0.85}
               >
-                <Text style={{ fontSize: 15, fontWeight: '700', color: 'white' }}>{m.cta}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: 'white' }}>{m.cta}</Text>
               </TouchableOpacity>
             </View>
           );

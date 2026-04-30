@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { transactionSchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
 import { nextFinanceDate } from '@/lib/financeRecurrence';
+import { applyTransactionBalanceDelta } from '@/lib/financeBalance';
 import type { RecurringConfig } from '@/lib/financeData';
 
 export const runtime = 'nodejs';
@@ -16,10 +17,20 @@ async function decryptTx(row: any) {
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const rows = await prisma.transaction.findMany({ where: { userId }, orderBy: { date: 'desc' } });
+    const { searchParams } = new URL(req.url);
+    const accountId = searchParams.get('accountId') || undefined;
+    const month = searchParams.get('month') || undefined;
+    const rows = await prisma.transaction.findMany({
+      where: {
+        userId,
+        ...(accountId ? { accountId } : {}),
+        ...(month ? { date: { startsWith: month } } : {}),
+      },
+      orderBy: { date: 'desc' },
+    });
     return NextResponse.json(await Promise.all(rows.map(decryptTx)));
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,11 +45,19 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
     const { accountId, date, category, description, notes, amount, type, recurring } = parsed.data as any;
+    if (accountId) {
+      const account = await prisma.account.findFirst({ where: { id: accountId, userId } });
+      if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
 
     // Create the first (or one-off) transaction occurrence
     const row = await prisma.transaction.create({
       data: { userId, accountId, date, category, description, notes: notes ?? null, amount: await encryptNumber(amount), type },
     });
+
+    if (accountId) {
+      await applyTransactionBalanceDelta(userId, { accountId, date, amount, type });
+    }
 
     // If recurring, register a template for future auto-spawning
     if (recurring) {

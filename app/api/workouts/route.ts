@@ -8,9 +8,10 @@ export async function GET(req: NextRequest) {
   try {
     const userId = await requireUserId();
     const { searchParams } = new URL(req.url);
+    const date = searchParams.get('date');
     const limit = parseInt(searchParams.get('limit') ?? '20', 10);
     const workouts = await prisma.workout.findMany({
-      where: { userId },
+      where: { userId, ...(date ? { date } : {}) },
       orderBy: { date: 'desc' },
       take: limit,
     });

@@ -53,7 +53,7 @@ export default function FinanceTopBar({ action }: { action?: React.ReactNode }) 
           href="/orbit"
           className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
         >
-          <OrbitIcon src="/icons/top-icon.png" />
+          <OrbitIcon src="/icons/top-icon.svg" />
           <span className="text-base font-semibold text-gray-800">MyOrbit</span>
         </Link>
       </div>

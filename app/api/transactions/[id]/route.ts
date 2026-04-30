@@ -3,6 +3,7 @@ import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { transactionSchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
+import { applyTransactionBalanceDelta } from '@/lib/financeBalance';
 
 export const runtime = 'nodejs';
 
@@ -24,10 +25,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const parsed = transactionSchema.partial().safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
+    const existingAmount = await decryptNumber(existing.amount);
     const data: any = { ...parsed.data };
+    if (data.accountId) {
+      const account = await prisma.account.findFirst({ where: { id: data.accountId, userId } });
+      if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
     if (data.amount != null) data.amount = await encryptNumber(data.amount);
 
     const row = await prisma.transaction.update({ where: { id }, data });
+    await applyTransactionBalanceDelta(userId, {
+      accountId: existing.accountId,
+      date: existing.date,
+      amount: existingAmount,
+      type: existing.type,
+    }, -1);
+    await applyTransactionBalanceDelta(userId, {
+      accountId: row.accountId,
+      date: row.date,
+      amount: await decryptNumber(row.amount),
+      type: row.type,
+    });
     return NextResponse.json(await decryptTx(row));
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,7 +59,14 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const userId = await requireUserId();
     const existing = await prisma.transaction.findFirst({ where: { id, userId } });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    const existingAmount = await decryptNumber(existing.amount);
     await prisma.transaction.delete({ where: { id } });
+    await applyTransactionBalanceDelta(userId, {
+      accountId: existing.accountId,
+      date: existing.date,
+      amount: existingAmount,
+      type: existing.type,
+    }, -1);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

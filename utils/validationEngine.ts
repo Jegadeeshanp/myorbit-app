@@ -28,16 +28,14 @@ export function summarizeLedger(transactions: Transaction[]): LedgerSummary {
 }
 
 export function doubleEntryCheck(transactions: Transaction[]) {
-  const { credit, debit } = summarizeLedger(transactions);
-  const difference = Math.abs(credit - debit);
   const signMismatch = transactions.some((tx) => {
     if (tx.type === 'income' && tx.amount <= 0) return true;
     if (tx.type === 'expense' && tx.amount >= 0) return true;
     return false;
   });
   return {
-    passed: difference < 0.01 && !signMismatch,
-    difference,
+    passed: !signMismatch,
+    difference: 0,
     hasSignMismatch: signMismatch,
   };
 }

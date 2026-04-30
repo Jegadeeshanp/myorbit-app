@@ -7,7 +7,8 @@ import { router } from 'expo-router';
 import { registerUser, setAuthToken } from '@myorbit/api';
 import { useAuthStore } from '@/lib/authStore';
 import * as SecureStore from 'expo-secure-store';
-import { Star, Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
+import Svg, { Rect, Circle, Text as SvgText } from 'react-native-svg';
 
 export default function RegisterScreen() {
   const { hydrate } = useAuthStore();
@@ -70,13 +71,16 @@ export default function RegisterScreen() {
         }}>
           {/* Icon */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
-            <View style={{
-              width: 60, height: 60, borderRadius: 18,
-              backgroundColor: '#059669',
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 12, elevation: 6,
-            }}>
-              <Star size={28} color="white" fill="white" />
+            <View style={{ shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 12, elevation: 6 }}>
+              <Svg width={60} height={60} viewBox="0 0 40 40">
+                <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#16A34A" />
+                <Circle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
+                <Circle cx="20" cy="7" r="2.5" fill="white" />
+                <Circle cx="33" cy="20" r="2.5" fill="white" />
+                <Circle cx="20" cy="33" r="2.5" fill="white" />
+                <Circle cx="7" cy="20" r="2.5" fill="white" />
+                <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
+              </Svg>
             </View>
             <Text style={{ fontSize: 22, fontWeight: '700', color: 'white', marginTop: 16 }}>
               Create your account

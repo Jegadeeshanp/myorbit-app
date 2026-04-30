@@ -1,6 +1,5 @@
 // app/api/auth/forgot-password/route.ts
-// Sends a password reset email.
-// For now: generates a secure token, stores it, and logs the reset URL.
+// Generates a secure password reset token.
 // TODO: integrate with Resend / SendGrid to actually send the email.
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,12 +29,15 @@ export async function POST(req: NextRequest) {
     const token     = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    // Store the reset token in the Session table (reusing existing model)
-    // In production, you'd have a dedicated PasswordResetToken model
-    await prisma.session.create({
+    await prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    await prisma.passwordResetToken.create({
       data: {
         userId:    user.id,
-        token:     `reset_${token}`,
+        token,
         expiresAt,
       },
     });

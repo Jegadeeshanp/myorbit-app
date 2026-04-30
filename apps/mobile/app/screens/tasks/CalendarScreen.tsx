@@ -119,17 +119,17 @@ export const CalendarScreen: React.FC = () => {
           {(['year', 'month', 'week', '3days', 'day'] as const).map((mode) => (
             <TouchableOpacity
               key={mode}
-              onPress={() => setViewMode(mode as any)}
+              onPress={() => setViewMode(mode)}
               style={[
                 styles.viewModeButton,
-                mode === 'week' && { borderBottomColor: COLORS.tasks, borderBottomWidth: 2 },
+                mode === viewMode && { borderBottomColor: COLORS.tasks, borderBottomWidth: 2 },
               ]}
             >
               <Text
                 style={[
                   TYPOGRAPHY.bodySmall,
                   {
-                    color: mode === 'week' ? COLORS.tasks : COLORS.textSecondary,
+                    color: mode === viewMode ? COLORS.tasks : COLORS.textSecondary,
                   },
                 ]}
               >

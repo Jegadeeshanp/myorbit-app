@@ -4,22 +4,42 @@
     "slug": "myorbit",
     "version": "1.0.0",
     "orientation": "portrait",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "scheme": "myorbit",
-    "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a1f0a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "enabled": false
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jegadeeshan.myorbit"
+      "bundleIdentifier": "com.jegadeeshan.myorbit",
+      "icon": "./assets/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F7F7F5"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a1f0a"
       },
       "package": "com.jegadeeshan.myorbit"
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "efb2d560-0c16-49ac-bcac-da4e02398eae"
       }
     }
   }

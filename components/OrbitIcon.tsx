@@ -20,17 +20,32 @@ interface OrbitIconProps {
  * swaps to a fallback div — identical to the original design so the UI never
  * shows a broken image placeholder.
  */
+// App_icon2-style inline SVG fallback — green circle with M + orbit dots
+function OrbitIconFallback({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <circle cx="20" cy="20" r="20" fill="#16A34A"/>
+      <circle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none"/>
+      <circle cx="20" cy="7" r="2.5" fill="white"/>
+      <circle cx="33" cy="20" r="2.5" fill="white"/>
+      <circle cx="20" cy="33" r="2.5" fill="white"/>
+      <circle cx="7" cy="20" r="2.5" fill="white"/>
+      <text x="20" y="26" textAnchor="middle" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="16" fill="white">M</text>
+    </svg>
+  );
+}
+
 export default function OrbitIcon({
   src,
   alt = 'MyOrbit',
-  className = 'h-7 w-7 flex-none rounded-lg object-cover shadow-sm',
-  fallbackClassName = 'flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 text-white text-sm font-bold leading-none shadow-sm',
-  fallbackContent = '⭑',
+  className = 'h-7 w-7 flex-none rounded-full object-cover',
+  fallbackClassName = 'h-7 w-7 flex-none rounded-full',
+  fallbackContent,
 }: OrbitIconProps) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
-    return <div className={fallbackClassName}>{fallbackContent}</div>;
+    return <OrbitIconFallback className={fallbackClassName} />;
   }
 
   return (

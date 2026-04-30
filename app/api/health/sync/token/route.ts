@@ -5,7 +5,8 @@ import { createHmac } from 'crypto';
 export const runtime = 'nodejs';
 
 function makeToken(userId: string): string {
-  const secret = process.env.NEXTAUTH_SECRET ?? 'dev-secret';
+  const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+  if (!secret) throw new Error('Auth secret is not configured');
   return createHmac('sha256', secret).update(userId).digest('hex');
 }
 

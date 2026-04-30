@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   ScrollView,
@@ -10,11 +10,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Search, Plus } from 'lucide-react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, CURRENCY } from '../../../lib/theme';
-import { MyOrbitHeader, Card, Button, FAB } from '../../../components/common';
+import { MyOrbitHeader, Card, Button, FAB, Chip } from '../../../components/common';
 import { useFinanceStore } from '../../../lib/stores';
 
 export const TransactionsScreen: React.FC = () => {
   const { transactions } = useFinanceStore((state) => state);
+  const [accountFilter, setAccountFilter] = useState('All');
 
   const totalIncome = transactions
     .filter((t) => t.type === 'income')
@@ -84,13 +85,18 @@ export const TransactionsScreen: React.FC = () => {
         </View>
 
         {/* Filter Chips */}
-        <View style={[styles.filterRow, { marginTop: SPACING.md }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginTop: SPACING.md }}
+          contentContainerStyle={styles.filterRow}
+        >
           {['All', 'Bank', 'Credit Card', 'Cash'].map((filter) => (
             <Chip
               key={filter}
               label={filter}
-              selected={filter === 'All'}
-              onPress={() => {}}
+              selected={filter === accountFilter}
+              onPress={() => setAccountFilter(filter)}
               color={COLORS.tasks}
             />
           ))}
@@ -100,7 +106,7 @@ export const TransactionsScreen: React.FC = () => {
             onPress={() => {}}
             color={COLORS.tasks}
           />
-        </View>
+        </ScrollView>
 
         {/* Transactions Grouped by Month */}
         <Text
@@ -151,10 +157,10 @@ export const TransactionsScreen: React.FC = () => {
                 <Text
                   style={[
                     TYPOGRAPHY.bodyLarge,
-                    { color: COLORS.error, fontWeight: '600' },
+                    { color: txn.type === 'income' ? COLORS.tasks : COLORS.error, fontWeight: '600' },
                   ]}
                 >
-                  -{CURRENCY.symbol}{txn.amount}
+                  {txn.type === 'income' ? '+' : '-'}{CURRENCY.symbol}{txn.amount}
                 </Text>
                 {txn.recurring && (
                   <Text style={[TYPOGRAPHY.caption, { color: COLORS.textSecondary }]}>
@@ -225,8 +231,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterRow: {
-    marginHorizontal: -SPACING.lg,
-    paddingHorizontal: SPACING.lg,
+    flexDirection: 'row',
+    paddingRight: SPACING.lg,
   },
   transactionItem: {
     flexDirection: 'row',

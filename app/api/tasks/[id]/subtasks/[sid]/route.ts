@@ -12,8 +12,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const task = await prisma.task.findFirst({ where: { id, userId } });
     if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await req.json();
+    const existing = await prisma.taskSubtask.findFirst({ where: { id: sid, taskId: id, userId } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const subtask = await prisma.taskSubtask.update({
-      where: { id: sid },
+      where: { id: existing.id },
       data: {
         ...(body.title     !== undefined && { title:     body.title }),
         ...(body.isDone    !== undefined && { isDone:    body.isDone }),
@@ -41,7 +43,9 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const userId = await requireUserId();
     const task = await prisma.task.findFirst({ where: { id, userId } });
     if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    await prisma.taskSubtask.delete({ where: { id: sid } });
+    const existing = await prisma.taskSubtask.findFirst({ where: { id: sid, taskId: id, userId } });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    await prisma.taskSubtask.delete({ where: { id: existing.id } });
     return NextResponse.json({ deleted: true });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

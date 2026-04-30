@@ -15,19 +15,6 @@ export type Account = AccountType & { creditLimit?: number };
 export type Transaction = TransactionType;
 export type Asset = AssetType;
 export type Liability = LiabilityType;
-export type RecurringTemplate = {
-  id: string;
-  accountId?: string;
-  assetId?: string;
-  category: string;
-  description: string;
-  notes?: string;
-  amount: number;
-  type: 'expense' | 'income' | 'SIP';
-  recurringConfig: import('@/lib/financeData').RecurringConfig;
-  nextDate: string;
-  occurrenceCount: number;
-};
 
 // ── Serialization helpers ──────────────────────────────────────────────────
 
@@ -69,7 +56,6 @@ type FinanceState = {
   assets: Asset[];
   liabilities: Liability[];
   budgets: BudgetCategory[];
-  recurringTemplates: RecurringTemplate[];
   loadState: LoadState;
 };
 
@@ -91,14 +77,11 @@ type FinanceAction =
   | { type: 'deleteLiability'; payload: string }
   | { type: 'addBudget'; payload: BudgetCategory }
   | { type: 'updateBudget'; payload: BudgetCategory }
-  | { type: 'deleteBudget'; payload: string }
-  | { type: 'addRecurring'; payload: RecurringTemplate }
-  | { type: 'updateRecurring'; payload: RecurringTemplate }
-  | { type: 'deleteRecurring'; payload: string };
+  | { type: 'deleteBudget'; payload: string };
 
 const defaultState: FinanceState = {
   accounts: [], transactions: [], assets: [],
-  liabilities: [], budgets: [], recurringTemplates: [], loadState: 'idle',
+  liabilities: [], budgets: [], loadState: 'idle',
 };
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
@@ -127,10 +110,6 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'updateBudget': return { ...state, budgets: state.budgets.map(b => b.id === action.payload.id ? action.payload : b) };
     case 'deleteBudget': return { ...state, budgets: state.budgets.filter(b => b.id !== action.payload) };
 
-    case 'addRecurring':    return { ...state, recurringTemplates: [...state.recurringTemplates, action.payload] };
-    case 'updateRecurring': return { ...state, recurringTemplates: state.recurringTemplates.map(r => r.id === action.payload.id ? action.payload : r) };
-    case 'deleteRecurring': return { ...state, recurringTemplates: state.recurringTemplates.filter(r => r.id !== action.payload) };
-
     default: return state;
   }
 }
@@ -142,6 +121,7 @@ type FinanceContextValue = {
   addAccount:             (a: Omit<Account, 'id'>)        => Promise<void>;
   updateAccount:          (a: Account)                     => Promise<void>;
   deleteAccount:          (id: string)                     => Promise<void>;
+  fixAccountBalance:      (id: string)                     => Promise<void>;
   addTransaction:         (t: Omit<Transaction, 'id'>)     => Promise<void>;
   updateTransaction:      (t: Transaction)                  => Promise<void>;
   deleteTransaction:      (id: string)                     => Promise<void>;
@@ -155,10 +135,6 @@ type FinanceContextValue = {
   addBudget:              (b: Omit<BudgetCategory, 'id'>)  => Promise<void>;
   updateBudget:           (b: BudgetCategory)              => Promise<void>;
   deleteBudget:           (id: string)                     => Promise<void>;
-  updateRecurring:        (id: string, data: Partial<RecurringTemplate>) => Promise<void>;
-  cancelRecurring:        (id: string)                     => Promise<void>;
-  cancelAssetSip:         (assetId: string)                => Promise<void>;
-  fixAccountBalance:      (id: string)                     => Promise<void>;
 };
 
 const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -174,6 +150,16 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     if (status === 'unauthenticated') dispatch({ type: 'reset' });
   }, [status]);
 
+  // Pick up transactions added via AiTransactionButton (which bypasses the store)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tx = (e as CustomEvent).detail;
+      if (tx?.id) dispatch({ type: 'addTransaction', payload: tx });
+    };
+    window.addEventListener('orbit:transaction-added', handler);
+    return () => window.removeEventListener('orbit:transaction-added', handler);
+  }, []);
+
   // Only load data once the session is authenticated
   useEffect(() => {
     if (status !== 'authenticated') return;
@@ -185,9 +171,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       api<Asset[]>('/api/assets'),
       api<Liability[]>('/api/liabilities'),
       api<BudgetCategory[]>('/api/budgets'),
-      api<RecurringTemplate[]>('/api/recurring-transactions').catch(() => [] as RecurringTemplate[]),
-    ]).then(([accounts, transactions, assets, liabilities, budgets, recurringTemplates]) => {
-      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets, recurringTemplates } });
+    ]).then(([accounts, transactions, assets, liabilities, budgets]) => {
+      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets } });
     }).catch((err) => {
       console.error('Failed to load finance data:', err);
       dispatch({ type: 'setLoadState', payload: 'error' });
@@ -213,7 +198,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               category: 'Opening Balance',
               description: 'Opening Balance',
               amount: created.balance,
-              type: created.balance > 0 ? 'income' : 'expense',
+              type: 'opening_balance',
               accountId: created.id,
             }),
           });
@@ -239,7 +224,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               category: 'Balance Adjustment',
               description: 'Balance Adjustment',
               amount: diff,
-              type: diff > 0 ? 'income' : 'expense',
+              type: 'adjustment',
               accountId: a.id,
             }),
           });
@@ -251,94 +236,66 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       await api(`/api/accounts/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteAccount', payload: id });
     },
+    fixAccountBalance: async (id) => {
+      const today = new Date().toLocaleDateString('en-CA');
+      const txNet = state.transactions
+        .filter(t => t.accountId === id && t.date <= today)
+        .reduce((s, t) => s + t.amount, 0);
+      const updated = await api<Account>(`/api/accounts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ balance: txNet }),
+      });
+      dispatch({ type: 'updateAccount', payload: updated });
+    },
 
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
       dispatch({ type: 'addTransaction', payload: created });
-      // Update linked account balance only if transaction date is today or in the past
-      // Future-dated recurring transactions appear in the list but don't affect balance yet
-      const today = new Date().toISOString().slice(0, 10);
-      if (t.accountId && (t.type === 'income' || t.type === 'expense' || t.type === 'transfer') && created.date <= today) {
-        const account = state.accounts.find(a => a.id === t.accountId);
-        if (account) {
-          try {
-            const updated = await api<Account>(`/api/accounts/${account.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ balance: account.balance + created.amount }),
-            });
-            dispatch({ type: 'updateAccount', payload: updated });
-          } catch { /* non-critical */ }
-        }
-        // Auto-update matching budget's spent amount when an expense is recorded
-        // Only update if the transaction is in the current calendar month (budgets are month-isolated)
-        const txDate = new Date(created.date);
-        const nowDate = new Date();
-        const isCurrentMonth = txDate.getMonth() === nowDate.getMonth() && txDate.getFullYear() === nowDate.getFullYear();
-        if (created.type === 'expense' && isCurrentMonth) {
-          const matchingBudget = state.budgets.find(b => {
-            const cats = b.category
-              ? b.category.split(',').map(c => c.trim()).filter(Boolean)
-              : [];
-            return cats.includes(created.category) || b.name === created.category;
-          });
-          if (matchingBudget) {
-            try {
-              const newSpent = matchingBudget.spent + Math.abs(created.amount);
-              const updatedBudget = await api<BudgetCategory>(`/api/budgets/${matchingBudget.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ spent: newSpent }),
-              });
-              dispatch({ type: 'updateBudget', payload: updatedBudget });
-            } catch { /* non-critical */ }
-          }
-        }
-      }
+      // Account balance and budget spent are updated server-side by the API.
+      // Reload both here so the UI reflects the new state without a full page refresh.
+      try {
+        const [accounts, budgets] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<BudgetCategory[]>('/api/budgets'),
+        ]);
+        accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
+        budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
+      } catch { /* non-critical */ }
     },
     updateTransaction: async (t) => {
       const updated = await api<Transaction>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });
       dispatch({ type: 'updateTransaction', payload: updated });
+      try {
+        const [accounts, budgets] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<BudgetCategory[]>('/api/budgets'),
+        ]);
+        accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
+        budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
+      } catch { /* non-critical */ }
     },
     deleteTransaction: async (id) => {
       await api(`/api/transactions/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteTransaction', payload: id });
+      try {
+        const [accounts, budgets] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<BudgetCategory[]>('/api/budgets'),
+        ]);
+        accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
+        budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
+      } catch { /* non-critical */ }
     },
 
     addAsset: async (a) => {
-      const payload = serializeAsset(a as unknown as Record<string, any>);
-      const created = await api<Asset>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
-      dispatch({ type: 'addAsset', payload: created });
-      // When an account is linked, record the investment as an expense transaction and
-      // deduct the invested amount from the account balance.
-      // Direct API call (not store's addTransaction) to control balance update ourselves.
-      if (created.accountId) {
-        const account = state.accounts.find(acc => acc.id === created.accountId);
-        if (account) {
-          try {
-            const today = new Date().toISOString().slice(0, 10);
-            const tx = await api<Transaction>('/api/transactions', {
-              method: 'POST',
-              body: JSON.stringify({
-                date: today,
-                category: 'Investment',
-                description: created.name,
-                amount: -Math.abs(created.invested),
-                type: 'expense',
-                accountId: created.accountId,
-              }),
-            });
-            dispatch({ type: 'addTransaction', payload: tx });
-            // Deduct invested amount from the linked account
-            const updatedAcc = await api<Account>(`/api/accounts/${account.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ balance: account.balance - Math.abs(created.invested) }),
-            });
-            dispatch({ type: 'updateAccount', payload: updatedAcc });
-          } catch { /* non-critical — asset still saved */ }
-        }
-      }
+      const payload = serializeAsset(a as unknown as Record<string, unknown>);
+      const created = await api<{ asset: Asset; fundingTransaction?: Transaction | null; updatedAccount?: Account | null }>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
+      dispatch({ type: 'addAsset', payload: created.asset });
+      if (created.fundingTransaction) dispatch({ type: 'addTransaction', payload: created.fundingTransaction });
+      if (created.updatedAccount) dispatch({ type: 'updateAccount', payload: created.updatedAccount });
     },
     updateAsset: async (a) => {
-      const payload = serializeAsset(a as unknown as Record<string, any>);
+      const payload = serializeAsset(a as unknown as Record<string, unknown>);
       const updated = await api<Asset>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       dispatch({ type: 'updateAsset', payload: updated });
     },
@@ -417,48 +374,28 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       dispatch({ type: 'addBudget', payload: created });
     },
     updateBudget: async (b) => {
-      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(b) });
+      // Recalculate spent from current-month transactions after category update
+      const nowDate = new Date();
+      const cats = b.category
+        ? b.category.split(',').map(c => c.trim()).filter(Boolean)
+        : [];
+      const recalcSpent = state.transactions
+        .filter(t => {
+          const d = new Date(t.date);
+          return t.type === 'expense'
+            && d.getMonth() === nowDate.getMonth()
+            && d.getFullYear() === nowDate.getFullYear()
+            && (cats.includes(t.category) || b.name === t.category);
+        })
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      const payload = { ...b, spent: recalcSpent };
+      const updated = await api<BudgetCategory>(`/api/budgets/${b.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       dispatch({ type: 'updateBudget', payload: updated });
     },
     deleteBudget: async (id) => {
       await api(`/api/budgets/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteBudget', payload: id });
-    },
-
-    updateRecurring: async (id, data) => {
-      const updated = await api<RecurringTemplate>(`/api/recurring-transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-      dispatch({ type: 'updateRecurring', payload: updated });
-    },
-    cancelRecurring: async (id) => {
-      await api(`/api/recurring-transactions/${id}`, { method: 'DELETE' });
-      dispatch({ type: 'deleteRecurring', payload: id });
-    },
-    cancelAssetSip: async (assetId) => {
-      // Find and cancel any SIP recurring template linked to this asset
-      const template = state.recurringTemplates.find(t => t.assetId === assetId && t.type === 'SIP');
-      if (template) {
-        await api(`/api/recurring-transactions/${template.id}`, { method: 'DELETE' });
-        dispatch({ type: 'deleteRecurring', payload: template.id });
-      }
-    },
-    fixAccountBalance: async (id) => {
-      // Guard: refuse to run until all transactions are loaded.
-      // Clicking Fix while data is still loading would compute txNet = 0
-      // and incorrectly zero-out the account balance.
-      if (state.loadState !== 'ready') return;
-      const acctTxs = state.transactions.filter(t => t.accountId === id);
-      if (acctTxs.length === 0) return; // nothing to recalculate from — skip silently
-
-      // Recalculate balance from transactions up to today and patch the account
-      const today = new Date().toLocaleDateString('en-CA');
-      const txNet = acctTxs
-        .filter(t => t.date <= today)
-        .reduce((s, t) => s + t.amount, 0);
-      const updated = await api<Account>(`/api/accounts/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ balance: txNet }),
-      });
-      dispatch({ type: 'updateAccount', payload: updated });
     },
   }), [state]);
 

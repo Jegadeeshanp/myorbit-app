@@ -85,5 +85,9 @@ export default auth(function middleware(req) {
 });
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json).*)'],
+  matcher: [
+    '/api/auth/callback/credentials',
+    '/api/register',
+    '/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json).*)',
+  ],
 };

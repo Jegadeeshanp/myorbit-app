@@ -8,6 +8,15 @@ export async function GET(req: NextRequest) {
   try {
     const userId = await requireUserId();
     const { searchParams } = new URL(req.url);
+    const date = searchParams.get('date');
+
+    if (date) {
+      const entry = await prisma.healthEntry.findUnique({
+        where: { userId_date: { userId, date } },
+      });
+      return NextResponse.json(entry);
+    }
+
     const limit = parseInt(searchParams.get('limit') ?? '30', 10);
     const entries = await prisma.healthEntry.findMany({
       where: { userId },

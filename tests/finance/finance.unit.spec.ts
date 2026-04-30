@@ -53,7 +53,7 @@ test.describe('Finance validation utilities (unit)', () => {
         category: 'Subscriptions',
         description: 'Service fee',
         amount: -500,
-        type: 'expense',
+        type: 'expense' as const,
         accountId: fixture.accounts[0].id,
       },
     ];
@@ -79,7 +79,7 @@ test.describe('Finance validation utilities (unit)', () => {
     const creditAccount = {
       id: 'acc-new-credit',
       name: 'Demo Credit',
-      type: 'Credit Card',
+      type: 'Credit Card' as const,
       balance: -7500,
     };
     const result = runValidationRules(baseTransactions, [...fixture.accounts, creditAccount]);
@@ -147,7 +147,7 @@ test.describe('Finance validation utilities (unit)', () => {
       {
         ...baseTransactions[1],
         amount: 25000,
-        type: 'expense',
+        type: 'expense' as const,
       },
     ];
     const result = runValidationRules(badLedger, fixture.accounts);

@@ -1,15 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../lib/theme';
-import { Star } from 'lucide-react-native';
+import Svg, { Rect, Circle, Text as SvgText } from 'react-native-svg';
+
+function MyOrbitLogo() {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 40 40">
+      <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#16A34A" />
+      <Circle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
+      <Circle cx="20" cy="7" r="2.5" fill="white" />
+      <Circle cx="33" cy="20" r="2.5" fill="white" />
+      <Circle cx="20" cy="33" r="2.5" fill="white" />
+      <Circle cx="7" cy="20" r="2.5" fill="white" />
+      <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
+    </Svg>
+  );
+}
 
 // MyOrbit Header Logo Component
 export const MyOrbitHeader: React.FC = () => (
-  <View className="flex-row items-center gap-2">
-    <View style={[styles.logoBox, { backgroundColor: COLORS.tasks }]}>
-      <Star size={16} color="#000" fill="#000" />
-    </View>
-    <Text style={[TYPOGRAPHY.h4, { color: COLORS.textPrimary }]}>MyOrbit</Text>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+    <MyOrbitLogo />
+    <Text style={[TYPOGRAPHY.caption, { color: COLORS.textPrimary, fontWeight: '700' }]}>MyOrbit</Text>
   </View>
 );
 
@@ -329,13 +341,6 @@ export const FAB: React.FC<FABProps> = ({
 };
 
 const styles = StyleSheet.create({
-  logoBox: {
-    width: 28,
-    height: 28,
-    borderRadius: BORDER_RADIUS.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
