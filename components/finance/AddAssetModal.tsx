@@ -88,8 +88,8 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
   }, [open]);
 
   const canSubmit = useMemo(() =>
-    !!name.trim() && Number(invested) > 0,
-  [name, invested]);
+    !!name.trim() && (invType === 'sip' ? Number(sipAmount) > 0 : Number(invested) > 0),
+  [name, invested, invType, sipAmount]);
 
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return;

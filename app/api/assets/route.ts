@@ -3,6 +3,7 @@ import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { assetSchema } from '@/lib/validation';
 import { encryptNumber, decryptNumber } from '@/lib/encryption';
+import { nextFinanceDate } from '@/lib/financeRecurrence';
 
 export const runtime = 'nodejs';
 
@@ -141,19 +142,61 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── SIP recurring template ──────────────────────────────────────────────
+    // ── SIP: create all past/current installments immediately + schedule future ones ──
+    const sipTransactions: any[] = [];
+    let sipUpdatedAccount: any = null;
+
     if (invType === 'sip' && accVal && sipVal) {
       const sipParsed = JSON.parse(sipVal);
-      if (sipParsed?.amount > 0) {
-        // Delete any existing template first (idempotent re-save)
+      const sipAmt = Number(sipParsed?.amount);
+      if (sipAmt > 0) {
+        const today = new Date().toLocaleDateString('en-CA');
+        let current = sipParsed.startDate as string;
+        let occCount = 0;
+        const MAX = 120; // safety cap
+
+        while (current <= today && occCount < MAX) {
+          // End-condition checks
+          if (sipParsed.endType === 'after' && sipParsed.endAfterTimes && occCount >= sipParsed.endAfterTimes) break;
+          if (sipParsed.endType === 'on_date' && sipParsed.endDate && current > sipParsed.endDate) break;
+
+          const tx = await prisma.transaction.create({
+            data: {
+              userId,
+              accountId: accVal,
+              date: current,
+              category: 'Investment',
+              description: `SIP – ${name}`,
+              amount: await encryptNumber(-sipAmt),
+              type: 'expense',
+            },
+          });
+          sipTransactions.push({ ...tx, amount: -sipAmt });
+
+          await prisma.investmentTransaction.create({
+            data: { assetId: row.id, userId, type: 'SIP', amount: await encryptNumber(sipAmt), date: current, note: 'SIP installment' },
+          });
+
+          occCount++;
+          const next = nextFinanceDate(current, sipParsed.frequency as any);
+          if (!next || next === current) break;
+          current = next;
+        }
+
+        // Deduct total SIP amount from account once
+        if (occCount > 0) {
+          const accRow = await prisma.account.findFirst({ where: { id: accVal, userId } });
+          if (accRow) {
+            const newBalance = await decryptNumber(accRow.balance) - sipAmt * occCount;
+            const updated = await prisma.account.update({ where: { id: accVal }, data: { balance: await encryptNumber(newBalance) } });
+            sipUpdatedAccount = { id: updated.id, name: updated.name, type: updated.type, balance: newBalance };
+            if (updated.creditLimit) sipUpdatedAccount.creditLimit = await decryptNumber(updated.creditLimit);
+          }
+        }
+
+        // Create / advance the RecurringTransaction template for future installments
         await prisma.recurringTransaction.deleteMany({ where: { assetId: row.id, type: 'SIP', userId } });
-        const recurringCfg = {
-          frequency:      sipParsed.frequency,
-          startDate:      sipParsed.startDate,
-          endType:        sipParsed.endType,
-          endAfterTimes:  sipParsed.endAfterTimes,
-          endDate:        sipParsed.endDate,
-        };
+        const recurringCfg = { frequency: sipParsed.frequency, startDate: sipParsed.startDate, endType: sipParsed.endType, endAfterTimes: sipParsed.endAfterTimes, endDate: sipParsed.endDate };
         await prisma.recurringTransaction.create({
           data: {
             userId,
@@ -161,18 +204,18 @@ export async function POST(req: NextRequest) {
             accountId:       accVal,
             category:        'Investment',
             description:     name,
-            amount:          await encryptNumber(-Math.abs(sipParsed.amount)),
+            amount:          await encryptNumber(-sipAmt),
             type:            'SIP',
             recurringConfig: JSON.stringify(recurringCfg),
-            nextDate:        sipParsed.startDate,
-            occurrenceCount: 0,
+            nextDate:        current, // next future occurrence
+            occurrenceCount: occCount,
           },
         });
       }
     }
 
     const asset = await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units });
-    return NextResponse.json({ asset, fundingTransaction, updatedAccount }, { status: 201 });
+    return NextResponse.json({ asset, fundingTransaction, updatedAccount, sipTransactions, sipUpdatedAccount }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

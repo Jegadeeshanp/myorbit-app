@@ -1365,7 +1365,7 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
     }
   }, [visible, initial?.id]);  // re-run when modal opens or edit target changes
 
-  const canSave = !!name.trim() && Number(invested) > 0;
+  const canSave = !!name.trim() && (invType === 'sip' ? Number(sipAmount) > 0 : Number(invested) > 0);
 
   const handleSave = () => {
     if (!canSave) return;
@@ -2255,7 +2255,7 @@ export default function FinanceScreen() {
   const updateTxMut     = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateTransactionInput> }) => updateTransaction(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['transactions'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); } });
   const deleteTxMut     = useMutation({ mutationFn: deleteTransaction,  onSuccess: () => { qc.invalidateQueries({ queryKey: ['transactions'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); } });
   const createAssetMut  = useMutation({ mutationFn: createAsset,        onSuccess: () => invalidateAll() });
-  const updateAssetMut  = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateAssetInput> }) => updateAsset(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }) });
+  const updateAssetMut  = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateAssetInput> }) => updateAsset(id, data), onSuccess: () => invalidateAll() });
   const deleteAssetMut  = useMutation({ mutationFn: deleteAsset,        onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }) });
   const createLiabMut   = useMutation({ mutationFn: createLiability,    onSuccess: () => qc.invalidateQueries({ queryKey: ['liabilities'] }) });
   const updateLiabMut   = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateLiabilityInput> }) => updateLiability(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['liabilities'] }); qc.invalidateQueries({ queryKey: ['accounts'] }); qc.invalidateQueries({ queryKey: ['transactions'] }); } });

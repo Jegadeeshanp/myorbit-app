@@ -289,10 +289,12 @@ export function FinanceProvider({ children }: PropsWithChildren) {
 
     addAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, unknown>);
-      const created = await api<{ asset: Asset; fundingTransaction?: Transaction | null; updatedAccount?: Account | null }>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
+      const created = await api<{ asset: Asset; fundingTransaction?: Transaction | null; updatedAccount?: Account | null; sipTransactions?: Transaction[]; sipUpdatedAccount?: Account | null }>('/api/assets', { method: 'POST', body: JSON.stringify(payload) });
       dispatch({ type: 'addAsset', payload: created.asset });
       if (created.fundingTransaction) dispatch({ type: 'addTransaction', payload: created.fundingTransaction });
       if (created.updatedAccount) dispatch({ type: 'updateAccount', payload: created.updatedAccount });
+      if (created.sipTransactions?.length) created.sipTransactions.forEach(t => dispatch({ type: 'addTransaction', payload: t }));
+      if (created.sipUpdatedAccount) dispatch({ type: 'updateAccount', payload: created.sipUpdatedAccount });
     },
     updateAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, unknown>);
