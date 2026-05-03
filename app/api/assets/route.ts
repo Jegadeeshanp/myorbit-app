@@ -142,36 +142,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── SIP: create all past/current installments immediately + schedule future ones ──
+    // ── SIP: create all past/current installments immediately ───────────────
     const sipTransactions: any[] = [];
     let sipUpdatedAccount: any = null;
 
-    if (invType === 'sip' && accVal && sipVal) {
+    if (invType === 'sip' && sipVal) {
       const sipParsed = JSON.parse(sipVal);
       const sipAmt = Number(sipParsed?.amount);
       if (sipAmt > 0) {
         const today = new Date().toLocaleDateString('en-CA');
         let current = sipParsed.startDate as string;
         let occCount = 0;
-        const MAX = 120; // safety cap
+        const MAX = 120;
 
         while (current <= today && occCount < MAX) {
-          // End-condition checks
           if (sipParsed.endType === 'after' && sipParsed.endAfterTimes && occCount >= sipParsed.endAfterTimes) break;
           if (sipParsed.endType === 'on_date' && sipParsed.endDate && current > sipParsed.endDate) break;
 
-          const tx = await prisma.transaction.create({
-            data: {
-              userId,
-              accountId: accVal,
-              date: current,
-              category: 'Investment',
-              description: `SIP – ${name}`,
-              amount: await encryptNumber(-sipAmt),
-              type: 'expense',
-            },
-          });
-          sipTransactions.push({ ...tx, amount: -sipAmt });
+          // Create expense transaction only when account is linked
+          if (accVal) {
+            const tx = await prisma.transaction.create({
+              data: { userId, accountId: accVal, date: current, category: 'Investment', description: `SIP – ${name}`, amount: await encryptNumber(-sipAmt), type: 'expense' },
+            });
+            sipTransactions.push({ ...tx, amount: -sipAmt });
+          }
 
           await prisma.investmentTransaction.create({
             data: { assetId: row.id, userId, type: 'SIP', amount: await encryptNumber(sipAmt), date: current, note: 'SIP installment' },
@@ -183,33 +177,30 @@ export async function POST(req: NextRequest) {
           current = next;
         }
 
-        // Deduct total SIP amount from account once
         if (occCount > 0) {
-          const accRow = await prisma.account.findFirst({ where: { id: accVal, userId } });
-          if (accRow) {
-            const newBalance = await decryptNumber(accRow.balance) - sipAmt * occCount;
-            const updated = await prisma.account.update({ where: { id: accVal }, data: { balance: await encryptNumber(newBalance) } });
-            sipUpdatedAccount = { id: updated.id, name: updated.name, type: updated.type, balance: newBalance };
-            if (updated.creditLimit) sipUpdatedAccount.creditLimit = await decryptNumber(updated.creditLimit);
+          // Deduct total from account if linked
+          if (accVal) {
+            const accRow = await prisma.account.findFirst({ where: { id: accVal, userId } });
+            if (accRow) {
+              const newBalance = await decryptNumber(accRow.balance) - sipAmt * occCount;
+              const updated = await prisma.account.update({ where: { id: accVal }, data: { balance: await encryptNumber(newBalance) } });
+              sipUpdatedAccount = { id: updated.id, name: updated.name, type: updated.type, balance: newBalance };
+              if (updated.creditLimit) sipUpdatedAccount.creditLimit = await decryptNumber(updated.creditLimit);
+            }
           }
+
+          // Update asset invested + current value
+          const newInvested = (await computeInvested(row.id));
+          const currentVal  = await decryptNumber(row.value);
+          const newValue    = Math.max(currentVal, newInvested); // value grows with each SIP
+          await prisma.asset.update({ where: { id: row.id }, data: { invested: await encryptNumber(newInvested), value: await encryptNumber(newValue) } });
         }
 
-        // Create / advance the RecurringTransaction template for future installments
+        // Schedule future installments
         await prisma.recurringTransaction.deleteMany({ where: { assetId: row.id, type: 'SIP', userId } });
         const recurringCfg = { frequency: sipParsed.frequency, startDate: sipParsed.startDate, endType: sipParsed.endType, endAfterTimes: sipParsed.endAfterTimes, endDate: sipParsed.endDate };
         await prisma.recurringTransaction.create({
-          data: {
-            userId,
-            assetId:         row.id,
-            accountId:       accVal,
-            category:        'Investment',
-            description:     name,
-            amount:          await encryptNumber(-sipAmt),
-            type:            'SIP',
-            recurringConfig: JSON.stringify(recurringCfg),
-            nextDate:        current, // next future occurrence
-            occurrenceCount: occCount,
-          },
+          data: { userId, assetId: row.id, accountId: accVal, category: 'Investment', description: name, amount: await encryptNumber(-sipAmt), type: 'SIP', recurringConfig: JSON.stringify(recurringCfg), nextDate: current, occurrenceCount: occCount },
         });
       }
     }
