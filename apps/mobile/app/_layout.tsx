@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '@/lib/authStore';
 import { useNotificationStore } from '@/lib/notificationStore';
 import { setupNotifications } from '@/lib/notifications';
+import { useThemeStore } from '@/lib/themeStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,6 +18,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function ThemeBootstrap() {
+  const hydrate = useThemeStore((s) => s.hydrate);
+  useEffect(() => { hydrate(); }, [hydrate]);
+  return null;
+}
 
 function AuthBootstrap() {
   const segments = useSegments();
@@ -71,6 +78,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
+          <ThemeBootstrap />
           <AuthBootstrap />
           <NotificationBootstrap />
           <Stack screenOptions={{ headerShown: false }} />

@@ -47,22 +47,23 @@ const WORKOUT_TYPES = ['running','cycling','strength','yoga','sports','other'] a
 // ── Sub Nav ────────────────────────────────────────────────────────────────────
 
 function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: SubTab) => void; onMore: () => void }) {
+  const C = useC();
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: '#111111', borderTopWidth: 1, borderTopColor: '#2A2A2A' }}>
+    <View style={{ flexDirection: 'row', backgroundColor: C.BG, borderTopWidth: 1, borderTopColor: C.BORD }}>
       {SUB_TABS.map(({ key, label, Icon }) => {
         const isActive = active === key;
         return (
           <TouchableOpacity key={key} onPress={() => onSelect(key)}
             style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-            <Icon size={16} color={isActive ? ACCENT : '#9CA3AF'} />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: isActive ? ACCENT : '#9CA3AF', marginTop: 2 }}>{label}</Text>
+            <Icon size={16} color={isActive ? ACCENT : C.SUB} />
+            <Text style={{ fontSize: 13, fontWeight: '500', color: isActive ? ACCENT : C.SUB, marginTop: 2 }}>{label}</Text>
             {isActive && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
           </TouchableOpacity>
         );
       })}
       <TouchableOpacity onPress={onMore} style={{ width: 48, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-        <MoreHorizontal size={16} color="#9CA3AF" />
-        <Text style={{ fontSize: 13, fontWeight: '500', color: '#9CA3AF', marginTop: 2 }}>More</Text>
+        <MoreHorizontal size={16} color={C.SUB} />
+        <Text style={{ fontSize: 13, fontWeight: '500', color: C.SUB, marginTop: 2 }}>More</Text>
       </TouchableOpacity>
     </View>
   );
@@ -71,20 +72,21 @@ function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: Su
 // ── More Sheet ─────────────────────────────────────────────────────────────────
 
 function MoreSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const C = useC();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
-      <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}>
-        <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#2A2A2A' }}>
-          <Text style={{ fontWeight: '600', fontSize: 15, color: '#FFFFFF' }}>More</Text>
-          <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#2A2A2A', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={14} color="#6B7280" />
+      <View style={{ backgroundColor: C.CARD, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}>
+        <View style={{ width: 40, height: 4, backgroundColor: C.BORD, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.BORD }}>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: C.TXT }}>More</Text>
+          <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: C.BORD, alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} color={C.DIM} />
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
-          <Settings size={16} color="#9CA3AF" />
-          <Text style={{ fontSize: 16, fontWeight: '500', color: '#E5E7EB' }}>Health Settings</Text>
+          <Settings size={16} color={C.SUB} />
+          <Text style={{ fontSize: 16, fontWeight: '500', color: C.TXT2 }}>Health Settings</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -94,14 +96,15 @@ function MoreSheet({ visible, onClose }: { visible: boolean; onClose: () => void
 // ── Date Selector ──────────────────────────────────────────────────────────────
 
 function DateSelector({ date, onPrev, onNext }: { date: string; onPrev: () => void; onNext: () => void }) {
+  const C = useC();
   const isToday = date === new Date().toLocaleDateString('en-CA');
   const label = isToday
     ? '📌 Today'
     : new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 20, marginVertical: 12, backgroundColor: '#1A1A1A', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 20, marginVertical: 12, backgroundColor: C.CARD, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
       <TouchableOpacity onPress={onPrev} style={{ padding: 4 }}><ChevronLeft size={20} color="#374151" /></TouchableOpacity>
-      <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{label}</Text>
+      <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT }}>{label}</Text>
       <TouchableOpacity onPress={onNext} style={{ padding: 4 }}><ChevronRight size={20} color="#374151" /></TouchableOpacity>
     </View>
   );
@@ -110,25 +113,26 @@ function DateSelector({ date, onPrev, onNext }: { date: string; onPrev: () => vo
 // ── Workout Card ───────────────────────────────────────────────────────────────
 
 function WorkoutCard({ w, onDelete }: { w: Workout; onDelete: (id: string) => void }) {
+  const C = useC();
   const icons: Record<string, string> = { running: '🏃', cycling: '🚴', strength: '🏋️', yoga: '🧘', sports: '⚽', other: '💪' };
   const meta: string[] = [];
   if (w.durationMins) meta.push(`${w.durationMins} min`);
   if (w.distanceKm)   meta.push(`${w.distanceKm} km`);
   if (w.caloriesBurned) meta.push(`${w.caloriesBurned} cal`);
   return (
-    <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+    <View style={{ backgroundColor: C.CARD, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text style={{ fontSize: 26, marginRight: 14 }}>{icons[w.type] ?? '💪'}</Text>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF', textTransform: 'capitalize' }}>{w.name}</Text>
-          <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 3 }}>{meta.join(' · ')}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT, textTransform: 'capitalize' }}>{w.name}</Text>
+          <Text style={{ fontSize: 13, color: C.SUB, marginTop: 3 }}>{meta.join(' · ')}</Text>
         </View>
         <TouchableOpacity onPress={() => onDelete(w.id)} style={{ padding: 8 }}>
           <Trash2 size={15} color="#EF4444" />
         </TouchableOpacity>
       </View>
       {!!w.notes && (
-        <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#2A2A2A' }}>{w.notes}</Text>
+        <Text style={{ fontSize: 13, color: C.SUB, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.BORD }}>{w.notes}</Text>
       )}
     </View>
   );
@@ -139,6 +143,7 @@ function WorkoutCard({ w, onDelete }: { w: Workout; onDelete: (id: string) => vo
 function AddWorkoutModal({ visible, onClose, date, onSave }: {
   visible: boolean; onClose: () => void; date: string; onSave: (data: Partial<Workout>) => void;
 }) {
+  const C = useC();
   const [name, setName]         = useState('');
   const [type, setType]         = useState<Workout['type']>('running');
   const [duration, setDuration] = useState('');
@@ -161,43 +166,43 @@ function AddWorkoutModal({ visible, onClose, date, onSave }: {
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={{ backgroundColor: '#1A1A1A', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 }}>
-          <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 16 }}>Log Workout</Text>
-          <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>Name</Text>
-          <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#FFFFFF', marginBottom: 16 }} placeholder="e.g. Morning run" value={name} onChangeText={setName} autoFocus />
-          <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 8 }}>Type</Text>
+        <View style={{ backgroundColor: C.CARD, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 }}>
+          <View style={{ width: 40, height: 4, backgroundColor: C.BORD, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: C.TXT, marginBottom: 16 }}>Log Workout</Text>
+          <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 4 }}>Name</Text>
+          <TextInput style={{ borderWidth: 1, borderColor: C.BORD, borderRadius: 12, backgroundColor: C.SALF, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: C.TXT, marginBottom: 16 }} placeholder="e.g. Morning run" value={name} onChangeText={setName} autoFocus />
+          <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 8 }}>Type</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {WORKOUT_TYPES.map((t) => (
                 <TouchableOpacity key={t} onPress={() => setType(t)}
-                  style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: type === t ? ACCENT : '#E5E7EB', backgroundColor: type === t ? '#EF444422' : '#242424' }}>
-                  <Text style={{ fontSize: 13, fontWeight: '500', color: type === t ? ACCENT : '#6B7280', textTransform: 'capitalize' }}>{t}</Text>
+                  style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: type === t ? ACCENT : C.TXT2, backgroundColor: type === t ? '#EF444422' : C.SALF }}>
+                  <Text style={{ fontSize: 13, fontWeight: '500', color: type === t ? ACCENT : C.DIM, textTransform: 'capitalize' }}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>Duration (min)</Text>
-              <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#FFFFFF' }} placeholder="30" value={duration} onChangeText={setDuration} keyboardType="numeric" />
+              <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 4 }}>Duration (min)</Text>
+              <TextInput style={{ borderWidth: 1, borderColor: C.BORD, borderRadius: 12, backgroundColor: C.SALF, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: C.TXT }} placeholder="30" value={duration} onChangeText={setDuration} keyboardType="numeric" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>Calories (opt.)</Text>
-              <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#FFFFFF' }} placeholder="250" value={calories} onChangeText={setCalories} keyboardType="numeric" />
+              <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 4 }}>Calories (opt.)</Text>
+              <TextInput style={{ borderWidth: 1, borderColor: C.BORD, borderRadius: 12, backgroundColor: C.SALF, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: C.TXT }} placeholder="250" value={calories} onChangeText={setCalories} keyboardType="numeric" />
             </View>
           </View>
           <View style={{ marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>Distance (km, opt.)</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#FFFFFF' }} placeholder="5.0" value={distance} onChangeText={setDistance} keyboardType="decimal-pad" />
+            <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 4 }}>Distance (km, opt.)</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: C.BORD, borderRadius: 12, backgroundColor: C.SALF, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: C.TXT }} placeholder="5.0" value={distance} onChangeText={setDistance} keyboardType="decimal-pad" />
           </View>
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 4 }}>Notes (opt.)</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: '#2A2A2A', borderRadius: 12, backgroundColor: '#242424', paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: '#FFFFFF', minHeight: 72, textAlignVertical: 'top' }} placeholder="How did it go?" value={notes} onChangeText={setNotes} multiline />
+            <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 4 }}>Notes (opt.)</Text>
+            <TextInput style={{ borderWidth: 1, borderColor: C.BORD, borderRadius: 12, backgroundColor: C.SALF, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: C.TXT, minHeight: 72, textAlignVertical: 'top' }} placeholder="How did it go?" value={notes} onChangeText={setNotes} multiline />
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity onPress={onClose} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#2A2A2A' }}>
-              <Text style={{ fontSize: 16, fontWeight: '500', color: '#9CA3AF' }}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: C.BORD }}>
+              <Text style={{ fontSize: 16, fontWeight: '500', color: C.SUB }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={save} disabled={!name.trim() || !duration}
               style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT, opacity: name.trim() && duration ? 1 : 0.5 }}>
@@ -213,6 +218,7 @@ function AddWorkoutModal({ visible, onClose, date, onSave }: {
 // ── Nutrition Placeholder ──────────────────────────────────────────────────────
 
 function NutritionView() {
+  const C = useC();
   const meals = [
     { label: 'Breakfast', emoji: '🍳', time: '8:00 AM' },
     { label: 'Lunch',     emoji: '🥗', time: '1:00 PM' },
@@ -221,22 +227,22 @@ function NutritionView() {
   ];
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
-      <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5E7EB', marginBottom: 12 }}>Today's Meals</Text>
+      <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT2, marginBottom: 12 }}>Today's Meals</Text>
       {meals.map((m) => (
         <TouchableOpacity key={m.label}
-          style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1, borderWidth: 1, borderColor: '#2A2A2A' }}>
+          style={{ backgroundColor: C.CARD, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1, borderWidth: 1, borderColor: C.BORD }}>
           <Text style={{ fontSize: 28 }}>{m.emoji}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{m.label}</Text>
-            <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 2 }}>{m.time}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT }}>{m.label}</Text>
+            <Text style={{ fontSize: 13, color: C.SUB, marginTop: 2 }}>{m.time}</Text>
           </View>
-          <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: '#2A2A2A' }}>
-            <Text style={{ fontSize: 16, color: '#9CA3AF' }}>+ Log</Text>
+          <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: C.BORD }}>
+            <Text style={{ fontSize: 16, color: C.SUB }}>+ Log</Text>
           </View>
         </TouchableOpacity>
       ))}
       <View style={{ marginTop: 8, padding: 14, backgroundColor: '#EF444422', borderRadius: 12 }}>
-        <Text style={{ fontSize: 13, color: '#9CA3AF' }}>Full nutrition tracking coming soon</Text>
+        <Text style={{ fontSize: 13, color: C.SUB }}>Full nutrition tracking coming soon</Text>
       </View>
     </ScrollView>
   );
@@ -245,6 +251,7 @@ function NutritionView() {
 // ── Sync View ──────────────────────────────────────────────────────────────────
 
 function SyncView() {
+  const C = useC();
   const sources = [
     { label: 'Apple Health',  emoji: '🍎', status: 'Not connected' },
     { label: 'Google Fit',    emoji: '🏃', status: 'Not connected' },
@@ -253,17 +260,17 @@ function SyncView() {
   ];
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
-      <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5E7EB', marginBottom: 4 }}>Health Data Sources</Text>
-      <Text style={{ fontSize: 13, color: '#9CA3AF', marginBottom: 16 }}>Connect your devices to sync health data automatically</Text>
+      <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT2, marginBottom: 4 }}>Health Data Sources</Text>
+      <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 16 }}>Connect your devices to sync health data automatically</Text>
       {sources.map((s) => (
-        <View key={s.label} style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+        <View key={s.label} style={{ backgroundColor: C.CARD, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
           <Text style={{ fontSize: 28 }}>{s.emoji}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{s.label}</Text>
-            <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 2 }}>{s.status}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT }}>{s.label}</Text>
+            <Text style={{ fontSize: 13, color: C.SUB, marginTop: 2 }}>{s.status}</Text>
           </View>
-          <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#2A2A2A' }}>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: '#9CA3AF' }}>Connect</Text>
+          <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: C.BORD }}>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: C.SUB }}>Connect</Text>
           </TouchableOpacity>
         </View>
       ))}
@@ -274,6 +281,7 @@ function SyncView() {
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function HealthScreen() {
+  const C = useC();
   const [activeTab, setActiveTab] = useState<SubTab>('dashboard');
   const [date, setDate]           = useState(new Date().toLocaleDateString('en-CA'));
   const [showAdd, setShowAdd]     = useState(false);
@@ -310,7 +318,7 @@ export default function HealthScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.BG }}>
       <AppHeader title="Health" showBack />
 
       <View style={{ flex: 1 }}>
@@ -323,10 +331,10 @@ export default function HealthScreen() {
           <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               {METRICS.map((m) => (
-                <View key={m.key} style={{ width: '47%', backgroundColor: '#1A1A1A', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                <View key={m.key} style={{ width: '47%', backgroundColor: C.CARD, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
-                    <Text style={{ fontSize: 13, color: '#9CA3AF' }}>{m.label}</Text>
+                    <Text style={{ fontSize: 13, color: C.SUB }}>{m.label}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                     <TextInput
@@ -337,7 +345,7 @@ export default function HealthScreen() {
                       onChangeText={(v) => setValues((prev) => ({ ...prev, [m.key]: v }))}
                       keyboardType={m.keyboard as any}
                     />
-                    <Text style={{ fontSize: 16, color: '#9CA3AF' }}>{m.unit}</Text>
+                    <Text style={{ fontSize: 16, color: C.SUB }}>{m.unit}</Text>
                   </View>
                 </View>
               ))}
@@ -360,7 +368,7 @@ export default function HealthScreen() {
           {/* Workouts summary on dashboard */}
           <View style={{ paddingHorizontal: 20 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5E7EB' }}>🏋️ Workouts · {workouts.length}</Text>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT2 }}>🏋️ Workouts · {workouts.length}</Text>
               <TouchableOpacity onPress={() => setActiveTab('workouts')}
                 style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: '#EF444422' }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: ACCENT }}>See all →</Text>
@@ -368,9 +376,9 @@ export default function HealthScreen() {
             </View>
             {loadingWorkouts ? <ActivityIndicator color={ACCENT} />
               : workouts.length === 0
-                ? <View style={{ paddingVertical: 24, alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 16 }}>
+                ? <View style={{ paddingVertical: 24, alignItems: 'center', backgroundColor: C.CARD, borderRadius: 16 }}>
                     <Text style={{ fontSize: 28, marginBottom: 6 }}>🏃</Text>
-                    <Text style={{ fontSize: 16, color: '#9CA3AF' }}>No workouts logged</Text>
+                    <Text style={{ fontSize: 16, color: C.SUB }}>No workouts logged</Text>
                   </View>
                 : workouts.slice(0, 3).map((w) => <WorkoutCard key={w.id} w={w} onDelete={deleteWMut.mutate} />)
             }
@@ -383,7 +391,7 @@ export default function HealthScreen() {
         <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetchWorkouts} />} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
           <DateSelector date={date} onPrev={prevDay} onNext={nextDay} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#E5E7EB' }}>Workouts · {workouts.length}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT2 }}>Workouts · {workouts.length}</Text>
             <TouchableOpacity onPress={() => setShowAdd(true)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#EF444422' }}>
               <Plus size={14} color={ACCENT} />
@@ -393,10 +401,10 @@ export default function HealthScreen() {
           {loadingWorkouts ? (
             <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
           ) : workouts.length === 0 ? (
-            <View style={{ paddingVertical: 48, alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 16 }}>
+            <View style={{ paddingVertical: 48, alignItems: 'center', backgroundColor: C.CARD, borderRadius: 16 }}>
               <Text style={{ fontSize: 36, marginBottom: 10 }}>🏋️</Text>
-              <Text style={{ fontSize: 15, fontWeight: '500', color: '#E5E7EB' }}>No workouts yet</Text>
-              <Text style={{ fontSize: 16, color: '#9CA3AF', marginTop: 4 }}>Tap Log to add your first workout</Text>
+              <Text style={{ fontSize: 15, fontWeight: '500', color: C.TXT2 }}>No workouts yet</Text>
+              <Text style={{ fontSize: 16, color: C.SUB, marginTop: 4 }}>Tap Log to add your first workout</Text>
             </View>
           ) : (
             workouts.map((w) => <WorkoutCard key={w.id} w={w} onDelete={deleteWMut.mutate} />)

@@ -14,15 +14,27 @@ import {
   MoreHorizontal, X, Settings, Search, Menu,
 } from 'lucide-react-native';
 import { useAuthStore } from '@/lib/authStore';
+import { useTheme } from '@/lib/themeStore';
 import Svg, { Circle as SvgCircle, Rect, Text as SvgText } from 'react-native-svg';
 
 type SubTab = 'dashboard' | 'calendar' | 'focus' | 'countdown' | 'streaks';
 
 const ACCENT   = '#10B981';
-const SURFACE  = '#1A1A1A';
-const SURFACE2 = '#242424';
-const BORDER   = '#2A2A2A';
-const MUTED    = '#9CA3AF';
+
+function useColors() {
+  const T = useTheme();
+  return {
+    BG:      T.bg,
+    SURFACE: T.cardBg,
+    SURFACE2:T.surfaceAlt,
+    BORDER:  T.border,
+    MUTED:   T.subText,
+    TXT:     T.text,
+    TXT2:    T.textSec,
+    MODAL:   T.modalBg,
+    INPUT:   T.inputBg,
+  };
+}
 
 const SUB_TABS = [
   { key: 'dashboard' as SubTab, label: 'Dashboard', Icon: LayoutDashboard },
@@ -80,8 +92,9 @@ function MyOrbitLogo() {
 // ── Sub Nav ────────────────────────────────────────────────────────────────────
 
 function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: SubTab) => void; onMore: () => void }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: '#111111', borderTopWidth: 1, borderTopColor: BORDER }}>
+    <View style={{ flexDirection: 'row', backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER }}>
       {SUB_TABS.map(({ key, label, Icon }) => {
         const isActive = active === key;
         return (
@@ -110,12 +123,13 @@ function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: Su
 function MoreSheet({ visible, onClose, onStreaks, userName }: {
   visible: boolean; onClose: () => void; onStreaks: () => void; userName: string;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const initials = userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'U';
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
       <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}>
-        <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
+        <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
 
         {/* User header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
@@ -123,7 +137,7 @@ function MoreSheet({ visible, onClose, onStreaks, userName }: {
             <Text style={{ fontSize: 13, fontWeight: '700', color: 'white' }}>{initials}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }} numberOfLines={1}>{userName}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }} numberOfLines={1}>{userName}</Text>
             <Text style={{ fontSize: 12, color: MUTED }}>Personal account</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
@@ -137,7 +151,7 @@ function MoreSheet({ visible, onClose, onStreaks, userName }: {
         <TouchableOpacity onPress={() => { onStreaks(); onClose(); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
           <Flame size={16} color={MUTED} />
-          <Text style={{ fontSize: 14, fontWeight: '500', color: '#E5E7EB' }}>Streaks</Text>
+          <Text style={{ fontSize: 14, fontWeight: '500', color: TXT2 }}>Streaks</Text>
         </TouchableOpacity>
 
         <View style={{ height: 1, backgroundColor: BORDER, marginHorizontal: 16 }} />
@@ -146,7 +160,7 @@ function MoreSheet({ visible, onClose, onStreaks, userName }: {
         <TouchableOpacity onPress={() => { onClose(); router.push('/(tabs)/settings' as any); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
           <Settings size={16} color={MUTED} />
-          <Text style={{ fontSize: 14, fontWeight: '500', color: '#E5E7EB' }}>Settings</Text>
+          <Text style={{ fontSize: 14, fontWeight: '500', color: TXT2 }}>Settings</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -159,6 +173,7 @@ function HabitCard({ habit, today, last7, onLog, onEdit, onDelete }: {
   habit: Habit; today: string; last7: string[];
   onLog: (id: string) => void; onEdit: (h: Habit) => void; onDelete: (id: string) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const doneToday = habit.logs?.some((l) => l.logDate === today) ?? false;
   const s = streak(habit);
   const color = habit.color ?? ACCENT;
@@ -168,7 +183,7 @@ function HabitCard({ habit, today, last7, onLog, onEdit, onDelete }: {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
           <Text style={{ fontSize: 26 }}>{habit.iconEmoji ?? '✅'}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>{habit.name}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: TXT }}>{habit.name}</Text>
             {s > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
                 <Flame size={11} color="#F59E0B" />
@@ -209,6 +224,7 @@ function HabitCard({ habit, today, last7, onLog, onEdit, onDelete }: {
 // ── Calendar View ──────────────────────────────────────────────────────────────
 
 function CalendarView({ habits }: { habits: Habit[] }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const last30: string[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
@@ -216,14 +232,14 @@ function CalendarView({ habits }: { habits: Habit[] }) {
   }
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB', marginBottom: 16 }}>Last 30 Days</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2, marginBottom: 16 }}>Last 30 Days</Text>
       {habits.map((habit) => {
         const color = habit.color ?? ACCENT;
         return (
           <View key={habit.id} style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 12, elevation: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <Text style={{ fontSize: 18 }}>{habit.iconEmoji ?? '✅'}</Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>{habit.name}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>{habit.name}</Text>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
               {last30.map((d) => {
@@ -246,10 +262,11 @@ function CalendarView({ habits }: { habits: Habit[] }) {
 // ── Streaks View ───────────────────────────────────────────────────────────────
 
 function StreaksView({ habits }: { habits: Habit[] }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const sorted = [...habits].sort((a, b) => streak(b) - streak(a));
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB', marginBottom: 16 }}>Habit Consistency</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2, marginBottom: 16 }}>Habit Consistency</Text>
       {sorted.map((habit) => {
         const s = streak(habit);
         const color = habit.color ?? ACCENT;
@@ -258,7 +275,7 @@ function StreaksView({ habits }: { habits: Habit[] }) {
           <View key={habit.id} style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Text style={{ fontSize: 24 }}>{habit.iconEmoji ?? '✅'}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>{habit.name}</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>{habit.name}</Text>
               <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{best} total logs</Text>
             </View>
             <View style={{ alignItems: 'center' }}>
@@ -283,6 +300,7 @@ function StreaksView({ habits }: { habits: Habit[] }) {
 // ── Focus Timer ────────────────────────────────────────────────────────────────
 
 function FocusView() {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [seconds, setSeconds]   = useState(25 * 60);
   const [running, setRunning]   = useState(false);
   const [duration, setDuration] = useState(25);
@@ -306,10 +324,10 @@ function FocusView() {
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, alignItems: 'center' }}>
-      <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB', marginBottom: 24 }}>Focus Timer</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2, marginBottom: 24 }}>Focus Timer</Text>
       <View style={{ width: 200, height: 200, borderRadius: 100, borderWidth: 8, borderColor: ACCENT + '33', backgroundColor: SURFACE, alignItems: 'center', justifyContent: 'center', marginBottom: 32, elevation: 4 }}>
         <View style={{ position: 'absolute', width: 184, height: 184, borderRadius: 92, borderWidth: 8, borderColor: ACCENT, borderTopColor: 'transparent', transform: [{ rotate: `${(1 - pct) * 360}deg` }] }} />
-        <Text style={{ fontSize: 40, fontWeight: '700', color: '#FFFFFF' }}>
+        <Text style={{ fontSize: 40, fontWeight: '700', color: TXT }}>
           {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
         </Text>
         <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>Focus session</Text>
@@ -339,6 +357,7 @@ function FocusView() {
 function HabitModal({ visible, initial, onClose, onSave }: {
   visible: boolean; initial?: Habit | null; onClose: () => void; onSave: (data: Partial<Habit>) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const isEdit = !!initial;
   const [name, setName]   = useState('');
   const [emoji, setEmoji] = useState('✅');
@@ -370,12 +389,12 @@ function HabitModal({ visible, initial, onClose, onSave }: {
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, maxHeight: '88%' }}>
-          <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', marginBottom: 16 }}>{isEdit ? 'Edit Habit' : 'New Habit'}</Text>
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: TXT, marginBottom: 16 }}>{isEdit ? 'Edit Habit' : 'New Habit'}</Text>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>Name</Text>
             <TextInput
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#FFFFFF', marginBottom: 16 }}
+              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: TXT, marginBottom: 16 }}
               placeholder="e.g. Morning run" placeholderTextColor={MUTED}
               value={name} onChangeText={setName} autoFocus={!isEdit}
             />
@@ -425,6 +444,7 @@ function HabitModal({ visible, initial, onClose, onSave }: {
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function HabitsScreen() {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [activeTab, setActiveTab] = useState<SubTab>('dashboard');
   const [showAdd, setShowAdd]     = useState(false);
   const [showMore, setShowMore]   = useState(false);
@@ -475,32 +495,32 @@ export default function HabitsScreen() {
   const canAddHabit = activeTab === 'dashboard' || activeTab === 'streaks';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: '#111111' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: BG }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
           <TouchableOpacity onPress={() => setShowMore(true)}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
             <Menu size={20} color="#E5E7EB" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }} numberOfLines={1}>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: TXT }} numberOfLines={1}>
             {HEADER_TITLES[activeTab]}
           </Text>
         </View>
         <TouchableOpacity onPress={() => router.replace('/(tabs)/' as any)} activeOpacity={0.7}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 6 }}>
           <MyOrbitLogo />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>MyOrbit</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>MyOrbit</Text>
         </TouchableOpacity>
       </View>
 
       {/* ── Search bar + Add button ───────────────────────────────────────── */}
-      <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: '#111111', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: BG, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
           <Search size={15} color={MUTED} />
           <TextInput
-            style={{ flex: 1, fontSize: 14, color: '#FFFFFF' }}
+            style={{ flex: 1, fontSize: 14, color: TXT }}
             placeholder="Search habits…"
             placeholderTextColor={MUTED}
             value={searchQuery}
@@ -546,7 +566,7 @@ export default function HabitsScreen() {
               ) : activeHabits.length === 0 ? (
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}>
                   <Text style={{ fontSize: 40, marginBottom: 12 }}>🔥</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>No habits yet</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>No habits yet</Text>
                   <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>Tap + to add your first habit</Text>
                 </View>
               ) : filteredHabits.length === 0 ? (
@@ -578,7 +598,7 @@ export default function HabitsScreen() {
         {activeTab === 'countdown' && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 40, marginBottom: 12 }}>⏳</Text>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>Countdowns</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>Countdowns</Text>
             <Text style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>Coming soon</Text>
           </View>
         )}

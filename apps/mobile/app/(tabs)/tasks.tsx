@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
 import { useNotificationStore } from '@/lib/notificationStore';
+import { useTheme } from '@/lib/themeStore';
 import { scheduleTaskNotification, cancelTaskNotification, snoozeTaskNotification, minutesUntilTomorrowMorning } from '@/lib/notifications';
 import Svg, { Rect, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 import {
@@ -29,10 +30,21 @@ type SortBy = 'custom' | 'date' | 'title' | 'priority';
 
 // ── Constants ─────────────────────────────────────────────────────────────────────
 const ACCENT   = '#10B981';
-const SURFACE  = '#1A1A1A';
-const SURFACE2 = '#242424';
-const BORDER   = '#2A2A2A';
-const MUTED    = '#9CA3AF';
+
+function useColors() {
+  const T = useTheme();
+  return {
+    BG:      T.bg,
+    SURFACE: T.cardBg,
+    SURFACE2:T.surfaceAlt,
+    BORDER:  T.border,
+    MUTED:   T.subText,
+    TXT:     T.text,
+    TXT2:    T.textSec,
+    MODAL:   T.modalBg,
+    INPUT:   T.inputBg,
+  };
+}
 
 const SUB_TABS = [
   { key: 'today'    as SubTab, label: 'Today',    Icon: Sun       },
@@ -49,7 +61,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 const SECTION_CONFIG = [
   { key: 'overdue',   label: 'Overdue',   color: '#C06060', bg: '#C0606012' },
   { key: 'today',     label: 'Today',     color: '#10B981', bg: '#10B98112' },
-  { key: 'completed', label: 'Completed', color: '#6B7280', bg: '#242424'   },
+  { key: 'completed', label: 'Completed', color: '#6B7280', bg: 'transparent' },
   { key: 'missed',    label: 'Missed',    color: '#A07838', bg: '#A0783812' },
 ];
 
@@ -128,9 +140,10 @@ function MyOrbitLogo() {
 
 // ── Sub Nav ───────────────────────────────────────────────────────────────────────
 function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: SubTab) => void; onMore: () => void }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const isMoreActive = !SUB_TABS.some(t => t.key === active);
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: '#111111', borderTopWidth: 1, borderTopColor: BORDER }}>
+    <View style={{ flexDirection: 'row', backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER }}>
       {SUB_TABS.map(({ key, label, Icon }) => {
         const on = active === key;
         return (
@@ -156,13 +169,14 @@ function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: Su
 
 // ── More Sheet ────────────────────────────────────────────────────────────────────
 function MoreSheet({ visible, active, onSelect, onClose }: { visible: boolean; active: SubTab; onSelect: (t: SubTab) => void; onClose: () => void }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
       <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}>
-        <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
+        <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-          <Text style={{ fontWeight: '600', fontSize: 15, color: '#FFFFFF' }}>More</Text>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: TXT }}>More</Text>
           <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
             <X size={14} color={MUTED} />
           </TouchableOpacity>
@@ -171,13 +185,13 @@ function MoreSheet({ visible, active, onSelect, onClose }: { visible: boolean; a
           <TouchableOpacity key={key} onPress={() => { onSelect(key); onClose(); }}
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: active === key ? ACCENT + '22' : 'transparent' }}>
             <Icon size={16} color={active === key ? ACCENT : MUTED} />
-            <Text style={{ fontSize: 15, fontWeight: '500', color: active === key ? ACCENT : '#E5E7EB' }}>{label}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '500', color: active === key ? ACCENT : TXT2 }}>{label}</Text>
           </TouchableOpacity>
         ))}
         <View style={{ height: 1, backgroundColor: BORDER, marginHorizontal: 16, marginVertical: 4 }} />
         <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
           <Settings size={16} color={MUTED} />
-          <Text style={{ fontSize: 15, fontWeight: '500', color: '#E5E7EB' }}>Settings</Text>
+          <Text style={{ fontSize: 15, fontWeight: '500', color: TXT2 }}>Settings</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -186,6 +200,7 @@ function MoreSheet({ visible, active, onSelect, onClose }: { visible: boolean; a
 
 // ── Task Instance Item ─────────────────────────────────────────────────────────────
 function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComplete: (id: string) => Promise<unknown>; onEdit: (task: Task) => void }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [loading, setLoading] = useState(false);
   const done = item.status === 'completed';
   const repeat = getRepeat(item.task.tags);
@@ -206,7 +221,7 @@ function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComp
         sortOrder: 0, isActive: true, isDeleted: false, isRecurring: false,
       })}
       activeOpacity={0.7}
-      style={{ paddingVertical: 11, paddingRight: 14, backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: '#242424', flexDirection: 'row' }}
+      style={{ paddingVertical: 11, paddingRight: 14, backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: BORDER, flexDirection: 'row' }}
     >
       {/* Priority left border */}
       <View style={{ width: 3, borderRadius: 2, backgroundColor: item.task.priority !== 'none' ? PRIORITY_COLOR[item.task.priority] : 'transparent', marginRight: 11, marginLeft: 4, borderTopLeftRadius: 2, borderBottomLeftRadius: 2 }} />
@@ -217,7 +232,7 @@ function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComp
             : <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: item.task.priority !== 'none' ? PRIORITY_COLOR[item.task.priority] : '#4B5563' }} />}
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '500', color: done ? MUTED : '#E5E7EB', textDecorationLine: done ? 'line-through' : 'none' }}>{item.task.title}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '500', color: done ? MUTED : TXT2, textDecorationLine: done ? 'line-through' : 'none' }}>{item.task.title}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 10, flexWrap: 'wrap' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
               <CalendarDays size={11} color={isOverdue ? '#C06060' : '#6B7280'} />
@@ -236,7 +251,7 @@ function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComp
             {item.task.list && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                 <Text style={{ fontSize: 11 }}>{item.task.list.emoji ?? '📋'}</Text>
-                <Text style={{ fontSize: 11, color: '#6B7280' }}>{item.task.list.name}</Text>
+                <Text style={{ fontSize: 11, color: MUTED }}>{item.task.list.name}</Text>
               </View>
             )}
           </View>
@@ -249,13 +264,14 @@ function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComp
 
 // ── Task Row ──────────────────────────────────────────────────────────────────────
 function TaskRow({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string) => void; onEdit: (t: Task) => void }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const repeat = getRepeat(task.tags);
   const today = todayStr();
   const isOverdue = task.dueDate && task.dueDate < today;
   const dateLabel = !task.dueDate ? null : task.dueDate === today ? 'Today' : task.dueDate === offsetStr(1) ? 'Tomorrow' : formatDate(task.dueDate);
   return (
     <TouchableOpacity onPress={() => onEdit(task)} activeOpacity={0.7}
-      style={{ paddingVertical: 11, paddingRight: 14, backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: '#242424', flexDirection: 'row' }}>
+      style={{ paddingVertical: 11, paddingRight: 14, backgroundColor: SURFACE, borderBottomWidth: 1, borderBottomColor: BORDER, flexDirection: 'row' }}>
       {/* Priority left border */}
       <View style={{ width: 3, borderRadius: 2, backgroundColor: task.priority !== 'none' ? PRIORITY_COLOR[task.priority] : 'transparent', marginRight: 11, marginLeft: 4 }} />
       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -263,7 +279,7 @@ function TaskRow({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string
           <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: task.priority !== 'none' ? PRIORITY_COLOR[task.priority] : '#4B5563' }} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '500', color: '#E5E7EB' }}>{task.title}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '500', color: TXT2 }}>{task.title}</Text>
           {(dateLabel || task.dueTime || repeat !== 'none' || task.priority !== 'none' || task.list) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 10, flexWrap: 'wrap' }}>
               {dateLabel && (
@@ -285,7 +301,7 @@ function TaskRow({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string
               {task.list && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                   <Text style={{ fontSize: 11 }}>{task.list.emoji ?? '📋'}</Text>
-                  <Text style={{ fontSize: 11, color: '#6B7280' }}>{task.list.name}</Text>
+                  <Text style={{ fontSize: 11, color: MUTED }}>{task.list.name}</Text>
                 </View>
               )}
             </View>
@@ -308,6 +324,7 @@ interface DatePickVal { dueDate: string; dueTime: string; repeat: string; remind
 function DatePickerContent({ value, onChange, onBack }: {
   value: DatePickVal; onChange: (v: DatePickVal) => void; onBack: () => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [viewDate, setViewDate] = useState(() => {
     if (value.dueDate) { const [y, m] = value.dueDate.split('-').map(Number); return new Date(y, m - 1, 1); }
     const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1);
@@ -340,7 +357,7 @@ function DatePickerContent({ value, onChange, onBack }: {
       <ScrollView style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} contentContainerStyle={{ paddingBottom: 36 }} keyboardShouldPersistTaps="handled">
         {/* handle + Done */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-          <View style={{ flex: 1, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2 }} />
+          <View style={{ flex: 1, height: 4, backgroundColor: BORDER, borderRadius: 2 }} />
           <TouchableOpacity onPress={onBack} style={{ paddingLeft: 16 }}>
             <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>Done</Text>
           </TouchableOpacity>
@@ -353,7 +370,7 @@ function DatePickerContent({ value, onChange, onBack }: {
             return (
               <TouchableOpacity key={q.label} onPress={() => onChange({ ...value, dueDate: q.v })}
                 style={{ flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT : 'transparent' }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: active ? '#FFFFFF' : MUTED }}>{q.label}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: active ? TXT : MUTED }}>{q.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -362,13 +379,13 @@ function DatePickerContent({ value, onChange, onBack }: {
         {/* Month nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
           <TouchableOpacity onPress={() => setViewDate(new Date(year, month - 1, 1))} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: SURFACE2 }}>
-            <ChevronLeft size={16} color="#E5E7EB" />
+            <ChevronLeft size={16} color={TXT2} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>
             {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
           </Text>
           <TouchableOpacity onPress={() => setViewDate(new Date(year, month + 1, 1))} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: SURFACE2 }}>
-            <ChevronRight size={16} color="#E5E7EB" />
+            <ChevronRight size={16} color={TXT2} />
           </TouchableOpacity>
         </View>
 
@@ -391,7 +408,7 @@ function DatePickerContent({ value, onChange, onBack }: {
               <TouchableOpacity key={ds} onPress={() => onChange({ ...value, dueDate: ds })}
                 style={{ width: `${100/7}%`, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: isSel ? ACCENT : isTod ? ACCENT + '33' : 'transparent' }}>
-                  <Text style={{ fontSize: 13, fontWeight: isSel || isTod ? '700' : '400', color: isSel ? '#FFFFFF' : isTod ? ACCENT : '#E5E7EB' }}>{day}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: isSel || isTod ? '700' : '400', color: isSel ? TXT : isTod ? ACCENT : TXT2 }}>{day}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -402,14 +419,14 @@ function DatePickerContent({ value, onChange, onBack }: {
         <TouchableOpacity onPress={() => { setExpandTime(v => !v); setExpandRepeat(false); setExpandRemind(false); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
           <Clock size={16} color={MUTED} />
-          <Text style={{ flex: 1, fontSize: 14, color: '#E5E7EB' }}>Time</Text>
+          <Text style={{ flex: 1, fontSize: 14, color: TXT2 }}>Time</Text>
           <Text style={{ fontSize: 12, color: value.dueTime ? ACCENT : MUTED }}>{value.dueTime || 'None'}</Text>
           {expandTime ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
         </TouchableOpacity>
         {expandTime && (
           <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
             <TextInput
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: '#FFFFFF' }}
+              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: TXT }}
               placeholder="HH:MM  e.g. 09:00"
               placeholderTextColor={MUTED}
               value={value.dueTime}
@@ -423,14 +440,14 @@ function DatePickerContent({ value, onChange, onBack }: {
         <TouchableOpacity onPress={() => { setExpandRemind(v => !v); setExpandTime(false); setExpandRepeat(false); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
           <Bell size={16} color={MUTED} />
-          <Text style={{ flex: 1, fontSize: 14, color: '#E5E7EB' }}>Reminder</Text>
+          <Text style={{ flex: 1, fontSize: 14, color: TXT2 }}>Reminder</Text>
           <Text style={{ fontSize: 12, color: value.reminder !== 'none' ? ACCENT : MUTED }}>{remindLabel}</Text>
           {expandRemind ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
         </TouchableOpacity>
         {expandRemind && REMIND_OPTS.map(o => (
           <TouchableOpacity key={o.v} onPress={() => { onChange({ ...value, reminder: o.v }); setExpandRemind(false); }}
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 10, gap: 12, backgroundColor: value.reminder === o.v ? ACCENT + '22' : 'transparent' }}>
-            <Text style={{ flex: 1, fontSize: 14, color: value.reminder === o.v ? ACCENT : '#E5E7EB' }}>{o.l}</Text>
+            <Text style={{ flex: 1, fontSize: 14, color: value.reminder === o.v ? ACCENT : TXT2 }}>{o.l}</Text>
             {value.reminder === o.v && <Check size={14} color={ACCENT} />}
           </TouchableOpacity>
         ))}
@@ -439,14 +456,14 @@ function DatePickerContent({ value, onChange, onBack }: {
         <TouchableOpacity onPress={() => { setExpandRepeat(v => !v); setExpandTime(false); setExpandRemind(false); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
           <RotateCcw size={16} color={MUTED} />
-          <Text style={{ flex: 1, fontSize: 14, color: '#E5E7EB' }}>Repeat</Text>
+          <Text style={{ flex: 1, fontSize: 14, color: TXT2 }}>Repeat</Text>
           <Text style={{ fontSize: 12, color: value.repeat !== 'none' ? ACCENT : MUTED }}>{repeatLabel}</Text>
           {expandRepeat ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
         </TouchableOpacity>
         {expandRepeat && REPEAT_OPTS.map(o => (
           <TouchableOpacity key={o.v} onPress={() => { onChange({ ...value, repeat: o.v }); setExpandRepeat(false); }}
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 10, gap: 12, backgroundColor: value.repeat === o.v ? ACCENT + '22' : 'transparent' }}>
-            <Text style={{ flex: 1, fontSize: 14, color: value.repeat === o.v ? ACCENT : '#E5E7EB' }}>{o.l}</Text>
+            <Text style={{ flex: 1, fontSize: 14, color: value.repeat === o.v ? ACCENT : TXT2 }}>{o.l}</Text>
             {value.repeat === o.v && <Check size={14} color={ACCENT} />}
           </TouchableOpacity>
         ))}
@@ -459,13 +476,14 @@ function DatePickerContent({ value, onChange, onBack }: {
 function ListSelectorContent({ lists, selectedId, onSelect, onBack }: {
   lists: TaskList[]; selectedId: string; onSelect: (id: string) => void; onBack: () => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   return (
     <View style={{ flex: 1 }}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onBack} />
       <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, maxHeight: '60%' }}>
-        <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 12 }} />
+        <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-          <Text style={{ fontWeight: '600', fontSize: 15, color: '#FFFFFF' }}>Select List</Text>
+          <Text style={{ fontWeight: '600', fontSize: 15, color: TXT }}>Select List</Text>
           <TouchableOpacity onPress={onBack} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
             <X size={14} color={MUTED} />
           </TouchableOpacity>
@@ -474,18 +492,18 @@ function ListSelectorContent({ lists, selectedId, onSelect, onBack }: {
           <TouchableOpacity onPress={() => { onSelect(''); onBack(); }}
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: !selectedId ? ACCENT + '22' : 'transparent' }}>
             <Text style={{ fontSize: 18 }}>📥</Text>
-            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: !selectedId ? ACCENT : '#E5E7EB' }}>Inbox (no list)</Text>
+            <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: !selectedId ? ACCENT : TXT2 }}>Inbox (no list)</Text>
             {!selectedId && <Check size={16} color={ACCENT} />}
           </TouchableOpacity>
           {lists.map(list => {
             const isSelected = selectedId === list.id;
             return (
               <TouchableOpacity key={list.id} onPress={() => { onSelect(list.id); onBack(); }}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: isSelected ? ACCENT + '22' : 'transparent', borderTopWidth: 1, borderTopColor: '#242424' }}>
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: isSelected ? ACCENT + '22' : 'transparent', borderTopWidth: 1, borderTopColor: BORDER }}>
                 <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: (list.color ?? ACCENT) + '22', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 18 }}>{list.emoji ?? '📋'}</Text>
                 </View>
-                <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: isSelected ? ACCENT : '#E5E7EB' }}>{list.name}</Text>
+                <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: isSelected ? ACCENT : TXT2 }}>{list.name}</Text>
                 {isSelected && <Check size={16} color={ACCENT} />}
               </TouchableOpacity>
             );
@@ -501,6 +519,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
   visible: boolean; lists: TaskList[]; defaultListId?: string; defaultDueDate?: string;
   onClose: () => void; onAdd: (data: TaskSaveData) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [title, setTitle]       = useState('');
   const [dueDate, setDueDate]   = useState('');
   const [dueTime, setDueTime]   = useState('');
@@ -560,14 +579,14 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 20 }}>
-              <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
+              <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
 
               {/* Tag input */}
               {showTag && (
                 <View style={{ paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: BORDER }}>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TextInput autoFocus
-                      style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 14, color: '#FFFFFF' }}
+                      style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 9, fontSize: 14, color: TXT }}
                       placeholder="Tag name…" placeholderTextColor={MUTED} value={tagInput} onChangeText={setTagInput}
                       onSubmitEditing={addTag} returnKeyType="done"
                     />
@@ -607,7 +626,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
                 <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#4B5563' }} />
                 <TextInput
                   autoFocus
-                  style={{ flex: 1, fontSize: 16, color: '#FFFFFF' }}
+                  style={{ flex: 1, fontSize: 16, color: TXT }}
                   placeholder="New task"
                   placeholderTextColor={MUTED}
                   value={title}
@@ -647,7 +666,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
 
                 <TouchableOpacity onPress={submit} disabled={!title.trim()}
                   style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: title.trim() ? ACCENT : SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
-                  <Plus size={20} color={title.trim() ? '#FFFFFF' : MUTED} />
+                  <Plus size={20} color={title.trim() ? TXT : MUTED} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -663,6 +682,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
   visible: boolean; initial?: Task | null; lists: TaskList[];
   onClose: () => void; onSave: (data: TaskSaveData) => void; onDelete?: () => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const isEdit = !!initial;
   const [form, setForm] = useState({ title: '', notes: '', priority: 'none', dueDate: '', dueTime: '', listId: '', tags: [] as string[], repeat: 'none', reminder: 'none' });
   const [tagInput, setTagInput]             = useState('');
@@ -716,10 +736,10 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <ScrollView style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 36 }} keyboardShouldPersistTaps="handled">
-              <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+              <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
 
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>{isEdit ? 'Edit Task' : 'New Task'}</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: TXT }}>{isEdit ? 'Edit Task' : 'New Task'}</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {isEdit && onDelete && (
                     <TouchableOpacity onPress={onDelete} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#C0606018' }}>
@@ -734,18 +754,18 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
               </View>
 
               <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Title</Text>
-              <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#FFFFFF', marginBottom: 12 }}
+              <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: TXT, marginBottom: 12 }}
                 placeholder="What needs to be done?" placeholderTextColor={MUTED} value={form.title} onChangeText={t => setForm(f => ({ ...f, title: t }))} autoFocus={!isEdit} />
 
               <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Notes</Text>
-              <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: '#FFFFFF', marginBottom: 12, minHeight: 60, textAlignVertical: 'top' }}
+              <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: TXT, marginBottom: 12, minHeight: 60, textAlignVertical: 'top' }}
                 placeholder="Add notes…" placeholderTextColor={MUTED} multiline value={form.notes} onChangeText={t => setForm(f => ({ ...f, notes: t }))} />
 
               <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Due Date & Time</Text>
               <TouchableOpacity onPress={() => setShowDatePicker(true)}
                 style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 }}>
                 <CalendarDays size={16} color={form.dueDate ? ACCENT : MUTED} />
-                <Text style={{ flex: 1, fontSize: 14, color: form.dueDate ? '#E5E7EB' : MUTED }}>{dateLabel}</Text>
+                <Text style={{ flex: 1, fontSize: 14, color: form.dueDate ? TXT2 : MUTED }}>{dateLabel}</Text>
                 {form.dueTime && <Text style={{ fontSize: 13, color: ACCENT }}>{form.dueTime}</Text>}
                 {form.repeat !== 'none' && <Text style={{ fontSize: 11, color: MUTED }}>{REPEAT_OPTS.find(o => o.v === form.repeat)?.l}</Text>}
                 <ChevronRight size={14} color={MUTED} />
@@ -771,7 +791,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
 
               <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Tags</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: form.tags.length > 0 ? 6 : 12 }}>
-                <TextInput style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#FFFFFF' }}
+                <TextInput style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: TXT }}
                   placeholder="Add tag…" placeholderTextColor={MUTED} value={tagInput} onChangeText={setTagInput} onSubmitEditing={addTag} returnKeyType="done" />
                 <TouchableOpacity onPress={addTag} style={{ paddingHorizontal: 14, borderRadius: 12, backgroundColor: ACCENT, justifyContent: 'center' }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>Add</Text>
@@ -795,7 +815,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
                   {initial.subtasks.map(s => (
                     <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
                       {s.isDone ? <CheckCircle size={16} color={ACCENT} /> : <Circle size={16} color="#4B5563" />}
-                      <Text style={{ fontSize: 14, color: s.isDone ? MUTED : '#E5E7EB', textDecorationLine: s.isDone ? 'line-through' : 'none' }}>{s.title}</Text>
+                      <Text style={{ fontSize: 14, color: s.isDone ? MUTED : TXT2, textDecorationLine: s.isDone ? 'line-through' : 'none' }}>{s.title}</Text>
                     </View>
                   ))}
                 </View>
@@ -824,6 +844,7 @@ function SideDrawer({ visible, active, lists, onSelect, onSelectList, onCreateLi
   onSelect: (t: SubTab) => void; onSelectList: (l: TaskList) => void;
   onCreateList: () => void; onClose: () => void; userName?: string;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const NAV = [
     { key: 'today'    as SubTab, label: 'Today',       Icon: Sun           },
     { key: 'next7'    as SubTab, label: 'Next 7 Days', Icon: CalendarCheck },
@@ -834,14 +855,14 @@ function SideDrawer({ visible, active, lists, onSelect, onSelectList, onCreateLi
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, flexDirection: 'row' }}>
-        <View style={{ width: '78%', backgroundColor: '#141414', paddingTop: 54, flexDirection: 'column' }}>
+        <View style={{ width: '78%', backgroundColor: MODAL, paddingTop: 54, flexDirection: 'column' }}>
           {/* Header */}
           <View style={{ paddingHorizontal: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
               <CalendarCheck size={20} color="white" />
             </View>
             <View>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#FFFFFF' }}>Tasks</Text>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: TXT }}>Tasks</Text>
               <Text style={{ fontSize: 11, color: MUTED }}>Planner workspace</Text>
             </View>
           </View>
@@ -853,7 +874,7 @@ function SideDrawer({ visible, active, lists, onSelect, onSelectList, onCreateLi
                 <TouchableOpacity key={key} onPress={() => { onSelect(key); onClose(); }}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 13, marginHorizontal: 8, borderRadius: 12, backgroundColor: on ? ACCENT + '22' : 'transparent', marginBottom: 2 }}>
                   <Icon size={18} color={on ? ACCENT : MUTED} />
-                  <Text style={{ fontSize: 15, fontWeight: on ? '600' : '400', color: on ? ACCENT : '#E5E7EB' }}>{label}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: on ? '600' : '400', color: on ? ACCENT : TXT2 }}>{label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -873,7 +894,7 @@ function SideDrawer({ visible, active, lists, onSelect, onSelectList, onCreateLi
                 <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: (list.color ?? ACCENT) + '25', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 16 }}>{list.emoji ?? '📋'}</Text>
                 </View>
-                <Text style={{ fontSize: 14, color: '#E5E7EB', flex: 1 }} numberOfLines={1}>{list.name}</Text>
+                <Text style={{ fontSize: 14, color: TXT2, flex: 1 }} numberOfLines={1}>{list.name}</Text>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: list.color ?? ACCENT }} />
               </TouchableOpacity>
             ))}
@@ -885,7 +906,7 @@ function SideDrawer({ visible, active, lists, onSelect, onSelectList, onCreateLi
                 <Text style={{ fontSize: 14, fontWeight: '700', color: 'white' }}>{(userName ?? 'U').slice(0, 2).toUpperCase()}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB' }} numberOfLines={1}>{userName ?? 'User'}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2 }} numberOfLines={1}>{userName ?? 'User'}</Text>
                 <Text style={{ fontSize: 11, color: MUTED }}>Personal account</Text>
               </View>
             </View>
@@ -906,6 +927,7 @@ function ListsBrowser({ lists, allTasks, searchQuery, onSelectList, onEditList, 
   lists: TaskList[]; allTasks: Task[]; searchQuery?: string; onSelectList: (l: TaskList) => void;
   onEditList: (l: TaskList) => void; onDeleteList: (id: string) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const taskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     allTasks.forEach(t => { if (t.listId && t.status === 'active') counts[t.listId] = (counts[t.listId] ?? 0) + 1; });
@@ -932,7 +954,7 @@ function ListsBrowser({ lists, allTasks, searchQuery, onSelectList, onEditList, 
               <Text style={{ fontSize: 22 }}>{list.emoji ?? '📋'}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>{list.name}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: TXT }}>{list.name}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
                 <Text style={{ fontSize: 12, color: MUTED }}>{count} task{count !== 1 ? 's' : ''}</Text>
@@ -957,6 +979,7 @@ function ListModal({ visible, initial, onClose, onSave }: {
   visible: boolean; initial?: TaskList | null; onClose: () => void;
   onSave: (data: { name: string; emoji: string; color: string }) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [name, setName]   = useState('');
   const [emoji, setEmoji] = useState('📋');
   const [color, setColor] = useState(ACCENT);
@@ -974,14 +997,14 @@ function ListModal({ visible, initial, onClose, onSave }: {
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 }}>
-          <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>{initial ? 'Edit List' : 'New List'}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: TXT }}>{initial ? 'Edit List' : 'New List'}</Text>
             <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
               <X size={14} color={MUTED} />
             </TouchableOpacity>
           </View>
-          <TextInput autoFocus style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#FFFFFF', marginBottom: 16 }}
+          <TextInput autoFocus style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: TXT, marginBottom: 16 }}
             placeholder="List name..." placeholderTextColor={MUTED} value={name} onChangeText={setName} />
           <Text style={{ fontSize: 11, fontWeight: '700', color: MUTED, letterSpacing: 1, marginBottom: 8 }}>ICON</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
@@ -1043,6 +1066,7 @@ function buildMonthGrid(anchor: string): string[] {
 }
 
 function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Task[]; onEdit: (t: Task) => void; onDelete: (id: string) => void; onDateSelect?: (date: string) => void }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const today = todayStr();
   const [calView, setCalView]           = useState<CalView>('week');
   const [selectedDate, setSelectedDate] = useState(today);
@@ -1087,14 +1111,14 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
       {/* Header row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: BORDER }}>
         <TouchableOpacity onPress={() => navigate(-1)} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: SURFACE2 }}>
-          <ChevronLeft size={16} color="#E5E7EB" />
+          <ChevronLeft size={16} color={TXT2} />
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB' }}>{headerTitle}</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2 }}>{headerTitle}</Text>
           {headerSub ? <Text style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>{headerSub}</Text> : null}
         </View>
         <TouchableOpacity onPress={() => navigate(1)} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: SURFACE2 }}>
-          <ChevronRight size={16} color="#E5E7EB" />
+          <ChevronRight size={16} color={TXT2} />
         </TouchableOpacity>
       </View>
 
@@ -1120,9 +1144,9 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
                 <TouchableOpacity key={idx} onPress={() => setSelectedDate(date)}
                   style={{ width: `${100/7}%`, minHeight: 52, padding: 4, borderRightWidth: 1, borderBottomWidth: 1, borderColor: BORDER, backgroundColor: isSel ? ACCENT + '15' : 'transparent', opacity: isCurrentMonth ? 1 : 0.4 }}>
                   <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: isToday ? ACCENT : 'transparent', alignSelf: 'center' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: isToday ? '#FFFFFF' : isSel ? ACCENT : '#E5E7EB' }}>{new Date(date + 'T00:00:00').getDate()}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isToday ? TXT : isSel ? ACCENT : TXT2 }}>{new Date(date + 'T00:00:00').getDate()}</Text>
                   </View>
-                  {count > 0 && <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isToday ? '#FFFFFF' : ACCENT, alignSelf: 'center', marginTop: 2 }} />}
+                  {count > 0 && <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: isToday ? TXT : ACCENT, alignSelf: 'center', marginTop: 2 }} />}
                 </TouchableOpacity>
               );
             })}
@@ -1158,7 +1182,7 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 9, borderRightWidth: 1, borderRightColor: BORDER, backgroundColor: isSel ? ACCENT + '15' : 'transparent' }}>
                 <Text style={{ fontSize: 10, fontWeight: '600', color: isToday ? ACCENT : MUTED, textTransform: 'uppercase' }}>{DAY_SHORT[(d.getDay() + 6) % 7]}</Text>
                 <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: isToday ? ACCENT : 'transparent' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: isToday ? '#FFFFFF' : isSel ? ACCENT : '#E5E7EB' }}>{d.getDate()}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isToday ? TXT : isSel ? ACCENT : TXT2 }}>{d.getDate()}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -1180,7 +1204,7 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
                   {dayUntimed.slice(0, 2).map(t => (
                     <TouchableOpacity key={t.id} onPress={() => onEdit(t)}
                       style={{ borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2, marginBottom: 2, backgroundColor: PRIORITY_COLOR[t.priority] + '33' || ACCENT + '33' }}>
-                      <Text numberOfLines={1} style={{ fontSize: 9, color: '#E5E7EB', fontWeight: '500' }}>{t.title}</Text>
+                      <Text numberOfLines={1} style={{ fontSize: 9, color: TXT2, fontWeight: '500' }}>{t.title}</Text>
                     </TouchableOpacity>
                   ))}
                   {dayUntimed.length > 2 && <Text style={{ fontSize: 9, color: MUTED }}>+{dayUntimed.length - 2}</Text>}
@@ -1204,7 +1228,7 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
                     {hourTasks.map(t => (
                       <TouchableOpacity key={t.id} onPress={() => onEdit(t)}
                         style={{ borderRadius: 4, paddingHorizontal: 4, paddingVertical: 3, marginBottom: 2, backgroundColor: (PRIORITY_COLOR[t.priority] ?? ACCENT) + '33', borderLeftWidth: 2, borderLeftColor: PRIORITY_COLOR[t.priority] ?? ACCENT }}>
-                        <Text numberOfLines={1} style={{ fontSize: 9, color: '#E5E7EB', fontWeight: '600' }}>{t.title}</Text>
+                        <Text numberOfLines={1} style={{ fontSize: 9, color: TXT2, fontWeight: '600' }}>{t.title}</Text>
                         <Text style={{ fontSize: 8, color: MUTED }}>{t.dueTime}</Text>
                       </TouchableOpacity>
                     ))}
@@ -1222,7 +1246,7 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
         {CAL_VIEWS.map(v => (
           <TouchableOpacity key={v.key} onPress={() => setCalView(v.key)}
             style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderBottomWidth: calView === v.key ? 2 : 0, borderBottomColor: ACCENT }}>
-            <Text style={{ fontSize: 13, fontWeight: calView === v.key ? '600' : '400', color: calView === v.key ? '#FFFFFF' : MUTED }}>{v.label}</Text>
+            <Text style={{ fontSize: 13, fontWeight: calView === v.key ? '600' : '400', color: calView === v.key ? TXT : MUTED }}>{v.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -1249,6 +1273,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
   onComplete?: (taskId: string) => void;
   onSnooze?: (taskId: string, title: string, minutes: number) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   if (!task) return null;
 
   const repeat      = getRepeat(task.tags);
@@ -1298,7 +1323,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={onClose} />
       <View style={{ backgroundColor: '#1C1C1E', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
         {/* Handle */}
-        <View style={{ width: 36, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
+        <View style={{ width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
 
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
@@ -1337,7 +1362,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
 
         {/* Title */}
         <TouchableOpacity onPress={handleEdit} activeOpacity={0.7}>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF', paddingHorizontal: 16, paddingBottom: 6, lineHeight: 29 }}>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingBottom: 6, lineHeight: 29 }}>
             {task.title}
           </Text>
         </TouchableOpacity>
@@ -1375,20 +1400,20 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
                 <TouchableOpacity onPress={handleSnooze}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER }}>
                   <Bell size={16} color={MUTED} />
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#E5E7EB' }}>Snooze</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: TXT2 }}>Snooze</Text>
                 </TouchableOpacity>
               )}
             </View>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity style={{ padding: 8 }}>
-              <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : '#3A3A3A'} />
+              <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : BORDER} />
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
             <TouchableOpacity onPress={handleEdit}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, backgroundColor: SURFACE2, marginRight: 10 }}>
-              <Pencil size={14} color="#E5E7EB" />
-              <Text style={{ fontSize: 13, fontWeight: '500', color: '#E5E7EB' }}>Edit</Text>
+              <Pencil size={14} color={TXT2} />
+              <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDelete}
               style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
@@ -1403,6 +1428,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
 
 // ── Main Screen ────────────────────────────────────────────────────────────────────
 export default function TasksScreen() {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab]           = useState<SubTab>('today');
   const [collapsed, setCollapsed]           = useState<Record<string, boolean>>({});
@@ -1434,6 +1460,13 @@ export default function TasksScreen() {
     return () => sub.remove();
   }, []);
 
+  // ── Queries ────────────────────────────────────────────────────────────────────
+  const { data: todayData, isLoading: loadingToday, refetch: refetchToday } =
+    useQuery({ queryKey: ['tasks', 'today'], queryFn: getTodayTasks, enabled: activeTab === 'today' });
+
+  const { data: allTasks = [], isLoading: loadingAll, refetch: refetchAll } =
+    useQuery({ queryKey: ['tasks', 'all'], queryFn: () => getAllTasks() });
+
   // Show task detail card when tapped from a notification
   useEffect(() => {
     if (!pendingTaskId || allTasks.length === 0) return;
@@ -1444,13 +1477,6 @@ export default function TasksScreen() {
       clearPendingTaskId();
     }
   }, [pendingTaskId, allTasks]);
-
-  // ── Queries ────────────────────────────────────────────────────────────────────
-  const { data: todayData, isLoading: loadingToday, refetch: refetchToday } =
-    useQuery({ queryKey: ['tasks', 'today'], queryFn: getTodayTasks, enabled: activeTab === 'today' });
-
-  const { data: allTasks = [], isLoading: loadingAll, refetch: refetchAll } =
-    useQuery({ queryKey: ['tasks', 'all'], queryFn: () => getAllTasks() });
 
   const { data: listTasks = [], isLoading: loadingList, refetch: refetchList } =
     useQuery({ queryKey: ['tasks', 'list', activeList?.id], queryFn: () => getAllTasks(activeList!.id), enabled: !!activeList });
@@ -1562,35 +1588,35 @@ export default function TasksScreen() {
   const defaultListId  = activeList?.id;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: '#111111' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: BG }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           {activeList ? (
             <TouchableOpacity onPress={() => setActiveList(null)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
-              <ChevronLeft size={20} color="#E5E7EB" />
+              <ChevronLeft size={20} color={TXT2} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => setShowDrawer(true)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
-              <Menu size={20} color="#E5E7EB" />
+              <Menu size={20} color={TXT2} />
             </TouchableOpacity>
           )}
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }} numberOfLines={1}>{headerTitle}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: TXT }} numberOfLines={1}>{headerTitle}</Text>
           {activeList && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeList.color ?? ACCENT, marginLeft: 2 }} />}
         </View>
         <TouchableOpacity onPress={() => router.replace('/(tabs)/')} activeOpacity={0.7}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 6 }}>
           <MyOrbitLogo />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>MyOrbit</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: TXT }}>MyOrbit</Text>
         </TouchableOpacity>
       </View>
 
       {/* Search bar + Add button — hidden on calendar (navigate by date, not search) */}
-      {!(activeTab === 'calendar' && !activeList) && <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: '#111111', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      {!(activeTab === 'calendar' && !activeList) && <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: BG, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
           <Search size={12} color={MUTED} />
           <TextInput
-            style={{ flex: 1, fontSize: 14, color: '#FFFFFF' }}
+            style={{ flex: 1, fontSize: 14, color: TXT }}
             placeholder={activeTab === 'lists' && !activeList ? 'Search lists…' : 'Search tasks…'}
             placeholderTextColor={MUTED}
             value={searchQuery}
@@ -1638,7 +1664,7 @@ export default function TasksScreen() {
                 ListEmptyComponent={
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <Text style={{ fontSize: 40, marginBottom: 12 }}>🎉</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>All caught up!</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>All caught up!</Text>
                     <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>No tasks for today</Text>
                   </View>
                 }
@@ -1655,7 +1681,7 @@ export default function TasksScreen() {
                 ListEmptyComponent={
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <Text style={{ fontSize: 40, marginBottom: 12 }}>📥</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>Inbox is empty</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>Inbox is empty</Text>
                     <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{searchQuery ? 'No tasks match your search' : 'All tasks are in lists'}</Text>
                   </View>
                 }
@@ -1684,7 +1710,7 @@ export default function TasksScreen() {
                 ListEmptyComponent={loadingList ? null : (
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <Text style={{ fontSize: 40, marginBottom: 12 }}>{activeList.emoji ?? '📋'}</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>No tasks yet</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>No tasks yet</Text>
                     <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{searchQuery ? 'No tasks match your search' : 'Tap + to add a task'}</Text>
                   </View>
                 )}
@@ -1702,7 +1728,7 @@ export default function TasksScreen() {
                 {next7Groups.length === 0 ? (
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <Text style={{ fontSize: 40, marginBottom: 12 }}>📅</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>Nothing scheduled</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>Nothing scheduled</Text>
                     <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{searchQuery ? 'No tasks match your search' : 'No tasks in the next 7 days'}</Text>
                   </View>
                 ) : next7Groups.map(({ date, tasks }) => (

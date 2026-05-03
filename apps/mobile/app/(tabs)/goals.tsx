@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTheme } from '@/lib/themeStore';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
 import Svg, { Rect, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
@@ -28,10 +29,21 @@ type SubTab = 'overview' | 'active' | 'completed' | 'all';
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const ACCENT  = '#7C3AED';
-const SURFACE = '#1A1A1A';
-const SURFACE2 = '#242424';
-const BORDER  = '#2A2A2A';
-const MUTED   = '#9CA3AF';
+
+function useColors() {
+  const T = useTheme();
+  return {
+    BG:      T.bg,
+    SURFACE: T.cardBg,
+    SURFACE2:T.surfaceAlt,
+    BORDER:  T.border,
+    MUTED:   T.subText,
+    TXT:     T.text,
+    TXT2:    T.textSec,
+    MODAL:   T.modalBg,
+    INPUT:   T.inputBg,
+  };
+}
 
 const SUB_TABS = [
   { key: 'overview'  as SubTab, label: 'Overview',  Icon: LayoutDashboard },
@@ -77,9 +89,10 @@ function MyOrbitLogo() {
 function SubNav({ active, onSelect, onMore }: {
   active: SubTab; onSelect: (t: SubTab) => void; onMore: () => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const isMoreActive = !SUB_TABS.some(t => t.key === active);
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: '#111111', borderTopWidth: 1, borderTopColor: BORDER }}>
+    <View style={{ flexDirection: 'row', backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER }}>
       {SUB_TABS.map(({ key, label, Icon }) => {
         const on = active === key;
         return (
@@ -109,12 +122,13 @@ function SubNav({ active, onSelect, onMore }: {
 function MoreSheet({ visible, active, onSelect, onClose, userName }: {
   visible: boolean; active: SubTab; onSelect: (t: SubTab) => void; onClose: () => void; userName?: string;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const initials = (userName ?? 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
       <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}>
-        <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
+        <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
 
         {/* User profile */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: BORDER }}>
@@ -122,7 +136,7 @@ function MoreSheet({ visible, active, onSelect, onClose, userName }: {
             <Text style={{ fontSize: 14, fontWeight: '700', color: 'white' }}>{initials}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#E5E7EB' }} numberOfLines={1}>{userName ?? 'User'}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2 }} numberOfLines={1}>{userName ?? 'User'}</Text>
             <Text style={{ fontSize: 11, color: MUTED }}>Personal account</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
@@ -135,7 +149,7 @@ function MoreSheet({ visible, active, onSelect, onClose, userName }: {
           <TouchableOpacity key={key} onPress={() => { onSelect(key); onClose(); }}
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: active === key ? ACCENT + '22' : 'transparent' }}>
             <Icon size={16} color={active === key ? ACCENT : MUTED} />
-            <Text style={{ fontSize: 15, fontWeight: '500', color: active === key ? ACCENT : '#E5E7EB' }}>{label}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '500', color: active === key ? ACCENT : TXT2 }}>{label}</Text>
           </TouchableOpacity>
         ))}
 
@@ -143,7 +157,7 @@ function MoreSheet({ visible, active, onSelect, onClose, userName }: {
         <TouchableOpacity onPress={() => { onClose(); router.push('/(tabs)/settings' as any); }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
           <Settings size={16} color={MUTED} />
-          <Text style={{ fontSize: 15, fontWeight: '500', color: '#E5E7EB' }}>Goals Settings</Text>
+          <Text style={{ fontSize: 15, fontWeight: '500', color: TXT2 }}>Goals Settings</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -160,6 +174,7 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
   onPause: (id: string, current: Goal['status']) => void;
   onToggleMilestone: (goalId: string, ms: GoalMilestone) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const catColor   = CAT_COLORS[goal.category] ?? '#64748B';
   const cfg        = STATUS_CONFIG[goal.status];
   const milestones = goal.milestones ?? [];
@@ -187,7 +202,7 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
               </View>
             )}
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>{goal.title}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT }}>{goal.title}</Text>
           {goal.why && <Text style={{ fontSize: 12, color: MUTED, marginTop: 3, fontStyle: 'italic' }} numberOfLines={2}>"{goal.why}"</Text>}
         </View>
 
@@ -226,7 +241,7 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
         <View style={{ marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
             <Text style={{ fontSize: 11, color: MUTED }}>{done}/{milestones.length} milestones</Text>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: '#E5E7EB' }}>{pct}%</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: TXT2 }}>{pct}%</Text>
           </View>
           <View style={{ height: 5, backgroundColor: SURFACE2, borderRadius: 3, overflow: 'hidden' }}>
             <View style={{ height: '100%', borderRadius: 3, width: `${pct}%`, backgroundColor: catColor }} />
@@ -286,6 +301,7 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
   visible: boolean; initial?: Goal | null; onClose: () => void;
   onCreate: (data: GoalFormData) => void; onUpdate: (id: string, data: Partial<GoalFormData>) => void;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const isEdit = !!initial;
   const [step, setStep] = useState<GoalFormStep>(1);
   const [form, setForm] = useState<GoalFormData>({
@@ -328,10 +344,10 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, maxHeight: '90%' }}>
-          <View style={{ width: 40, height: 4, backgroundColor: '#3A3A3A', borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: TXT }}>
               {isEdit ? 'Edit Goal' : step === 1 ? 'New Goal' : 'Milestones & Processes'}
             </Text>
             {!isEdit && (
@@ -347,7 +363,7 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
             {(step === 1 || isEdit) && (
               <>
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Title *</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: '#FFFFFF', marginBottom: 14 }}
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: TXT, marginBottom: 14 }}
                   placeholder="e.g. Save ₹5 lakhs, Run a marathon" placeholderTextColor={MUTED}
                   value={form.title} onChangeText={v => set('title', v)} autoFocus={!isEdit} />
 
@@ -362,15 +378,15 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
                 </View>
 
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Why? (optional)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: '#FFFFFF', marginBottom: 14, minHeight: 60, textAlignVertical: 'top' }}
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: TXT, marginBottom: 14, minHeight: 60, textAlignVertical: 'top' }}
                   placeholder="Your motivation for this goal..." placeholderTextColor={MUTED} multiline value={form.why} onChangeText={v => set('why', v)} />
 
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Success Metric (optional)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#FFFFFF', marginBottom: 14 }}
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 14 }}
                   placeholder="How will you measure success?" placeholderTextColor={MUTED} value={form.metric} onChangeText={v => set('metric', v)} />
 
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Deadline (optional)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#FFFFFF', marginBottom: 16 }}
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 16 }}
                   placeholder={`YYYY-MM-DD (e.g. ${today})`} placeholderTextColor={MUTED}
                   value={form.deadline} onChangeText={v => set('deadline', v)} keyboardType="numbers-and-punctuation" />
               </>
@@ -386,7 +402,7 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
                 ] as const).map(({ key, label }) => (
                   <View key={key} style={{ marginBottom: 12 }}>
                     <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>{label}</Text>
-                    <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 11, fontSize: 14, color: '#FFFFFF' }}
+                    <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 11, fontSize: 14, color: TXT }}
                       placeholder={`Where will you be in ${key.replace('ms', '')}?`} placeholderTextColor={MUTED}
                       value={form[key]} onChangeText={v => set(key, v)} />
                   </View>
@@ -398,7 +414,7 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
                   { titleKey: 'proc2' as keyof GoalFormData, freqKey: 'proc2freq' as keyof GoalFormData, n: 2 },
                 ] as const).map(({ titleKey, freqKey, n }) => (
                   <View key={String(n)} style={{ marginBottom: 12, flexDirection: 'row', gap: 8 }}>
-                    <TextInput style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#FFFFFF' }}
+                    <TextInput style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: TXT }}
                       placeholder={`Process ${n} (e.g. Run 5km)`} placeholderTextColor={MUTED}
                       value={form[titleKey]} onChangeText={v => set(titleKey, v)} />
                     <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, overflow: 'hidden' }}>
@@ -464,6 +480,7 @@ function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, on
   onToggleMilestone: (goalId: string, ms: GoalMilestone) => void;
   emptyEmoji: string; emptyText: string; emptySubtext: string;
 }) {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   return (
     <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       {isLoading ? (
@@ -471,7 +488,7 @@ function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, on
       ) : goals.length === 0 ? (
         <View style={{ paddingVertical: 48, alignItems: 'center' }}>
           <Text style={{ fontSize: 40, marginBottom: 12 }}>{emptyEmoji}</Text>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>{emptyText}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>{emptyText}</Text>
           <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{emptySubtext}</Text>
         </View>
       ) : (
@@ -487,6 +504,7 @@ function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, on
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function GoalsScreen() {
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab]   = useState<SubTab>('overview');
   const [showAdd, setShowAdd]       = useState(false);
@@ -568,28 +586,28 @@ export default function GoalsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
 
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: '#111111' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: BG }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           <TouchableOpacity onPress={() => setShowMore(true)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
             <Menu size={20} color="#E5E7EB" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }} numberOfLines={1}>{headerTitle}</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: TXT }} numberOfLines={1}>{headerTitle}</Text>
         </View>
         <TouchableOpacity onPress={() => router.replace('/(tabs)/')} activeOpacity={0.7}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 6 }}>
           <MyOrbitLogo />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>MyOrbit</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: TXT }}>MyOrbit</Text>
         </TouchableOpacity>
       </View>
 
       {/* Search + Add */}
-      <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: '#111111', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: BG, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
           <Search size={15} color={MUTED} />
-          <TextInput style={{ flex: 1, fontSize: 14, color: '#FFFFFF' }} placeholder="Search goals…" placeholderTextColor={MUTED} value={searchQuery} onChangeText={setSearchQuery} />
+          <TextInput style={{ flex: 1, fontSize: 14, color: TXT }} placeholder="Search goals…" placeholderTextColor={MUTED} value={searchQuery} onChangeText={setSearchQuery} />
           {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><X size={15} color={MUTED} /></TouchableOpacity>}
         </View>
         <TouchableOpacity onPress={() => setShowAdd(true)}
@@ -635,7 +653,7 @@ export default function GoalsScreen() {
               ) : filteredAll.length === 0 ? (
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}>
                   <Text style={{ fontSize: 40, marginBottom: 12 }}>🎯</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>{searchQuery ? 'No goals match your search' : 'No goals yet'}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>{searchQuery ? 'No goals match your search' : 'No goals yet'}</Text>
                   <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{!searchQuery && 'Tap + to set your first goal'}</Text>
                 </View>
               ) : (
