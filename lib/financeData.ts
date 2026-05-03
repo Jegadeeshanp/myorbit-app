@@ -74,6 +74,7 @@ export type SipConfig = {
   endType: string;
   endAfterTimes?: number;
   endDate?: string;
+  amount?: number; // per-installment SIP amount
 };
 
 export const accounts: Account[] = [

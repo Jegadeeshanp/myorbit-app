@@ -1328,6 +1328,7 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
   const [sipEndType,      setSipEndType]      = useState<SipEndType>('forever');
   const [sipEndAfter,     setSipEndAfter]     = useState('');
   const [sipEndDate,      setSipEndDate]      = useState('');
+  const [sipAmount,       setSipAmount]       = useState('');
   const [showSipStart,    setShowSipStart]    = useState(false);
   const [showSipEndDate,  setShowSipEndDate]  = useState(false);
 
@@ -1345,11 +1346,22 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
         : '');
       setAccId(initial.accountId ?? '');
       setInvType((initial.investmentType ?? 'lump_sum') as 'lump_sum' | 'sip');
+      if (initial.sipConfig) {
+        setSipFreq(initial.sipConfig.frequency as SipFreq);
+        setSipStart(initial.sipConfig.startDate);
+        setSipEndType(initial.sipConfig.endType as SipEndType);
+        setSipEndAfter(initial.sipConfig.endAfterTimes != null ? String(initial.sipConfig.endAfterTimes) : '');
+        setSipEndDate(initial.sipConfig.endDate ?? '');
+        setSipAmount(initial.sipConfig.amount != null ? String(initial.sipConfig.amount) : '');
+      } else {
+        setSipFreq('monthly'); setSipStart(new Date().toLocaleDateString('en-CA'));
+        setSipEndType('forever'); setSipEndAfter(''); setSipEndDate(''); setSipAmount('');
+      }
     } else {
       setName(''); setCategory(ASSET_CATEGORY_LIST[0]); setInvested('');
       setValue(''); setUnits(''); setPerUnit(''); setAccId(''); setInvType('lump_sum');
       setSipFreq('monthly'); setSipStart(new Date().toLocaleDateString('en-CA'));
-      setSipEndType('forever'); setSipEndAfter(''); setSipEndDate('');
+      setSipEndType('forever'); setSipEndAfter(''); setSipEndDate(''); setSipAmount('');
     }
   }, [visible, initial?.id]);  // re-run when modal opens or edit target changes
 
@@ -1368,6 +1380,7 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
       endType: sipEndType,
       endAfterTimes: sipEndType === 'after' && sipEndAfter ? Number(sipEndAfter) : undefined,
       endDate: sipEndType === 'on_date' && sipEndDate ? sipEndDate : undefined,
+      amount: Number(sipAmount) > 0 ? Number(sipAmount) : undefined,
     } : null;
     onSave({
       name: name.trim(),
@@ -1454,6 +1467,17 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
             {invType === 'sip' && (
               <View style={{ backgroundColor: '#10B98112', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#10B98133' }}>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: ACCENT, letterSpacing: 1, marginBottom: 14 }}>SIP SCHEDULE</Text>
+
+                {/* SIP Amount */}
+                <Text style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>SIP Amount per installment (₹)</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 14 }}
+                  placeholder="e.g. 5000"
+                  placeholderTextColor={SUBTLE}
+                  value={sipAmount}
+                  onChangeText={setSipAmount}
+                  keyboardType="decimal-pad"
+                />
 
                 {/* Frequency */}
                 <Text style={{ fontSize: 13, color: MUTED, marginBottom: 8 }}>Frequency</Text>

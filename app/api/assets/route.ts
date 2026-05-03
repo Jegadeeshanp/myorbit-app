@@ -141,6 +141,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── SIP recurring template ──────────────────────────────────────────────
+    if (invType === 'sip' && accVal && sipVal) {
+      const sipParsed = JSON.parse(sipVal);
+      if (sipParsed?.amount > 0) {
+        // Delete any existing template first (idempotent re-save)
+        await prisma.recurringTransaction.deleteMany({ where: { assetId: row.id, type: 'SIP', userId } });
+        const recurringCfg = {
+          frequency:      sipParsed.frequency,
+          startDate:      sipParsed.startDate,
+          endType:        sipParsed.endType,
+          endAfterTimes:  sipParsed.endAfterTimes,
+          endDate:        sipParsed.endDate,
+        };
+        await prisma.recurringTransaction.create({
+          data: {
+            userId,
+            assetId:         row.id,
+            accountId:       accVal,
+            category:        'Investment',
+            description:     name,
+            amount:          await encryptNumber(-Math.abs(sipParsed.amount)),
+            type:            'SIP',
+            recurringConfig: JSON.stringify(recurringCfg),
+            nextDate:        sipParsed.startDate,
+            occurrenceCount: 0,
+          },
+        });
+      }
+    }
+
     const asset = await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units });
     return NextResponse.json({ asset, fundingTransaction, updatedAccount }, { status: 201 });
   } catch (e: any) {

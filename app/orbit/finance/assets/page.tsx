@@ -194,11 +194,12 @@ export default function AssetsPage() {
         </div>
       )}
 
-      <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} />
+      <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} accounts={state.accounts} />
       <AddAssetModal
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
         initial={editTarget ?? undefined}
+        accounts={state.accounts}
         onSave={payload => {
           if (!editTarget) return;
           updateAsset({ ...payload, id: editTarget.id });

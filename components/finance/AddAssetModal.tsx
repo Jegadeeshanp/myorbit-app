@@ -49,6 +49,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
   const [sipEndType,    setSipEndType]    = useState<SipEndType>('forever');
   const [sipEndAfter,   setSipEndAfter]   = useState('');
   const [sipEndDate,    setSipEndDate]    = useState('');
+  const [sipAmount,     setSipAmount]     = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -68,19 +69,21 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
         setSipEndType(initial.sipConfig.endType as SipEndType);
         setSipEndAfter(initial.sipConfig.endAfterTimes != null ? String(initial.sipConfig.endAfterTimes) : '');
         setSipEndDate(initial.sipConfig.endDate ?? '');
+        setSipAmount(initial.sipConfig.amount != null ? String(initial.sipConfig.amount) : '');
       } else {
         setSipFreq('monthly');
         setSipStart(new Date().toISOString().slice(0, 10));
         setSipEndType('forever');
         setSipEndAfter('');
         setSipEndDate('');
+        setSipAmount('');
       }
     } else {
       setName(''); setCategory('Stocks & Equity'); setValue(''); setInvested('');
       setUnits(''); setPerUnit('');
       setAccountId(''); setInvType('lump_sum');
       setSipFreq('monthly'); setSipStart(new Date().toISOString().slice(0, 10));
-      setSipEndType('forever'); setSipEndAfter(''); setSipEndDate('');
+      setSipEndType('forever'); setSipEndAfter(''); setSipEndDate(''); setSipAmount('');
     }
   }, [open]);
 
@@ -101,6 +104,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
         endType: sipEndType,
         endAfterTimes: sipEndType === 'after' && sipEndAfter ? Number(sipEndAfter) : undefined,
         endDate: sipEndType === 'on_date' && sipEndDate ? sipEndDate : undefined,
+        amount: Number(sipAmount) > 0 ? Number(sipAmount) : undefined,
       } : null;
 
       await onSave({
@@ -258,6 +262,22 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
         {invType === 'sip' && (
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 space-y-4">
             <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">SIP Schedule</p>
+
+            {/* SIP Amount */}
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-gray-500">
+                SIP Amount per installment (₹)
+              </label>
+              <input
+                value={sipAmount}
+                onChange={e => setSipAmount(e.target.value)}
+                placeholder="e.g. 5000"
+                type="number"
+                min="1"
+                className={inputCls}
+              />
+              <p className="mt-1 text-xs text-gray-400">Deducted from the linked account each installment</p>
+            </div>
 
             {/* Frequency */}
             <div>

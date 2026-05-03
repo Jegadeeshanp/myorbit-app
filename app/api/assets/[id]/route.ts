@@ -85,6 +85,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       SELECT "accountId", "investmentType", "sipConfig" FROM "Asset" WHERE id = ${id}
     `;
 
+    // ── Sync SIP recurring template ──────────────────────────────────────────
+    // Always delete old template; recreate if SIP + account + sipAmount all present
+    await prisma.recurringTransaction.deleteMany({ where: { assetId: id, type: 'SIP', userId } });
+    if (extra.investmentType === 'sip' && extra.accountId && extra.sipConfig) {
+      const sipParsed = JSON.parse(extra.sipConfig);
+      if (sipParsed?.amount > 0) {
+        const recurringCfg = {
+          frequency:     sipParsed.frequency,
+          startDate:     sipParsed.startDate,
+          endType:       sipParsed.endType,
+          endAfterTimes: sipParsed.endAfterTimes,
+          endDate:       sipParsed.endDate,
+        };
+        await prisma.recurringTransaction.create({
+          data: {
+            userId,
+            assetId:         id,
+            accountId:       extra.accountId,
+            category:        'Investment',
+            description:     row.name,
+            amount:          await encryptNumber(-Math.abs(sipParsed.amount)),
+            type:            'SIP',
+            recurringConfig: JSON.stringify(recurringCfg),
+            nextDate:        sipParsed.startDate,
+            occurrenceCount: 0,
+          },
+        });
+      }
+    }
+
     return NextResponse.json(await decryptAsset(row, extra));
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
