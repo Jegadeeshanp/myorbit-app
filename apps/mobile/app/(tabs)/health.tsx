@@ -11,7 +11,7 @@ import type { HealthEntry, Workout } from '@myorbit/api';
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, Save,
   LayoutDashboard, Dumbbell, UtensilsCrossed, RefreshCw,
-  MoreHorizontal, X, Settings,
+  MoreHorizontal, X, Settings, Heart,
 } from 'lucide-react-native';
 import AppHeader from '@/components/shared/AppHeader';
 import { useTheme } from '@/lib/themeStore';
@@ -311,7 +311,7 @@ export default function HealthScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }}>
-      <AppHeader title="Health" showBack />
+      <AppHeader title="Health" showBack icon={<Heart size={18} color="#F43F5E" />} />
 
       <View style={{ flex: 1 }}>
       {/* ── DASHBOARD ─────────────────────────────────────────────────────── */}

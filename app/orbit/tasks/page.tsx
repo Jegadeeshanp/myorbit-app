@@ -150,7 +150,7 @@ function MiniCalendarPopup({ dueDate, dueTime, repeat, reminder, onSelect, onClo
       {/* Day grid */}
       <div className="px-3 pb-2">
         <div className="grid grid-cols-7 gap-0.5 mb-1">
-          {['M','T','W','T','F','S','S'].map((l,i) => <div key={i} className="text-center text-[10px] font-medium text-gray-400 py-0.5">{l}</div>)}
+          {['M','Tu','W','Th','F','Sa','Su'].map((l,i) => <div key={i} className="text-center text-[10px] font-medium text-gray-400 py-0.5">{l}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-0.5">
           {cells.map((day, idx) => {

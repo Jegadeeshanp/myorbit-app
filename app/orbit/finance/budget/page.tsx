@@ -21,40 +21,30 @@ export default function BudgetPage() {
     : budgets;
 
   // ── Summary figures ──────────────────────────────────────────────────────
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
-
   const summary = useMemo(() => {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const thisMonthPast = (t: { date: string }) => {
-      const d = new Date(t.date);
-      return t.date <= todayStr                      // exclude upcoming
-        && d.getMonth() === now.getMonth()
-        && d.getFullYear() === now.getFullYear();
-    };
-
-    // Inflow = income transactions this month (past only), excluding OB/BA
+    // Total income this month from transactions
     const moneyIn = transactions
-      .filter(t => t.type === 'income' && thisMonthPast(t) && !SYSTEM_CATS.includes(t.category))
+      .filter(t => {
+        const d = new Date(t.date);
+        return t.type === 'income'
+          && d.getMonth() === now.getMonth()
+          && d.getFullYear() === now.getFullYear();
+      })
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     // Total planned = sum of all budget limits
     const planned = budgets.reduce((sum, b) => sum + (b.budget ?? 0), 0);
 
-    // Net Balance = income - expenses this month (past only), excluding Opening Balance & Balance Adjustment
-    const totalExpense = transactions
-      .filter(t => t.type === 'expense' && thisMonthPast(t) && !SYSTEM_CATS.includes(t.category))
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-    return { moneyIn, planned, net: moneyIn - totalExpense };
+    return { moneyIn, planned, net: moneyIn - planned };
   }, [transactions, budgets]);
 
   const netPositive = summary.net >= 0;
 
   const cards = [
     {
-      label: 'Inflow',
-      sub: 'Income this month',
+      label: 'Money In',
+      sub: 'Total income this month',
       value: summary.moneyIn,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -72,7 +62,7 @@ export default function BudgetPage() {
     },
     {
       label: 'Net Balance',
-      sub: netPositive ? 'Income − Expenses' : 'Overspent',
+      sub: netPositive ? 'Surplus' : 'Deficit',
       value: summary.net,
       color: netPositive ? 'text-emerald-600' : 'text-rose-600',
       bg: netPositive ? 'bg-emerald-50' : 'bg-rose-50',

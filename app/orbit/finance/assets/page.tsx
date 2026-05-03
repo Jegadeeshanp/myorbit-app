@@ -21,11 +21,11 @@ function fmt(v: number) {
 export default function AssetsPage() {
   const { state, addAsset, updateAsset } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
+
+  if (state.loadState === 'loading') return <AssetsSkeleton />;
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');
-
-  const accountList = state.accounts.map(a => ({ id: a.id, name: a.name, type: a.type }));
 
   // Derive tabs dynamically from assets present in the store
   const availableTabs = useMemo(() => {
@@ -65,11 +65,21 @@ export default function AssetsPage() {
       .sort((a, b) => b.value - a.value);
   }, [state.assets]);
 
-  if (state.loadState === 'loading') return <AssetsSkeleton />;
-
   return (
     <div className="space-y-5">
-      <FinanceTopBar />
+      <FinanceTopBar action={
+        <div className="flex gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
+              className="w-36 rounded-full border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm focus:border-emerald-400 focus:outline-none sm:w-44" />
+          </div>
+          <button onClick={() => setModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+            <PlusCircle className="h-4 w-4" /> Add Asset
+          </button>
+        </div>
+      } />
 
       {/* Summary metrics */}
       <div className="grid grid-cols-3 gap-3">
@@ -91,19 +101,6 @@ export default function AssetsPage() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* ── Search (left) + Add (right) ── */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
-        </div>
-        <button onClick={() => setModalOpen(true)}
-          className="inline-flex flex-none items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-          <PlusCircle className="h-4 w-4" /> Add Asset
-        </button>
       </div>
 
       {/* Dynamic category tabs */}
@@ -197,12 +194,11 @@ export default function AssetsPage() {
         </div>
       )}
 
-      <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} accounts={accountList} />
+      <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} />
       <AddAssetModal
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
         initial={editTarget ?? undefined}
-        accounts={accountList}
         onSave={payload => {
           if (!editTarget) return;
           updateAsset({ ...payload, id: editTarget.id });

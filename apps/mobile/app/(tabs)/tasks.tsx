@@ -18,8 +18,7 @@ import {
   CheckCircle, Circle, Clock, Plus, ChevronDown, ChevronRight, ChevronLeft,
   Trash2, AlertTriangle, Sun, Inbox as InboxIcon, List as ListIcon,
   CalendarDays, MoreHorizontal, X, CalendarCheck, Settings,
-  Tag, Flag, Search, Bell, RotateCcw, Check, Pencil,
-  Menu,
+  Tag, Flag, Search, Bell, RotateCcw, Check, Pencil, Menu,
 } from 'lucide-react-native';
 
 // ── Types ────────────────────────────────────────────────────────────────────────
@@ -1517,6 +1516,9 @@ export default function TasksScreen() {
               <Menu size={20} color="#E5E7EB" />
             </TouchableOpacity>
           )}
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+            <CalendarCheck size={18} color="#3B82F6" />
+          </View>
           <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }} numberOfLines={1}>{headerTitle}</Text>
           {activeList && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeList.color ?? ACCENT, marginLeft: 2 }} />}
         </View>

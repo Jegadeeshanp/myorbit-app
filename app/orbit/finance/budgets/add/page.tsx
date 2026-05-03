@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Bell } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
+import { toast } from '@/components/Toast';
 
 const ALL_CATEGORIES = ['Food & Dining','Transport','Shopping','Bills & Utilities','Healthcare','Entertainment','Education','Travel','Others'];
 const PERIODS = ['Monthly', 'Weekly', 'Yearly'] as const;
@@ -38,12 +39,33 @@ export default function AddBudgetPage() {
   const toggleCat = (c: string) => setSelectedCats(cs => cs.includes(c) ? cs.filter(x => x !== c) : [...cs, c]);
   const toggleAccount = (id: string) => setSelectedAccounts(as => as.includes(id) ? as.filter(x => x !== id) : [...as, id]);
 
+  const [saving, setSaving] = useState(false);
   const canSave = name.trim() && Number(amount) > 0;
 
-  const handleSave = () => {
-    if (!canSave) return;
-    // Would dispatch to store — for now navigate back
-    router.back();
+  const handleSave = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          budget: Number(amount),
+          category: selectedCats.join(',') || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to save budget');
+      }
+      toast('Budget created!', 'success');
+      router.push('/orbit/finance/budget');
+    } catch (e: any) {
+      toast(e?.message ?? 'Failed to save budget', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

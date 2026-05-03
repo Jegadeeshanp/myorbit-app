@@ -29,13 +29,13 @@ const EMOJIS = [
 
 // Days of week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 const WEEK_DAYS = [
-  { label: 'S', value: 0, full: 'Sun' },
-  { label: 'M', value: 1, full: 'Mon' },
-  { label: 'T', value: 2, full: 'Tue' },
-  { label: 'W', value: 3, full: 'Wed' },
-  { label: 'T', value: 4, full: 'Thu' },
-  { label: 'F', value: 5, full: 'Fri' },
-  { label: 'S', value: 6, full: 'Sat' },
+  { label: 'Su', value: 0, full: 'Sun' },
+  { label: 'M',  value: 1, full: 'Mon' },
+  { label: 'Tu', value: 2, full: 'Tue' },
+  { label: 'W',  value: 3, full: 'Wed' },
+  { label: 'Th', value: 4, full: 'Thu' },
+  { label: 'F',  value: 5, full: 'Fri' },
+  { label: 'Sa', value: 6, full: 'Sat' },
 ];
 
 // Map timeOfDay → 24-hour time string for task creation
@@ -1039,7 +1039,7 @@ function HabitCard({ habit, dates, onLog, onDelete, onEdit }: {
           {activeDates.length > 0 ? activeDates.map((date) => {
             const done = logSet.has(date);
             const isToday = date === today;
-            const dayLabel = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(date + 'T12:00:00').getDay()];
+            const dayLabel = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'][new Date(date + 'T12:00:00').getDay()];
             return (
               <button key={date} onClick={() => onLog(habit.id, date)}
                 className={`flex-1 flex flex-col items-center gap-1 rounded-lg py-1.5 transition ${
@@ -1053,7 +1053,7 @@ function HabitCard({ habit, dates, onLog, onDelete, onEdit }: {
           }) : dates.map((date, i) => {
             const done = logSet.has(date);
             const isToday = i === dates.length - 1;
-            const dayLabel = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(date + 'T12:00:00').getDay()];
+            const dayLabel = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'][new Date(date + 'T12:00:00').getDay()];
             return (
               <button key={date} onClick={() => onLog(habit.id, date)}
                 className={`flex-1 flex flex-col items-center gap-1 rounded-lg py-1.5 transition ${
@@ -1090,6 +1090,7 @@ export default function HabitsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const dates = useMemo(() => getLast7Days(), []);
   const today = dates[dates.length - 1];
 
@@ -1125,11 +1126,17 @@ export default function HabitsPage() {
     }
   };
 
-  const handleDelete = async (habitId: string) => {
-    if (!confirm('Archive this habit?')) return;
+  const handleDelete = (habitId: string) => {
+    setConfirmDeleteId(habitId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
     try {
-      await fetch(`/api/habits/${habitId}`, { method: 'DELETE' });
-      setHabits(prev => prev.filter(h => h.id !== habitId));
+      await fetch(`/api/habits/${id}`, { method: 'DELETE' });
+      setHabits(prev => prev.filter(h => h.id !== id));
       toast('Habit archived');
     } catch {
       toast('Failed to archive habit', 'error');
@@ -1238,6 +1245,31 @@ export default function HabitsPage() {
             setEditingHabit(null);
           }}
         />
+      )}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white dark:bg-gray-900 shadow-2xl p-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 mx-auto mb-4">
+              <Trash2 className="h-6 w-6 text-rose-500" />
+            </div>
+            <p className="font-semibold text-gray-900 dark:text-white mb-1">Archive this habit?</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">All logs will be kept. You can restore it later.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

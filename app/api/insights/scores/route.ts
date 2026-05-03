@@ -28,7 +28,7 @@ export async function GET() {
       ? Math.min(100, Math.round(goals.reduce((s, g) => {
           const total = g.milestones.length;
           const done = g.milestones.filter(m => m.isCompleted).length;
-          return s + (total > 0 ? (done / total) * 100 : 30);
+          return s + (total > 0 ? (done / total) * 100 : 0);
         }, 0) / goals.length))
       : 0;
 
@@ -38,9 +38,9 @@ export async function GET() {
     const avgEnergy = healthEntries.length > 0 ? healthEntries.reduce((s, e) => s + (e.energyLevel ?? 5), 0) / healthEntries.length : 0;
     const healthScore = healthEntries.length > 0 ? Math.min(100, Math.round((avgMood / 5) * 50 + (avgEnergy / 10) * 50)) : 0;
 
-    // Finance score: transactions logged recently
+    // Finance score: daily logging consistency (7 tx/week = full score)
     const txCount = await prisma.transaction.count({ where: { userId, date: { gte: d7ago } } });
-    const financeScore = Math.min(100, txCount * 10);
+    const financeScore = txCount === 0 ? 0 : Math.min(100, 30 + Math.round((txCount / 7) * 70));
 
     // Life score weighted average
     const lifeScore = Math.round(

@@ -12,7 +12,6 @@
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#0a1f0a"
     },
     "assetBundlePatterns": [
@@ -20,7 +19,8 @@
     ],
     "runtimeVersion": "1.0.0",
     "updates": {
-      "enabled": false
+      "enabled": true,
+      "url": "https://u.expo.dev/efb2d560-0c16-49ac-bcac-da4e02398eae"
     },
     "ios": {
       "supportsTablet": true,

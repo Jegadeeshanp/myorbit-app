@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Download, Trash2, Upload, Plus, Lock, Package, X, ArrowLeft, Settings2, List, LayoutGrid, Database } from 'lucide-react';
+import { Download, Trash2, Upload, Plus, Lock, Package, ArrowLeft, Settings2, LayoutGrid, Database } from 'lucide-react';
 import Link from 'next/link';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS } from '@/components/finance/CategoryPicker';
 import { useFinance } from '@/lib/financeStore';
@@ -52,10 +52,23 @@ export default function FinanceSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('Preferences' as Tab);
   const [showImport, setShowImport] = useState(false);
 
-  // Preferences state
-  const [currency,    setCurrency]    = useState('INR');
-  const [numFormat,   setNumFormat]   = useState('en-IN');
-  const [defaultView, setDefaultView] = useState('overview');
+  // Preferences state — persisted to localStorage
+  const [currency,    setCurrency]    = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('finance_currency') ?? 'INR';
+    return 'INR';
+  });
+  const [numFormat,   setNumFormat]   = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('finance_numFormat') ?? 'en-IN';
+    return 'en-IN';
+  });
+  const [defaultView, setDefaultView] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('finance_defaultView') ?? 'overview';
+    return 'overview';
+  });
+
+  useEffect(() => { localStorage.setItem('finance_currency', currency); }, [currency]);
+  useEffect(() => { localStorage.setItem('finance_numFormat', numFormat); }, [numFormat]);
+  useEffect(() => { localStorage.setItem('finance_defaultView', defaultView); }, [defaultView]);
 
   // Expense category exclusions
   // Combine stored categories + categories used in actual transactions

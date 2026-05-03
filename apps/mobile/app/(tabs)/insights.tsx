@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { Sparkles } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { getInsightScores } from '@myorbit/api';
@@ -35,7 +36,7 @@ export default function InsightsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }}>
-      <AppHeader title="Insights" showBack />
+      <AppHeader title="Insights" showBack icon={<Sparkles size={18} color="#8B5CF6" />} />
 
       <ScrollView
         style={{ flex: 1 }}

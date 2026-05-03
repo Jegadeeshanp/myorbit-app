@@ -1,29 +1,47 @@
 'use client';
 
 import Link from 'next/link';
-import OrbitIcon from '@/components/OrbitIcon';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard, Landmark, ArrowRightLeft,
-  TrendingUp, CreditCard, Wallet, Activity,
-  Settings, User,
+  TrendingUp, CreditCard, Wallet, BarChart3, Smartphone,
+  Activity, Settings2,
 } from 'lucide-react';
 
 const menu = [
-  { label: 'Overview', href: '/orbit/finance', Icon: LayoutDashboard },
-  { label: 'Accounts', href: '/orbit/finance/accounts', Icon: Landmark },
+  { label: 'Overview',     href: '/orbit/finance',              Icon: LayoutDashboard },
+  { label: 'Accounts',     href: '/orbit/finance/accounts',     Icon: Landmark },
   { label: 'Transactions', href: '/orbit/finance/transactions', Icon: ArrowRightLeft },
-  { label: 'Assets', href: '/orbit/finance/assets', Icon: TrendingUp },
-  { label: 'Liabilities', href: '/orbit/finance/liabilities', Icon: CreditCard },
-  { label: 'Budget', href: '/orbit/finance/budget', Icon: Wallet },
-  { label: 'Vitals', href: '/orbit/finance/vitals', Icon: Activity },
+  { label: 'Assets',       href: '/orbit/finance/assets',       Icon: TrendingUp },
+  { label: 'Liabilities',  href: '/orbit/finance/liabilities',  Icon: CreditCard },
+  { label: 'Budget',       href: '/orbit/finance/budget',       Icon: Wallet },
+  { label: 'Insights',     href: '/orbit/finance/insights',     Icon: BarChart3 },
+  { label: 'Vitals',       href: '/orbit/finance/vitals',       Icon: Activity },
+  { label: 'Settings',     href: '/orbit/finance/settings',     Icon: Settings2 },
 ];
 
 export default function FinanceSidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const installPromptRef = useRef<Event & { prompt: () => Promise<void> } | null>(null);
+  const [installVisible, setInstallVisible] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      installPromptRef.current = e as Event & { prompt: () => Promise<void> };
+      setInstallVisible(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPromptRef.current) return;
+    await installPromptRef.current.prompt();
+    installPromptRef.current = null;
+    setInstallVisible(false);
+  };
 
   const active = useMemo(() => {
     if (!pathname) return '';
@@ -33,22 +51,16 @@ export default function FinanceSidebar() {
     return '/orbit/finance';
   }, [pathname]);
 
-  const userName = session?.user?.name ?? 'User';
-  const initials = userName
-    .split(' ')
-    .map((word: string) => word[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
   return (
-    <aside className="sticky top-0 hidden h-screen w-56 flex-none flex-col overflow-y-auto border-r border-gray-100 bg-white px-3 py-5 md:flex">
-      <div className="mb-5 px-2">
+    <aside className="hidden md:flex sticky top-0 h-screen w-56 flex-none flex-col border-r border-white/40 bg-white/50 px-3 py-8 backdrop-blur overflow-y-auto">
+      <div className="mb-8 px-3">
         <div className="flex items-center gap-2.5">
-          <OrbitIcon src="/icons/dashboard-icon.png" className="h-8 w-8 rounded-lg object-cover shadow-sm" fallbackClassName="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100" fallbackContent={<Wallet className="h-4 w-4 text-emerald-600" />} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+            <Wallet className="h-4 w-4 text-emerald-600" />
+          </div>
           <div>
-            <div className="text-sm font-semibold text-gray-900">Finance</div>
-            <div className="text-[11px] text-gray-400">Personal dashboard</div>
+            <div className="text-base font-semibold text-gray-900">Finance</div>
+            <div className="mt-0.5 text-xs text-gray-500">Personal dashboard</div>
           </div>
         </div>
       </div>
@@ -57,40 +69,33 @@ export default function FinanceSidebar() {
         {menu.map(({ label, href, Icon }) => {
           const isActive = active === href;
           return (
-            <Link
-              key={href}
-              href={href}
+            <Link key={href} href={href}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                isActive ? 'bg-emerald-50 text-emerald-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <Icon className={`h-4 w-4 flex-none ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
+                isActive ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}>
+              <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-gray-500'}`} />
               {label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-4 border-t border-gray-100" />
-
-      <div className="mt-3 space-y-0.5">
-        <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5">
-          <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white select-none">
-            {initials || <User className="h-3.5 w-3.5" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900 leading-none">{userName}</p>
-            <p className="mt-0.5 truncate text-[11px] text-gray-400">Personal account</p>
-          </div>
-        </div>
-
-        <Link
-          href="/orbit/finance/settings"
-          className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+      {/* Install App — shown when PWA prompt is available */}
+      {installVisible && (
+        <button
+          type="button"
+          onClick={handleInstall}
+          className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 w-full"
         >
-          <Settings className="h-4 w-4 flex-none text-gray-400" />
-          Settings
-        </Link>
+          <Smartphone className="h-4 w-4 text-gray-500" />
+          Install App
+        </button>
+      )}
+
+      {/* Need help — pinned to bottom */}
+      <div className="mt-auto pt-4 rounded-2xl border border-dashed border-gray-200 bg-emerald-50 p-3 text-xs text-gray-600">
+        <p className="font-semibold text-gray-800">Need help?</p>
+        <p className="mt-0.5 text-gray-500">Explore the help center.</p>
       </div>
     </aside>
   );

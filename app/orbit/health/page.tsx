@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Plus, Dumbbell, Target, CheckCircle2, Circle,
   Flame, Clock, ChevronRight, Pencil, Trash2, Activity,
@@ -21,6 +22,7 @@ const MOOD_LABELS = ['', '😞', '😕', '😐', '😊', '😄'];
 
 export default function HealthPage() {
   const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask, undoHealthTask } = useHealth();
+  const router = useRouter();
 
   const [logOpen, setLogOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
@@ -78,19 +80,17 @@ export default function HealthPage() {
   }
 
   async function handleToggleHabit(habitId: string, completed: boolean) {
-    if (completed) return; // already done
     setTogglingHabit(habitId);
     try {
       await fetch(`/api/habits/${habitId}/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logDate: today, value: 1 }),
+        body: JSON.stringify({ date: today, value: 1 }),
       });
-      toast('Habit marked done!');
-      // Reload dashboard via reload
-      window.location.reload();
+      toast(completed ? 'Habit unmarked' : 'Habit marked done!');
+      router.refresh();
     } catch {
-      toast('Failed to log habit');
+      toast('Failed to update habit');
     } finally {
       setTogglingHabit(null);
     }
@@ -299,8 +299,8 @@ export default function HealthPage() {
             <div className="space-y-2">
               {(d?.healthHabits ?? []).map(habit => (
                 <div key={habit.id}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${habit.completedToday ? 'bg-emerald-50' : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'}`}
-                  onClick={() => !habit.completedToday && handleToggleHabit(habit.id, habit.completedToday)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition cursor-pointer bg-gray-50 hover:bg-gray-100"
+                  onClick={() => handleToggleHabit(habit.id, habit.completedToday)}
                 >
                   <div className="flex-none">
                     {habit.completedToday

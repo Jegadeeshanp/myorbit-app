@@ -484,6 +484,9 @@ export default function HabitsScreen() {
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
             <Menu size={20} color="#E5E7EB" />
           </TouchableOpacity>
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center' }}>
+            <Flame size={18} color="#F59E0B" />
+          </View>
           <Text style={{ fontSize: 22, fontWeight: '700', color: '#FFFFFF' }} numberOfLines={1}>
             {HEADER_TITLES[activeTab]}
           </Text>

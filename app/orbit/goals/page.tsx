@@ -52,9 +52,9 @@ const HABIT_TIME_OPTIONS = [
   { value: 'custom',  label: 'Custom',   time: ''       },
 ];
 const HABIT_WEEK_DAYS = [
-  { label: 'S', value: 0 }, { label: 'M', value: 1 }, { label: 'T', value: 2 },
-  { label: 'W', value: 3 }, { label: 'T', value: 4 }, { label: 'F', value: 5 },
-  { label: 'S', value: 6 },
+  { label: 'Su', value: 0 }, { label: 'M',  value: 1 }, { label: 'Tu', value: 2 },
+  { label: 'W',  value: 3 }, { label: 'Th', value: 4 }, { label: 'F',  value: 5 },
+  { label: 'Sa', value: 6 },
 ];
 
 // ── Task repeat / reminder options (same as tasks/page.tsx) ────────────────

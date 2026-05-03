@@ -45,6 +45,9 @@ export default function OrbitIcon({
   const [failed, setFailed] = useState(false);
 
   if (failed) {
+    if (fallbackContent) {
+      return <div className={fallbackClassName}>{fallbackContent}</div>;
+    }
     return <OrbitIconFallback className={fallbackClassName} />;
   }
 

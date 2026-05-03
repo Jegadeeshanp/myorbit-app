@@ -21,9 +21,12 @@ function getRecurrenceFromTags(tags: string[] | string, dueDate?: string | null)
     case 'weekends': return { isRecurring: true, recurrenceDays: [0,6] };
     case 'weekly': {
       const dateStr = dueDate ?? new Date().toISOString().split('T')[0];
-      const dow = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+      const dow = new Date(dateStr + 'T12:00:00').getDay();
       return { isRecurring: true, recurrenceDays: [dow] };
     }
+    case 'monthly':
+    case 'yearly':
+      return { isRecurring: true, recurrenceDays: null };
     default:
       return { isRecurring: false, recurrenceDays: null };
   }
