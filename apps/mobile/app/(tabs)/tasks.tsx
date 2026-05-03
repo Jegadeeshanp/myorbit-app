@@ -1529,7 +1529,7 @@ export default function TasksScreen() {
       {/* Search bar + Add button — hidden on calendar (navigate by date, not search) */}
       {!(activeTab === 'calendar' && !activeList) && <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: '#111111', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
-          <Search size={15} color={MUTED} />
+          <Search size={12} color={MUTED} />
           <TextInput
             style={{ flex: 1, fontSize: 14, color: '#FFFFFF' }}
             placeholder={activeTab === 'lists' && !activeList ? 'Search lists…' : 'Search tasks…'}
@@ -1575,7 +1575,7 @@ export default function TasksScreen() {
                     {collapsed[section.key] ? <ChevronRight size={14} color={section.color} /> : <ChevronDown size={14} color={section.color} />}
                   </TouchableOpacity>
                 )}
-                renderItem={({ item }) => <InstanceItem item={item} onComplete={completeMut.mutateAsync} onEdit={setEditTask} />}
+                renderItem={({ item }) => <InstanceItem item={item} onComplete={completeMut.mutateAsync} onEdit={setCalDetailTask} />}
                 ListEmptyComponent={
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <Text style={{ fontSize: 40, marginBottom: 12 }}>🎉</Text>
@@ -1592,7 +1592,7 @@ export default function TasksScreen() {
                 data={inboxTasks}
                 keyExtractor={t => t.id}
                 refreshControl={<RefreshControl refreshing={false} onRefresh={refetchAll} />}
-                renderItem={({ item }) => <TaskRow task={item} onDelete={deleteMut.mutate} onEdit={setEditTask} />}
+                renderItem={({ item }) => <TaskRow task={item} onDelete={deleteMut.mutate} onEdit={setCalDetailTask} />}
                 ListEmptyComponent={
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <Text style={{ fontSize: 40, marginBottom: 12 }}>📥</Text>
@@ -1614,7 +1614,7 @@ export default function TasksScreen() {
                 data={filteredListTasks}
                 keyExtractor={t => t.id}
                 refreshControl={<RefreshControl refreshing={loadingList} onRefresh={refetchList} />}
-                renderItem={({ item }) => <TaskRow task={item} onDelete={deleteMut.mutate} onEdit={setEditTask} />}
+                renderItem={({ item }) => <TaskRow task={item} onDelete={deleteMut.mutate} onEdit={setCalDetailTask} />}
                 ListHeaderComponent={
                   <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: (activeList.color ?? ACCENT) + '15', borderBottomWidth: 1, borderBottomColor: BORDER }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: activeList.color ?? ACCENT }}>
@@ -1653,7 +1653,7 @@ export default function TasksScreen() {
                         {date === today ? '📌 Today' : formatDate(date)}
                       </Text>
                     </View>
-                    {tasks.map(t => <TaskRow key={t.id} task={t} onDelete={deleteMut.mutate} onEdit={setEditTask} />)}
+                    {tasks.map(t => <TaskRow key={t.id} task={t} onDelete={deleteMut.mutate} onEdit={setCalDetailTask} />)}
                   </View>
                 ))}
               </ScrollView>
