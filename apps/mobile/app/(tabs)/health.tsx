@@ -311,7 +311,7 @@ export default function HealthScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#111111' }}>
-      <AppHeader title="Health" showBack icon={<Heart size={18} color="#F43F5E" />} />
+      <AppHeader title="Health" showBack />
 
       <View style={{ flex: 1 }}>
       {/* ── DASHBOARD ─────────────────────────────────────────────────────── */}

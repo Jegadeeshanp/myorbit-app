@@ -1,5 +1,4 @@
 import { View, Text, TouchableOpacity } from 'react-native';
-import type { ReactNode } from 'react';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '@/lib/themeStore';
@@ -9,8 +8,6 @@ interface AppHeaderProps {
   title: string;
   showBack?: boolean;
   onBack?: () => void;
-  /** Module-specific icon shown in the top-left corner next to the title */
-  icon?: ReactNode;
 }
 
 // App_icon2: green circle M logo — used in all page headers
@@ -42,7 +39,7 @@ function MyOrbitLogo() {
   );
 }
 
-export default function AppHeader({ title, showBack = false, onBack, icon }: AppHeaderProps) {
+export default function AppHeader({ title, showBack = false, onBack }: AppHeaderProps) {
   const T = useTheme();
   const handleBack = onBack ?? (() => router.back());
   const goHome = () => router.replace('/(tabs)/');
@@ -54,11 +51,6 @@ export default function AppHeader({ title, showBack = false, onBack, icon }: App
           <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 2 }}>
             <ChevronLeft size={22} color={T.text} />
           </TouchableOpacity>
-        )}
-        {icon && (
-          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' }}>
-            {icon}
-          </View>
         )}
         <Text style={{ fontSize: 21, fontWeight: '700', color: T.text }} numberOfLines={1}>{title}</Text>
       </View>

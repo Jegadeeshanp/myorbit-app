@@ -42,7 +42,7 @@ type SubTab = 'overview' | 'accounts' | 'transactions' | 'assets' | 'liabilities
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const ACCENT = '#059669';
+const ACCENT = '#10B981';
 const SCREEN_BG = '#111111';
 const SURFACE = '#171A20';
 const SURFACE_ALT = '#1D222B';
@@ -2331,7 +2331,7 @@ export default function FinanceScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: th.bg }}>
       {/* Header — shows the current sub-tab name; tapping MyOrbit goes home */}
-      <AppHeader title={PAGE_TITLES[activeTab]} showBack={false} icon={<Wallet size={18} color={ACCENT} />} />
+      <AppHeader title={PAGE_TITLES[activeTab]} showBack={false} />
 
       {/* Content */}
       <View style={{ flex: 1, backgroundColor: th.bg }}>
