@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
+import { useNotificationStore } from '@/lib/notificationStore';
+import { scheduleTaskNotification, cancelTaskNotification, snoozeTaskNotification, minutesUntilTomorrowMorning } from '@/lib/notifications';
 import Svg, { Rect, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 import {
   View, Text, SectionList, FlatList, TouchableOpacity,
@@ -1241,9 +1243,11 @@ function getRepeatDisplay(repeat: string): string {
   }
 }
 
-function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete }: {
+function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, onComplete, onSnooze }: {
   visible: boolean; task: Task | null; lists: TaskList[];
   onClose: () => void; onFullEdit: (t: Task) => void; onDelete: (id: string) => void;
+  onComplete?: (taskId: string) => void;
+  onSnooze?: (taskId: string, title: string, minutes: number) => void;
 }) {
   if (!task) return null;
 
@@ -1277,6 +1281,16 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete }
   const handleEdit = () => {
     onClose();
     setTimeout(() => onFullEdit(task), 280);
+  };
+
+  const handleSnooze = () => {
+    if (!onSnooze) return;
+    Alert.alert('Snooze until…', undefined, [
+      { text: '1 hour',           onPress: () => onSnooze(task.id, task.title, 60) },
+      { text: 'Later today',      onPress: () => onSnooze(task.id, task.title, 180) },
+      { text: 'Tomorrow morning', onPress: () => onSnooze(task.id, task.title, minutesUntilTomorrowMorning()) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   return (
@@ -1347,20 +1361,40 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete }
         )}
 
         {/* Bottom toolbar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
-          <TouchableOpacity style={{ padding: 8 }}>
-            <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : '#3A3A3A'} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity onPress={handleEdit}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, backgroundColor: SURFACE2, marginRight: 10 }}>
-            <Pencil size={14} color="#E5E7EB" />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: '#E5E7EB' }}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete}
-            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
-            <Trash2 size={17} color="#C06060" />
-          </TouchableOpacity>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
+          {(onComplete || onSnooze) && (
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+              {onComplete && (
+                <TouchableOpacity onPress={() => onComplete(task.id)}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55' }}>
+                  <Check size={16} color={ACCENT} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>Done</Text>
+                </TouchableOpacity>
+              )}
+              {onSnooze && (
+                <TouchableOpacity onPress={handleSnooze}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER }}>
+                  <Bell size={16} color={MUTED} />
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: '#E5E7EB' }}>Snooze</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={{ padding: 8 }}>
+              <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : '#3A3A3A'} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity onPress={handleEdit}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, backgroundColor: SURFACE2, marginRight: 10 }}>
+              <Pencil size={14} color="#E5E7EB" />
+              <Text style={{ fontSize: 13, fontWeight: '500', color: '#E5E7EB' }}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDelete}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={17} color="#C06060" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -1383,7 +1417,10 @@ export default function TasksScreen() {
   const [sortBy, setSortBy]                 = useState<SortBy>('custom');
   const [calendarDate, setCalendarDate]     = useState(todayStr());
   const [calDetailTask, setCalDetailTask]   = useState<Task | null>(null);
+  const [isFromNotification, setIsFromNotification] = useState(false);
   const qc = useQueryClient();
+
+  const { pendingTaskId, clearPendingTaskId } = useNotificationStore();
 
   // Close all modals when app goes to background (prevents frozen UI on Android)
   useEffect(() => {
@@ -1396,6 +1433,17 @@ export default function TasksScreen() {
     });
     return () => sub.remove();
   }, []);
+
+  // Show task detail card when tapped from a notification
+  useEffect(() => {
+    if (!pendingTaskId || allTasks.length === 0) return;
+    const task = allTasks.find(t => t.id === pendingTaskId);
+    if (task) {
+      setCalDetailTask(task);
+      setIsFromNotification(true);
+      clearPendingTaskId();
+    }
+  }, [pendingTaskId, allTasks]);
 
   // ── Queries ────────────────────────────────────────────────────────────────────
   const { data: todayData, isLoading: loadingToday, refetch: refetchToday } =
@@ -1471,19 +1519,30 @@ export default function TasksScreen() {
   };
 
   const handleSaveTask = (data: TaskSaveData) => {
-    createMut.mutate({ title: data.title, priority: data.priority as CreateTaskInput['priority'], dueDate: data.dueDate, dueTime: data.dueTime, listId: data.listId, tags: data.tags });
+    createMut.mutate(
+      { title: data.title, priority: data.priority as CreateTaskInput['priority'], dueDate: data.dueDate, dueTime: data.dueTime, listId: data.listId, tags: data.tags },
+      { onSuccess: (task) => scheduleTaskNotification(task).catch(() => {}) },
+    );
   };
 
   const handleUpdateTask = (data: TaskSaveData) => {
     if (!editTask) return;
-    updateMut.mutate({ id: editTask.id, data: { title: data.title, notes: data.notes, priority: data.priority as Task['priority'], dueDate: data.dueDate, dueTime: data.dueTime, listId: data.listId ?? null, tags: JSON.stringify(data.tags) } });
+    cancelTaskNotification(editTask.id).catch(() => {});
+    updateMut.mutate(
+      { id: editTask.id, data: { title: data.title, notes: data.notes, priority: data.priority as Task['priority'], dueDate: data.dueDate, dueTime: data.dueTime, listId: data.listId ?? null, tags: JSON.stringify(data.tags) } },
+      { onSuccess: (task) => scheduleTaskNotification(task).catch(() => {}) },
+    );
   };
 
   const handleDeleteTask = () => {
     if (!editTask) return;
     Alert.alert('Delete Task', `Delete "${editTask.title}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { deleteMut.mutate(editTask.id); setEditTask(null); } },
+      { text: 'Delete', style: 'destructive', onPress: () => {
+        cancelTaskNotification(editTask.id).catch(() => {});
+        deleteMut.mutate(editTask.id);
+        setEditTask(null);
+      }},
     ]);
   };
 
@@ -1703,9 +1762,20 @@ export default function TasksScreen() {
         visible={!!calDetailTask}
         task={calDetailTask}
         lists={lists}
-        onClose={() => setCalDetailTask(null)}
-        onFullEdit={t => { setCalDetailTask(null); setTimeout(() => setEditTask(t), 280); }}
-        onDelete={id => deleteMut.mutate(id)}
+        onClose={() => { setCalDetailTask(null); setIsFromNotification(false); }}
+        onFullEdit={t => { setCalDetailTask(null); setIsFromNotification(false); setTimeout(() => setEditTask(t), 280); }}
+        onDelete={id => { cancelTaskNotification(id).catch(() => {}); deleteMut.mutate(id); }}
+        onComplete={isFromNotification ? (taskId) => {
+          cancelTaskNotification(taskId).catch(() => {});
+          updateMut.mutate({ id: taskId, data: { status: 'completed' } });
+          setCalDetailTask(null);
+          setIsFromNotification(false);
+        } : undefined}
+        onSnooze={isFromNotification ? (taskId, title, minutes) => {
+          snoozeTaskNotification(taskId, title, minutes).catch(() => {});
+          setCalDetailTask(null);
+          setIsFromNotification(false);
+        } : undefined}
       />
     </SafeAreaView>
   );
