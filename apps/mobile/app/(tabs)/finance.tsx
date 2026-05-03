@@ -2195,6 +2195,7 @@ export default function FinanceScreen() {
   const [editLiability,  setEditLiability]  = useState<Liability | null>(null);
   const [payLiability,   setPayLiability]   = useState<Liability | null>(null);
   const [editAccount,    setEditAccount]    = useState<Account | null>(null);
+  const [accountMenu,    setAccountMenu]    = useState<Account | null>(null);
   const [txMenu, setTxMenu] = useState<{ tx: Transaction; y: number } | null>(null);
 
   // Assets category filter + search
@@ -3215,11 +3216,7 @@ export default function FinanceScreen() {
                         <AccountRow
                           key={a.id}
                           account={a}
-                          onOptions={() => Alert.alert(a.name, a.type, [
-                            { text: 'Edit', onPress: () => setEditAccount(a) },
-                            { text: 'Delete', style: 'destructive', onPress: () => Alert.alert('Delete Account', `Delete "${a.name}"? All associated data will be removed.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => deleteAccountMut.mutate(a.id) }]) },
-                            { text: 'Cancel', style: 'cancel' },
-                          ])}
+                          onOptions={() => setAccountMenu(a)}
                         />
                       ))}
                     </View>
@@ -3751,6 +3748,51 @@ export default function FinanceScreen() {
         onClose={() => setPayLiability(null)} onPay={handleRecordPayment} />
       <EditAccountModal visible={!!editAccount} account={editAccount} onClose={() => setEditAccount(null)}
         onSave={(id, data) => updateAccountMut.mutate({ id, data })} />
+
+      {/* Account options bottom-sheet */}
+      {accountMenu && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setAccountMenu(null)}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setAccountMenu(null)} />
+          <View style={{ backgroundColor: MODAL, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 36 }}>
+            {/* handle */}
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: BORDER, alignSelf: 'center', marginTop: 12, marginBottom: 16 }} />
+            {/* account header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: (ACCOUNT_COLORS[accountMenu.type] ?? '#64748B') + '22', alignItems: 'center', justifyContent: 'center' }}>
+                {(() => { const I = ACCOUNT_ICONS[accountMenu.type] ?? Wallet; return <I size={18} color={ACCOUNT_COLORS[accountMenu.type] ?? '#64748B'} />; })()}
+              </View>
+              <View>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: TXT }}>{accountMenu.name}</Text>
+                <Text style={{ fontSize: 12, color: MUTED }}>{accountMenu.type}</Text>
+              </View>
+            </View>
+            {/* Edit */}
+            <TouchableOpacity
+              onPress={() => { setEditAccount(accountMenu); setAccountMenu(null); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: BORDER }}
+            >
+              <Pencil size={18} color={TXT2} />
+              <Text style={{ fontSize: 15, fontWeight: '500', color: TXT }}>Edit</Text>
+            </TouchableOpacity>
+            {/* Delete */}
+            <TouchableOpacity
+              onPress={() => {
+                setAccountMenu(null);
+                setTimeout(() => {
+                  Alert.alert('Delete Account', `Delete "${accountMenu.name}"? All associated data will be removed.`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => deleteAccountMut.mutate(accountMenu.id) },
+                  ]);
+                }, 300);
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingVertical: 18 }}
+            >
+              <Trash2 size={18} color="#EF4444" />
+              <Text style={{ fontSize: 15, fontWeight: '500', color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
