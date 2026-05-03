@@ -298,8 +298,10 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     },
     updateAsset: async (a) => {
       const payload = serializeAsset(a as unknown as Record<string, unknown>);
-      const updated = await api<Asset>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      const updated = await api<Asset & { sipTransactions?: Transaction[]; sipUpdatedAccount?: Account | null }>(`/api/assets/${a.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       dispatch({ type: 'updateAsset', payload: updated });
+      if (updated.sipTransactions?.length) updated.sipTransactions.forEach(t => dispatch({ type: 'addTransaction', payload: t }));
+      if (updated.sipUpdatedAccount) dispatch({ type: 'updateAccount', payload: updated.sipUpdatedAccount });
     },
     deleteAsset: async (id) => {
       await api(`/api/assets/${id}`, { method: 'DELETE' });
