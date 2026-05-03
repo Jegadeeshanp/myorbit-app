@@ -7,6 +7,12 @@ import type {
 export const getAccounts = (): Promise<Account[]> =>
   apiRequest<Account[]>('/api/accounts');
 
+export const updateAccount = (
+  id: string,
+  data: { balance?: number; name?: string; creditLimit?: number }
+): Promise<Account> =>
+  apiRequest<Account>(`/api/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
 export const getTransactions = (params?: {
   accountId?: string;
   month?: string;
@@ -27,6 +33,12 @@ export const createTransaction = (
     body: JSON.stringify(data),
   });
 
+export const updateTransaction = (
+  id: string,
+  data: Partial<CreateTransactionInput>
+): Promise<Transaction> =>
+  apiRequest<Transaction>(`/api/transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
 export const deleteTransaction = (id: string): Promise<void> =>
   apiRequest<void>(`/api/transactions/${id}`, { method: 'DELETE' });
 
@@ -37,7 +49,7 @@ export const getAssets = (): Promise<Asset[]> =>
 
 export const createAsset = (
   data: CreateAssetInput
-): Promise<{ asset: Asset; fundingTransaction?: unknown; updatedAccount?: unknown }> =>
+): Promise<{ asset: Asset; fundingTransaction?: Transaction | null; updatedAccount?: Account | null }> =>
   apiRequest('/api/assets', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateAsset = (id: string, data: Partial<CreateAssetInput>): Promise<Asset> =>
@@ -62,3 +74,6 @@ export const updateLiability = (
 
 export const deleteLiability = (id: string): Promise<void> =>
   apiRequest<void>(`/api/liabilities/${id}`, { method: 'DELETE' });
+
+export const deleteAccount = (id: string): Promise<void> =>
+  apiRequest<void>(`/api/accounts/${id}`, { method: 'DELETE' });
