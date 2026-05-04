@@ -8,7 +8,7 @@ export default function FinanceLayout({ children }: { children: ReactNode }) {
   return (
     <FinanceProvider>
       <div className="min-h-screen bg-[#F7F7F5] text-gray-900">
-        <div className="mx-auto flex min-h-screen max-w-7xl">
+        <div className="flex min-h-screen w-full">
           {/* Sidebar — desktop only */}
           <FinanceSidebar />
 

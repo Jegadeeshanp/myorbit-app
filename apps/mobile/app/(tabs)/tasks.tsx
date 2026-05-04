@@ -62,7 +62,6 @@ const SECTION_CONFIG = [
   { key: 'overdue',   label: 'Overdue',   color: '#C06060', bg: '#C0606012' },
   { key: 'today',     label: 'Today',     color: '#10B981', bg: '#10B98112' },
   { key: 'completed', label: 'Completed', color: '#6B7280', bg: 'transparent' },
-  { key: 'missed',    label: 'Missed',    color: '#A07838', bg: '#A0783812' },
 ];
 
 const LIST_EMOJIS = ['📋', '📝', '✅', '📌', '💼', '🏠', '🛒', '🎯', '📚', '💡', '💻', '🧾'];
@@ -232,7 +231,7 @@ function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComp
             : <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: item.task.priority !== 'none' ? PRIORITY_COLOR[item.task.priority] : '#4B5563' }} />}
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '500', color: done ? MUTED : TXT2, textDecorationLine: done ? 'line-through' : 'none' }}>{item.task.title}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '500', color: done ? MUTED : TXT2, textDecorationLine: done ? 'line-through' : 'none' }}>{item.task.title}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 10, flexWrap: 'wrap' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
               <CalendarDays size={11} color={isOverdue ? '#C06060' : '#6B7280'} />
@@ -279,7 +278,7 @@ function TaskRow({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string
           <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: task.priority !== 'none' ? PRIORITY_COLOR[task.priority] : '#4B5563' }} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '500', color: TXT2 }}>{task.title}</Text>
+          <Text style={{ fontSize: 16, fontWeight: '500', color: TXT2 }}>{task.title}</Text>
           {(dateLabel || task.dueTime || repeat !== 'none' || task.priority !== 'none' || task.list) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 10, flexWrap: 'wrap' }}>
               {dateLabel && (
@@ -1267,11 +1266,12 @@ function getRepeatDisplay(repeat: string): string {
   }
 }
 
-function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, onComplete, onSnooze }: {
+function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, onComplete, onSnooze, isFromNotification }: {
   visible: boolean; task: Task | null; lists: TaskList[];
   onClose: () => void; onFullEdit: (t: Task) => void; onDelete: (id: string) => void;
   onComplete?: (taskId: string) => void;
   onSnooze?: (taskId: string, title: string, minutes: number) => void;
+  isFromNotification?: boolean;
 }) {
   const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   if (!task) return null;
@@ -1321,7 +1321,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={onClose} />
-      <View style={{ backgroundColor: '#1C1C1E', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+      <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
         {/* Handle */}
         <View style={{ width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
 
@@ -1331,13 +1331,13 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
             <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: (list?.color ?? ACCENT) + '25', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 13 }}>{list?.emoji ?? '📥'}</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: '#B0B0B8' }} numberOfLines={1}>{list?.name ?? 'Inbox'}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }} numberOfLines={1}>{list?.name ?? 'Inbox'}</Text>
             <ChevronDown size={13} color={MUTED} />
           </View>
           <TouchableOpacity onPress={handleEdit} style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}>
             <Flag size={17} color={priColor} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#2C2C2E', alignItems: 'center', justifyContent: 'center' }}>
+          <TouchableOpacity onPress={onClose} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
             <X size={15} color={MUTED} />
           </TouchableOpacity>
         </View>
@@ -1388,7 +1388,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
         {/* Bottom toolbar */}
         <View style={{ paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
           {(onComplete || onSnooze) && (
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: isFromNotification ? 0 : 10 }}>
               {onComplete && (
                 <TouchableOpacity onPress={() => onComplete(task.id)}
                   style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55' }}>
@@ -1405,21 +1405,23 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
               )}
             </View>
           )}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={{ padding: 8 }}>
-              <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : BORDER} />
-            </TouchableOpacity>
-            <View style={{ flex: 1 }} />
-            <TouchableOpacity onPress={handleEdit}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, backgroundColor: SURFACE2, marginRight: 10 }}>
-              <Pencil size={14} color={TXT2} />
-              <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleDelete}
-              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
-              <Trash2 size={17} color="#C06060" />
-            </TouchableOpacity>
-          </View>
+          {!isFromNotification && (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity style={{ padding: 8 }}>
+                <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : BORDER} />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity onPress={handleEdit}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, backgroundColor: SURFACE2, marginRight: 10 }}>
+                <Pencil size={14} color={TXT2} />
+                <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete}
+                style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={17} color="#C06060" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -1511,7 +1513,13 @@ export default function TasksScreen() {
   }, [sortBy]);
 
   const todaySections = SECTION_CONFIG.map(({ key, label, color, bg }) => {
-    const raw: TaskInstance[] = (todayData as any)?.[key] ?? [];
+    let raw: TaskInstance[];
+    if (key === 'overdue') {
+      // Merge missed (past uncommitted tasks) into overdue
+      raw = [...((todayData as any)?.overdue ?? []), ...((todayData as any)?.missed ?? [])];
+    } else {
+      raw = (todayData as any)?.[key] ?? [];
+    }
     const filtered = searchQuery ? raw.filter(i => i.task.title.toLowerCase().includes(searchQuery.toLowerCase())) : raw;
     // Auto-expand sections when searching so results are never hidden
     return { key, label, color, bg, data: (collapsed[key] && !searchQuery) ? [] : filtered, count: raw.length };
@@ -1788,6 +1796,7 @@ export default function TasksScreen() {
         visible={!!calDetailTask}
         task={calDetailTask}
         lists={lists}
+        isFromNotification={isFromNotification}
         onClose={() => { setCalDetailTask(null); setIsFromNotification(false); }}
         onFullEdit={t => { setCalDetailTask(null); setIsFromNotification(false); setTimeout(() => setEditTask(t), 280); }}
         onDelete={id => { cancelTaskNotification(id).catch(() => {}); deleteMut.mutate(id); }}

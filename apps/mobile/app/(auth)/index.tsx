@@ -117,11 +117,11 @@ export default function LandingScreen() {
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>MyOrbit</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register')}
+            <TouchableOpacity onPress={() => router.push('/(auth)/login')}
               style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Sign In</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}
               style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: E }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: 'white' }}>Get Started</Text>
             </TouchableOpacity>

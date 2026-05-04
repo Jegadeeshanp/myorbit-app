@@ -186,10 +186,6 @@ export default function HomeScreen() {
             gap: 20,
             marginTop: 10,
             paddingVertical: 14,
-            backgroundColor: T.cardBg,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: T.border,
           }}
         >
           <TouchableOpacity

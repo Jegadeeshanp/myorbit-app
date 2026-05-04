@@ -67,19 +67,7 @@ export default function AssetsPage() {
 
   return (
     <div className="space-y-5">
-      <FinanceTopBar action={
-        <div className="flex gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
-              className="w-36 rounded-full border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm focus:border-emerald-400 focus:outline-none sm:w-44" />
-          </div>
-          <button onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-            <PlusCircle className="h-4 w-4" /> Add Asset
-          </button>
-        </div>
-      } />
+      <FinanceTopBar />
 
       {/* Summary metrics */}
       <div className="grid grid-cols-3 gap-3">
@@ -101,6 +89,19 @@ export default function AssetsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Search + Add controls */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 sm:flex-none">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
+            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm focus:border-emerald-400 focus:outline-none sm:w-52" />
+        </div>
+        <button onClick={() => setModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 whitespace-nowrap">
+          <PlusCircle className="h-4 w-4" /> Add Asset
+        </button>
       </div>
 
       {/* Dynamic category tabs */}

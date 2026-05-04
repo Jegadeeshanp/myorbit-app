@@ -133,12 +133,7 @@ export default function LiabilitiesPage() {
 
   return (
     <div className="space-y-6">
-      <FinanceTopBar action={
-        <button type="button" onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
-          <PlusCircle className="h-4 w-4" /> Add liability
-        </button>
-      } />
+      <FinanceTopBar />
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -174,6 +169,14 @@ export default function LiabilitiesPage() {
             <p className="text-xs text-gray-400">{100 - repaidPct}% remaining</p>
           </div>
         </div>
+      </div>
+
+      {/* ── Add button ── */}
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+          <PlusCircle className="h-4 w-4" /> Add liability
+        </button>
       </div>
 
       {/* ── Overall repayment progress ── */}

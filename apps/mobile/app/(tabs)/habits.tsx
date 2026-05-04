@@ -81,10 +81,14 @@ function streak(habit: Habit): number {
 
 function MyOrbitLogo() {
   return (
-    <Svg width={28} height={28} viewBox="0 0 32 32">
-      <Rect width={32} height={32} rx={8} fill="#7C3AED" />
-      <SvgCircle cx={16} cy={16} r={7} stroke="white" strokeWidth={2.5} fill="none" />
-      <SvgCircle cx={16} cy={9} r={2.5} fill="white" />
+    <Svg width={28} height={28} viewBox="0 0 40 40">
+      <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#10B981" />
+      <SvgCircle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
+      <SvgCircle cx="20" cy="7" r="2.5" fill="white" />
+      <SvgCircle cx="33" cy="20" r="2.5" fill="white" />
+      <SvgCircle cx="20" cy="33" r="2.5" fill="white" />
+      <SvgCircle cx="7" cy="20" r="2.5" fill="white" />
+      <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
     </Svg>
   );
 }

@@ -202,8 +202,8 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
               </View>
             )}
           </View>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT }}>{goal.title}</Text>
-          {goal.why && <Text style={{ fontSize: 12, color: MUTED, marginTop: 3, fontStyle: 'italic' }} numberOfLines={2}>"{goal.why}"</Text>}
+          <Text style={{ fontSize: 17, fontWeight: '600', color: TXT }}>{goal.title}</Text>
+          {goal.why && <Text style={{ fontSize: 13, color: MUTED, marginTop: 3, fontStyle: 'italic' }} numberOfLines={2}>"{goal.why}"</Text>}
         </View>
 
         {/* Action buttons */}
