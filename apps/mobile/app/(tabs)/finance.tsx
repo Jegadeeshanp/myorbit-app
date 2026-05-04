@@ -12,11 +12,13 @@ import {
   getTransactions, createTransaction, updateTransaction, deleteTransaction,
   getAssets, createAsset, updateAsset, deleteAsset,
   getLiabilities, createLiability, updateLiability, deleteLiability,
+  getBudgets, createBudget, updateBudget, deleteBudget,
   apiRequest,
 } from '@myorbit/api';
 import type {
   Account, Transaction, CreateTransactionInput,
   Asset, Liability, CreateAssetInput, CreateLiabilityInput,
+  Budget, CreateBudgetInput,
 } from '@myorbit/api';
 import {
   TrendingUp, TrendingDown, ArrowLeftRight, Plus, Wallet,
@@ -162,15 +164,6 @@ const ASSET_CATEGORY_COLORS: Record<string, string> = {
   'Endowment Plans': '#64748B', 'Other': '#9CA3AF',
 };
 
-const BUDGET_BLUEPRINT = [
-  { key: 'housing', label: 'Housing', categories: ['Housing', 'Bills & Utilities'], limit: 50000, color: '#10B981' },
-  { key: 'food', label: 'Food + Outside', categories: ['Food & Dining'], limit: 10000, color: '#F59E0B' },
-  { key: 'groceries', label: 'Groceries', categories: ['Shopping'], limit: 20000, color: '#14B8A6' },
-  { key: 'transport', label: 'Transportation', categories: ['Transport', 'Travel'], limit: 15000, color: '#3B82F6' },
-  { key: 'medical', label: 'Medical', categories: ['Healthcare'], limit: 3000, color: '#EF4444' },
-  { key: 'lifestyle', label: 'Life Style', categories: ['Entertainment', 'Personal Care'], limit: 15000, color: '#8B5CF6' },
-  { key: 'learning', label: 'Learning', categories: ['Education'], limit: 6000, color: '#0EA5E9' },
-];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -1301,6 +1294,66 @@ function EditAccountModal({ visible, account, onClose, onSave }: {
   );
 }
 
+// ── Add / Edit Budget Modal ────────────────────────────────────────────────────
+
+function BudgetModal({ visible, initial, onClose, onSave }: {
+  visible: boolean;
+  initial?: Budget | null;
+  onClose: () => void;
+  onSave: (data: CreateBudgetInput) => void;
+}) {
+  const T = useTheme();
+  const C = { TXT: T.text, SURFACE: T.cardBg, BORDER: T.border, MUTED: T.subText, INPUT: T.inputBg, MODAL: T.modalBg, SUBTLE: T.mutedText };
+  const [name, setName]     = useState('');
+  const [amount, setAmount] = useState('');
+  const [cats, setCats]     = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    setName(initial?.name ?? '');
+    setAmount(initial ? String(initial.budget) : '');
+    setCats(initial?.category ?? '');
+  }, [visible, initial?.id]);
+
+  const canSave = !!name.trim() && Number(amount) > 0;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
+        <View style={{ backgroundColor: C.MODAL, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.BORDER, alignSelf: 'center', marginBottom: 20 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: C.TXT, marginBottom: 20 }}>
+            {initial ? 'Edit Budget' : 'Add Budget'}
+          </Text>
+          <Text style={{ fontSize: 13, color: C.MUTED, marginBottom: 6 }}>Budget name</Text>
+          <TextInput
+            value={name} onChangeText={setName} placeholder="e.g. Groceries"
+            placeholderTextColor={C.SUBTLE}
+            style={{ borderWidth: 1, borderColor: C.BORDER, borderRadius: 12, backgroundColor: C.INPUT, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.TXT, marginBottom: 14 }}
+          />
+          <Text style={{ fontSize: 13, color: C.MUTED, marginBottom: 6 }}>Monthly limit (₹)</Text>
+          <TextInput
+            value={amount} onChangeText={setAmount} placeholder="e.g. 10000"
+            placeholderTextColor={C.SUBTLE} keyboardType="decimal-pad"
+            style={{ borderWidth: 1, borderColor: C.BORDER, borderRadius: 12, backgroundColor: C.INPUT, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.TXT, marginBottom: 14 }}
+          />
+          <Text style={{ fontSize: 13, color: C.MUTED, marginBottom: 6 }}>Categories (comma-separated, optional)</Text>
+          <TextInput
+            value={cats} onChangeText={setCats} placeholder="e.g. Groceries, Food"
+            placeholderTextColor={C.SUBTLE}
+            style={{ borderWidth: 1, borderColor: C.BORDER, borderRadius: 12, backgroundColor: C.INPUT, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.TXT, marginBottom: 20 }}
+          />
+          <TouchableOpacity onPress={() => { if (canSave) { onSave({ name: name.trim(), budget: Number(amount), category: cats.trim() }); onClose(); } }}
+            style={{ backgroundColor: canSave ? '#10B981' : '#6B7280', borderRadius: 14, paddingVertical: 14, alignItems: 'center' }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: 'white' }}>{initial ? 'Update' : 'Save'}</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ── Add / Edit Asset Modal ─────────────────────────────────────────────────────
 
 function AssetModal({ visible, initial, accounts, onClose, onSave }: {
@@ -2220,6 +2273,8 @@ export default function FinanceScreen() {
   const [payLiability,   setPayLiability]   = useState<Liability | null>(null);
   const [editAccount,    setEditAccount]    = useState<Account | null>(null);
   const [accountMenu,    setAccountMenu]    = useState<Account | null>(null);
+  const [showAddBudget,  setShowAddBudget]  = useState(false);
+  const [editBudget,     setEditBudget]     = useState<Budget | null>(null);
   const [txMenu, setTxMenu] = useState<{ tx: Transaction; y: number } | null>(null);
 
   // Assets category filter + search
@@ -2241,6 +2296,7 @@ export default function FinanceScreen() {
   const { data: transactions = [], isLoading: txLoading, refetch: refetchTx } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() });
   const { data: assets       = [], isLoading: assetsLoading, refetch: refetchAssets } = useQuery({ queryKey: ['assets'],       queryFn: getAssets });
   const { data: liabilities  = [], isLoading: liabLoading,   refetch: refetchLiab } = useQuery({ queryKey: ['liabilities'],  queryFn: getLiabilities });
+  const { data: budgets      = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets });
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['accounts'] });
@@ -2262,6 +2318,9 @@ export default function FinanceScreen() {
   const deleteLiabMut      = useMutation({ mutationFn: deleteLiability,    onSuccess: () => qc.invalidateQueries({ queryKey: ['liabilities'] }) });
   const updateAccountMut   = useMutation({ mutationFn: ({ id, data }: { id: string; data: { balance?: number; name?: string; creditLimit?: number } }) => updateAccount(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }) });
   const deleteAccountMut   = useMutation({ mutationFn: deleteAccount,      onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }) });
+  const createBudgetMut = useMutation({ mutationFn: createBudget, onSuccess: () => qc.invalidateQueries({ queryKey: ['budgets'] }) });
+  const updateBudgetMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<CreateBudgetInput> }) => updateBudget(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['budgets'] }) });
+  const deleteBudgetMut = useMutation({ mutationFn: deleteBudget, onSuccess: () => qc.invalidateQueries({ queryKey: ['budgets'] }) });
 
   // ── Vitals profile (persisted in /api/settings) ───────────────────────────
   const [vitalsProfile, setVitalsProfile] = useState({ age: 0, dependents: 0, termCover: 0, healthCover: 0 });
@@ -3253,33 +3312,29 @@ export default function FinanceScreen() {
           {/* ── BUDGET ────────────────────────────────────────────────────── */}
           {activeTab === 'budget' && (() => {
             const now3 = new Date();
-            const allBudgetMonthTx = transactions.filter((t) => {
+            const budgetInflow = transactions.filter(t => {
               const d = new Date(t.date);
-              return d.getMonth() === now3.getMonth() && d.getFullYear() === now3.getFullYear();
-            });
-            const budgetExpTx  = allBudgetMonthTx.filter(t => t.type === 'expense');
-            const budgetInflow = allBudgetMonthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+              return t.type === 'income' && d.getMonth() === now3.getMonth() && d.getFullYear() === now3.getFullYear();
+            }).reduce((s, t) => s + t.amount, 0);
 
-            const spentByCategory: Record<string, number> = {};
-            budgetExpTx.forEach((t) => {
-              spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + Math.abs(t.amount);
-            });
+            const BUDGET_COLORS = ['#10B981','#F59E0B','#14B8A6','#3B82F6','#EF4444','#8B5CF6','#0EA5E9','#EC4899','#F97316','#6366F1'];
 
-            const budgetCards = BUDGET_BLUEPRINT.map((item) => {
-              const spent = item.categories.reduce((sum, category) => sum + (spentByCategory[category] ?? 0), 0);
-              const progress = item.limit > 0 ? spent / item.limit : 0;
-              const remaining = item.limit - spent;
-              return { ...item, spent, progress, remaining, statusColor: budgetStatusColor(progress) };
+            const budgetCards = budgets.map((b, i) => {
+              const progress = b.budget > 0 ? b.spent / b.budget : 0;
+              const remaining = b.budget - b.spent;
+              const color = BUDGET_COLORS[i % BUDGET_COLORS.length];
+              const cats = b.category ? b.category.split(',').map(s => s.trim()).filter(Boolean) : [];
+              return { ...b, progress, remaining, color, cats, statusColor: budgetStatusColor(progress) };
             });
 
-            const totalBudget = budgetCards.reduce((sum, item) => sum + item.limit, 0);
-            const totalSpent  = budgetCards.reduce((sum, item) => sum + item.spent, 0);
+            const totalBudget = budgetCards.reduce((s, b) => s + b.budget, 0);
+            const totalSpent  = budgetCards.reduce((s, b) => s + b.spent, 0);
             const netBalance  = budgetInflow - totalSpent;
 
             return (
               <View style={{ paddingHorizontal: 14, paddingTop: 4, paddingBottom: 6 }}>
 
-                {/* Summary row: Inflow / Planned / Net */}
+                {/* Summary row */}
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
                   {[
                     { label: 'Inflow',  val: budgetInflow,        color: '#10B981', bg: '#10B98122' },
@@ -3293,52 +3348,47 @@ export default function FinanceScreen() {
                   ))}
                 </View>
 
-                {/* Search + Add row */}
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 10 }}>
-                    <Search size={14} color="#6B7280" />
-                    <TextInput
-                      placeholder="Search budgets…"
-                      placeholderTextColor="#4B5563"
-                      style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 8, fontSize: 14, color: TXT }}
-                    />
-                  </View>
-                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }}>
-                    <Plus size={14} color="white" />
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: 'white' }}>Add</Text>
-                  </TouchableOpacity>
-                </View>
+                {/* Add button */}
+                <TouchableOpacity onPress={() => { setEditBudget(null); setShowAddBudget(true); }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 11, marginBottom: 14 }}>
+                  <Plus size={15} color="white" />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>Add Budget</Text>
+                </TouchableOpacity>
 
-                {/* Budget cards */}
-                {budgetCards.map((item) => (
-                  <View key={item.key} style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
-                    {/* Header row */}
+                {/* Budget cards from API */}
+                {budgetCards.length === 0 ? (
+                  <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 28, marginBottom: 8 }}>📊</Text>
+                    <Text style={{ fontSize: 14, color: MUTED }}>No budgets yet — tap Add Budget to create one</Text>
+                  </View>
+                ) : budgetCards.map((item) => (
+                  <View key={item.id} style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: TXT }}>{item.label}</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                          {item.categories.map(cat => (
-                            <View key={cat} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: item.color + '22' }}>
-                              <Text style={{ fontSize: 11, color: item.color, fontWeight: '600' }}>{cat}</Text>
-                            </View>
-                          ))}
-                        </View>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: TXT }}>{item.name}</Text>
+                        {item.cats.length > 0 && (
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                            {item.cats.map(cat => (
+                              <View key={cat} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: item.color + '22' }}>
+                                <Text style={{ fontSize: 11, color: item.color, fontWeight: '600' }}>{cat}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 8 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>{formatINR(item.limit)}</Text>
-                        <TouchableOpacity style={{ padding: 4 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>{formatINR(item.budget)}</Text>
+                        <TouchableOpacity style={{ padding: 4 }} onPress={() => { setEditBudget(item); setShowAddBudget(true); }}>
                           <Pencil size={15} color={MUTED} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={{ padding: 4 }}>
+                        <TouchableOpacity style={{ padding: 4 }} onPress={() => deleteBudgetMut.mutate(item.id)}>
                           <Trash2 size={15} color="#EF4444" />
                         </TouchableOpacity>
                       </View>
                     </View>
-                    {/* Progress bar */}
                     <View style={{ height: 6, backgroundColor: BORDER, borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
                       <View style={{ width: `${Math.min(item.progress * 100, 100)}%` as `${number}%`, height: 6, backgroundColor: item.statusColor }} />
                     </View>
-                    {/* Stats row */}
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <View style={{ flex: 1, backgroundColor: SURFACE_ALT, borderRadius: 10, padding: 10 }}>
                         <Text style={{ fontSize: 11, color: MUTED, marginBottom: 2 }}>Spent</Text>
@@ -3768,6 +3818,8 @@ export default function FinanceScreen() {
       <LiabilityModal visible={!!editLiability} initial={editLiability} accounts={accounts}
         onClose={() => setEditLiability(null)}
         onSave={(data) => { if (editLiability) updateLiabMut.mutate({ id: editLiability.id, data }); setEditLiability(null); }} />
+      <BudgetModal visible={showAddBudget} initial={editBudget} onClose={() => { setShowAddBudget(false); setEditBudget(null); }}
+        onSave={(data) => { if (editBudget) updateBudgetMut.mutate({ id: editBudget.id, data }); else createBudgetMut.mutate(data); }} />
       <RecordPaymentModal visible={!!payLiability} liability={payLiability} accounts={accounts}
         onClose={() => setPayLiability(null)} onPay={handleRecordPayment} />
       <EditAccountModal visible={!!editAccount} account={editAccount} onClose={() => setEditAccount(null)}

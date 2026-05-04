@@ -127,7 +127,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
 
         if (occCount > 0) {
-          // Deduct from account if linked
+          // Deduct from account if linked (only for newly created installments)
           if (extra.accountId) {
             const accRow = await prisma.account.findFirst({ where: { id: extra.accountId, userId } });
             if (accRow) {
@@ -137,14 +137,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
               if (updated.creditLimit) sipUpdatedAccount.creditLimit = await decryptNumber(updated.creditLimit);
             }
           }
-
-          // Update asset invested + current value
-          const newInvested = await computeInvested(id);
-          const freshRow = await prisma.asset.findFirst({ where: { id } });
-          const currentVal = freshRow ? await decryptNumber(freshRow.value) : 0;
-          const newValue = Math.max(currentVal, newInvested);
-          await prisma.asset.update({ where: { id }, data: { invested: await encryptNumber(newInvested), value: await encryptNumber(newValue) } });
         }
+
+        // Always recompute invested + value from all InvestmentTransactions (recovers from partial prior runs)
+        const newInvested = await computeInvested(id);
+        const freshRow = await prisma.asset.findFirst({ where: { id } });
+        const currentVal = freshRow ? await decryptNumber(freshRow.value) : 0;
+        const newValue = Math.max(currentVal, newInvested);
+        await prisma.asset.update({ where: { id }, data: { invested: await encryptNumber(newInvested), value: await encryptNumber(newValue) } });
 
         // Rebuild RecurringTransaction template with correct next future date
         await prisma.recurringTransaction.deleteMany({ where: { assetId: id, type: 'SIP', userId } });
@@ -159,7 +159,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await prisma.recurringTransaction.deleteMany({ where: { assetId: id, type: 'SIP', userId } });
     }
 
-    const asset = await decryptAsset(row, extra);
+    // Re-fetch the asset so the response reflects the latest invested/value after SIP processing
+    const latestRow = await prisma.asset.findFirst({ where: { id } }) ?? row;
+    const asset = await decryptAsset(latestRow, extra);
     return NextResponse.json({ ...asset, sipTransactions, sipUpdatedAccount });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
