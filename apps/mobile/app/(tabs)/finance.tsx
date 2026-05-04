@@ -2284,6 +2284,7 @@ export default function FinanceScreen() {
   // Transactions filter + search
   const [txSearch, setTxSearch] = useState('');
   const [txAccountFilter, setTxAccountFilter] = useState('All');
+  const [upcomingTxOpen, setUpcomingTxOpen] = useState(true);
 
   // Liabilities search
   const [liabSearch, setLiabSearch] = useState('');
@@ -2362,21 +2363,34 @@ export default function FinanceScreen() {
   // ── Computed values ────────────────────────────────────────────────────────
 
   const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const todayStr = new Date().toLocaleDateString('en-CA');
   const monthTx  = useMemo(() => transactions.filter(t => t.date.startsWith(monthStr)), [transactions, monthStr]);
-  const income   = useMemo(() => monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [monthTx]);
-  const expense  = useMemo(() => monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0), [monthTx]);
+  const pastMonthTx = useMemo(() => monthTx.filter(t => t.date <= todayStr), [monthTx, todayStr]);
+  const income   = useMemo(() => pastMonthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [pastMonthTx]);
+  const expense  = useMemo(() => pastMonthTx.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0), [pastMonthTx]);
   const net      = income - expense;
 
   const filteredMonthTx = useMemo(() => {
     const acctMap = Object.fromEntries(accounts.map(a => [a.id, a.name]));
-    let list = monthTx.filter(t => t.type !== 'opening_balance' && t.type !== 'adjustment');
+    let list = monthTx.filter(t => t.type !== 'opening_balance' && t.type !== 'adjustment' && t.date <= todayStr);
     if (txAccountFilter !== 'All') list = list.filter(t => (t.accountId ? acctMap[t.accountId] : null) === txAccountFilter);
     if (txSearch.trim()) {
       const q = txSearch.toLowerCase();
       list = list.filter(t => t.description.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
     }
-    return list;
-  }, [monthTx, txAccountFilter, txSearch, accounts]);
+    return list.sort((a, b) => b.date.localeCompare(a.date));
+  }, [monthTx, txAccountFilter, txSearch, accounts, todayStr]);
+
+  const upcomingMonthTx = useMemo(() => {
+    const acctMap = Object.fromEntries(accounts.map(a => [a.id, a.name]));
+    let list = monthTx.filter(t => t.type !== 'opening_balance' && t.type !== 'adjustment' && t.date > todayStr);
+    if (txAccountFilter !== 'All') list = list.filter(t => (t.accountId ? acctMap[t.accountId] : null) === txAccountFilter);
+    if (txSearch.trim()) {
+      const q = txSearch.toLowerCase();
+      list = list.filter(t => t.description.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+    }
+    return list.sort((a, b) => a.date.localeCompare(b.date));
+  }, [monthTx, txAccountFilter, txSearch, accounts, todayStr]);
 
   const totalAssetsValue = useMemo(() => assets.reduce((s, a) => s + a.value, 0), [assets]);
   const totalInvested    = useMemo(() => assets.reduce((s, a) => s + a.invested, 0), [assets]);
@@ -2485,7 +2499,7 @@ export default function FinanceScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 92, paddingTop: 12 }}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refetchAccounts(); refetchTx(); refetchAssets(); refetchLiab(); }} tintColor={ACCENT} />}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={() => { refetchAccounts(); refetchTx(); refetchAssets(); refetchLiab(); qc.invalidateQueries({ queryKey: ['budgets'] }); }} tintColor={ACCENT} />}
         >
 
           {/* ── OVERVIEW ──────────────────────────────────────────────────── */}
@@ -2914,7 +2928,24 @@ export default function FinanceScreen() {
                 })}
               </ScrollView>
 
-              {/* Transaction list */}
+              {/* Upcoming transactions */}
+              {upcomingMonthTx.length > 0 && (
+                <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: SURFACE, borderRadius: 16, borderWidth: 1, borderColor: '#F59E0B44' }}>
+                  <TouchableOpacity onPress={() => setUpcomingTxOpen(v => !v)}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}>
+                    <View style={{ marginRight: 8 }}><CalendarDays size={15} color="#F59E0B" /></View>
+                    <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#F59E0B' }}>Upcoming ({upcomingMonthTx.length})</Text>
+                    <View style={{ transform: [{ rotate: upcomingTxOpen ? '0deg' : '-90deg' }] }}>
+                      <ChevronDown size={16} color="#F59E0B" />
+                    </View>
+                  </TouchableOpacity>
+                  {upcomingTxOpen && upcomingMonthTx.map((tx) => (
+                    <TxItem key={tx.id} tx={tx} accountName={tx.accountId ? acctMap[tx.accountId] : undefined} onMenuOpen={(t, y) => setTxMenu({ tx: t, y })} />
+                  ))}
+                </View>
+              )}
+
+              {/* Past transaction list */}
               <View style={{ marginHorizontal: 16, backgroundColor: SURFACE, borderRadius: 16 }}>
                 <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2 }}>{monthLabel(year, month)}</Text>
