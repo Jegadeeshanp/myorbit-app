@@ -2371,8 +2371,8 @@ export default function FinanceScreen() {
   const monthTx  = useMemo(() => transactions.filter(t => t.date.startsWith(monthStr)), [transactions, monthStr]);
   const pastMonthTx = useMemo(() => monthTx.filter(t => t.date <= todayStr), [monthTx, todayStr]);
   const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Credit Card Payment', 'Transfer'];
-  const income   = useMemo(() => pastMonthTx.filter(t => t.type === 'income'  && !SYSTEM_CATS.includes(t.category) && t.type !== 'transfer').reduce((s, t) => s + t.amount, 0), [pastMonthTx]);
-  const expense  = useMemo(() => pastMonthTx.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category) && t.type !== 'transfer').reduce((s, t) => s + Math.abs(t.amount), 0), [pastMonthTx]);
+  const income   = useMemo(() => pastMonthTx.filter(t => t.type === 'income'  && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0), [pastMonthTx]);
+  const expense  = useMemo(() => pastMonthTx.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0), [pastMonthTx]);
   const net      = income - expense;
 
   const filteredMonthTx = useMemo(() => {
