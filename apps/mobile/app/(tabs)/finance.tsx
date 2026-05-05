@@ -142,12 +142,34 @@ const CATEGORY_CONFIG: Record<string, CatCfg> = {
   'Friends':       { Icon: Star,          bg: '#1C1C2E', color: '#94A3B8' },
 };
 
+const CAT_KEYWORDS: [string[], CatCfg][] = [
+  [['food','meal','lunch','dinner','breakfast','cafe','restaurant','dining','eat','snack','burger','pizza','biryani','swiggy','zomato'],  { Icon: Utensils,    bg: '#7C2D12', color: '#FB923C' }],
+  [['grocery','groceries','vegetables','fruit','supermarket','mart','lulu'],                                                            { Icon: ShoppingCart, bg: '#14532D', color: '#4ADE80' }],
+  [['petrol','diesel','fuel','gas','shell','hp','iocl'],                                                                               { Icon: Fuel,         bg: '#78350F', color: '#FCD34D' }],
+  [['rent','lease','flat','apartment','pg','hostel','lodge'],                                                                          { Icon: Home,         bg: '#581C87', color: '#C084FC' }],
+  [['medical','hospital','clinic','pharmacy','doctor','medicine','health','apollo'],                                                    { Icon: Stethoscope,  bg: '#7F1D1D', color: '#FCA5A5' }],
+  [['transport','bus','metro','train','auto','cab','ola','uber','taxi','rickshaw'],                                                     { Icon: Bus,          bg: '#1E3A5F', color: '#60A5FA' }],
+  [['shopping','clothes','fashion','zara','h&m','amazon','flipkart','myntra','dress'],                                                  { Icon: ShoppingBag,  bg: '#831843', color: '#F472B6' }],
+  [['subscription','netflix','spotify','prime','hotstar','youtube','disney'],                                                          { Icon: RefreshCw,    bg: '#3B0764', color: '#A78BFA' }],
+  [['salary','payroll','ctc','income'],                                                                                               { Icon: Briefcase,    bg: '#14532D', color: '#4ADE80' }],
+  [['investment','invest','sip','mutual','stocks','equity','nifty'],                                                                   { Icon: PiggyBank,    bg: '#14532D', color: '#4ADE80' }],
+  [['family','parent','mom','dad','amma','appa','kids','children','wife','husband'],                                                   { Icon: Heart,        bg: '#1C1C2E', color: '#E5E7EB' }],
+  [['loan','emi','credit','debt','repay'],                                                                                            { Icon: Landmark,     bg: '#7C2D12', color: '#FDBA74' }],
+  [['electricity','water','gas','utility','bill','recharge','mobile','internet','wifi'],                                               { Icon: Zap,          bg: '#713F12', color: '#FDE047' }],
+  [['entertainment','movie','film','theatre','concert','game','cricket','sport'],                                                      { Icon: Film,         bg: '#3B0764', color: '#A78BFA' }],
+  [['travel','flight','hotel','trip','vacation','holiday','tour'],                                                                    { Icon: Plane,        bg: '#1E3A5F', color: '#93C5FD' }],
+];
+
 function getCatIcon(cat: string): CatCfg {
   if (!cat) return { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
   if (CATEGORY_CONFIG[cat]) return CATEGORY_CONFIG[cat];
   const lower = cat.toLowerCase();
-  const key = Object.keys(CATEGORY_CONFIG).find(k => k.toLowerCase() === lower);
-  return key ? CATEGORY_CONFIG[key] : { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
+  const exactKey = Object.keys(CATEGORY_CONFIG).find(k => k.toLowerCase() === lower);
+  if (exactKey) return CATEGORY_CONFIG[exactKey];
+  for (const [keywords, cfg] of CAT_KEYWORDS) {
+    if (keywords.some(kw => lower.includes(kw))) return cfg;
+  }
+  return { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
 }
 
 const ASSET_CATEGORY_LIST = [
@@ -787,21 +809,23 @@ function AccountOverlay({ label, value, onChange, dropKey, accounts, activeDropd
               <X size={18} color={MUTED} />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => { onChange(''); closeDropdown(); }}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: !value ? '#10B98115' : 'transparent' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: !value ? ACCENT : MUTED }}>None</Text>
-            {!value && <Text style={{ fontSize: 14, color: ACCENT }}>✓</Text>}
-          </TouchableOpacity>
-          {accounts.map((a, i) => (
-            <TouchableOpacity key={a.id} onPress={() => { onChange(a.id); closeDropdown(); }}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: i < accounts.length - 1 ? 1 : 0, borderBottomColor: BORDER, backgroundColor: value === a.id ? '#10B98115' : 'transparent' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: value === a.id ? ACCENT : TXT2 }}>{a.name}</Text>
-                <Text style={{ fontSize: 12, color: SUBTLE, marginTop: 1 }}>{a.type}</Text>
-              </View>
-              {value === a.id && <Text style={{ fontSize: 14, color: ACCENT, fontWeight: '700' }}>✓</Text>}
+          <ScrollView style={{ maxHeight: 280 }} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity onPress={() => { onChange(''); closeDropdown(); }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: !value ? '#10B98115' : 'transparent' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: !value ? ACCENT : MUTED }}>None</Text>
+              {!value && <Text style={{ fontSize: 14, color: ACCENT }}>✓</Text>}
             </TouchableOpacity>
-          ))}
+            {accounts.map((a, i) => (
+              <TouchableOpacity key={a.id} onPress={() => { onChange(a.id); closeDropdown(); }}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: i < accounts.length - 1 ? 1 : 0, borderBottomColor: BORDER, backgroundColor: value === a.id ? '#10B98115' : 'transparent' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: value === a.id ? ACCENT : TXT2 }}>{a.name}</Text>
+                  <Text style={{ fontSize: 12, color: SUBTLE, marginTop: 1 }}>{a.type}</Text>
+                </View>
+                {value === a.id && <Text style={{ fontSize: 14, color: ACCENT, fontWeight: '700' }}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       </Modal>
     </>
@@ -950,11 +974,11 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                     const isSelected = category === c;
                     return (
                       <TouchableOpacity key={c} onPress={() => setCategory(c)}
-                        style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
-                        <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        style={{ width: '22%', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
+                        <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}>
                           <CIcon size={17} color={cfg.color} strokeWidth={1.8} />
                         </View>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? typeColor : '#D1D5DB', flex: 1 }} numberOfLines={1}>{c}</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: isSelected ? typeColor : '#D1D5DB', textAlign: 'center' }} numberOfLines={2}>{c}</Text>
                       </TouchableOpacity>
                     );
                   })}

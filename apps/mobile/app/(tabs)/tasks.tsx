@@ -55,11 +55,11 @@ const SUB_TABS = [
 const MORE_ITEMS = [{ key: 'next7' as SubTab, label: 'Next 7 Days', Icon: CalendarCheck }];
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high: '#C06060', medium: '#A87A38', low: '#5888B8', none: '#6B7280',
+  high: '#EF4444', medium: '#F59E0B', low: '#3B82F6', none: '#6B7280',
 };
 
 const SECTION_CONFIG = [
-  { key: 'overdue',   label: 'Overdue',   color: '#C06060', bg: '#C0606012' },
+  { key: 'overdue',   label: 'Overdue',   color: '#EF4444', bg: '#EF444412' },
   { key: 'today',     label: 'Today',     color: '#10B981', bg: '#10B98112' },
   { key: 'completed', label: 'Completed', color: '#6B7280', bg: 'transparent' },
 ];
@@ -822,20 +822,11 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
   const datePickVal: DatePickVal = { dueDate, dueTime, repeat, reminder };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleBack}>
-      {showDate ? (
-        <DatePickerContent
-          value={datePickVal}
-          onChange={v => { setDueDate(v.dueDate); setDueTime(v.dueTime); setRepeat(v.repeat); setReminder(v.reminder); }}
-          onBack={() => setShowDate(false)}
-        />
-      ) : showList ? (
-        <ListSelectorContent lists={lists} selectedId={listId} onSelect={setListId} onBack={() => setShowList(false)} />
-      ) : (
-        <View style={{ flex: 1 }}>
-          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-          <KeyboardAvoidingView behavior="padding">
-            <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 20 }}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { if (showDate) setShowDate(false); else if (showList) setShowList(false); else onClose(); }}>
+      <View style={{ flex: 1 }}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
+        <KeyboardAvoidingView behavior="padding">
+          <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 20 }}>
               <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
 
               {/* Tag input */}
@@ -929,6 +920,20 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
             </View>
           </KeyboardAvoidingView>
         </View>
+
+      {showDate && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <DatePickerContent
+            value={datePickVal}
+            onChange={v => { setDueDate(v.dueDate); setDueTime(v.dueTime); setRepeat(v.repeat); setReminder(v.reminder); }}
+            onBack={() => setShowDate(false)}
+          />
+        </View>
+      )}
+      {showList && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <ListSelectorContent lists={lists} selectedId={listId} onSelect={setListId} onBack={() => setShowList(false)} />
+        </View>
       )}
     </Modal>
   );
@@ -979,20 +984,11 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
   const datePickVal: DatePickVal = { dueDate: form.dueDate, dueTime: form.dueTime, repeat: form.repeat, reminder: form.reminder };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleBack}>
-      {showDatePicker ? (
-        <DatePickerContent
-          value={datePickVal}
-          onChange={v => setForm(f => ({ ...f, dueDate: v.dueDate, dueTime: v.dueTime, repeat: v.repeat, reminder: v.reminder }))}
-          onBack={() => setShowDatePicker(false)}
-        />
-      ) : showListPicker ? (
-        <ListSelectorContent lists={lists} selectedId={form.listId} onSelect={id => setForm(f => ({ ...f, listId: id }))} onBack={() => setShowListPicker(false)} />
-      ) : (
-        <View style={{ flex: 1 }}>
-          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-          <KeyboardAvoidingView behavior="padding">
-            <ScrollView style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 36 }} keyboardShouldPersistTaps="handled">
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { if (showDatePicker) setShowDatePicker(false); else if (showListPicker) setShowListPicker(false); else onClose(); }}>
+      <View style={{ flex: 1 }}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
+        <KeyboardAvoidingView behavior="padding">
+          <ScrollView style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 36 }} keyboardShouldPersistTaps="handled">
               <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
 
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -1087,8 +1083,22 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
                   <Text style={{ fontSize: 15, fontWeight: '600', color: 'white' }}>{isEdit ? 'Save' : 'Add Task'}</Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+
+      {showDatePicker && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <DatePickerContent
+            value={datePickVal}
+            onChange={v => setForm(f => ({ ...f, dueDate: v.dueDate, dueTime: v.dueTime, repeat: v.repeat, reminder: v.reminder }))}
+            onBack={() => setShowDatePicker(false)}
+          />
+        </View>
+      )}
+      {showListPicker && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <ListSelectorContent lists={lists} selectedId={form.listId} onSelect={id => setForm(f => ({ ...f, listId: id }))} onBack={() => setShowListPicker(false)} />
         </View>
       )}
     </Modal>
@@ -2029,8 +2039,8 @@ export default function TasksScreen() {
 
       {/* Search bar + Add button — hidden on calendar (navigate by date, not search) */}
       {!(activeTab === 'calendar' && !activeList) && <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: BG, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
-          <Search size={16} color={MUTED} />
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 7, gap: 8 }}>
+          <Search size={14} color={MUTED} />
           <TextInput
             style={{ flex: 1, fontSize: 14, color: TXT }}
             placeholder={activeTab === 'lists' && !activeList ? 'Search lists…' : 'Search tasks…'}
