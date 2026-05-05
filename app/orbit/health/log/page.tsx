@@ -84,7 +84,7 @@ export default function HealthLogPage() {
   const labelCls = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5';
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Log Health</h1>
         <p className="text-sm text-gray-500 mt-0.5">Track your daily wellness metrics</p>

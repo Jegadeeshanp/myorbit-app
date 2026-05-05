@@ -33,7 +33,7 @@ export default function HealthPage() {
 
   if (loadState === 'loading' || loadState === 'idle') {
     return (
-      <div className="space-y-4 max-w-4xl mx-auto animate-pulse">
+      <div className="space-y-4 animate-pulse">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="h-28 rounded-2xl bg-gray-100" />
         ))}
@@ -106,7 +106,7 @@ export default function HealthPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-5">
       {/* Quick actions */}
       <div className="flex items-center justify-between">
         <div />

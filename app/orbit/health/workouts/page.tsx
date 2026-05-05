@@ -133,7 +133,7 @@ export default function WorkoutsPage() {
   const typeEmoji = (t: string) => WORKOUT_TYPES.find(x => x.value === t)?.emoji ?? '🏋️';
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Workouts</h1>

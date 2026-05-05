@@ -423,7 +423,7 @@ export default function NutritionPage() {
     Math.max(0, targets[key] - ((tot as any)[key] ?? 0));
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
+    <div className="space-y-5">
 
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">

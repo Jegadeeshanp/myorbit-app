@@ -85,7 +85,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-100">
             {assets.map(asset => {
               const cfg      = getCategoryConfig(asset.category);
               const Icon     = cfg.icon;
@@ -174,7 +174,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
       </div>
 
       {/* ── Mobile cards (hidden on sm+) ───────────────────────────────── */}
-      <div className="sm:hidden rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden divide-y divide-gray-50">
+      <div className="sm:hidden rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden divide-y divide-gray-100">
         {assets.map(asset => {
           const cfg    = getCategoryConfig(asset.category);
           const Icon   = cfg.icon;

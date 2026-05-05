@@ -925,17 +925,6 @@ export default function GoalsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Actions row */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowModal(true)}
-          className="hidden md:flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition"
-        >
-          <Plus className="h-4 w-4" />
-          New Goal
-        </button>
-      </div>
-
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Goals"  value={stats.total}     color="indigo" />
@@ -944,21 +933,30 @@ export default function GoalsPage() {
         <StatCard label="Processes"    value={stats.processes} color="indigo" sub="recurring habits" />
       </div>
 
-      {/* Category filter */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setCatFilter(cat)}
-            className={`flex-none rounded-xl px-3 py-1.5 text-xs font-medium transition ${
-              catFilter === cat
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+      {/* Category filter + Add Goal */}
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCatFilter(cat)}
+              className={`flex-none rounded-xl px-3 py-1.5 text-xs font-medium transition ${
+                catFilter === cat
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex flex-none items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition"
+        >
+          <Plus className="h-4 w-4" />
+          New Goal
+        </button>
       </div>
 
       {/* Goals list */}

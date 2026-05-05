@@ -37,7 +37,7 @@ export default function AllGoalsPage() {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">All Goals</h1>
         <p className="text-sm text-gray-600 mt-0.5">{goals.length} total goals</p>

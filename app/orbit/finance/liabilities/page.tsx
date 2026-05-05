@@ -213,7 +213,7 @@ export default function LiabilitiesPage() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-100">
               {liabilities.map(l => {
                 const days        = daysUntil(l.nextDueDate);
                 const dueSoon     = days !== null && days <= 7 && days >= 0;

@@ -12,7 +12,9 @@ function fmt(v: number) {
 
 export default function NetWorthCard() {
   const { state } = useFinance();
-  const totalAssets      = useMemo(() => state.assets.reduce((s, a) => s + a.value, 0), [state.assets]);
+  const investedAssets   = useMemo(() => state.assets.reduce((s, a) => s + a.value, 0), [state.assets]);
+  const accountBalance   = useMemo(() => state.accounts.reduce((s, a) => s + a.balance, 0), [state.accounts]);
+  const totalAssets      = investedAssets + accountBalance;
   const totalLiabilities = useMemo(() => state.liabilities.reduce((s, l) => s + l.outstanding, 0), [state.liabilities]);
   const netWorth         = totalAssets - totalLiabilities;
   const isPositive       = netWorth >= 0;
