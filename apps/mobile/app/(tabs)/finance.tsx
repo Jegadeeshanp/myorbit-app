@@ -1886,11 +1886,14 @@ function fmtCompact(v: number): string {
   return `${sign}₹${abs.toFixed(0)}`;
 }
 
+const FINANCE_SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer', 'opening_balance', 'adjustment'];
+
 function getHealthScore(txs: Transaction[], totalAssets: number, totalLiab: number) {
   const now = new Date();
   const thisMo = txs.filter(t => {
     const d = new Date(t.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      && !FINANCE_SYSTEM_CATS.includes(t.category) && t.type !== 'opening_balance' && t.type !== 'adjustment' && t.type !== 'transfer';
   });
   const inc  = thisMo.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const exp  = thisMo.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -1924,11 +1927,12 @@ type InsightItem = { text: string; type: 'positive' | 'warning' | 'neutral' };
 
 function getInsights(txs: Transaction[], totalAssets: number, totalLiab: number): InsightItem[] {
   const now = new Date();
-  const thisMo = txs.filter(t => { const d = new Date(t.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+  const isSystemTx = (t: Transaction) => FINANCE_SYSTEM_CATS.includes(t.category) || t.type === 'opening_balance' || t.type === 'adjustment' || t.type === 'transfer';
+  const thisMo = txs.filter(t => { const d = new Date(t.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && !isSystemTx(t); });
   const lastMo = txs.filter(t => {
     const d = new Date(t.date);
     const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear();
+    return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear() && !isSystemTx(t);
   });
   const items: InsightItem[] = [];
 
@@ -3265,6 +3269,7 @@ export default function FinanceScreen() {
             const today2 = now2.toISOString().slice(0, 10);
             const spentThisMonth = transactions.filter(t => {
               if (t.type !== 'expense') return false;
+              if (FINANCE_SYSTEM_CATS.includes(t.category)) return false;
               if (t.date > today2) return false;
               const d = new Date(t.date);
               return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear();
@@ -3346,7 +3351,7 @@ export default function FinanceScreen() {
             const now3 = new Date();
             const budgetInflow = transactions.filter(t => {
               const d = new Date(t.date);
-              return t.type === 'income' && d.getMonth() === now3.getMonth() && d.getFullYear() === now3.getFullYear();
+              return t.type === 'income' && !FINANCE_SYSTEM_CATS.includes(t.category) && d.getMonth() === now3.getMonth() && d.getFullYear() === now3.getFullYear();
             }).reduce((s, t) => s + t.amount, 0);
 
             const BUDGET_COLORS = ['#10B981','#F59E0B','#14B8A6','#3B82F6','#EF4444','#8B5CF6','#0EA5E9','#EC4899','#F97316','#6366F1'];
