@@ -202,7 +202,7 @@ export default function VitalsPage() {
   //   2. Exclude user-exempted categories (Investment, SIP, …) from expense only.
   // No "date <= today" cap — the full calendar month is counted, same as the
   // Transactions page when filtered to the current month.
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment'];
+  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Credit Card Payment', 'Transfer'];
 
   const { monthlyIncome, monthlyExpense } = useMemo(() => {
     const excluded = getExcludedExpenseCategories();
@@ -213,8 +213,8 @@ export default function VitalsPage() {
     let expense = 0;
 
     for (const t of state.transactions) {
-      // Skip system / internal categories on both sides
-      if (SYSTEM_CATS.includes(t.category)) continue;
+      // Skip system / internal categories and transfers on both sides
+      if (SYSTEM_CATS.includes(t.category) || t.type === 'transfer') continue;
 
       const d = new Date(t.date);
       if (d.getFullYear() !== curYear || d.getMonth() !== curMonth) continue;
