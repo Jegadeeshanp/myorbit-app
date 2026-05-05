@@ -143,7 +143,11 @@ const CATEGORY_CONFIG: Record<string, CatCfg> = {
 };
 
 function getCatIcon(cat: string): CatCfg {
-  return CATEGORY_CONFIG[cat] ?? { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
+  if (!cat) return { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
+  if (CATEGORY_CONFIG[cat]) return CATEGORY_CONFIG[cat];
+  const lower = cat.toLowerCase();
+  const key = Object.keys(CATEGORY_CONFIG).find(k => k.toLowerCase() === lower);
+  return key ? CATEGORY_CONFIG[key] : { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
 }
 
 const ASSET_CATEGORY_LIST = [
@@ -2668,28 +2672,24 @@ export default function FinanceScreen() {
                       <Text style={{ fontSize: 14, fontWeight: '700', color: thisSavingsRate >= 20 ? '#10B981' : '#F59E0B' }}>{thisSavingsRate}%</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {[
-                      { label: 'Income',  val: thisMonthIncome,  color: '#10B981', bg: '#10B98115' },
-                      { label: 'Expense', val: thisMonthExpense, color: '#EF4444', bg: '#EF444415' },
-                      { label: 'Savings', val: thisSavings,      color: '#3B82F6', bg: '#3B82F615' },
-                    ].map((s) => (
-                      <View key={s.label} style={{ flex: 1, backgroundColor: s.bg, borderRadius: 12, padding: 10, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 14, color: MUTED, marginBottom: 2 }}>{s.label}</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: s.color }} numberOfLines={1}>{fmtCompact(s.val)}</Text>
+                  {[
+                    { label: 'Income',   val: thisMonthIncome,  color: '#10B981', pct: 100 },
+                    { label: 'Expenses', val: thisMonthExpense, color: '#EF4444', pct: thisMonthIncome > 0 ? Math.min(100, Math.round((thisMonthExpense / thisMonthIncome) * 100)) : 0 },
+                    { label: 'Savings',  val: thisSavings,      color: '#3B82F6', pct: Math.min(thisSavingsRate, 100) },
+                  ].map((s, i) => (
+                    <View key={s.label} style={{ marginBottom: i < 2 ? 12 : 0 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 13, color: MUTED }}>{s.label}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: s.color }}>{fmtCompact(s.val)}</Text>
                       </View>
-                    ))}
-                  </View>
-                  {thisMonthIncome > 0 && (
-                    <View style={{ marginTop: 12 }}>
                       <View style={{ height: 6, backgroundColor: BORDER, borderRadius: 3, overflow: 'hidden' }}>
-                        <View style={{ height: 6, width: `${Math.min(thisSavingsRate, 100)}%` as `${number}%`, backgroundColor: thisSavingsRate >= 20 ? '#10B981' : '#F59E0B', borderRadius: 3 }} />
+                        <View style={{ height: 6, width: `${s.pct}%` as `${number}%`, backgroundColor: s.color, borderRadius: 3 }} />
                       </View>
-                      <Text style={{ fontSize: 14, color: MUTED, marginTop: 4 }}>
-                        {thisSavingsRate >= 30 ? '🎉 Excellent savings rate!' : thisSavingsRate >= 20 ? '👍 Good savings rate' : '💡 Aim for 20%+ savings'}
-                      </Text>
                     </View>
-                  )}
+                  ))}
+                  <Text style={{ fontSize: 12, color: MUTED, marginTop: 10 }}>
+                    {thisSavingsRate >= 30 ? '🎉 Excellent savings rate!' : thisSavingsRate >= 20 ? '👍 Good savings rate' : '💡 Aim for 20%+ savings'}
+                  </Text>
                 </View>
 
                 {/* ── Spending by Category (all time) ── */}

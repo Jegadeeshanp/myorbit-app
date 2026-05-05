@@ -75,7 +75,9 @@ const REPEAT_OPTS = [
   { v: 'weekends', l: 'Weekends (Sat–Sun)'   },
   { v: 'monthly',  l: 'Monthly'              },
   { v: 'yearly',   l: 'Yearly'               },
+  { v: 'custom',   l: 'Custom…'              },
 ];
+const WEEKDAY_LABELS = ['S','M','T','W','T','F','S'];
 const REMIND_OPTS = [
   { v: 'none',    l: 'None'         },
   { v: 'on-time', l: 'On time'      },
@@ -347,7 +349,9 @@ function DatePickerContent({ value, onChange, onBack }: {
     { label: 'Next Mon', v: getNextMonday() },
     { label: 'No Date',  v: ''             },
   ];
-  const repeatLabel = value.repeat === 'none' ? 'None' : REPEAT_OPTS.find(o => o.v === value.repeat)?.l ?? value.repeat;
+  const repeatLabel = value.repeat === 'none' ? 'None'
+    : value.repeat.startsWith('custom:week:') ? value.repeat.replace('custom:week:','').split(',').map(d => ['S','M','T','W','T','F','S'][Number(d)]).join(' ')
+    : REPEAT_OPTS.find(o => o.v === value.repeat)?.l ?? value.repeat;
   const remindLabel = REMIND_OPTS.find(o => o.v === value.reminder)?.l ?? 'None';
 
   return (
@@ -424,9 +428,22 @@ function DatePickerContent({ value, onChange, onBack }: {
         </TouchableOpacity>
         {expandTime && (
           <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+                {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'].map(t => {
+                  const active = value.dueTime === t;
+                  return (
+                    <TouchableOpacity key={t} onPress={() => onChange({ ...value, dueTime: active ? '' : t })}
+                      style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT + '22' : 'transparent' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: active ? ACCENT : TXT2 }}>{t}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
             <TextInput
               style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: TXT }}
-              placeholder="HH:MM  e.g. 09:00"
+              placeholder="Custom: HH:MM"
               placeholderTextColor={MUTED}
               value={value.dueTime}
               onChangeText={t => onChange({ ...value, dueTime: t })}
@@ -459,13 +476,42 @@ function DatePickerContent({ value, onChange, onBack }: {
           <Text style={{ fontSize: 12, color: value.repeat !== 'none' ? ACCENT : MUTED }}>{repeatLabel}</Text>
           {expandRepeat ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
         </TouchableOpacity>
-        {expandRepeat && REPEAT_OPTS.map(o => (
-          <TouchableOpacity key={o.v} onPress={() => { onChange({ ...value, repeat: o.v }); setExpandRepeat(false); }}
-            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 10, gap: 12, backgroundColor: value.repeat === o.v ? ACCENT + '22' : 'transparent' }}>
-            <Text style={{ flex: 1, fontSize: 14, color: value.repeat === o.v ? ACCENT : TXT2 }}>{o.l}</Text>
-            {value.repeat === o.v && <Check size={14} color={ACCENT} />}
-          </TouchableOpacity>
-        ))}
+        {expandRepeat && REPEAT_OPTS.map(o => {
+          const isCustom = o.v === 'custom';
+          const isActive = isCustom
+            ? (value.repeat === 'custom' || value.repeat.startsWith('custom:week:'))
+            : value.repeat === o.v;
+          return (
+            <TouchableOpacity key={o.v} onPress={() => { onChange({ ...value, repeat: isCustom ? (value.repeat.startsWith('custom:week:') ? value.repeat : 'custom') : o.v }); if (!isCustom) setExpandRepeat(false); }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 10, gap: 12, backgroundColor: isActive ? ACCENT + '22' : 'transparent' }}>
+              <Text style={{ flex: 1, fontSize: 14, color: isActive ? ACCENT : TXT2 }}>{o.l}</Text>
+              {isActive && <Check size={14} color={ACCENT} />}
+            </TouchableOpacity>
+          );
+        })}
+        {expandRepeat && (value.repeat === 'custom' || value.repeat.startsWith('custom:week:')) && (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
+            <Text style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>Select days of the week</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {WEEKDAY_LABELS.map((d, i) => {
+                const selectedDays = value.repeat.startsWith('custom:week:')
+                  ? value.repeat.replace('custom:week:','').split(',').map(Number)
+                  : [];
+                const active = selectedDays.includes(i);
+                return (
+                  <TouchableOpacity key={i} onPress={() => {
+                    const current = value.repeat.startsWith('custom:week:') ? value.repeat.replace('custom:week:','').split(',').map(Number) : [];
+                    const newDays = active ? current.filter(x => x !== i) : [...current, i].sort((a, b) => a - b);
+                    onChange({ ...value, repeat: newDays.length > 0 ? `custom:week:${newDays.join(',')}` : 'custom' });
+                  }}
+                    style={{ flex: 1, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT : 'transparent' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: active ? 'white' : TXT2 }}>{d}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -576,7 +622,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
       ) : (
         <View style={{ flex: 1 }}>
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView behavior="padding">
             <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 20 }}>
               <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
 
@@ -733,7 +779,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
       ) : (
         <View style={{ flex: 1 }}>
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView behavior="padding">
             <ScrollView style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%' }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 36 }} keyboardShouldPersistTaps="handled">
               <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
 
@@ -1255,6 +1301,11 @@ function CalendarWeekView({ tasks, onEdit, onDelete, onDateSelect }: { tasks: Ta
 
 // ── Task Detail Card (Calendar tap) ──────────────────────────────────────────────
 function getRepeatDisplay(repeat: string): string {
+  if (repeat.startsWith('custom:week:')) {
+    const days = repeat.replace('custom:week:', '').split(',').map(Number);
+    const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return days.map(d => names[d]).join(', ');
+  }
   switch (repeat) {
     case 'daily':    return 'Every Day';
     case 'weekdays': return 'Every Weekday';
@@ -1274,6 +1325,8 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
   isFromNotification?: boolean;
 }) {
   const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
+  const [showSnooze, setShowSnooze] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   if (!task) return null;
 
   const repeat      = getRepeat(task.tags);
@@ -1296,34 +1349,61 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
     return task.dueTime ? `${label}, ${task.dueTime}` : label;
   })();
 
-  const handleDelete = () => {
-    Alert.alert('Delete Task', `Delete "${task.title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { onClose(); onDelete(task.id); } },
-    ]);
-  };
+  const handleDelete = () => setShowDelete(true);
 
   const handleEdit = () => {
     onClose();
     setTimeout(() => onFullEdit(task), 280);
   };
 
-  const handleSnooze = () => {
-    if (!onSnooze) return;
-    Alert.alert('Snooze until…', undefined, [
-      { text: '1 hour',           onPress: () => onSnooze(task.id, task.title, 60) },
-      { text: 'Later today',      onPress: () => onSnooze(task.id, task.title, 180) },
-      { text: 'Tomorrow morning', onPress: () => onSnooze(task.id, task.title, minutesUntilTomorrowMorning()) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const handleSnooze = () => { if (onSnooze) setShowSnooze(true); };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={onClose} />
-      <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { setShowSnooze(false); setShowDelete(false); onClose(); }}>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={() => { if (showSnooze || showDelete) { setShowSnooze(false); setShowDelete(false); } else { onClose(); } }} />
+      <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, minHeight: '50%' }}>
         {/* Handle */}
         <View style={{ width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
+
+        {/* Snooze sheet */}
+        {showSnooze && (
+          <View>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>Snooze until…</Text>
+            {[
+              { label: '1 hour',           minutes: 60 },
+              { label: 'Later today (3h)', minutes: 180 },
+              { label: 'Tomorrow morning', minutes: minutesUntilTomorrowMorning() },
+            ].map(opt => (
+              <TouchableOpacity key={opt.label} onPress={() => { setShowSnooze(false); onSnooze!(task.id, task.title, opt.minutes); }}
+                style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Bell size={16} color={MUTED} />
+                <Text style={{ fontSize: 15, color: TXT }}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setShowSnooze(false)}
+              style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: BORDER }}>
+              <Text style={{ fontSize: 15, color: '#EF4444', fontWeight: '500' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Delete confirmation */}
+        {showDelete && (
+          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: TXT, marginBottom: 8 }}>Delete task?</Text>
+            <Text style={{ fontSize: 14, color: MUTED, marginBottom: 24 }}>"{task.title}" will be permanently deleted.</Text>
+            <TouchableOpacity onPress={() => { setShowDelete(false); onClose(); onDelete(task.id); }}
+              style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: '#EF444422', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#EF444444' }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowDelete(false)} style={{ paddingVertical: 14, alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, color: TXT }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Main detail content */}
+        {!showSnooze && !showDelete && (<>
 
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
@@ -1369,7 +1449,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
 
         {/* Notes */}
         <TouchableOpacity onPress={handleEdit} activeOpacity={0.7}>
-          <Text style={{ fontSize: 14, color: task.notes ? '#C4C4CC' : '#444450', paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}>
+          <Text style={{ fontSize: 14, color: task.notes ? TXT2 : MUTED, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}>
             {task.notes || 'Add notes…'}
           </Text>
         </TouchableOpacity>
@@ -1423,6 +1503,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
             </View>
           )}
         </View>
+        </>)}
       </View>
     </Modal>
   );
