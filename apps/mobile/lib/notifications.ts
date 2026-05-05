@@ -62,11 +62,13 @@ export async function scheduleTaskNotification(task: Task): Promise<void> {
       body: task.dueTime ? `Due at ${task.dueTime}` : 'Reminder',
       data: { taskId: task.id },
       sound: 'default',
+      ...(Platform.OS === 'android' && { color: '#10B981' }),
     },
     trigger: {
-      seconds: secondsFromNow,
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: fireAt,
       channelId: 'tasks',
-    } as Notifications.TimeIntervalTriggerInput,
+    },
   });
 }
 
@@ -82,6 +84,7 @@ export async function snoozeTaskNotification(
   minutes: number,
 ): Promise<void> {
   await cancelTaskNotification(taskId);
+  const snoozeAt = new Date(Date.now() + minutes * 60 * 1000);
   await Notifications.scheduleNotificationAsync({
     identifier: `task-${taskId}`,
     content: {
@@ -91,9 +94,10 @@ export async function snoozeTaskNotification(
       sound: 'default',
     },
     trigger: {
-      seconds: minutes * 60,
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: snoozeAt,
       channelId: 'tasks',
-    } as Notifications.TimeIntervalTriggerInput,
+    },
   });
 }
 

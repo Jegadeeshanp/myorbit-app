@@ -21,7 +21,7 @@ import {
   CheckCircle, Circle, Clock, Plus, ChevronDown, ChevronRight, ChevronLeft,
   Trash2, AlertTriangle, Sun, Inbox as InboxIcon, List as ListIcon,
   CalendarDays, MoreHorizontal, X, CalendarCheck, Settings,
-  Tag, Flag, Search, Bell, RotateCcw, Check, Pencil, Menu,
+  Tag, Flag, Search, Bell, RotateCcw, Check, Menu,
 } from 'lucide-react-native';
 
 // ── Types ────────────────────────────────────────────────────────────────────────
@@ -1525,28 +1525,53 @@ function getRepeatDisplay(repeat: string): string {
   }
 }
 
-function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, onComplete, onSnooze, isFromNotification }: {
+function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, onComplete, onSnooze, onUpdate, isFromNotification }: {
   visible: boolean; task: Task | null; lists: TaskList[];
   onClose: () => void; onFullEdit: (t: Task) => void; onDelete: (id: string) => void;
+  onUpdate?: (id: string, data: Partial<Task>) => void;
   onComplete?: (taskId: string) => void;
   onSnooze?: (taskId: string, title: string, minutes: number) => void;
   isFromNotification?: boolean;
 }) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
-  const [showSnooze, setShowSnooze] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
+  const { SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, INPUT } = useColors();
+  const [showSnooze, setShowSnooze]   = useState(false);
+  const [showDelete, setShowDelete]   = useState(false);
+  const [editingField, setEditingField] = useState<'title' | 'notes' | 'priority' | 'list' | 'tag' | null>(null);
+  const [localTask, setLocalTask]     = useState<Task | null>(null);
+  const [tagInput, setTagInput]       = useState('');
+  const [titleDraft, setTitleDraft]   = useState('');
+  const [notesDraft, setNotesDraft]   = useState('');
+
+  useEffect(() => {
+    if (task) {
+      setLocalTask({ ...task });
+      setTitleDraft(task.title);
+      setNotesDraft(task.notes ?? '');
+    }
+    setEditingField(null);
+    setShowSnooze(false);
+    setShowDelete(false);
+    setTagInput('');
+  }, [task?.id]);
+
   if (!task) return null;
+  const t = localTask ?? task;
 
-  const repeat      = getRepeat(task.tags);
-  const displayTags = parseTags(task.tags);
+  const updateField = (data: Partial<Task>) => {
+    setLocalTask(prev => prev ? { ...prev, ...data } : null);
+    onUpdate?.(t.id, data);
+  };
+
+  const repeat      = getRepeat(t.tags);
+  const displayTags = parseTags(t.tags);
   const today       = todayStr();
-  const isOverdue   = !!(task.dueDate && task.dueDate < today);
-  const dateColor   = isOverdue ? '#C06060' : task.dueDate === today ? ACCENT : '#D1D5DB';
-  const priColor    = task.priority !== 'none' ? PRIORITY_COLOR[task.priority] : MUTED;
-  const list        = lists.find(l => l.id === task.listId);
+  const isOverdue   = !!(t.dueDate && t.dueDate < today);
+  const dateColor   = isOverdue ? '#C06060' : t.dueDate === today ? ACCENT : TXT2;
+  const priColor    = t.priority !== 'none' ? PRIORITY_COLOR[t.priority] : MUTED;
+  const list        = lists.find(l => l.id === t.listId);
 
-  const dateLabel = !task.dueDate ? null : (() => {
-    const d    = new Date(task.dueDate + 'T00:00:00');
+  const dateLabel = !t.dueDate ? null : (() => {
+    const d    = new Date(t.dueDate + 'T00:00:00');
     const diff = Math.round((d.getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
     let label  = '';
     if      (diff === 0)  label = 'Today';
@@ -1554,165 +1579,259 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
     else if (diff === -1) label = 'Yesterday';
     else if (diff < -1)   label = `Last ${d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}`;
     else                  label = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
-    return task.dueTime ? `${label}, ${task.dueTime}` : label;
+    return t.dueTime ? `${label}, ${t.dueTime}` : label;
   })();
 
-  const handleDelete = () => setShowDelete(true);
-
-  const handleEdit = () => {
+  const handleDelete  = () => setShowDelete(true);
+  const handleSnooze  = () => { if (onSnooze) setShowSnooze(true); };
+  const openFullEdit  = () => { onClose(); setTimeout(() => onFullEdit(t), 280); };
+  const dismissSub    = () => {
+    if (editingField) { setEditingField(null); return; }
+    if (showSnooze || showDelete) { setShowSnooze(false); setShowDelete(false); return; }
     onClose();
-    setTimeout(() => onFullEdit(task), 280);
   };
 
-  const handleSnooze = () => { if (onSnooze) setShowSnooze(true); };
+  const showingOverlay = showSnooze || showDelete || editingField === 'list' || editingField === 'priority';
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { setShowSnooze(false); setShowDelete(false); onClose(); }}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={() => { if (showSnooze || showDelete) { setShowSnooze(false); setShowDelete(false); } else { onClose(); } }} />
-      <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, minHeight: '50%' }}>
-        {/* Handle */}
-        <View style={{ width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={dismissSub}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={dismissSub} />
+        <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, minHeight: '50%', overflow: 'hidden' }}>
+          {/* Handle */}
+          <View style={{ width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
 
-        {/* Snooze sheet */}
-        {showSnooze && (
-          <View>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>Snooze until…</Text>
-            {[
-              { label: '1 hour',           minutes: 60 },
-              { label: 'Later today (3h)', minutes: 180 },
-              { label: 'Tomorrow morning', minutes: minutesUntilTomorrowMorning() },
-            ].map(opt => (
-              <TouchableOpacity key={opt.label} onPress={() => { setShowSnooze(false); onSnooze!(task.id, task.title, opt.minutes); }}
-                style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Bell size={16} color={MUTED} />
-                <Text style={{ fontSize: 15, color: TXT }}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity onPress={() => setShowSnooze(false)}
-              style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: BORDER }}>
-              <Text style={{ fontSize: 15, color: '#EF4444', fontWeight: '500' }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Delete confirmation */}
-        {showDelete && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: TXT, marginBottom: 8 }}>Delete task?</Text>
-            <Text style={{ fontSize: 14, color: MUTED, marginBottom: 24 }}>"{task.title}" will be permanently deleted.</Text>
-            <TouchableOpacity onPress={() => { setShowDelete(false); onClose(); onDelete(task.id); }}
-              style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: '#EF444422', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#EF444444' }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#EF4444' }}>Delete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowDelete(false)} style={{ paddingVertical: 14, alignItems: 'center' }}>
-              <Text style={{ fontSize: 15, color: TXT }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Main detail content */}
-        {!showSnooze && !showDelete && (<>
-
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: (list?.color ?? ACCENT) + '25', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 13 }}>{list?.emoji ?? '📥'}</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }} numberOfLines={1}>{list?.name ?? 'Inbox'}</Text>
-            <ChevronDown size={13} color={MUTED} />
-          </View>
-          <TouchableOpacity onPress={handleEdit} style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}>
-            <Flag size={17} color={priColor} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
-            <X size={15} color={MUTED} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Date + Repeat */}
-        {(dateLabel || repeat !== 'none') && (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 5 }}>
-            {dateLabel && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <CalendarDays size={13} color={dateColor} />
-                <Text style={{ fontSize: 13, fontWeight: '600', color: dateColor }}>{dateLabel}</Text>
-              </View>
-            )}
-            {repeat !== 'none' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <RotateCcw size={12} color={MUTED} />
-                <Text style={{ fontSize: 12, color: MUTED }}>{getRepeatDisplay(repeat)}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Title */}
-        <TouchableOpacity onPress={handleEdit} activeOpacity={0.7}>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingBottom: 6, lineHeight: 29 }}>
-            {task.title}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Notes */}
-        <TouchableOpacity onPress={handleEdit} activeOpacity={0.7}>
-          <Text style={{ fontSize: 14, color: task.notes ? TXT2 : MUTED, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}>
-            {task.notes || 'Add notes…'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Tags */}
-        {displayTags.length > 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingBottom: 16 }}>
-            {displayTags.map(t => (
-              <View key={t} style={{ borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#6868A818' }}>
-                <Text style={{ fontSize: 11, color: '#8888BE' }}>#{t}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Bottom toolbar */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
-          {(onComplete || onSnooze) && (
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: isFromNotification ? 0 : 10 }}>
-              {onComplete && (
-                <TouchableOpacity onPress={() => onComplete(task.id)}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55' }}>
-                  <Check size={16} color={ACCENT} />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>Done</Text>
-                </TouchableOpacity>
-              )}
-              {onSnooze && (
-                <TouchableOpacity onPress={handleSnooze}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER }}>
+          {/* ── Snooze sheet ── */}
+          {showSnooze && (
+            <View>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>Snooze until…</Text>
+              {[
+                { label: '1 hour',           minutes: 60 },
+                { label: 'Later today (3h)', minutes: 180 },
+                { label: 'Tomorrow morning', minutes: minutesUntilTomorrowMorning() },
+              ].map(opt => (
+                <TouchableOpacity key={opt.label} onPress={() => { setShowSnooze(false); onSnooze!(task.id, task.title, opt.minutes); }}
+                  style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: SURFACE }}>
                   <Bell size={16} color={MUTED} />
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: TXT2 }}>Snooze</Text>
+                  <Text style={{ fontSize: 15, color: TXT }}>{opt.label}</Text>
                 </TouchableOpacity>
+              ))}
+              <TouchableOpacity onPress={() => setShowSnooze(false)}
+                style={{ paddingHorizontal: 16, paddingVertical: 16, borderTopWidth: 1, borderTopColor: BORDER, backgroundColor: SURFACE }}>
+                <Text style={{ fontSize: 15, color: '#EF4444', fontWeight: '500' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── Delete confirmation ── */}
+          {showDelete && (
+            <View style={{ paddingHorizontal: 16, paddingTop: 20 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: TXT, marginBottom: 8 }}>Delete task?</Text>
+              <Text style={{ fontSize: 14, color: MUTED, marginBottom: 24 }}>"{t.title}" will be permanently deleted.</Text>
+              <TouchableOpacity onPress={() => { setShowDelete(false); onClose(); onDelete(t.id); }}
+                style={{ paddingVertical: 14, borderRadius: 14, backgroundColor: '#EF444422', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#EF444444' }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#EF4444' }}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowDelete(false)} style={{ paddingVertical: 14, alignItems: 'center' }}>
+                <Text style={{ fontSize: 15, color: TXT }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── List picker ── */}
+          {!showSnooze && !showDelete && editingField === 'list' && (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                <TouchableOpacity onPress={() => setEditingField(null)} style={{ marginRight: 12 }}>
+                  <ChevronLeft size={20} color={TXT2} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>Change List</Text>
+              </View>
+              <ScrollView style={{ maxHeight: 300 }} keyboardShouldPersistTaps="handled">
+                {[{ id: '', name: 'Inbox', emoji: '📥', color: ACCENT } as any, ...lists].map((l: any) => (
+                  <TouchableOpacity key={l.id ?? ''} onPress={() => { updateField({ listId: l.id || null }); setEditingField(null); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: (t.listId ?? '') === (l.id ?? '') ? ACCENT + '15' : 'transparent' }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: (l.color ?? ACCENT) + '22', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 16 }}>{l.emoji ?? '📋'}</Text>
+                    </View>
+                    <Text style={{ flex: 1, fontSize: 15, color: TXT }}>{l.name}</Text>
+                    {(t.listId ?? '') === (l.id ?? '') && <Check size={16} color={ACCENT} />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* ── Priority picker ── */}
+          {!showSnooze && !showDelete && editingField === 'priority' && (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                <TouchableOpacity onPress={() => setEditingField(null)} style={{ marginRight: 12 }}>
+                  <ChevronLeft size={20} color={TXT2} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>Priority</Text>
+              </View>
+              {(['high', 'medium', 'low', 'none'] as const).map(p => (
+                <TouchableOpacity key={p} onPress={() => { updateField({ priority: p }); setEditingField(null); }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: t.priority === p ? (PRIORITY_COLOR[p] ?? ACCENT) + '18' : 'transparent' }}>
+                  <Flag size={18} color={PRIORITY_COLOR[p] ?? MUTED} />
+                  <Text style={{ flex: 1, fontSize: 15, color: TXT, textTransform: 'capitalize' }}>{p === 'none' ? 'No Priority' : p}</Text>
+                  {t.priority === p && <Check size={16} color={PRIORITY_COLOR[p] ?? ACCENT} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* ── Main detail content ── */}
+          {!showingOverlay && (<>
+
+          {/* Header: list (tappable) + priority flag (tappable) + close */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
+            <TouchableOpacity onPress={() => !isFromNotification && setEditingField('list')} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }} activeOpacity={isFromNotification ? 1 : 0.7}>
+              <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: (list?.color ?? ACCENT) + '25', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 13 }}>{list?.emoji ?? '📥'}</Text>
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }} numberOfLines={1}>{list?.name ?? 'Inbox'}</Text>
+              {!isFromNotification && <ChevronDown size={13} color={MUTED} />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => !isFromNotification && setEditingField('priority')} style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }} activeOpacity={isFromNotification ? 1 : 0.7}>
+              <Flag size={17} color={priColor} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
+              <X size={15} color={MUTED} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Date + Repeat (tappable → full edit for date change) */}
+          {(dateLabel || repeat !== 'none') && (
+            <TouchableOpacity onPress={!isFromNotification ? openFullEdit : undefined} activeOpacity={isFromNotification ? 1 : 0.7}
+              style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 5 }}>
+              {dateLabel && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <CalendarDays size={13} color={dateColor} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: dateColor }}>{dateLabel}</Text>
+                </View>
               )}
-            </View>
+              {repeat !== 'none' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <RotateCcw size={12} color={MUTED} />
+                  <Text style={{ fontSize: 12, color: MUTED }}>{getRepeatDisplay(repeat)}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           )}
-          {!isFromNotification && (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity style={{ padding: 8 }}>
-                <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : BORDER} />
-              </TouchableOpacity>
-              <View style={{ flex: 1 }} />
-              <TouchableOpacity onPress={handleEdit}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 12, backgroundColor: SURFACE2, marginRight: 10 }}>
-                <Pencil size={14} color={TXT2} />
-                <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDelete}
-                style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
-                <Trash2 size={17} color="#C06060" />
-              </TouchableOpacity>
-            </View>
+
+          {/* Title — inline edit */}
+          {editingField === 'title' ? (
+            <TextInput
+              autoFocus multiline
+              value={titleDraft}
+              onChangeText={setTitleDraft}
+              onBlur={() => { if (titleDraft.trim()) updateField({ title: titleDraft.trim() }); setEditingField(null); }}
+              style={{ fontSize: 22, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingBottom: 6, lineHeight: 29 }}
+            />
+          ) : (
+            <TouchableOpacity onPress={() => !isFromNotification && setEditingField('title')} activeOpacity={isFromNotification ? 1 : 0.7}>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: TXT, paddingHorizontal: 16, paddingBottom: 6, lineHeight: 29 }}>{t.title}</Text>
+            </TouchableOpacity>
           )}
+
+          {/* Notes — inline edit */}
+          {editingField === 'notes' ? (
+            <TextInput
+              autoFocus multiline
+              value={notesDraft}
+              onChangeText={setNotesDraft}
+              placeholder="Add notes…" placeholderTextColor={MUTED}
+              onBlur={() => { updateField({ notes: notesDraft }); setEditingField(null); }}
+              style={{ fontSize: 14, color: TXT2, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}
+            />
+          ) : (
+            <TouchableOpacity onPress={() => !isFromNotification && setEditingField('notes')} activeOpacity={isFromNotification ? 1 : 0.7}>
+              <Text style={{ fontSize: 14, color: t.notes ? TXT2 : MUTED, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}>{t.notes || 'Add notes…'}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Tags */}
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 6 }}>
+            {displayTags.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {displayTags.map(tag => (
+                  <TouchableOpacity key={tag} onPress={() => {
+                    if (isFromNotification) return;
+                    const newTags = displayTags.filter(dt => dt !== tag);
+                    updateField({ tags: JSON.stringify(buildTagsArray(newTags, repeat, getReminder(t.tags))) });
+                  }} style={{ borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: '#6868A818', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 11, color: '#8888BE' }}>#{tag}</Text>
+                    {!isFromNotification && <X size={9} color="#8888BE" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {editingField === 'tag' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: BORDER, backgroundColor: INPUT, paddingHorizontal: 10, paddingVertical: 6, gap: 8 }}>
+                <Tag size={14} color={MUTED} />
+                <TextInput
+                  autoFocus value={tagInput} onChangeText={setTagInput}
+                  placeholder="Add tag…" placeholderTextColor={MUTED}
+                  style={{ flex: 1, fontSize: 14, color: TXT }}
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    const newTag = tagInput.trim().replace(/^#/, '');
+                    if (newTag) {
+                      const newTags = [...new Set([...displayTags, newTag])];
+                      updateField({ tags: JSON.stringify(buildTagsArray(newTags, repeat, getReminder(t.tags))) });
+                    }
+                    setTagInput(''); setEditingField(null);
+                  }}
+                />
+                <TouchableOpacity onPress={() => { setTagInput(''); setEditingField(null); }}><X size={14} color={MUTED} /></TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom toolbar */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
+            {(onComplete || onSnooze) && (
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                {onComplete && (
+                  <TouchableOpacity onPress={() => onComplete(task.id)}
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55' }}>
+                    <Check size={16} color={ACCENT} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>Done</Text>
+                  </TouchableOpacity>
+                )}
+                {onSnooze && (
+                  <TouchableOpacity onPress={handleSnooze}
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER }}>
+                    <Bell size={16} color={MUTED} />
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: TXT2 }}>Snooze</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+            {/* Tag + [+] + Delete */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity onPress={() => !isFromNotification && setEditingField(editingField === 'tag' ? null : 'tag')}
+                style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: editingField === 'tag' ? '#6868A822' : 'transparent' }}>
+                <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : MUTED} />
+              </TouchableOpacity>
+              {!isFromNotification && (<>
+                <TouchableOpacity onPress={openFullEdit}
+                  style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER }}>
+                  <Plus size={18} color={TXT2} />
+                </TouchableOpacity>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity onPress={handleDelete}
+                  style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#C0606018', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trash2 size={17} color="#C06060" />
+                </TouchableOpacity>
+              </>)}
+            </View>
+          </View>
+          </>)}
         </View>
-        </>)}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -1948,7 +2067,9 @@ export default function TasksScreen() {
                   <TouchableOpacity onPress={() => toggleSection(section.key)}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: section.bg }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {section.key === 'overdue' && <AlertTriangle size={14} color={section.color} />}
+                      {section.key === 'overdue'   && <AlertTriangle size={14} color={section.color} />}
+                      {section.key === 'today'     && <Clock size={14} color={section.color} />}
+                      {section.key === 'completed' && <CheckCircle size={14} color={section.color} />}
                       <Text style={{ fontSize: 13, fontWeight: '600', color: section.color }}>{section.label}</Text>
                       <View style={{ borderRadius: 20, paddingHorizontal: 7, paddingVertical: 1, backgroundColor: section.color + '33' }}>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: section.color }}>{section.count}</Text>
@@ -2088,6 +2209,7 @@ export default function TasksScreen() {
         isFromNotification={isFromNotification}
         onClose={() => { setCalDetailTask(null); setIsFromNotification(false); }}
         onFullEdit={t => { setCalDetailTask(null); setIsFromNotification(false); setTimeout(() => setEditTask(t), 280); }}
+        onUpdate={(id, data) => { updateMut.mutate({ id, data }); }}
         onDelete={id => { cancelTaskNotification(id).catch(() => {}); deleteMut.mutate(id); }}
         onComplete={isFromNotification ? (taskId) => {
           cancelTaskNotification(taskId).catch(() => {});

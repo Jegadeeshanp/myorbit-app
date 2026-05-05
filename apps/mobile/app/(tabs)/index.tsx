@@ -188,51 +188,16 @@ export default function HomeScreen() {
             paddingVertical: 14,
           }}
         >
-          <TouchableOpacity
-            onPress={() => toggle()}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              backgroundColor: '#10B98118',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.7}
-          >
-            {isDark ? <Sun size={22} color="#10B981" /> : <Moon size={22} color="#10B981" />}
+          <TouchableOpacity onPress={() => toggle()} style={{ padding: 12 }} activeOpacity={0.7}>
+            {isDark ? <Sun size={24} color="#10B981" /> : <Moon size={24} color="#10B981" />}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)/settings')}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              backgroundColor: T.bg,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: T.border,
-            }}
-            activeOpacity={0.7}
-          >
-            <Settings size={22} color={T.subText} />
+          <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={{ padding: 12 }} activeOpacity={0.7}>
+            <Settings size={24} color={T.subText} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              backgroundColor: '#EF444415',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.7}
-          >
-            <LogOut size={22} color="#EF4444" />
+          <TouchableOpacity onPress={handleLogout} style={{ padding: 12 }} activeOpacity={0.7}>
+            <LogOut size={24} color="#EF4444" />
           </TouchableOpacity>
         </View>
       </ScrollView>
