@@ -74,7 +74,7 @@ export default function FinanceSettingsPage() {
   // Combine stored categories + categories used in actual transactions
   const allExpenseCats = useMemo(() => {
     const stored = getAllExpenseCategories();
-    const SYSTEM = ['Opening Balance', 'Balance Adjustment', 'Credit Card Payment', 'Transfer'];
+    const SYSTEM = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
     const fromTxns = state.transactions
       .filter(t => t.type === 'expense' && !SYSTEM.includes(t.category))
       .map(t => t.category);

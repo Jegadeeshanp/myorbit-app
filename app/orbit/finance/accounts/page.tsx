@@ -44,9 +44,11 @@ export default function AccountsPage() {
 
     const now2 = new Date();
     const today2 = now2.toISOString().slice(0, 10);
+    const SYSTEM = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
     const totalExpenses = state.transactions
       .filter(t => {
         if (t.type !== 'expense') return false;
+        if (SYSTEM.includes(t.category)) return false;
         if (t.date > today2) return false;
         const d = new Date(t.date);
         return d.getMonth() === now2.getMonth() && d.getFullYear() === now2.getFullYear();

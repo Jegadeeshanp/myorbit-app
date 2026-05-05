@@ -2370,7 +2370,7 @@ export default function FinanceScreen() {
   const todayStr = new Date().toLocaleDateString('en-CA');
   const monthTx  = useMemo(() => transactions.filter(t => t.date.startsWith(monthStr)), [transactions, monthStr]);
   const pastMonthTx = useMemo(() => monthTx.filter(t => t.date <= todayStr), [monthTx, todayStr]);
-  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Credit Card Payment', 'Transfer'];
+  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
   const income   = useMemo(() => pastMonthTx.filter(t => t.type === 'income'  && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + t.amount, 0), [pastMonthTx]);
   const expense  = useMemo(() => pastMonthTx.filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0), [pastMonthTx]);
   const net      = income - expense;
@@ -2510,7 +2510,7 @@ export default function FinanceScreen() {
           {/* ── OVERVIEW ──────────────────────────────────────────────────── */}
           {activeTab === 'overview' && (() => {
             const _ov_now = new Date();
-            const SPENDING_EXCLUDE = ['Investment', 'EPF / PPF / NPS', 'SSY', 'Bonds', 'Debt Funds', 'Mutual Funds', 'Stocks & Equity', 'Opening Balance', 'Adjustment', 'Balance Adjustment', 'Opening balance', 'Balance adjustment', 'Credit Card Payment', 'Transfer'];
+            const SPENDING_EXCLUDE = ['Investment', 'EPF / PPF / NPS', 'SSY', 'Bonds', 'Debt Funds', 'Mutual Funds', 'Stocks & Equity', 'Opening Balance', 'Adjustment', 'Balance Adjustment', 'Opening balance', 'Balance adjustment', 'Credit Card Payment', 'Transfer', 'adjustment', 'opening_balance'];
             const thisMoTx = transactions.filter(t => {
               const d = new Date(t.date);
               return d.getMonth() === _ov_now.getMonth() && d.getFullYear() === _ov_now.getFullYear()
@@ -3444,7 +3444,7 @@ export default function FinanceScreen() {
           {/* ── VITALS ────────────────────────────────────────────────────── */}
           {activeTab === 'vitals' && (() => {
             const _now = new Date();
-            const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Credit Card Payment', 'Transfer', 'opening_balance', 'adjustment'];
+            const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer', 'opening_balance', 'adjustment'];
             const thisMonthTx = transactions.filter(t => {
               const d = new Date(t.date);
               return d.getMonth() === _now.getMonth() && d.getFullYear() === _now.getFullYear()

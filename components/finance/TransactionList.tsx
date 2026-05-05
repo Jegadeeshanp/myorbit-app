@@ -325,7 +325,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   const selectedPeriodLabel = PERIODS.find(p => p.value === period)?.label ?? 'This Month';
 
   // Summary uses past transactions only (excludes upcoming)
-  const SYSTEM_CATEGORIES = ['Opening Balance', 'Balance Adjustment'];
+  const SYSTEM_CATEGORIES = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
   const summary = useMemo(() => {
     const income  = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATEGORIES.includes(t.category)).reduce((s, t) => s + t.amount, 0);
     const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATEGORIES.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
