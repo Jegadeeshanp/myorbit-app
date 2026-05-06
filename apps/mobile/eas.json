@@ -7,6 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "ios": {
         "simulator": false
       },
@@ -17,6 +18,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -39,6 +41,7 @@
     },
     "production": {
       "distribution": "store",
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://project-al5r1.vercel.app",
         "APP_ENV": "production"
