@@ -1,9 +1,7 @@
-// EXPO_PUBLIC_API_URL  → used by React Native / Expo (set in apps/mobile/.env)
-// NEXT_PUBLIC_API_URL  → used by Next.js web (set in .env.local at project root)
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
-  '';
+  'https://project-al5r1.vercel.app';
 
 export const COLORS = {
   emerald: '#10B981',
