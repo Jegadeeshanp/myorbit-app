@@ -4,14 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { getInsightScores } from '@myorbit/api';
 import AppHeader from '@/components/shared/AppHeader';
 import { useTheme } from '@/lib/themeStore';
+import { Flame, CheckSquare, Target, Heart, Wallet } from 'lucide-react-native';
 
 const MODULES = [
-  { key: 'habits',  label: 'Habits',  weight: '30%', color: '#F59E0B', emoji: '🔥' },
-  { key: 'tasks',   label: 'Tasks',   weight: '20%', color: '#8B5CF6', emoji: '✅' },
-  { key: 'goals',   label: 'Goals',   weight: '20%', color: '#3B82F6', emoji: '🎯' },
-  { key: 'health',  label: 'Health',  weight: '20%', color: '#EF4444', emoji: '🩺' },
-  { key: 'finance', label: 'Finance', weight: '10%', color: '#10B981', emoji: '💰' },
-] as const;
+  { key: 'habits',  label: 'Habits',  weight: '30%', color: '#F59E0B', Icon: Flame },
+  { key: 'tasks',   label: 'Tasks',   weight: '20%', color: '#8B5CF6', Icon: CheckSquare },
+  { key: 'goals',   label: 'Goals',   weight: '20%', color: '#3B82F6', Icon: Target },
+  { key: 'health',  label: 'Health',  weight: '20%', color: '#EF4444', Icon: Heart },
+  { key: 'finance', label: 'Finance', weight: '10%', color: '#10B981', Icon: Wallet },
+];
 
 function ScoreRing({ score }: { score: number }) {
   const T = useTheme();
@@ -68,7 +69,7 @@ export default function InsightsScreen() {
                 <View key={m.key} style={{ backgroundColor: T.cardBg, borderRadius: 16, marginHorizontal: 16, marginBottom: 10, padding: 16, borderWidth: 1, borderColor: T.border }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ fontSize: 18 }}>{m.emoji}</Text>
+                      <m.Icon size={18} color={m.color} />
                       <Text style={{ fontSize: 14, fontWeight: '600', color: T.text }}>{m.label}</Text>
                       <View style={{ backgroundColor: m.color + '22', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
                         <Text style={{ fontSize: 10, color: m.color, fontWeight: '600' }}>{m.weight}</Text>

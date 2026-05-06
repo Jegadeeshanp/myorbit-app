@@ -11,7 +11,7 @@ import type { Habit } from '@myorbit/api';
 import {
   Flame, Plus, CheckCircle, Circle, Trash2, Pencil,
   LayoutDashboard, CalendarDays, Timer, CalendarClock,
-  MoreHorizontal, X, Settings, Search, Menu,
+  MoreHorizontal, X, Settings, Search, Menu, Zap,
 } from 'lucide-react-native';
 import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/themeStore';
@@ -103,20 +103,16 @@ function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: Su
         const isActive = active === key;
         return (
           <TouchableOpacity key={key} onPress={() => onSelect(key)}
-            style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-            <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: isActive ? ACCENT + '22' : 'transparent' }}>
-              <Icon size={16} color={isActive ? ACCENT : MUTED} />
-            </View>
-            <Text style={{ fontSize: 10, fontWeight: '500', color: isActive ? ACCENT : MUTED, marginTop: 2 }}>{label}</Text>
+            style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
             {isActive && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+            <Icon size={20} color={isActive ? ACCENT : MUTED} />
+            <Text style={{ fontSize: 12, fontWeight: '500', color: isActive ? ACCENT : MUTED, marginTop: 3 }}>{label}</Text>
           </TouchableOpacity>
         );
       })}
-      <TouchableOpacity onPress={onMore} style={{ width: 48, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-        <View style={{ width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
-          <MoreHorizontal size={16} color={MUTED} />
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: '500', color: MUTED, marginTop: 2 }}>More</Text>
+      <TouchableOpacity onPress={onMore} style={{ width: 48, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+        <MoreHorizontal size={20} color={MUTED} />
+        <Text style={{ fontSize: 12, fontWeight: '500', color: MUTED, marginTop: 3 }}>More</Text>
       </TouchableOpacity>
     </View>
   );
@@ -551,13 +547,13 @@ export default function HabitsScreen() {
             {/* Stats */}
             <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginVertical: 14 }}>
               {[
-                { label: 'Done Today', val: `${doneToday}/${activeHabits.length}`, color: ACCENT,     emoji: '✅' },
-                { label: 'Streak XP',  val: String(totalXP),                       color: '#F59E0B', emoji: '⚡' },
-                { label: 'Top Streak', val: `${topStreak}d`,                        color: '#EF4444', emoji: '🔥' },
+                { label: 'Done Today', val: `${doneToday}/${activeHabits.length}`, color: ACCENT,    Icon: CheckCircle },
+                { label: 'Streak XP',  val: String(totalXP),                       color: '#F59E0B', Icon: Zap },
+                { label: 'Top Streak', val: `${topStreak}d`,                        color: '#EF4444', Icon: Flame },
               ].map((s) => (
                 <View key={s.label} style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 16, padding: 12, alignItems: 'center', elevation: 2 }}>
-                  <Text style={{ fontSize: 18, marginBottom: 4 }}>{s.emoji}</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: s.color }}>{s.val}</Text>
+                  <s.Icon size={18} color={s.color} />
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: s.color, marginTop: 4 }}>{s.val}</Text>
                   <Text style={{ fontSize: 11, color: MUTED, marginTop: 2, textAlign: 'center' }}>{s.label}</Text>
                 </View>
               ))}
@@ -569,8 +565,8 @@ export default function HabitsScreen() {
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
               ) : activeHabits.length === 0 ? (
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🔥</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>No habits yet</Text>
+                  <Flame size={40} color={MUTED} />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>No habits yet</Text>
                   <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>Tap + to add your first habit</Text>
                 </View>
               ) : filteredHabits.length === 0 ? (

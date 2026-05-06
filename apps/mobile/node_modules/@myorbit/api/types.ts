@@ -274,3 +274,17 @@ export interface CreateTransactionInput {
   type: 'income' | 'expense' | 'transfer';
   notes?: string;
 }
+
+export interface Budget {
+  id: string;
+  name: string;
+  budget: number;
+  spent: number;
+  category: string;
+}
+
+export interface CreateBudgetInput {
+  name: string;
+  budget: number;
+  category?: string;
+}

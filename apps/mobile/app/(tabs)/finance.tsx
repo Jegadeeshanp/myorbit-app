@@ -23,10 +23,10 @@ import type {
 import {
   TrendingUp, TrendingDown, ArrowLeftRight, Plus, Wallet,
   CreditCard, Banknote, ChevronLeft, ChevronRight, Trash2,
-  LayoutDashboard, Landmark, BarChart3,
+  LayoutDashboard, Landmark, ChartBar,
   MoreHorizontal, X, Settings, Pencil, CheckCircle,
   CalendarDays, DollarSign, Tag,
-  ShieldCheck, Lightbulb, Calendar, PieChart,
+  ShieldCheck, Lightbulb, Calendar, ChartPie,
   Search, Shield, Activity, Zap,
   Home, ShoppingCart, Utensils, Fuel, Bus, Wifi, Smartphone,
   ShoppingBag, RefreshCw, Stethoscope, Plane, GraduationCap,
@@ -71,7 +71,7 @@ const SUB_TABS = [
 const MORE_ITEMS = [
   { key: 'accounts'  as SubTab, label: 'Accounts', Icon: Landmark  },
   { key: 'budget'    as SubTab, label: 'Budget',   Icon: Wallet    },
-  { key: 'vitals'    as SubTab, label: 'Vitals',   Icon: BarChart3 },
+  { key: 'vitals'    as SubTab, label: 'Vitals',   Icon: ChartBar },
   { key: 'settings'  as SubTab, label: 'Settings', Icon: Settings  },
 ];
 
@@ -923,11 +923,11 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                 </View>
 
                 <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginBottom: 8 }}>Amount (₹)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 20, fontWeight: '700', color: 'white', marginBottom: 18 }} placeholder="0" placeholderTextColor="#4B5563" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 20, fontWeight: '700', color: TXT, marginBottom: 18 }} placeholder="0" placeholderTextColor="#4B5563" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
 
                 <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginBottom: 6 }}>Date</Text>
                 <TouchableOpacity onPress={() => setShowDatePicker(true)}
-                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
+                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
                   <CalendarDays size={16} color={date ? ACCENT : SUBTLE} style={{ marginRight: 8 }} />
                   <Text style={{ flex: 1, fontSize: 15, color: date ? TXT2 : SUBTLE }}>
                     {date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
@@ -939,10 +939,10 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                   <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>Note </Text>
                   <Text style={{ fontSize: 13, color: SUBTLE }}>Optional</Text>
                 </View>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 18 }} placeholder="e.g. Monthly savings transfer" placeholderTextColor="#4B5563" value={desc} onChangeText={setDesc} />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TXT, marginBottom: 18 }} placeholder="e.g. Monthly savings transfer" placeholderTextColor="#4B5563" value={desc} onChangeText={setDesc} />
 
                 <TouchableOpacity onPress={() => setRecurring(r => !r)}
-                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E1E1E', borderRadius: 14, padding: 14, marginBottom: 8 }}>
+                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: INPUT, borderRadius: 14, padding: 14, marginBottom: 8 }}>
                   <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#10B98122', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                     <Repeat2 size={18} color="#10B981" />
                   </View>
@@ -959,11 +959,11 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
               <>
                 {/* Amount */}
                 <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginBottom: 8 }}>Amount (₹)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 20, fontWeight: '700', color: 'white', marginBottom: 18 }} placeholder="0.00" placeholderTextColor="#4B5563" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 20, fontWeight: '700', color: TXT, marginBottom: 18 }} placeholder="0.00" placeholderTextColor="#4B5563" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
 
                 {/* Description */}
                 <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginBottom: 8 }}>Description</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 18 }} placeholder="e.g. Grocery shopping" placeholderTextColor="#4B5563" value={desc} onChangeText={setDesc} />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TXT, marginBottom: 18 }} placeholder="e.g. Grocery shopping" placeholderTextColor="#4B5563" value={desc} onChangeText={setDesc} />
 
                 {/* Category grid */}
                 <Text style={{ fontSize: 13, fontWeight: '700', color: SUBTLE, letterSpacing: 1, marginBottom: 12 }}>CATEGORY</Text>
@@ -974,7 +974,7 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                     const isSelected = category === c;
                     return (
                       <TouchableOpacity key={c} onPress={() => setCategory(c)}
-                        style={{ width: '22%', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
+                        style={{ width: '22%', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : BORDER, backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
                         <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}>
                           <CIcon size={17} color={cfg.color} strokeWidth={1.8} />
                         </View>
@@ -986,7 +986,7 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                     const isSelected = category === c;
                     return (
                       <TouchableOpacity key={c} onPress={() => setCategory(c)}
-                        style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
+                        style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : BORDER, backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
                         <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <Tag size={17} color={isSelected ? typeColor : MUTED} />
                         </View>
@@ -1015,7 +1015,7 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                 {/* Date */}
                 <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginBottom: 8 }}>Date</Text>
                 <TouchableOpacity onPress={() => setShowDatePicker(true)}
-                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
+                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
                   <CalendarDays size={16} color={date ? ACCENT : SUBTLE} style={{ marginRight: 8 }} />
                   <Text style={{ flex: 1, fontSize: 15, color: date ? TXT2 : SUBTLE }}>
                     {date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
@@ -1053,7 +1053,7 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
               placeholder="e.g. Hobbies, Pet Care…"
               placeholderTextColor="#4B5563"
               autoFocus
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 16 }}
+              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TXT, marginBottom: 16 }}
             />
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity onPress={() => setShowCustomCat(false)}
@@ -1147,7 +1147,7 @@ function EditTxModal({ visible, tx, accounts, onClose, onSave }: {
               {/* Amount */}
               <Text style={{ fontSize: 13, fontWeight: '700', color: SUBTLE, letterSpacing: 1, marginBottom: 8 }}>AMOUNT (₹)</Text>
               <TextInput
-                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 22, fontWeight: '700', color: 'white', marginBottom: 18 }}
+                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 22, fontWeight: '700', color: TXT, marginBottom: 18 }}
                 placeholder="0.00" placeholderTextColor="#4B5563"
                 value={amount} onChangeText={setAmount} keyboardType="decimal-pad"
               />
@@ -1155,7 +1155,7 @@ function EditTxModal({ visible, tx, accounts, onClose, onSave }: {
               {/* Description */}
               <Text style={{ fontSize: 13, fontWeight: '700', color: SUBTLE, letterSpacing: 1, marginBottom: 8 }}>DESCRIPTION</Text>
               <TextInput
-                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: 'white', marginBottom: 18 }}
+                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TXT, marginBottom: 18 }}
                 placeholder="e.g. Grocery shopping" placeholderTextColor="#4B5563"
                 value={desc} onChangeText={setDesc}
               />
@@ -1171,7 +1171,7 @@ function EditTxModal({ visible, tx, accounts, onClose, onSave }: {
                       const isSelected = category === c;
                       return (
                         <TouchableOpacity key={c} onPress={() => setCategory(c)}
-                          style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : '#1E1E1E', backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
+                          style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : BORDER, backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
                           <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <CIcon size={17} color={cfg.color} strokeWidth={1.8} />
                           </View>
@@ -1194,7 +1194,7 @@ function EditTxModal({ visible, tx, accounts, onClose, onSave }: {
               {/* Date */}
               <Text style={{ fontSize: 13, fontWeight: '700', color: SUBTLE, letterSpacing: 1, marginBottom: 8 }}>DATE</Text>
               <TouchableOpacity onPress={() => setShowDatePicker(true)}
-                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: '#1E1E1E', paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
+                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: INPUT, paddingHorizontal: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', marginBottom: 22 }}>
                 <CalendarDays size={16} color={date ? ACCENT : SUBTLE} style={{ marginRight: 8 }} />
                 <Text style={{ flex: 1, fontSize: 15, color: date ? TXT2 : SUBTLE }}>
                   {date ? new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
@@ -1505,24 +1505,24 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
 
             {/* Name */}
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Asset Name</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 16 }} placeholder="e.g. Reliance Industries" value={name} onChangeText={setName} />
+            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 16 }} placeholder="e.g. Reliance Industries" value={name} onChangeText={setName} />
 
             {/* Invested */}
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Amount Invested (₹) *</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 16 }} placeholder="0" value={invested} onChangeText={setInvested} keyboardType="decimal-pad" />
+            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 16 }} placeholder="0" value={invested} onChangeText={setInvested} keyboardType="decimal-pad" />
 
             {/* Units + Per Unit */}
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Units (optional)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white' }} placeholder="e.g. 50" value={units} onChangeText={(v) => {
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT }} placeholder="e.g. 50" value={units} onChangeText={(v) => {
                   setUnits(v);
                   if (Number(v) > 0 && Number(perUnit) > 0) setValue(String(Number(v) * Number(perUnit)));
                 }} keyboardType="decimal-pad" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Per Unit ₹ (optional)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white' }} placeholder="e.g. 2500" value={perUnit} onChangeText={(v) => {
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT }} placeholder="e.g. 2500" value={perUnit} onChangeText={(v) => {
                   setPerUnit(v);
                   if (Number(units) > 0 && Number(v) > 0) setValue(String(Number(units) * Number(v)));
                 }} keyboardType="decimal-pad" />
@@ -1531,7 +1531,7 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
 
             {/* Current Value */}
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Current Value ₹ (optional)</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 16 }} placeholder="Auto-computed from units × per unit" value={value} onChangeText={setValue} keyboardType="decimal-pad" />
+            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 16 }} placeholder="Auto-computed from units × per unit" value={value} onChangeText={setValue} keyboardType="decimal-pad" />
 
             {/* Investment Type */}
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 8 }}>Investment Type</Text>
@@ -1606,7 +1606,7 @@ function AssetModal({ visible, initial, accounts, onClose, onSave }: {
                       keyboardType="number-pad"
                       placeholder="12"
                       placeholderTextColor="#4B5563"
-                      style={{ width: 50, borderWidth: 1, borderColor: BORDER, borderRadius: 8, backgroundColor: SURFACE, paddingHorizontal: 8, paddingVertical: 5, fontSize: 14, color: 'white', textAlign: 'center' }}
+                      style={{ width: 50, borderWidth: 1, borderColor: BORDER, borderRadius: 8, backgroundColor: SURFACE, paddingHorizontal: 8, paddingVertical: 5, fontSize: 14, color: TXT, textAlign: 'center' }}
                     />
                     <Text style={{ fontSize: 14, color: MUTED }}>times</Text>
                   </TouchableOpacity>
@@ -1724,33 +1724,33 @@ function LiabilityModal({ visible, initial, accounts, onClose, onSave }: {
           </Text>
           <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Loan Name *</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 12 }} placeholder="Home Loan" value={name} onChangeText={setName} />
+            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 12 }} placeholder="Home Loan" value={name} onChangeText={setName} />
 
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Lender / Bank</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 12 }} placeholder="SBI Bank" value={lender} onChangeText={setLender} />
+            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 12 }} placeholder="SBI Bank" value={lender} onChangeText={setLender} />
 
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Total Borrowed (₹) *</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white' }} placeholder="2500000" value={borrowed} onChangeText={setBorrowed} keyboardType="decimal-pad" />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT }} placeholder="2500000" value={borrowed} onChangeText={setBorrowed} keyboardType="decimal-pad" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Outstanding (₹) *</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white' }} placeholder="210000" value={outstanding} onChangeText={setOutstanding} keyboardType="decimal-pad" />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT }} placeholder="210000" value={outstanding} onChangeText={setOutstanding} keyboardType="decimal-pad" />
               </View>
             </View>
 
             <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Total Repaid (₹)</Text>
-            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 12 }} placeholder="0" value={totalRepaid} onChangeText={setTotalRepaid} keyboardType="decimal-pad" />
+            <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 12 }} placeholder="0" value={totalRepaid} onChangeText={setTotalRepaid} keyboardType="decimal-pad" />
 
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Monthly EMI (₹) *</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white' }} placeholder="18500" value={emi} onChangeText={setEmi} keyboardType="decimal-pad" />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT }} placeholder="18500" value={emi} onChangeText={setEmi} keyboardType="decimal-pad" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>EMIs Left</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white' }} placeholder="12" value={emisLeft} onChangeText={setEmisLeft} keyboardType="number-pad" />
+                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT }} placeholder="12" value={emisLeft} onChangeText={setEmisLeft} keyboardType="number-pad" />
               </View>
             </View>
 
@@ -1831,7 +1831,7 @@ function RecordPaymentModal({ visible, liability, accounts, onClose, onPay }: {
           <Text style={{ fontSize: 14, color: MUTED, marginBottom: 20 }}>{liability.name}{liability.lender ? ` · ${liability.lender}` : ''}</Text>
 
           <Text style={{ fontSize: 14, color: MUTED, marginBottom: 4 }}>Payment Amount (₹)</Text>
-          <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: 'white', marginBottom: 10 }} placeholder="0" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" autoFocus />
+          <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 10 }} placeholder="0" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" autoFocus />
 
           {/* Quick-fill buttons */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
@@ -2195,7 +2195,7 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
                   <Text style={{ fontSize: 24 }}>{newCatIcon}</Text>
                 </View>
                 <TextInput
-                  style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: 'white' }}
+                  style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: TXT }}
                   placeholder="Category name..."
                   placeholderTextColor="#4B5563"
                   value={newCatName}
@@ -2215,7 +2215,7 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
                 <Text style={{ fontSize: 13, color: SUBTLE }}>{showCats.length} total</Text>
               </View>
               {showCats.map((cat, i) => (
-                <View key={cat.name} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: i < showCats.length - 1 ? 1 : 0, borderBottomColor: '#1E1E1E', gap: 12 }}>
+                <View key={cat.name} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: i < showCats.length - 1 ? 1 : 0, borderBottomColor: BORDER, gap: 12 }}>
                   <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: SURFACE_ALT, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 20 }}>{cat.icon}</Text>
                   </View>
@@ -2248,7 +2248,7 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
               <Text style={{ fontSize: 16, fontWeight: '700', color: TXT, marginBottom: 8 }}>Export Data</Text>
               <Text style={{ fontSize: 14, color: MUTED, lineHeight: 22, marginBottom: 16 }}>
                 Export all your data (assets, liabilities, snapshots, goals) at any time.{' '}
-                <Text style={{ color: 'white', fontWeight: '600' }}>Your data is yours and always will be.</Text>
+                <Text style={{ color: TXT, fontWeight: '600' }}>Your data is yours and always will be.</Text>
               </Text>
               <TouchableOpacity style={{ paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: BORDER, alignItems: 'center', marginBottom: 10 }}>
                 <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>⬇ Export CSV</Text>
@@ -2425,11 +2425,12 @@ export default function FinanceScreen() {
     return list.sort((a, b) => a.date.localeCompare(b.date));
   }, [monthTx, txAccountFilter, txSearch, accounts, todayStr]);
 
-  const totalAssetsValue = useMemo(() => assets.reduce((s, a) => s + a.value, 0), [assets]);
-  const totalInvested    = useMemo(() => assets.reduce((s, a) => s + a.invested, 0), [assets]);
-  const totalLiabilities = useMemo(() => liabilities.reduce((s, l) => s + l.outstanding, 0), [liabilities]);
-  const availableBalance = useMemo(() => accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0), [accounts]);
-  const netWorth         = totalAssetsValue + availableBalance - totalLiabilities;
+  const totalAssetsValue  = useMemo(() => assets.reduce((s, a) => s + a.value, 0), [assets]);
+  const totalInvested     = useMemo(() => assets.reduce((s, a) => s + a.invested, 0), [assets]);
+  const totalLiabilities  = useMemo(() => liabilities.reduce((s, l) => s + l.outstanding, 0), [liabilities]);
+  const availableBalance  = useMemo(() => accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0), [accounts]);
+  const allAccountsBalance = useMemo(() => accounts.reduce((s, a) => s + a.balance, 0), [accounts]);
+  const netWorth          = totalAssetsValue + allAccountsBalance - totalLiabilities;
 
   const liabSummary = useMemo(() => ({
     borrowed:    liabilities.reduce((s, l) => s + l.borrowed, 0),
@@ -2538,28 +2539,33 @@ export default function FinanceScreen() {
           {/* ── OVERVIEW ──────────────────────────────────────────────────── */}
           {activeTab === 'overview' && (() => {
             const _ov_now = new Date();
-            const SPENDING_EXCLUDE = ['Investment', 'EPF / PPF / NPS', 'SSY', 'Bonds', 'Debt Funds', 'Mutual Funds', 'Stocks & Equity', 'Opening Balance', 'Adjustment', 'Balance Adjustment', 'Opening balance', 'Balance adjustment', 'Credit Card Payment', 'Transfer', 'adjustment', 'opening_balance'];
+            // System-only exclusions — matches web SavingsRateCard exactly
+            const SYSTEM_EXCL = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
             const thisMoTx = transactions.filter(t => {
               const d = new Date(t.date);
               return d.getMonth() === _ov_now.getMonth() && d.getFullYear() === _ov_now.getFullYear()
                 && t.type !== 'adjustment' && t.type !== 'opening_balance' && t.type !== 'transfer';
             });
-            const thisMonthIncome  = thisMoTx.filter(t => t.type === 'income' && !SPENDING_EXCLUDE.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-            const thisMonthExpense = thisMoTx.filter(t => t.type === 'expense' && !SPENDING_EXCLUDE.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+            // Savings rate — matches web: exclude system cats only
+            const thisMonthIncome  = thisMoTx.filter(t => t.type === 'income'  && !SYSTEM_EXCL.includes(t.category)).reduce((s, t) => s + t.amount, 0);
+            const thisMonthExpense = thisMoTx.filter(t => t.type === 'expense' && !SYSTEM_EXCL.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
             const thisSavings      = Math.max(0, thisMonthIncome - thisMonthExpense);
-            const thisSavingsRate  = thisMonthIncome > 0 ? Math.round((thisSavings / thisMonthIncome) * 100) : 0;
+            const thisSavingsRate  = thisMonthIncome > 0 ? Math.max(0, Math.round(((thisMonthIncome - thisMonthExpense) / thisMonthIncome) * 100)) : 0;
 
             const healthData = getHealthScore(transactions, totalAssetsValue, totalLiabilities);
             const insights   = getInsights(transactions, totalAssetsValue, totalLiabilities);
 
+            // Spending by Category — matches web SpendingCategories: ALL-TIME, type===expense, no extra exclusions
             const catSpend: Record<string, number> = {};
-            thisMoTx.filter(t => t.type === 'expense' && !SPENDING_EXCLUDE.includes(t.category)).forEach(t => { catSpend[t.category] = (catSpend[t.category] ?? 0) + Math.abs(t.amount); });
+            transactions.filter(t => t.type === 'expense').forEach(t => { catSpend[t.category] = (catSpend[t.category] ?? 0) + Math.abs(t.amount); });
             const topCategories = Object.entries(catSpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const maxCatSpend   = topCategories[0]?.[1] ?? 1;
 
+            // Top Expenses this month — matches web TopExpenses: current month, system exclusions
             const moSpend: Record<string, number> = {};
-            thisMoTx.filter(t => t.type === 'expense' && !SPENDING_EXCLUDE.includes(t.category)).forEach(t => { moSpend[t.category] = (moSpend[t.category] ?? 0) + Math.abs(t.amount); });
-            const visibleTx = thisMoTx.filter(t => t.type !== 'transfer');
+            thisMoTx.filter(t => t.type === 'expense' && !SYSTEM_EXCL.includes(t.category)).forEach(t => { moSpend[t.category] = (moSpend[t.category] ?? 0) + Math.abs(t.amount); });
+            // Recent Transactions — matches web RecentTransactions: all-time latest 5, all types
+            const visibleTx = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
             const topMonthExp = Object.entries(moSpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const maxMoSpend  = topMonthExp[0]?.[1] ?? 1;
 
@@ -2578,43 +2584,49 @@ export default function FinanceScreen() {
             return (
               <>
                 {/* ── Net Worth ── */}
+                {(() => {
+                  // Web formula: totalAssets = invested assets + ALL account balances
+                  const totalAssetsDisplay = totalAssetsValue + allAccountsBalance;
+                  const total    = totalAssetsDisplay + totalLiabilities;
+                  const assetPct = total > 0 ? Math.round((totalAssetsDisplay / total) * 100) : 0;
+                  const liabPct  = 100 - assetPct;
+                  return (
                 <View style={{ marginHorizontal: 16, marginTop: 2, marginBottom: 10, backgroundColor: SURFACE, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: BORDER }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 16, color: MUTED }}>Net Worth</Text>
-                    {totalAssetsValue > 0 && netWorth > 0 && (
-                      <View style={{ backgroundColor: '#10B98122', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '600', color: '#10B981' }}>
-                          {Math.round((totalAssetsValue / netWorth) * 100)}% in assets
-                        </Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, color: MUTED }}>Net Worth</Text>
+                    {total > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#10B98115', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                        <TrendingUp size={10} color="#10B981" />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: '#10B981' }}>{assetPct}% in assets</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={{ fontSize: 29, fontWeight: '800', color: netWorth >= 0 ? '#10B981' : '#EF4444' }}>
+                  <Text style={{ fontSize: 32, fontWeight: '800', color: netWorth >= 0 ? TXT : '#EF4444', letterSpacing: -1, lineHeight: 36 }}>
                     {netWorth < 0 ? '−' : ''}{formatINR(Math.abs(netWorth))}
                   </Text>
-                  {(totalAssetsValue + totalLiabilities) > 0 && (() => {
-                    const assetW = Math.round((totalAssetsValue / (totalAssetsValue + totalLiabilities)) * 100);
-                    const liabW  = 100 - assetW;
-                    return (
-                      <View style={{ marginTop: 12 }}>
-                        <View style={{ height: 5, borderRadius: 3, flexDirection: 'row', overflow: 'hidden', backgroundColor: BORDER }}>
-                          <View style={{ width: `${assetW}%` as `${number}%`, backgroundColor: '#10B981' }} />
-                          <View style={{ width: `${liabW}%` as `${number}%`, backgroundColor: '#EF4444' }} />
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                          <View>
-                            <Text style={{ fontSize: 14, color: '#10B981' }}>Assets {fmtCompact(totalAssetsValue)}</Text>
-                            <Text style={{ fontSize: 11, color: '#10B981', opacity: 0.7 }}>{assetW}% assets</Text>
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <Text style={{ fontSize: 14, color: '#EF4444' }}>Liabilities {fmtCompact(totalLiabilities)}</Text>
-                            <Text style={{ fontSize: 11, color: '#EF4444', opacity: 0.7 }}>{liabW}% liabilities</Text>
-                          </View>
-                        </View>
+                  {/* Assets • Liabilities inline — matches web layout */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                    <Text style={{ fontSize: 13, color: MUTED }}>Assets</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#10B981' }}>{fmtCompact(totalAssetsDisplay)}</Text>
+                    <Text style={{ fontSize: 13, color: BORDER }}>•</Text>
+                    <Text style={{ fontSize: 13, color: MUTED }}>Liabilities</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#EF4444' }}>{fmtCompact(totalLiabilities)}</Text>
+                  </View>
+                  {total > 0 && (
+                    <View style={{ marginTop: 10 }}>
+                      <View style={{ height: 5, borderRadius: 3, flexDirection: 'row', overflow: 'hidden', backgroundColor: BORDER }}>
+                        <View style={{ width: `${assetPct}%` as `${number}%`, backgroundColor: '#10B981' }} />
+                        <View style={{ width: `${liabPct}%` as `${number}%`, backgroundColor: '#EF4444' }} />
                       </View>
-                    );
-                  })()}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                        <Text style={{ fontSize: 11, color: MUTED }}>{assetPct}% assets</Text>
+                        <Text style={{ fontSize: 11, color: MUTED }}>{liabPct}% liabilities</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
+                  );
+                })()}
 
                 {/* ── 3 Metric Cards: Assets, Liabilities, Accounts (matching web) ── */}
                 <View style={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}>
@@ -2724,9 +2736,12 @@ export default function FinanceScreen() {
                 {/* ── Spending by Category (all time) ── */}
                 {topCategories.length > 0 && (
                   <View style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: SURFACE, borderRadius: 20, padding: 18 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <PieChart size={16} color="#8B5CF6" />
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>Spending by Category (This Month)</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                      <View>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>Spending by Category</Text>
+                        <Text style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>Top 5 expense categories</Text>
+                      </View>
+                      <ChartPie size={16} color="#8B5CF6" />
                     </View>
                     {topCategories.map(([cat, amt], i) => {
                       const pct = Math.round((amt / maxCatSpend) * 100);
@@ -2752,12 +2767,13 @@ export default function FinanceScreen() {
                 {/* ── Recent Transactions ── */}
                 <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>This Month's Transactions</Text>
-                    {visibleTx.length > 5 && (
-                      <TouchableOpacity onPress={() => setActiveTab('transactions')}>
-                        <Text style={{ fontSize: 14, color: ACCENT }}>View all →</Text>
-                      </TouchableOpacity>
-                    )}
+                    <View>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>Recent Transactions</Text>
+                      <Text style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>Latest</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setActiveTab('transactions')}>
+                      <Text style={{ fontSize: 14, color: ACCENT }}>View all →</Text>
+                    </TouchableOpacity>
                   </View>
                   <View style={{ backgroundColor: SURFACE, borderRadius: 16, overflow: 'hidden' }}>
                     {visibleTx.length === 0 ? (
@@ -2766,7 +2782,7 @@ export default function FinanceScreen() {
                         <Text style={{ fontSize: 14, color: MUTED }}>No transactions yet</Text>
                       </View>
                     ) : (
-                      visibleTx.slice(0, 5).map((tx) => {
+                      visibleTx.map((tx) => {
                         const ovAcctMap = Object.fromEntries(accounts.map(a => [a.id, a.name]));
                         return <TxItem key={tx.id} tx={tx} accountName={tx.accountId ? ovAcctMap[tx.accountId] : undefined} onMenuOpen={(t, y) => setTxMenu({ tx: t, y })} />;
                       })
@@ -3061,7 +3077,7 @@ export default function FinanceScreen() {
                         const c = cat === 'All' ? ACCENT : catColor(cat);
                         return (
                           <TouchableOpacity key={cat} onPress={() => setAssetCategoryFilter(cat)}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: isActive ? c : BORDER, backgroundColor: isActive ? c + '22' : '#1E1E1E' }}>
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: isActive ? c : BORDER, backgroundColor: isActive ? c + '22' : SURFACE_ALT }}>
                             <Text style={{ fontSize: 14, fontWeight: '600', color: isActive ? c : MUTED }}>{cat}</Text>
                             {cat !== 'All' && (
                               <View style={{ backgroundColor: isActive ? c + '33' : BORDER, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 }}>
@@ -3288,7 +3304,8 @@ export default function FinanceScreen() {
 
           {/* ── ACCOUNTS ─────────────────────────────────────────────────── */}
           {activeTab === 'accounts' && (() => {
-            const creditUsed = Math.abs(accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + Math.min(0, a.balance), 0));
+            const creditUsed   = Math.abs(accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + Math.min(0, a.balance), 0));
+            const totalBalance = availableBalance - creditUsed;
             const now2 = new Date();
             const today2 = now2.toISOString().slice(0, 10);
             const spentThisMonth = transactions.filter(t => {
@@ -3317,8 +3334,8 @@ export default function FinanceScreen() {
                 {/* Green gradient hero card (matching web) */}
                 <View style={{ borderRadius: 20, padding: 22, marginBottom: 14, backgroundColor: '#10B981', shadowColor: '#10B981', shadowOpacity: 0.3, shadowRadius: 14, elevation: 6 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, color: 'rgba(255,255,255,0.8)' }}>Total Balance</Text>
-                  <Text style={{ fontSize: 38, fontWeight: '800', color: 'white', marginTop: 6, letterSpacing: -1 }}>{formatINR(availableBalance)}</Text>
-                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>Bank, cash and wallet balances</Text>
+                  <Text style={{ fontSize: 38, fontWeight: '800', color: 'white', marginTop: 6, letterSpacing: -1 }}>{formatINR(totalBalance)}</Text>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>Liquid assets minus credit used</Text>
                 </View>
 
                 {/* 3 metric cards */}

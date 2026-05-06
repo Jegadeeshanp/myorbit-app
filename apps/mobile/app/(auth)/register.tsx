@@ -41,20 +41,20 @@ export default function RegisterScreen() {
   };
 
   const inputStyle = {
-    backgroundColor: '#242424',
+    backgroundColor: '#21262d',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#30363d',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: 'white' as const,
+    color: '#e6edf3' as const,
     marginBottom: 16,
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0D0D0D' }}
+      style={{ flex: 1, backgroundColor: '#0d1117' }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -63,11 +63,11 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{
-          backgroundColor: '#1A1A1A',
+          backgroundColor: '#1c2128',
           borderRadius: 24,
           padding: 28,
           borderWidth: 1,
-          borderColor: '#2A2A2A',
+          borderColor: '#30363d',
         }}>
           {/* Icon */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -82,7 +82,7 @@ export default function RegisterScreen() {
                 <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
               </Svg>
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: 'white', marginTop: 16 }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#e6edf3', marginTop: 16 }}>
               Create your account
             </Text>
             <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 6 }}>
@@ -96,7 +96,7 @@ export default function RegisterScreen() {
             </View>
           ) : null}
 
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#D1D5DB', marginBottom: 8 }}>Name</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#adbac7', marginBottom: 8 }}>Name</Text>
           <TextInput
             style={inputStyle}
             placeholder="Your full name"
@@ -110,7 +110,7 @@ export default function RegisterScreen() {
             onSubmitEditing={() => emailRef.current?.focus()}
           />
 
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#D1D5DB', marginBottom: 8 }}>Email</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#adbac7', marginBottom: 8 }}>Email</Text>
           <TextInput
             ref={emailRef}
             style={inputStyle}
@@ -129,15 +129,15 @@ export default function RegisterScreen() {
             onSubmitEditing={() => passwordRef.current?.focus()}
           />
 
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#D1D5DB', marginBottom: 8 }}>Password</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#adbac7', marginBottom: 8 }}>Password</Text>
           <View style={{
-            backgroundColor: '#242424', borderWidth: 1, borderColor: '#333333',
+            backgroundColor: '#21262d', borderWidth: 1, borderColor: '#30363d',
             borderRadius: 12, flexDirection: 'row', alignItems: 'center',
             paddingHorizontal: 16, marginBottom: 28,
           }}>
             <TextInput
               ref={passwordRef}
-              style={{ flex: 1, paddingVertical: 14, fontSize: 15, color: 'white' }}
+              style={{ flex: 1, paddingVertical: 14, fontSize: 15, color: '#e6edf3' }}
               placeholder="Min. 8 characters"
               placeholderTextColor="#4B5563"
               value={password}
@@ -161,7 +161,7 @@ export default function RegisterScreen() {
           >
             {loading
               ? <ActivityIndicator color="white" />
-              : <Text style={{ fontSize: 16, fontWeight: '700', color: 'white' }}>Create Account</Text>
+              : <Text style={{ fontSize: 16, fontWeight: '700', color: '#e6edf3' }}>Create Account</Text>
             }
           </TouchableOpacity>
         </View>

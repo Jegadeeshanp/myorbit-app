@@ -22,6 +22,8 @@ import {
   Trash2, AlertTriangle, Sun, Inbox as InboxIcon, List as ListIcon,
   CalendarDays, MoreHorizontal, X, CalendarCheck, Settings,
   Tag, Flag, Search, Bell, RotateCcw, Check, Menu,
+  Clipboard, CheckSquare, Target, Briefcase, Home, ShoppingCart,
+  BookOpen, Lightbulb, Monitor, Star, Heart,
 } from 'lucide-react-native';
 
 // ── Types ────────────────────────────────────────────────────────────────────────
@@ -64,7 +66,21 @@ const SECTION_CONFIG = [
   { key: 'completed', label: 'Completed', color: '#6B7280', bg: 'transparent' },
 ];
 
-const LIST_EMOJIS = ['📋', '📝', '✅', '📌', '💼', '🏠', '🛒', '🎯', '📚', '💡', '💻', '🧾'];
+const LIST_ICONS_DEF = [
+  { name: 'list',          Icon: ListIcon      },
+  { name: 'clipboard',     Icon: Clipboard     },
+  { name: 'check-square',  Icon: CheckSquare   },
+  { name: 'target',        Icon: Target        },
+  { name: 'briefcase',     Icon: Briefcase     },
+  { name: 'home',          Icon: Home          },
+  { name: 'shopping-cart', Icon: ShoppingCart  },
+  { name: 'book-open',     Icon: BookOpen      },
+  { name: 'lightbulb',     Icon: Lightbulb     },
+  { name: 'monitor',       Icon: Monitor       },
+  { name: 'star',          Icon: Star          },
+  { name: 'heart',         Icon: Heart         },
+];
+function getListIC(name?: string | null) { return LIST_ICONS_DEF.find(i => i.name === name)?.Icon ?? ListIcon; }
 const LIST_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#64748B'];
 
 const REPEAT_OPTS = [
@@ -192,21 +208,17 @@ function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: Su
       {SUB_TABS.map(({ key, label, Icon }) => {
         const on = active === key;
         return (
-          <TouchableOpacity key={key} onPress={() => onSelect(key)} style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-            {on && <View style={{ position: 'absolute', top: 0, left: '25%', right: '25%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
-            <View style={{ width: 34, height: 26, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: on ? ACCENT + '22' : 'transparent' }}>
-              <Icon size={17} color={on ? ACCENT : MUTED} />
-            </View>
-            <Text style={{ fontSize: 10, fontWeight: '500', color: on ? ACCENT : MUTED, marginTop: 2 }}>{label}</Text>
+          <TouchableOpacity key={key} onPress={() => onSelect(key)} style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+            {on && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+            <Icon size={20} color={on ? ACCENT : MUTED} />
+            <Text style={{ fontSize: 12, fontWeight: '500', color: on ? ACCENT : MUTED, marginTop: 3 }}>{label}</Text>
           </TouchableOpacity>
         );
       })}
-      <TouchableOpacity onPress={onMore} style={{ width: 52, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-        {isMoreActive && <View style={{ position: 'absolute', top: 0, left: '25%', right: '25%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
-        <View style={{ width: 34, height: 26, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: isMoreActive ? ACCENT + '22' : 'transparent' }}>
-          <MoreHorizontal size={17} color={isMoreActive ? ACCENT : MUTED} />
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: '500', color: isMoreActive ? ACCENT : MUTED, marginTop: 2 }}>More</Text>
+      <TouchableOpacity onPress={onMore} style={{ width: 52, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+        {isMoreActive && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+        <MoreHorizontal size={20} color={isMoreActive ? ACCENT : MUTED} />
+        <Text style={{ fontSize: 12, fontWeight: '500', color: isMoreActive ? ACCENT : MUTED, marginTop: 3 }}>More</Text>
       </TouchableOpacity>
     </View>
   );
@@ -293,12 +305,15 @@ function InstanceItem({ item, onComplete, onEdit }: { item: TaskInstance; onComp
             {item.task.priority !== 'none' && (
               <Flag size={11} color={PRIORITY_COLOR[item.task.priority]} />
             )}
-            {item.task.list && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Text style={{ fontSize: 11 }}>{item.task.list.emoji ?? '📋'}</Text>
-                <Text style={{ fontSize: 11, color: MUTED }}>{item.task.list.name}</Text>
-              </View>
-            )}
+            {item.task.list && (() => {
+              const LIC = getListIC(item.task.list.emoji);
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <LIC size={11} color={item.task.list.color ?? ACCENT} />
+                  <Text style={{ fontSize: 11, color: MUTED }}>{item.task.list.name}</Text>
+                </View>
+              );
+            })()}
           </View>
         </View>
         <ChevronRight size={14} color="#4B5563" style={{ marginTop: 4 }} />
@@ -343,12 +358,15 @@ function TaskRow({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string
               {task.priority !== 'none' && (
                 <Flag size={11} color={PRIORITY_COLOR[task.priority]} />
               )}
-              {task.list && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                  <Text style={{ fontSize: 11 }}>{task.list.emoji ?? '📋'}</Text>
-                  <Text style={{ fontSize: 11, color: MUTED }}>{task.list.name}</Text>
-                </View>
-              )}
+              {task.list && (() => {
+                const LIC = getListIC(task.list.emoji);
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <LIC size={11} color={task.list.color ?? ACCENT} />
+                    <Text style={{ fontSize: 11, color: MUTED }}>{task.list.name}</Text>
+                  </View>
+                );
+              })()}
             </View>
           )}
         </View>
@@ -758,7 +776,7 @@ function ListSelectorContent({ lists, selectedId, onSelect, onBack }: {
               <TouchableOpacity key={list.id} onPress={() => { onSelect(list.id); onBack(); }}
                 style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: isSelected ? ACCENT + '22' : 'transparent', borderTopWidth: 1, borderTopColor: BORDER }}>
                 <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: (list.color ?? ACCENT) + '22', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 18 }}>{list.emoji ?? '📋'}</Text>
+                  {(() => { const LIC = getListIC(list.emoji); return <LIC size={18} color={list.color ?? ACCENT} />; })()}
                 </View>
                 <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: isSelected ? ACCENT : TXT2 }}>{list.name}</Text>
                 {isSelected && <Check size={16} color={ACCENT} />}
@@ -900,7 +918,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
                 <TouchableOpacity onPress={() => setShowList(true)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 12 }}>
                   {selectedList
-                    ? <View style={{ width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: (selectedList.color ?? ACCENT) + '22' }}><Text style={{ fontSize: 12 }}>{selectedList.emoji ?? '📋'}</Text></View>
+                    ? <View style={{ width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: (selectedList.color ?? ACCENT) + '22' }}>{(() => { const LIC = getListIC(selectedList.emoji); return <LIC size={12} color={selectedList.color ?? ACCENT} />; })()}</View>
                     : <ListIcon size={20} color={listId ? '#3B82F6' : MUTED} />}
                   {selectedList && <Text style={{ fontSize: 11, fontWeight: '600', color: '#3B82F6', maxWidth: 60 }} numberOfLines={1}>{selectedList.name}</Text>}
                 </TouchableOpacity>
@@ -1159,7 +1177,7 @@ function SideDrawer({ visible, active, lists, onSelect, onSelectList, onCreateLi
               <TouchableOpacity key={list.id} onPress={() => { onSelectList(list); onClose(); }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 11, marginHorizontal: 8, borderRadius: 12, marginBottom: 2 }}>
                 <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: (list.color ?? ACCENT) + '25', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16 }}>{list.emoji ?? '📋'}</Text>
+                  {(() => { const LIC = getListIC(list.emoji); return <LIC size={16} color={list.color ?? ACCENT} />; })()}
                 </View>
                 <Text style={{ fontSize: 14, color: TXT2, flex: 1 }} numberOfLines={1}>{list.name}</Text>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: list.color ?? ACCENT }} />
@@ -1218,7 +1236,7 @@ function ListsBrowser({ lists, allTasks, searchQuery, onSelectList, onEditList, 
           <TouchableOpacity key={list.id} onPress={() => onSelectList(list)}
             style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, backgroundColor: SURFACE, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
             <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: color + '25', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-              <Text style={{ fontSize: 22 }}>{list.emoji ?? '📋'}</Text>
+              {(() => { const LIC = getListIC(list.emoji); return <LIC size={22} color={color} />; })()}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: TXT }}>{list.name}</Text>
@@ -1248,13 +1266,13 @@ function ListModal({ visible, initial, onClose, onSave }: {
 }) {
   const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const [name, setName]   = useState('');
-  const [emoji, setEmoji] = useState('📋');
+  const [emoji, setEmoji] = useState('list');
   const [color, setColor] = useState(ACCENT);
 
   useEffect(() => {
     if (!visible) return;
-    if (initial) { setName(initial.name); setEmoji(initial.emoji ?? '📋'); setColor(initial.color ?? ACCENT); }
-    else { setName(''); setEmoji('📋'); setColor(ACCENT); }
+    if (initial) { setName(initial.name); setEmoji(initial.emoji ?? 'list'); setColor(initial.color ?? ACCENT); }
+    else { setName(''); setEmoji('list'); setColor(ACCENT); }
   }, [visible, initial?.id]);
 
   const save = () => { if (!name.trim()) return; onSave({ name: name.trim(), emoji, color }); onClose(); };
@@ -1276,10 +1294,10 @@ function ListModal({ visible, initial, onClose, onSave }: {
           <Text style={{ fontSize: 11, fontWeight: '700', color: MUTED, letterSpacing: 1, marginBottom: 8 }}>ICON</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {LIST_EMOJIS.map(em => (
-                <TouchableOpacity key={em} onPress={() => setEmoji(em)}
-                  style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: emoji === em ? ACCENT + '22' : SURFACE2, borderWidth: emoji === em ? 2 : 0, borderColor: ACCENT }}>
-                  <Text style={{ fontSize: 20 }}>{em}</Text>
+              {LIST_ICONS_DEF.map(({ name, Icon: LIC }) => (
+                <TouchableOpacity key={name} onPress={() => setEmoji(name)}
+                  style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: emoji === name ? ACCENT + '22' : SURFACE2, borderWidth: emoji === name ? 2 : 0, borderColor: ACCENT }}>
+                  <LIC size={20} color={emoji === name ? ACCENT : MUTED} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -1607,7 +1625,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
     <Modal visible={visible} animationType="slide" transparent onRequestClose={dismissSub}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={dismissSub} />
-        <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40, minHeight: '50%', overflow: 'hidden' }}>
+        <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, minHeight: '50%', maxHeight: '88%', overflow: 'hidden' }}>
           {/* Handle */}
           <View style={{ width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 2 }} />
 
@@ -1662,7 +1680,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
                   <TouchableOpacity key={l.id ?? ''} onPress={() => { updateField({ listId: l.id || null }); setEditingField(null); }}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: (t.listId ?? '') === (l.id ?? '') ? ACCENT + '15' : 'transparent' }}>
                     <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: (l.color ?? ACCENT) + '22', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 16 }}>{l.emoji ?? '📋'}</Text>
+                      {(() => { const LIC = getListIC(l.emoji); return <LIC size={16} color={l.color ?? ACCENT} />; })()}
                     </View>
                     <Text style={{ flex: 1, fontSize: 15, color: TXT }}>{l.name}</Text>
                     {(t.listId ?? '') === (l.id ?? '') && <Check size={16} color={ACCENT} />}
@@ -1694,12 +1712,13 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
 
           {/* ── Main detail content ── */}
           {!showingOverlay && (<>
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1 }} bounces={false}>
 
           {/* Header: list (tappable) + priority flag (tappable) + close */}
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
             <TouchableOpacity onPress={() => !isFromNotification && setEditingField('list')} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }} activeOpacity={isFromNotification ? 1 : 0.7}>
               <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: (list?.color ?? ACCENT) + '25', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 13 }}>{list?.emoji ?? '📥'}</Text>
+                {(() => { const LIC = getListIC(list?.emoji); return <LIC size={13} color={list?.color ?? ACCENT} />; })()}
               </View>
               <Text style={{ fontSize: 13, fontWeight: '500', color: TXT2 }} numberOfLines={1}>{list?.name ?? 'Inbox'}</Text>
               {!isFromNotification && <ChevronDown size={13} color={MUTED} />}
@@ -1800,8 +1819,9 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
             )}
           </View>
 
+            </ScrollView>
           {/* Bottom toolbar */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28, borderTopWidth: 1, borderTopColor: BORDER }}>
             {(onComplete || onSnooze) && (
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
                 {onComplete && (
@@ -2077,15 +2097,15 @@ export default function TasksScreen() {
                   <TouchableOpacity onPress={() => toggleSection(section.key)}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: section.bg }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {section.key === 'overdue'   && <AlertTriangle size={14} color={section.color} />}
-                      {section.key === 'today'     && <Clock size={14} color={section.color} />}
-                      {section.key === 'completed' && <CheckCircle size={14} color={section.color} />}
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: section.color }}>{section.label}</Text>
+                      {section.key === 'overdue'   && <AlertTriangle size={15} color={section.color} />}
+                      {section.key === 'today'     && <Clock size={15} color={section.color} />}
+                      {section.key === 'completed' && <CheckCircle size={15} color={section.color} />}
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: section.color }}>{section.label}</Text>
                       <View style={{ borderRadius: 20, paddingHorizontal: 7, paddingVertical: 1, backgroundColor: section.color + '33' }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: section.color }}>{section.count}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: section.color }}>{section.count}</Text>
                       </View>
                     </View>
-                    {collapsed[section.key] ? <ChevronRight size={14} color={section.color} /> : <ChevronDown size={14} color={section.color} />}
+                    {collapsed[section.key] ? <ChevronRight size={15} color={section.color} /> : <ChevronDown size={15} color={section.color} />}
                   </TouchableOpacity>
                 )}
                 renderItem={({ item }) => <InstanceItem item={item} onComplete={completeMut.mutateAsync} onEdit={setCalDetailTask} />}
@@ -2137,7 +2157,7 @@ export default function TasksScreen() {
                 }
                 ListEmptyComponent={loadingList ? null : (
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
-                    <Text style={{ fontSize: 40, marginBottom: 12 }}>{activeList.emoji ?? '📋'}</Text>
+                    {(() => { const LIC = getListIC(activeList.emoji); return <LIC size={40} color={activeList.color ?? ACCENT} />; })()}
                     <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>No tasks yet</Text>
                     <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{searchQuery ? 'No tasks match your search' : 'Tap + to add a task'}</Text>
                   </View>
@@ -2155,8 +2175,8 @@ export default function TasksScreen() {
               <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetchAll} />}>
                 {next7Groups.length === 0 ? (
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
-                    <Text style={{ fontSize: 40, marginBottom: 12 }}>📅</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>Nothing scheduled</Text>
+                    <CalendarDays size={40} color={MUTED} />
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>Nothing scheduled</Text>
                     <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{searchQuery ? 'No tasks match your search' : 'No tasks in the next 7 days'}</Text>
                   </View>
                 ) : next7Groups.map(({ date, tasks }) => (

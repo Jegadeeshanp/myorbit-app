@@ -2,13 +2,13 @@
 
 export const COLORS = {
   // Background
-  background: '#0A0A0A',
-  surface: '#1A1A2E',
-  surfaceAlt: '#16213E',
-  
+  background: '#0d1117',
+  surface: '#161b22',
+  surfaceAlt: '#21262d',
+
   // Surfaces & Cards
-  card: '#1A1A2E',
-  cardDark: '#16213E',
+  card: '#1c2128',
+  cardDark: '#161b22',
   
   // Primary Colors (by module)
   goals: '#6C63FF', // Purple
@@ -23,13 +23,13 @@ export const COLORS = {
   },
   
   // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#9CA3AF',
-  textTertiary: '#6B7280',
-  
+  textPrimary: '#e6edf3',
+  textSecondary: '#8b949e',
+  textTertiary: '#636e7b',
+
   // Accents
-  border: '#2D2D3D',
-  divider: '#2D2D3D',
+  border: '#30363d',
+  divider: '#30363d',
   error: '#EF4444',
   success: '#22C55E',
   warning: '#F97316',

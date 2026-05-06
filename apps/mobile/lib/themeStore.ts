@@ -45,27 +45,27 @@ export interface Theme {
 }
 
 export const DARK: Theme = {
-  bg:        '#111111',
-  cardBg:    '#1A1A1A',
-  modalBg:   '#141414',
-  surface:   '#1E1E1E',
-  surfaceAlt:'#242424',
-  text:      '#FFFFFF',
-  textSec:   '#E5E7EB',
-  subText:   '#9CA3AF',
-  mutedText: '#6B7280',
-  border:    '#2A2A2A',
-  inputBg:   '#1E1E1E',
+  bg:        '#0d1117',  // web page bg
+  cardBg:    '#1c2128',  // web card
+  modalBg:   '#161b22',  // web surface
+  surface:   '#161b22',  // web surface
+  surfaceAlt:'#21262d',  // web card-alt
+  text:      '#e6edf3',  // web text-1
+  textSec:   '#adbac7',  // web text-2
+  subText:   '#8b949e',  // web text-gray-600
+  mutedText: '#636e7b',  // web text-3
+  border:    '#30363d',  // web border
+  inputBg:   '#21262d',  // web card-alt
   accent:    '#10B981',
   danger:    '#EF4444',
 };
 
 export const LIGHT: Theme = {
-  bg:        '#F3F4F6',
+  bg:        '#F9FAFB',  // bg-gray-50
   cardBg:    '#FFFFFF',
   modalBg:   '#FFFFFF',
-  surface:   '#F9FAFB',
-  surfaceAlt:'#F3F4F6',
+  surface:   '#F3F4F6',  // bg-gray-100
+  surfaceAlt:'#E5E7EB',  // bg-gray-200
   text:      '#111827',
   textSec:   '#374151',
   subText:   '#6B7280',

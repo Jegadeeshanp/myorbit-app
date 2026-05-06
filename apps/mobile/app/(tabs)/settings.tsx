@@ -7,7 +7,7 @@ import AppHeader from '@/components/shared/AppHeader';
 import {
   User, Bell, Shield, LogOut, ChevronRight, Info, Database,
   Moon, Sun, Globe, CreditCard, Heart, Target, Flame, CheckSquare,
-  BarChart2, DollarSign,
+  ChartBar, DollarSign,
 } from 'lucide-react-native';
 
 // ── Section definitions ────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export default function SettingsScreen() {
       { label: 'Habits',   subtitle: 'Week start, notification time',    icon: Flame,       color: '#F59E0B', onPress: () => router.push('/(tabs)/habits') },
       { label: 'Goals',    subtitle: 'Review frequency, horizon',        icon: Target,      color: '#3B82F6', onPress: () => router.push('/(tabs)/goals') },
       { label: 'To-Do',    subtitle: 'Default list, priority labels',    icon: CheckSquare, color: '#8B5CF6', onPress: () => router.push('/(tabs)/tasks') },
-      { label: 'Insights', subtitle: 'Score weights, refresh interval',  icon: BarChart2,   color: '#64748B', onPress: () => router.push('/(tabs)/insights') },
+      { label: 'Insights', subtitle: 'Score weights, refresh interval',  icon: ChartBar,   color: '#64748B', onPress: () => router.push('/(tabs)/insights') },
     ]),
 
     makeSection('Data & Privacy', [

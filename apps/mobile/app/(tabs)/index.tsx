@@ -3,9 +3,10 @@ import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Wallet, Target, Heart, Flame, CheckSquare, BarChart2,
-  Settings, LogOut, Star, Sun, Moon,
+  Wallet, Target, Heart, Flame, CheckSquare, ChartBar,
+  Settings, LogOut, Sun, Moon,
 } from 'lucide-react-native';
+import Svg, { Rect, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 import { useThemeStore, getTheme } from '@/lib/themeStore';
 
 const MODULES = [
@@ -59,7 +60,7 @@ const MODULES = [
     label: 'Insights',
     description: 'Discover trends, scores and personalized suggestions.',
     cta: 'Discover Insights ->',
-    icon: BarChart2,
+    icon: ChartBar,
     color: '#64748B',
     route: '/(tabs)/insights',
   },
@@ -94,22 +95,16 @@ export default function HomeScreen() {
       >
         {/* ── Header ── */}
         <View style={{ alignItems: 'center', marginBottom: 24, paddingTop: 8 }}>
-          <View
-            style={{
-              width: 68,
-              height: 68,
-              borderRadius: 20,
-              backgroundColor: '#10B981',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#10B981',
-              shadowOpacity: 0.35,
-              shadowRadius: 14,
-              elevation: 8,
-              marginBottom: 14,
-            }}
-          >
-            <Star size={28} color="white" fill="white" />
+          <View style={{ shadowColor: '#10B981', shadowOpacity: 0.4, shadowRadius: 14, elevation: 8, marginBottom: 14 }}>
+            <Svg width={68} height={68} viewBox="0 0 40 40">
+              <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#10B981" />
+              <SvgCircle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
+              <SvgCircle cx="20" cy="7" r="2.5" fill="white" />
+              <SvgCircle cx="33" cy="20" r="2.5" fill="white" />
+              <SvgCircle cx="20" cy="33" r="2.5" fill="white" />
+              <SvgCircle cx="7" cy="20" r="2.5" fill="white" />
+              <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
+            </Svg>
           </View>
           <Text style={{ fontSize: 26, fontWeight: '800', color: T.text, letterSpacing: -0.5 }}>
             MyOrbit

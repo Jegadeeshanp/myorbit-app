@@ -20,6 +20,7 @@ import {
   Plus, Target, CheckCircle, Circle, Trash2, ChevronRight,
   LayoutDashboard, Pause, Pencil, Zap, MoreHorizontal, X, Settings,
   CheckSquare, RotateCcw, Search, Menu, Flag,
+  Wallet, Heart, Briefcase, BookOpen, User, CalendarDays, Trophy, Inbox,
 } from 'lucide-react-native';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -57,6 +58,11 @@ const MORE_ITEMS = [
 const CAT_COLORS: Record<string, string> = {
   Finance: '#10B981', Health: '#EF4444', Career: '#3B82F6',
   Learning: '#8B5CF6', Personal: '#F59E0B', Other: '#64748B',
+};
+
+const CAT_ICONS: Record<string, React.ComponentType<{ size: number; color: string }>> = {
+  Finance: Wallet, Health: Heart, Career: Briefcase,
+  Learning: BookOpen, Personal: User, Other: MoreHorizontal,
 };
 
 const STATUS_CONFIG = {
@@ -97,21 +103,17 @@ function SubNav({ active, onSelect, onMore }: {
         const on = active === key;
         return (
           <TouchableOpacity key={key} onPress={() => onSelect(key)}
-            style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-            {on && <View style={{ position: 'absolute', top: 0, left: '25%', right: '25%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
-            <View style={{ width: 34, height: 26, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: on ? ACCENT + '22' : 'transparent' }}>
-              <Icon size={17} color={on ? ACCENT : MUTED} />
-            </View>
-            <Text style={{ fontSize: 10, fontWeight: '500', color: on ? ACCENT : MUTED, marginTop: 2 }}>{label}</Text>
+            style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+            {on && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+            <Icon size={20} color={on ? ACCENT : MUTED} />
+            <Text style={{ fontSize: 12, fontWeight: '500', color: on ? ACCENT : MUTED, marginTop: 3 }}>{label}</Text>
           </TouchableOpacity>
         );
       })}
-      <TouchableOpacity onPress={onMore} style={{ width: 52, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-        {isMoreActive && <View style={{ position: 'absolute', top: 0, left: '25%', right: '25%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
-        <View style={{ width: 34, height: 26, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: isMoreActive ? ACCENT + '22' : 'transparent' }}>
-          <MoreHorizontal size={17} color={isMoreActive ? ACCENT : MUTED} />
-        </View>
-        <Text style={{ fontSize: 10, fontWeight: '500', color: isMoreActive ? ACCENT : MUTED, marginTop: 2 }}>More</Text>
+      <TouchableOpacity onPress={onMore} style={{ width: 52, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+        {isMoreActive && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+        <MoreHorizontal size={20} color={isMoreActive ? ACCENT : MUTED} />
+        <Text style={{ fontSize: 12, fontWeight: '500', color: isMoreActive ? ACCENT : MUTED, marginTop: 3 }}>More</Text>
       </TouchableOpacity>
     </View>
   );
@@ -190,7 +192,8 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
         <View style={{ flex: 1, marginRight: 8 }}>
           {/* Badges */}
           <View style={{ flexDirection: 'row', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
-            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: catColor + '22' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: catColor + '22' }}>
+              {(() => { const CatIcon = CAT_ICONS[goal.category]; return CatIcon ? <CatIcon size={10} color={catColor} /> : null; })()}
               <Text style={{ fontSize: 11, fontWeight: '600', color: catColor }}>{goal.category}</Text>
             </View>
             <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: cfg.bg }}>
@@ -231,9 +234,10 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
 
       {/* Deadline */}
       {goal.deadline && (
-        <Text style={{ fontSize: 12, color: isOverdue ? '#EF4444' : MUTED, marginBottom: 8 }}>
-          📅 {goal.deadline}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+          <CalendarDays size={12} color={isOverdue ? '#EF4444' : MUTED} />
+          <Text style={{ fontSize: 12, color: isOverdue ? '#EF4444' : MUTED }}>{goal.deadline}</Text>
+        </View>
       )}
 
       {/* Milestone progress bar */}
@@ -369,12 +373,17 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
 
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>Category</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                  {CATEGORIES.map(c => (
-                    <TouchableOpacity key={c} onPress={() => set('category', c)}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: form.category === c ? ACCENT : BORDER, backgroundColor: form.category === c ? ACCENT + '22' : SURFACE2 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: form.category === c ? ACCENT : MUTED }}>{c}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {CATEGORIES.map(c => {
+                    const CatIcon = CAT_ICONS[c];
+                    const active  = form.category === c;
+                    return (
+                      <TouchableOpacity key={c} onPress={() => set('category', c)}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT + '22' : SURFACE2 }}>
+                        {CatIcon && <CatIcon size={12} color={active ? ACCENT : MUTED} />}
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: active ? ACCENT : MUTED }}>{c}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Why? (optional)</Text>
@@ -473,12 +482,12 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
 
 // ── Goals List ───────────────────────────────────────────────────────────────
 
-function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, onPause, onToggleMilestone, emptyEmoji, emptyText, emptySubtext }: {
+function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, onPause, onToggleMilestone, EmptyIcon, emptyText, emptySubtext }: {
   goals: Goal[]; isLoading: boolean; refetch: () => void;
   onEdit: (g: Goal) => void; onDelete: (id: string) => void; onComplete: (id: string) => void;
   onPause: (id: string, current: Goal['status']) => void;
   onToggleMilestone: (goalId: string, ms: GoalMilestone) => void;
-  emptyEmoji: string; emptyText: string; emptySubtext: string;
+  EmptyIcon: React.ComponentType<{ size: number; color: string }>; emptyText: string; emptySubtext: string;
 }) {
   const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   return (
@@ -487,8 +496,8 @@ function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, on
         <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
       ) : goals.length === 0 ? (
         <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>{emptyEmoji}</Text>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>{emptyText}</Text>
+          <EmptyIcon size={40} color={MUTED} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{emptyText}</Text>
           <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{emptySubtext}</Text>
         </View>
       ) : (
@@ -652,8 +661,8 @@ export default function GoalsScreen() {
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
               ) : filteredAll.length === 0 ? (
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🎯</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2 }}>{searchQuery ? 'No goals match your search' : 'No goals yet'}</Text>
+                  <Target size={40} color={MUTED} />
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{searchQuery ? 'No goals match your search' : 'No goals yet'}</Text>
                   <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{!searchQuery && 'Tap + to set your first goal'}</Text>
                 </View>
               ) : (
@@ -666,19 +675,19 @@ export default function GoalsScreen() {
         {/* ── ACTIVE ── */}
         {activeTab === 'active' && (
           <GoalsList goals={applySearch(activeGoals)} isLoading={isLoading} refetch={refetch} {...sharedProps}
-            emptyEmoji="🎯" emptyText={searchQuery ? 'No active goals match' : 'No active goals'} emptySubtext={!searchQuery ? 'Tap + to start working towards something' : ''} />
+            EmptyIcon={Target} emptyText={searchQuery ? 'No active goals match' : 'No active goals'} emptySubtext={!searchQuery ? 'Tap + to start working towards something' : ''} />
         )}
 
         {/* ── COMPLETED ── */}
         {activeTab === 'completed' && (
           <GoalsList goals={applySearch(completedGoals)} isLoading={isLoading} refetch={refetch} {...sharedProps}
-            emptyEmoji="🏆" emptyText={searchQuery ? 'No completed goals match' : 'No completed goals yet'} emptySubtext={!searchQuery ? 'Keep working — you\'ll get there!' : ''} />
+            EmptyIcon={Trophy} emptyText={searchQuery ? 'No completed goals match' : 'No completed goals yet'} emptySubtext={!searchQuery ? 'Keep working — you\'ll get there!' : ''} />
         )}
 
         {/* ── ALL ── */}
         {activeTab === 'all' && (
           <GoalsList goals={applySearch(goals)} isLoading={isLoading} refetch={refetch} {...sharedProps}
-            emptyEmoji="📭" emptyText={searchQuery ? 'No goals match your search' : 'No goals yet'} emptySubtext={!searchQuery ? 'Add your first goal to get started' : ''} />
+            EmptyIcon={Inbox} emptyText={searchQuery ? 'No goals match your search' : 'No goals yet'} emptySubtext={!searchQuery ? 'Add your first goal to get started' : ''} />
         )}
 
       </View>

@@ -12,6 +12,7 @@ import {
   ChevronLeft, ChevronRight, Plus, Trash2, Save,
   LayoutDashboard, Dumbbell, UtensilsCrossed, RefreshCw,
   MoreHorizontal, X, Settings, Heart,
+  Footprints, Moon, Droplets, Scale, Smile, Zap, HeartPulse,
 } from 'lucide-react-native';
 import AppHeader from '@/components/shared/AppHeader';
 import { useTheme } from '@/lib/themeStore';
@@ -33,14 +34,14 @@ const SUB_TABS = [
 ];
 
 const METRICS = [
-  { key: 'steps',       label: 'Steps',      unit: 'steps', emoji: '👟', color: '#3B82F6', keyboard: 'numeric' },
-  { key: 'sleepHours',  label: 'Sleep',      unit: 'hrs',   emoji: '😴', color: '#8B5CF6', keyboard: 'decimal-pad' },
-  { key: 'waterMl',     label: 'Water',      unit: 'ml',    emoji: '💧', color: '#06B6D4', keyboard: 'numeric' },
-  { key: 'weightKg',    label: 'Weight',     unit: 'kg',    emoji: '⚖️', color: '#F59E0B', keyboard: 'decimal-pad' },
-  { key: 'mood',        label: 'Mood',       unit: '/5',    emoji: '😊', color: '#EC4899', keyboard: 'numeric' },
-  { key: 'energyLevel', label: 'Energy',     unit: '/10',   emoji: '⚡', color: '#10B981', keyboard: 'numeric' },
-  { key: 'heartRate',   label: 'Heart Rate', unit: 'bpm',   emoji: '❤️', color: '#EF4444', keyboard: 'numeric' },
-] as const;
+  { key: 'steps',       label: 'Steps',      unit: 'steps', Icon: Footprints, color: '#3B82F6', keyboard: 'numeric' },
+  { key: 'sleepHours',  label: 'Sleep',      unit: 'hrs',   Icon: Moon,       color: '#8B5CF6', keyboard: 'decimal-pad' },
+  { key: 'waterMl',     label: 'Water',      unit: 'ml',    Icon: Droplets,   color: '#06B6D4', keyboard: 'numeric' },
+  { key: 'weightKg',    label: 'Weight',     unit: 'kg',    Icon: Scale,      color: '#F59E0B', keyboard: 'decimal-pad' },
+  { key: 'mood',        label: 'Mood',       unit: '/5',    Icon: Smile,      color: '#EC4899', keyboard: 'numeric' },
+  { key: 'energyLevel', label: 'Energy',     unit: '/10',   Icon: Zap,        color: '#10B981', keyboard: 'numeric' },
+  { key: 'heartRate',   label: 'Heart Rate', unit: 'bpm',   Icon: HeartPulse, color: '#EF4444', keyboard: 'numeric' },
+];
 
 const WORKOUT_TYPES = ['running','cycling','strength','yoga','sports','other'] as const;
 
@@ -54,16 +55,16 @@ function SubNav({ active, onSelect, onMore }: { active: SubTab; onSelect: (t: Su
         const isActive = active === key;
         return (
           <TouchableOpacity key={key} onPress={() => onSelect(key)}
-            style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-            <Icon size={16} color={isActive ? ACCENT : C.SUB} />
-            <Text style={{ fontSize: 13, fontWeight: '500', color: isActive ? ACCENT : C.SUB, marginTop: 2 }}>{label}</Text>
+            style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
             {isActive && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+            <Icon size={20} color={isActive ? ACCENT : C.SUB} />
+            <Text style={{ fontSize: 12, fontWeight: '500', color: isActive ? ACCENT : C.SUB, marginTop: 3 }}>{label}</Text>
           </TouchableOpacity>
         );
       })}
-      <TouchableOpacity onPress={onMore} style={{ width: 48, alignItems: 'center', paddingTop: 10, paddingBottom: 8 }}>
-        <MoreHorizontal size={16} color={C.SUB} />
-        <Text style={{ fontSize: 13, fontWeight: '500', color: C.SUB, marginTop: 2 }}>More</Text>
+      <TouchableOpacity onPress={onMore} style={{ width: 48, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+        <MoreHorizontal size={20} color={C.SUB} />
+        <Text style={{ fontSize: 12, fontWeight: '500', color: C.SUB, marginTop: 3 }}>More</Text>
       </TouchableOpacity>
     </View>
   );
@@ -333,7 +334,7 @@ export default function HealthScreen() {
               {METRICS.map((m) => (
                 <View key={m.key} style={{ width: '47%', backgroundColor: C.CARD, borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
+                    <m.Icon size={20} color={m.color} />
                     <Text style={{ fontSize: 13, color: C.SUB }}>{m.label}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>

@@ -5,7 +5,7 @@ import { getInsightScores } from '@myorbit/api';
 import type { InsightScores } from '@myorbit/api';
 import Screen from '@/components/shared/Screen';
 import LoadingSkeleton from '@/components/shared/LoadingSkeleton';
-import { BarChart2 } from 'lucide-react-native';
+import { ChartBar } from 'lucide-react-native';
 
 const MODULES: {
   key:   keyof Omit<InsightScores, 'overall'>;
@@ -65,7 +65,7 @@ export default function ReflectScreen() {
           {/* Overall score hero */}
           <View className="rounded-2xl bg-white border border-blue-100 px-5 py-5 mb-3 items-center">
             <View className="h-16 w-16 rounded-2xl bg-blue-50 items-center justify-center mb-3">
-              <BarChart2 size={28} color="#3B82F6" />
+              <ChartBar size={28} color="#3B82F6" />
             </View>
             <Text className="text-4xl font-bold text-blue-600">{overall}</Text>
             <Text className="text-sm text-gray-400 mt-1">Overall score</Text>

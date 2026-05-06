@@ -2,6 +2,7 @@ import { apiRequest } from './client';
 import type {
   Account, Transaction, CreateTransactionInput,
   Asset, Liability, CreateAssetInput, CreateLiabilityInput,
+  Budget, CreateBudgetInput,
 } from './types';
 
 export const getAccounts = (): Promise<Account[]> =>
@@ -77,3 +78,17 @@ export const deleteLiability = (id: string): Promise<void> =>
 
 export const deleteAccount = (id: string): Promise<void> =>
   apiRequest<void>(`/api/accounts/${id}`, { method: 'DELETE' });
+
+// ── Budgets ───────────────────────────────────────────────────────────────────
+
+export const getBudgets = (): Promise<Budget[]> =>
+  apiRequest<Budget[]>('/api/budgets');
+
+export const createBudget = (data: CreateBudgetInput): Promise<Budget> =>
+  apiRequest<Budget>('/api/budgets', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateBudget = (id: string, data: Partial<CreateBudgetInput>): Promise<Budget> =>
+  apiRequest<Budget>(`/api/budgets/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteBudget = (id: string): Promise<void> =>
+  apiRequest<void>(`/api/budgets/${id}`, { method: 'DELETE' });

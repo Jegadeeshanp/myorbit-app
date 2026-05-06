@@ -16,6 +16,7 @@ import type { TaskInstanceWithTask, TodayResponse } from '@/lib/taskTypes';
 import TaskDetail from '@/components/tasks/TaskDetail';
 import TaskReminderModal from '@/components/tasks/TaskReminderModal';
 import TaskCalendar from '@/components/tasks/TaskCalendar';
+import AddTaskSheet from '@/components/tasks/AddTaskSheet';
 import { toast } from '@/components/Toast';
 import TasksMobileNav from '@/components/tasks/TasksMobileNav';
 import { getListIcon } from '@/lib/taskListIcons';
@@ -818,6 +819,30 @@ export default function TasksPage() {
       toast('Moved to deleted');
     } catch { toast('Failed to delete', 'error'); }
   };
+  const handleSetPriority = async (id: string, priority: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priority }) });
+      if (!res.ok) throw new Error();
+      setTasks(p => p.map(t => t.id === id ? { ...t, priority } : t));
+    } catch { toast('Failed to update priority', 'error'); }
+  };
+  const handleSetDueDate = async (id: string, date: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueDate: date || null }) });
+      if (!res.ok) throw new Error();
+      setTasks(p => p.map(t => t.id === id ? { ...t, dueDate: date || undefined } : t));
+      setRefreshKey(k => k + 1);
+    } catch { toast('Failed to update due date', 'error'); }
+  };
+  const handleMoveToList = async (id: string, listId: string | null) => {
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listId }) });
+      if (!res.ok) throw new Error();
+      const list = listId ? lists.find(l => l.id === listId) : null;
+      setTasks(p => p.map(t => t.id === id ? { ...t, listId: listId ?? undefined, list: list ? { id: list.id, name: list.name, emoji: list.emoji, color: list.color } : null } : t));
+    } catch { toast('Failed to move task', 'error'); }
+  };
+
   const handleTaskUpdated = (updated: Task) => {
     if (updated.status === 'completed') { setTasks(p => p.filter(t => t.id !== updated.id)); }
     else { setTasks(p => p.map(t => t.id === updated.id ? updated : t)); }
@@ -1118,6 +1143,10 @@ export default function TasksPage() {
                                       onClick={() => handleInstanceClick(inst)}
                                       isActive={activeTask?.id === inst.taskId}
                                       showList
+                                      lists={lists}
+                                      onSetPriority={handleSetPriority}
+                                      onSetDueDate={handleSetDueDate}
+                                      onMoveToList={handleMoveToList}
                                     />
                                   ))}
                                 </div>
@@ -1189,6 +1218,10 @@ export default function TasksPage() {
                                   onClick={() => { setShowFab(false); setActiveTask(task); }}
                                   isActive={activeTask?.id === task.id}
                                   showList={!selected.startsWith('list:')}
+                                  lists={lists}
+                                  onSetPriority={handleSetPriority}
+                                  onSetDueDate={handleSetDueDate}
+                                  onMoveToList={handleMoveToList}
                                 />
                               ))}
                             </div>
@@ -1231,7 +1264,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      {showFab && <AddTaskOverlay onClose={() => setShowFab(false)} onAdd={handleAddTask} lists={lists} />}
+      {showFab && <AddTaskSheet onClose={() => setShowFab(false)} onAdd={handleAddTask} lists={lists} />}
 
       {!showFab && !activeTask && (
         <button onClick={() => { setActiveTask(null); setShowFab(true); }} className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-lg active:scale-95 transition md:hidden">

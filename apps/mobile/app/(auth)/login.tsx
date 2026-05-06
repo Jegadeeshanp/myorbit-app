@@ -44,7 +44,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0D0D0D' }}
+      style={{ flex: 1, backgroundColor: '#0d1117' }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -54,11 +54,11 @@ export default function LoginScreen() {
       >
         {/* Card */}
         <View style={{
-          backgroundColor: '#1A1A1A',
+          backgroundColor: '#1c2128',
           borderRadius: 24,
           padding: 28,
           borderWidth: 1,
-          borderColor: '#2A2A2A',
+          borderColor: '#30363d',
         }}>
           {/* Icon */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -73,7 +73,7 @@ export default function LoginScreen() {
                 <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
               </Svg>
             </View>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: 'white', marginTop: 16 }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#e6edf3', marginTop: 16 }}>
               Sign in to MyOrbit
             </Text>
             <Text style={{ fontSize: 14, color: '#9CA3AF', marginTop: 6, textAlign: 'center' }}>
@@ -89,17 +89,17 @@ export default function LoginScreen() {
           ) : null}
 
           {/* Email */}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#D1D5DB', marginBottom: 8 }}>Email</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#adbac7', marginBottom: 8 }}>Email</Text>
           <TextInput
             style={{
-              backgroundColor: '#242424',
+              backgroundColor: '#21262d',
               borderWidth: 1,
-              borderColor: '#333333',
+              borderColor: '#30363d',
               borderRadius: 12,
               paddingHorizontal: 16,
               paddingVertical: 14,
               fontSize: 15,
-              color: 'white',
+              color: '#e6edf3',
               marginBottom: 16,
             }}
             placeholder="you@example.com"
@@ -119,15 +119,15 @@ export default function LoginScreen() {
 
           {/* Password */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#D1D5DB' }}>Password</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#adbac7' }}>Password</Text>
             <TouchableOpacity onPress={openForgotPassword}>
               <Text style={{ fontSize: 13, color: '#10B981', fontWeight: '500' }}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
           <View style={{
-            backgroundColor: '#242424',
+            backgroundColor: '#21262d',
             borderWidth: 1,
-            borderColor: '#333333',
+            borderColor: '#30363d',
             borderRadius: 12,
             flexDirection: 'row',
             alignItems: 'center',
@@ -136,7 +136,7 @@ export default function LoginScreen() {
           }}>
             <TextInput
               ref={passwordRef}
-              style={{ flex: 1, paddingVertical: 14, fontSize: 15, color: 'white' }}
+              style={{ flex: 1, paddingVertical: 14, fontSize: 15, color: '#e6edf3' }}
               placeholder="••••••••"
               placeholderTextColor="#4B5563"
               value={password}
@@ -170,7 +170,7 @@ export default function LoginScreen() {
           >
             {loading
               ? <ActivityIndicator color="white" />
-              : <Text style={{ fontSize: 16, fontWeight: '700', color: 'white' }}>Sign In</Text>
+              : <Text style={{ fontSize: 16, fontWeight: '700', color: '#e6edf3' }}>Sign In</Text>
             }
           </TouchableOpacity>
         </View>
