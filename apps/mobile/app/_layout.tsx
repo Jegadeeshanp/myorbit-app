@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
+import * as Updates from 'expo-updates';
 import { useAuthStore } from '@/lib/authStore';
 import { useNotificationStore } from '@/lib/notificationStore';
 import { setupNotifications } from '@/lib/notifications';
@@ -18,6 +19,20 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function OTAUpdateBootstrap() {
+  useEffect(() => {
+    if (!Updates.isEnabled) return;
+    Updates.checkForUpdateAsync()
+      .then(update => {
+        if (update.isAvailable) {
+          return Updates.fetchUpdateAsync().then(() => Updates.reloadAsync());
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return null;
+}
 
 function ThemeBootstrap() {
   const hydrate = useThemeStore((s) => s.hydrate);
@@ -78,6 +93,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
+          <OTAUpdateBootstrap />
           <ThemeBootstrap />
           <AuthBootstrap />
           <NotificationBootstrap />
