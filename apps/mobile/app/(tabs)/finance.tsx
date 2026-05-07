@@ -2058,7 +2058,7 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
   const [excluded, setExcluded]       = useState<string[]>([]);
   const [catType, setCatType]         = useState<'expense' | 'income'>('expense');
   const [newCatName, setNewCatName]   = useState('');
-  const [newCatIcon, setNewCatIcon]   = useState('📌');
+  const [newCatIcon, setNewCatIcon]   = useState('Tag');
   const [customExpCats, setCustomExpCats] = useState<{ name: string; icon: string }[]>([]);
   const [customIncCats, setCustomIncCats] = useState<{ name: string; icon: string }[]>([]);
 
@@ -2073,14 +2073,45 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
     if (catType === 'expense') setCustomExpCats(prev => [...prev, entry]);
     else setCustomIncCats(prev => [...prev, entry]);
     setNewCatName('');
-    setNewCatIcon('📌');
+    setNewCatIcon('Tag');
   };
 
   const expCats  = [...BUILT_IN_EXPENSE_CATS, ...customExpCats];
   const incCats  = [...BUILT_IN_INCOME_CATS,  ...customIncCats];
   const showCats = catType === 'expense' ? expCats : incCats;
 
-  const QUICK_ICONS = ['📌','🏠','🛒','🍔','🚌','⚡','💊','🎁','💰','📈','🎬','✈️','📱','🌐','💳','🛍️','❤️','📚','🏪','💵','🎀','🔄','⛽'];
+  const CAT_QUICK_ICONS: { name: string; Icon: React.ComponentType<{ size: number; color: string }> }[] = [
+    { name: 'Tag',          Icon: Tag          },
+    { name: 'Home',         Icon: Home         },
+    { name: 'ShoppingCart', Icon: ShoppingCart },
+    { name: 'Utensils',     Icon: Utensils     },
+    { name: 'Bus',          Icon: Bus          },
+    { name: 'Zap',          Icon: Zap          },
+    { name: 'Stethoscope',  Icon: Stethoscope  },
+    { name: 'Gift',         Icon: Gift         },
+    { name: 'Banknote',     Icon: Banknote     },
+    { name: 'TrendingUp',   Icon: TrendingUp   },
+    { name: 'Film',         Icon: Film         },
+    { name: 'Plane',        Icon: Plane        },
+    { name: 'Smartphone',   Icon: Smartphone   },
+    { name: 'Wifi',         Icon: Wifi         },
+    { name: 'CreditCard',   Icon: CreditCard   },
+    { name: 'ShoppingBag',  Icon: ShoppingBag  },
+    { name: 'Heart',        Icon: Heart        },
+    { name: 'GraduationCap', Icon: GraduationCap },
+    { name: 'Building2',    Icon: Building2    },
+    { name: 'DollarSign',   Icon: DollarSign   },
+    { name: 'Star',         Icon: Star         },
+    { name: 'RotateCcw',    Icon: RotateCcw    },
+    { name: 'Fuel',         Icon: Fuel         },
+    { name: 'Coffee',       Icon: Coffee       },
+    { name: 'Briefcase',    Icon: Briefcase    },
+    { name: 'Package',      Icon: Package      },
+    { name: 'Receipt',      Icon: Receipt      },
+    { name: 'PiggyBank',    Icon: PiggyBank    },
+  ];
+  const CAT_ICON_MAP = Object.fromEntries(CAT_QUICK_ICONS.map(i => [i.name, i.Icon]));
+  function getCatQuickIcon(name: string): React.ComponentType<{ size: number; color: string }> { return CAT_ICON_MAP[name] ?? Tag; }
 
   return (
     <View style={{ flex: 1 }}>
@@ -2180,19 +2211,19 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
             <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 16, marginBottom: 14 }}>
               <Text style={{ fontSize: 16, fontWeight: '700', color: TXT, marginBottom: 12 }}>ADD NEW CATEGORY</Text>
               {/* Icon picker */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {QUICK_ICONS.map((ic) => (
-                    <TouchableOpacity key={ic} onPress={() => setNewCatIcon(ic)}
-                      style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 2, borderColor: newCatIcon === ic ? ACCENT : BORDER, backgroundColor: newCatIcon === ic ? '#10B98118' : SURFACE_ALT, alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 20 }}>{ic}</Text>
+              <ScrollView style={{ maxHeight: 136, marginBottom: 12 }} showsVerticalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {CAT_QUICK_ICONS.map(({ name, Icon: CIC }) => (
+                    <TouchableOpacity key={name} onPress={() => setNewCatIcon(name)}
+                      style={{ width: 40, height: 40, borderRadius: 10, borderWidth: 2, borderColor: newCatIcon === name ? ACCENT : BORDER, backgroundColor: newCatIcon === name ? '#10B98118' : SURFACE_ALT, alignItems: 'center', justifyContent: 'center' }}>
+                      <CIC size={18} color={newCatIcon === name ? ACCENT : MUTED} />
                     </TouchableOpacity>
                   ))}
                 </View>
               </ScrollView>
               <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                 <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: SURFACE_ALT, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BORDER }}>
-                  <Text style={{ fontSize: 24 }}>{newCatIcon}</Text>
+                  {(() => { const CIC = getCatQuickIcon(newCatIcon); return <CIC size={22} color={ACCENT} />; })()}
                 </View>
                 <TextInput
                   style={{ flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: TXT }}
@@ -2214,17 +2245,21 @@ function FinanceSettings({ transactions, assets, liabilities, accounts }: {
                 <Text style={{ fontSize: 15, fontWeight: '700', color: TXT, textTransform: 'uppercase', letterSpacing: 0.5 }}>{catType.toUpperCase()} CATEGORIES</Text>
                 <Text style={{ fontSize: 13, color: SUBTLE }}>{showCats.length} total</Text>
               </View>
-              {showCats.map((cat, i) => (
+              {showCats.map((cat, i) => {
+                const catCfg = getCatIcon(cat.name);
+                const CatIC = catCfg.Icon;
+                return (
                 <View key={cat.name} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: i < showCats.length - 1 ? 1 : 0, borderBottomColor: BORDER, gap: 12 }}>
-                  <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: SURFACE_ALT, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>{cat.icon}</Text>
+                  <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: catCfg.bg, alignItems: 'center', justifyContent: 'center' }}>
+                    <CatIC size={18} color={catCfg.color} />
                   </View>
                   <Text style={{ flex: 1, fontSize: 15, color: TXT2, fontWeight: '500' }}>{cat.name}</Text>
                   <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: BORDER }}>
                     <Text style={{ fontSize: 11, color: SUBTLE }}>{i < (catType === 'expense' ? BUILT_IN_EXPENSE_CATS.length : BUILT_IN_INCOME_CATS.length) ? 'built-in' : 'custom'}</Text>
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </View>
           </>
         )}
@@ -2778,7 +2813,7 @@ export default function FinanceScreen() {
                   <View style={{ backgroundColor: SURFACE, borderRadius: 16, overflow: 'hidden' }}>
                     {visibleTx.length === 0 ? (
                       <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 28, marginBottom: 8 }}>💸</Text>
+                        <ArrowLeftRight size={36} color={MUTED} style={{ marginBottom: 8 }} />
                         <Text style={{ fontSize: 14, color: MUTED }}>No transactions yet</Text>
                       </View>
                     ) : (
@@ -3000,7 +3035,7 @@ export default function FinanceScreen() {
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}><ActivityIndicator color={ACCENT} /></View>
                 ) : filteredMonthTx.length === 0 ? (
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 28, marginBottom: 8 }}>💸</Text>
+                    <ArrowLeftRight size={36} color={MUTED} style={{ marginBottom: 8 }} />
                     <Text style={{ fontSize: 14, color: MUTED }}>
                       {txSearch || txAccountFilter !== 'All' ? 'No matching transactions' : 'No transactions this month'}
                     </Text>
@@ -3359,7 +3394,7 @@ export default function FinanceScreen() {
                 {/* Accounts grouped by type */}
                 {accounts.length === 0 ? (
                   <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 36, marginBottom: 8 }}>🏦</Text>
+                    <Landmark size={40} color={MUTED} style={{ marginBottom: 8 }} />
                     <Text style={{ fontSize: 14, fontWeight: '500', color: MUTED }}>No accounts yet</Text>
                     <Text style={{ fontSize: 14, color: MUTED, marginTop: 4 }}>Add your bank and wallet accounts</Text>
                   </View>
@@ -3436,7 +3471,7 @@ export default function FinanceScreen() {
                 {/* Budget cards from API */}
                 {budgetCards.length === 0 ? (
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 28, marginBottom: 8 }}>📊</Text>
+                    <ChartBar size={36} color={MUTED} style={{ marginBottom: 8 }} />
                     <Text style={{ fontSize: 14, color: MUTED }}>No budgets yet — tap Add Budget to create one</Text>
                   </View>
                 ) : budgetCards.map((item) => (
