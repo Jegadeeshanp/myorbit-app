@@ -22,8 +22,16 @@ import {
   Trash2, AlertTriangle, Sun, Inbox as InboxIcon, List as ListIcon,
   CalendarDays, MoreHorizontal, X, CalendarCheck, Settings,
   Tag, Flag, Search, Bell, RotateCcw, Check, Menu,
-  Clipboard, CheckSquare, Target, Briefcase, Home, ShoppingCart,
-  BookOpen, Lightbulb, Monitor, Star, Heart,
+  // list icon set — names must match web's lib/taskListIcons.tsx
+  ClipboardList, SquareCheck, ListChecks, Target, Bookmark, Star, Rocket,
+  Briefcase, Laptop, Building2, Code, Mail, Calendar, Award, Folder, Trophy,
+  House, Heart, Users, User, Gift, Coffee, Smile, PawPrint,
+  BookOpen, GraduationCap, Lightbulb, Pencil,
+  Dumbbell, HeartPulse, Stethoscope, Leaf,
+  ShoppingCart, ShoppingBag, Package, PiggyBank, TrendingUp,
+  Plane, Car, Globe, TrainFront, Map as MapIcon,
+  Music, Film, Camera, Gamepad2,
+  Zap, Shield, Wrench, MessageSquare, Phone,
 } from 'lucide-react-native';
 
 // ── Types ────────────────────────────────────────────────────────────────────────
@@ -67,18 +75,69 @@ const SECTION_CONFIG = [
 ];
 
 const LIST_ICONS_DEF = [
-  { name: 'list',          Icon: ListIcon      },
-  { name: 'clipboard',     Icon: Clipboard     },
-  { name: 'check-square',  Icon: CheckSquare   },
-  { name: 'target',        Icon: Target        },
-  { name: 'briefcase',     Icon: Briefcase     },
-  { name: 'home',          Icon: Home          },
-  { name: 'shopping-cart', Icon: ShoppingCart  },
-  { name: 'book-open',     Icon: BookOpen      },
-  { name: 'lightbulb',     Icon: Lightbulb     },
-  { name: 'monitor',       Icon: Monitor       },
-  { name: 'star',          Icon: Star          },
-  { name: 'heart',         Icon: Heart         },
+  // Task essentials — names must match web's lib/taskListIcons.tsx
+  { name: 'ClipboardList', Icon: ClipboardList },
+  { name: 'CheckSquare',   Icon: SquareCheck   },
+  { name: 'ListChecks',    Icon: ListChecks    },
+  { name: 'Target',        Icon: Target        },
+  { name: 'Flag',          Icon: Flag          },
+  { name: 'Bookmark',      Icon: Bookmark      },
+  { name: 'Star',          Icon: Star          },
+  { name: 'Rocket',        Icon: Rocket        },
+  // Work & Productivity
+  { name: 'Briefcase',     Icon: Briefcase     },
+  { name: 'Laptop',        Icon: Laptop        },
+  { name: 'Building2',     Icon: Building2     },
+  { name: 'Code2',         Icon: Code          },
+  { name: 'Mail',          Icon: Mail          },
+  { name: 'Calendar',      Icon: Calendar      },
+  { name: 'Bell',          Icon: Bell          },
+  { name: 'Award',         Icon: Award         },
+  { name: 'Folder',        Icon: Folder        },
+  { name: 'Trophy',        Icon: Trophy        },
+  // Personal & Home
+  { name: 'Home',          Icon: House         },
+  { name: 'Heart',         Icon: Heart         },
+  { name: 'Users',         Icon: Users         },
+  { name: 'User',          Icon: User          },
+  { name: 'Gift',          Icon: Gift          },
+  { name: 'Coffee',        Icon: Coffee        },
+  { name: 'Smile',         Icon: Smile         },
+  { name: 'PawPrint',      Icon: PawPrint      },
+  // Learning
+  { name: 'BookOpen',      Icon: BookOpen      },
+  { name: 'GraduationCap', Icon: GraduationCap },
+  { name: 'Lightbulb',     Icon: Lightbulb     },
+  { name: 'Pencil',        Icon: Pencil        },
+  // Health & Fitness
+  { name: 'Dumbbell',      Icon: Dumbbell      },
+  { name: 'HeartPulse',    Icon: HeartPulse    },
+  { name: 'Stethoscope',   Icon: Stethoscope   },
+  { name: 'Leaf',          Icon: Leaf          },
+  // Shopping & Finance
+  { name: 'ShoppingCart',  Icon: ShoppingCart  },
+  { name: 'ShoppingBag',   Icon: ShoppingBag   },
+  { name: 'Package',       Icon: Package       },
+  { name: 'PiggyBank',     Icon: PiggyBank     },
+  { name: 'TrendingUp',    Icon: TrendingUp    },
+  { name: 'Tag',           Icon: Tag           },
+  // Travel & Transport
+  { name: 'Plane',         Icon: Plane         },
+  { name: 'Car',           Icon: Car           },
+  { name: 'Globe',         Icon: Globe         },
+  { name: 'Train',         Icon: TrainFront    },
+  { name: 'Map',           Icon: MapIcon       },
+  // Entertainment
+  { name: 'Music',         Icon: Music         },
+  { name: 'Film',          Icon: Film          },
+  { name: 'Camera',        Icon: Camera        },
+  { name: 'Gamepad2',      Icon: Gamepad2      },
+  // Utilities
+  { name: 'Zap',           Icon: Zap           },
+  { name: 'Shield',        Icon: Shield        },
+  { name: 'Wrench',        Icon: Wrench        },
+  { name: 'MessageSquare', Icon: MessageSquare },
+  { name: 'Phone',         Icon: Phone         },
 ];
 function getListIC(name?: string | null) { return LIST_ICONS_DEF.find(i => i.name === name)?.Icon ?? ListIcon; }
 const LIST_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#64748B'];
@@ -1292,8 +1351,8 @@ function ListModal({ visible, initial, onClose, onSave }: {
           <TextInput autoFocus style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: TXT, marginBottom: 16 }}
             placeholder="List name..." placeholderTextColor={MUTED} value={name} onChangeText={setName} />
           <Text style={{ fontSize: 11, fontWeight: '700', color: MUTED, letterSpacing: 1, marginBottom: 8 }}>ICON</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+          <ScrollView style={{ maxHeight: 176, marginBottom: 16 }} showsVerticalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {LIST_ICONS_DEF.map(({ name, Icon: LIC }) => (
                 <TouchableOpacity key={name} onPress={() => setEmoji(name)}
                   style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: emoji === name ? ACCENT + '22' : SURFACE2, borderWidth: emoji === name ? 2 : 0, borderColor: ACCENT }}>
