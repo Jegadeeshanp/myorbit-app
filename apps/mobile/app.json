@@ -20,7 +20,7 @@
     "runtimeVersion": "1.0.0",
     "updates": {
       "enabled": true,
-      "url": "https://u.expo.dev/efb2d560-0c16-49ac-bcac-da4e02398eae",
+      "url": "https://u.expo.dev/1527815e-b05e-4d97-a446-fa295a56980d",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 3000
     },
@@ -51,7 +51,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "efb2d560-0c16-49ac-bcac-da4e02398eae"
+        "projectId": "1527815e-b05e-4d97-a446-fa295a56980d"
       }
     }
   }
