@@ -2342,6 +2342,7 @@ export default function FinanceScreen() {
   const [accountMenu,    setAccountMenu]    = useState<Account | null>(null);
   const [showAddBudget,  setShowAddBudget]  = useState(false);
   const [editBudget,     setEditBudget]     = useState<Budget | null>(null);
+  const [budgetSearch,   setBudgetSearch]   = useState('');
   const [txMenu, setTxMenu] = useState<{ tx: Transaction; y: number } | null>(null);
 
   // Assets category filter + search
@@ -2590,9 +2591,9 @@ export default function FinanceScreen() {
             const healthData = getHealthScore(transactions, totalAssetsValue, totalLiabilities);
             const insights   = getInsights(transactions, totalAssetsValue, totalLiabilities);
 
-            // Spending by Category — matches web SpendingCategories: ALL-TIME, type===expense, no extra exclusions
+            // Spending by Category — ALL-TIME, type===expense, excluding system categories
             const catSpend: Record<string, number> = {};
-            transactions.filter(t => t.type === 'expense').forEach(t => { catSpend[t.category] = (catSpend[t.category] ?? 0) + Math.abs(t.amount); });
+            transactions.filter(t => t.type === 'expense' && !SYSTEM_EXCL.includes(t.category)).forEach(t => { catSpend[t.category] = (catSpend[t.category] ?? 0) + Math.abs(t.amount); });
             const topCategories = Object.entries(catSpend).sort((a, b) => b[1] - a[1]).slice(0, 5);
             const maxCatSpend   = topCategories[0]?.[1] ?? 1;
 
@@ -3432,13 +3433,15 @@ export default function FinanceScreen() {
 
             const BUDGET_COLORS = ['#10B981','#F59E0B','#14B8A6','#3B82F6','#EF4444','#8B5CF6','#0EA5E9','#EC4899','#F97316','#6366F1'];
 
-            const budgetCards = budgets.map((b, i) => {
-              const progress = b.budget > 0 ? b.spent / b.budget : 0;
-              const remaining = b.budget - b.spent;
-              const color = BUDGET_COLORS[i % BUDGET_COLORS.length];
-              const cats = b.category ? b.category.split(',').map(s => s.trim()).filter(Boolean) : [];
-              return { ...b, progress, remaining, color, cats, statusColor: budgetStatusColor(progress) };
-            });
+            const budgetCards = budgets
+              .filter(b => !budgetSearch.trim() || b.name.toLowerCase().includes(budgetSearch.toLowerCase()))
+              .map((b, i) => {
+                const progress = b.budget > 0 ? b.spent / b.budget : 0;
+                const remaining = b.budget - b.spent;
+                const color = BUDGET_COLORS[i % BUDGET_COLORS.length];
+                const cats = b.category ? b.category.split(',').map(s => s.trim()).filter(Boolean) : [];
+                return { ...b, progress, remaining, color, cats, statusColor: budgetStatusColor(progress) };
+              });
 
             const totalBudget = budgetCards.reduce((s, b) => s + b.budget, 0);
             const totalSpent  = budgetCards.reduce((s, b) => s + b.spent, 0);
@@ -3461,18 +3464,32 @@ export default function FinanceScreen() {
                   ))}
                 </View>
 
-                {/* Add button */}
-                <TouchableOpacity onPress={() => { setEditBudget(null); setShowAddBudget(true); }}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: ACCENT, borderRadius: 12, paddingVertical: 11, marginBottom: 14 }}>
-                  <Plus size={15} color="white" />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>Add Budget</Text>
-                </TouchableOpacity>
+                {/* Search + Add row */}
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 10 }}>
+                    <Search size={14} color="#6B7280" />
+                    <TextInput
+                      value={budgetSearch}
+                      onChangeText={setBudgetSearch}
+                      placeholder="Search budgets…"
+                      placeholderTextColor="#4B5563"
+                      style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, color: TXT }}
+                    />
+                  </View>
+                  <TouchableOpacity onPress={() => { setEditBudget(null); setShowAddBudget(true); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}>
+                    <Plus size={14} color="white" />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: 'white' }}>Add</Text>
+                  </TouchableOpacity>
+                </View>
 
                 {/* Budget cards from API */}
                 {budgetCards.length === 0 ? (
                   <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                     <ChartBar size={36} color={MUTED} style={{ marginBottom: 8 }} />
-                    <Text style={{ fontSize: 14, color: MUTED }}>No budgets yet — tap Add Budget to create one</Text>
+                    <Text style={{ fontSize: 14, color: MUTED }}>
+                      {budgetSearch.trim() ? 'No budgets match your search' : 'No budgets yet — tap Add to create one'}
+                    </Text>
                   </View>
                 ) : budgetCards.map((item) => (
                   <View key={item.id} style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>

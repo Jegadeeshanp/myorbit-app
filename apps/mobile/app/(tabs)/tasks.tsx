@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+﻿import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
 import { useNotificationStore } from '@/lib/notificationStore';
@@ -15,8 +15,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getTodayTasks, getAllTasks, createTask, updateTask, completeInstance, deleteTask,
   getTaskLists, createTaskList, updateTaskList, deleteTaskList,
+  createSubtask, updateSubtask,
 } from '@myorbit/api';
-import type { TaskInstance, Task, TaskList, CreateTaskInput } from '@myorbit/api';
+import type { TaskInstance, Task, TaskList, CreateTaskInput, TaskSubtask } from '@myorbit/api';
 import {
   CheckCircle, Circle, Clock, Plus, ChevronDown, ChevronRight, ChevronLeft,
   Trash2, AlertTriangle, Sun, Inbox as InboxIcon, List as ListIcon,
@@ -440,37 +441,100 @@ function TaskRow({ task, onDelete, onEdit }: { task: Task; onDelete: (id: string
   );
 }
 
-// ── Date Picker Content (inline, no Modal — avoids nested-Modal bug on Android) ────
+// ── Drum Picker Column ──────────────────────────────────────────────────────────
+const DRUM_H = 44;
+function DrumCol({ items, init, onSelect }: { items: string[]; init: string; onSelect: (v: string) => void }) {
+  const { TXT, MUTED, SURFACE2, BORDER } = useColors();
+  const ref = useRef<ScrollView>(null);
+  const [sel, setSel] = useState(init);
+  useEffect(() => {
+    const i = Math.max(0, items.indexOf(init));
+    setTimeout(() => ref.current?.scrollTo({ y: i * DRUM_H, animated: false }), 80);
+  }, []);
+  return (
+    <ScrollView ref={ref} style={{ flex: 1 }} showsVerticalScrollIndicator={false}
+      snapToInterval={DRUM_H} decelerationRate="fast"
+      contentContainerStyle={{ paddingVertical: DRUM_H * 2 }}
+      onMomentumScrollEnd={e => {
+        const i = Math.round(e.nativeEvent.contentOffset.y / DRUM_H);
+        const v = items[Math.max(0, Math.min(i, items.length - 1))];
+        setSel(v); onSelect(v);
+      }}>
+      {items.map(item => (
+        <View key={item} style={{ height: DRUM_H, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ fontSize: 22, color: item === sel ? TXT : MUTED, fontWeight: item === sel ? '700' : '400' }}>{item}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+// ── Date Picker Content ──────────────────────────────────────────────────────────
 interface DatePickVal { dueDate: string; dueTime: string; repeat: string; reminder: string; }
 
-function DatePickerContent({ value, onChange, onBack }: {
-  value: DatePickVal; onChange: (v: DatePickVal) => void; onBack: () => void;
+function DatePickerContent({ value, onChange, onBack, autoExpandTime }: {
+  value: DatePickVal; onChange: (v: DatePickVal) => void; onBack: () => void; autoExpandTime?: boolean;
 }) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
+  const { SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, INPUT } = useColors();
+
+  // ── Calendar ────────────────────────────────────────────────────────────────
   const [viewDate, setViewDate] = useState(() => {
     if (value.dueDate) { const [y, m] = value.dueDate.split('-').map(Number); return new Date(y, m - 1, 1); }
     const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1);
   });
-  const [expandTime, setExpandTime]     = useState(false);
-  const [expandRepeat, setExpandRepeat] = useState(false);
-  const [expandRemind, setExpandRemind] = useState(false);
+  const todayISO = todayStr();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const year = viewDate.getFullYear(); const month = viewDate.getMonth();
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  // Custom repeat state — initialised from current value
-  const initParsed = parseCustomRepeat(value.repeat);
-  const [customPeriod, setCustomPeriod]         = useState<'week'|'month'|'year'>(value.repeat.startsWith('custom:') ? initParsed.period : 'week');
-  const [customWeekDays, setCustomWeekDays]     = useState<number[]>(value.repeat.startsWith('custom:') && initParsed.period==='week' ? (initParsed as any).weekDays : []);
-  const [customMonthMode, setCustomMonthMode]   = useState<'each'|'onthe'>(value.repeat.startsWith('custom:') && initParsed.period==='month' ? (initParsed as any).mode : 'each');
-  const [customMonthDays, setCustomMonthDays]   = useState<number[]>(value.repeat.startsWith('custom:') && initParsed.period==='month' && (initParsed as any).mode==='each' ? (initParsed as any).days : []);
-  const [customMonthOrd, setCustomMonthOrd]     = useState<string>(value.repeat.startsWith('custom:') && initParsed.period==='month' && (initParsed as any).mode==='onthe' ? (initParsed as any).ordinal : 'first');
-  const [customMonthWD, setCustomMonthWD]       = useState<string>(value.repeat.startsWith('custom:') && initParsed.period==='month' && (initParsed as any).mode==='onthe' ? (initParsed as any).weekday : 'monday');
-  const [customYearMode, setCustomYearMode]     = useState<'each'|'onthe'>(value.repeat.startsWith('custom:') && initParsed.period==='year' ? (initParsed as any).mode : 'each');
-  const [customYearMonth, setCustomYearMonth]   = useState<number>(value.repeat.startsWith('custom:') && initParsed.period==='year' ? (initParsed as any).month : new Date().getMonth()+1);
-  const [customYearDay, setCustomYearDay]       = useState<number>(value.repeat.startsWith('custom:') && initParsed.period==='year' && (initParsed as any).mode==='each' ? (initParsed as any).day : new Date().getDate());
-  const [customYearOntheMon, setCustomYearOntheMon] = useState<number>(value.repeat.startsWith('custom:') && initParsed.period==='year' && (initParsed as any).mode==='onthe' ? (initParsed as any).month : new Date().getMonth()+1);
-  const [customYearOrd, setCustomYearOrd]       = useState<string>(value.repeat.startsWith('custom:') && initParsed.period==='year' && (initParsed as any).mode==='onthe' ? (initParsed as any).ordinal : 'first');
-  const [customYearWD, setCustomYearWD]         = useState<string>(value.repeat.startsWith('custom:') && initParsed.period==='year' && (initParsed as any).mode==='onthe' ? (initParsed as any).weekday : 'monday');
+  // ── Overlay state ────────────────────────────────────────────────────────────
+  const [showTime,   setShowTime]   = useState(autoExpandTime ?? false);
+  const [showRemind, setShowRemind] = useState(false);
+  const [showRepeat, setShowRepeat] = useState(false);
+  const [showCustom, setShowCustom] = useState(value.repeat.startsWith('custom:'));
 
-  const buildCustomValue = () => {
+  // ── Time drum state ──────────────────────────────────────────────────────────
+  const parseDrum = (t: string) => {
+    if (!t) return { h: '9', m: '00', ap: 'AM' };
+    const [hs, ms] = t.split(':');
+    let h = parseInt(hs, 10);
+    const m = (ms ?? '00').slice(0, 2).padStart(2, '0');
+    const ap = h >= 12 ? 'PM' : 'AM';
+    if (h === 0) h = 12; else if (h > 12) h -= 12;
+    return { h: String(h), m, ap };
+  };
+  const [drumH, setDrumH]   = useState(() => parseDrum(value.dueTime).h);
+  const [drumM, setDrumM]   = useState(() => parseDrum(value.dueTime).m);
+  const [drumAP, setDrumAP] = useState(() => parseDrum(value.dueTime).ap);
+  const fmt12 = (t: string) => {
+    if (!t) return '';
+    const [hs, ms] = t.split(':');
+    let h = parseInt(hs, 10);
+    const ap = h >= 12 ? 'PM' : 'AM';
+    if (h === 0) h = 12; else if (h > 12) h -= 12;
+    return `${h}:${ms} ${ap}`;
+  };
+
+  // ── Custom repeat state ──────────────────────────────────────────────────────
+  const initP = parseCustomRepeat(value.repeat);
+  const [customPeriod, setCustomPeriod]         = useState<'week'|'month'|'year'>(value.repeat.startsWith('custom:') ? initP.period : 'week');
+  const [customWeekDays, setCustomWeekDays]     = useState<number[]>(value.repeat.startsWith('custom:') && initP.period==='week' ? (initP as any).weekDays : []);
+  const [customMonthMode, setCustomMonthMode]   = useState<'each'|'onthe'>(value.repeat.startsWith('custom:') && initP.period==='month' ? (initP as any).mode : 'each');
+  const [customMonthDays, setCustomMonthDays]   = useState<number[]>(value.repeat.startsWith('custom:') && initP.period==='month' && (initP as any).mode==='each' ? (initP as any).days : []);
+  const [customMonthOrd, setCustomMonthOrd]     = useState<string>(value.repeat.startsWith('custom:') && initP.period==='month' && (initP as any).mode==='onthe' ? (initP as any).ordinal : 'first');
+  const [customMonthWD, setCustomMonthWD]       = useState<string>(value.repeat.startsWith('custom:') && initP.period==='month' && (initP as any).mode==='onthe' ? (initP as any).weekday : 'monday');
+  const [customYearMode, setCustomYearMode]     = useState<'each'|'onthe'>(value.repeat.startsWith('custom:') && initP.period==='year' ? (initP as any).mode : 'each');
+  const [customYearMonth, setCustomYearMonth]   = useState<number>(value.repeat.startsWith('custom:') && initP.period==='year' ? (initP as any).month : new Date().getMonth()+1);
+  const [customYearDay, setCustomYearDay]       = useState<number>(value.repeat.startsWith('custom:') && initP.period==='year' && (initP as any).mode==='each' ? (initP as any).day : new Date().getDate());
+  const [customYearOntheMon, setCustomYearOntheMon] = useState<number>(value.repeat.startsWith('custom:') && initP.period==='year' && (initP as any).mode==='onthe' ? (initP as any).month : new Date().getMonth()+1);
+  const [customYearOrd, setCustomYearOrd]       = useState<string>(value.repeat.startsWith('custom:') && initP.period==='year' && (initP as any).mode==='onthe' ? (initP as any).ordinal : 'first');
+  const [customYearWD, setCustomYearWD]         = useState<string>(value.repeat.startsWith('custom:') && initP.period==='year' && (initP as any).mode==='onthe' ? (initP as any).weekday : 'monday');
+
+  const buildCustom = () => {
     if (customPeriod==='week')  return `custom:week:${customWeekDays.join(',')}`;
     if (customPeriod==='month') {
       if (customMonthMode==='each') return `custom:month:each:${customMonthDays.map(d=>d===-1?'last':String(d)).join(',') || '1'}`;
@@ -480,14 +544,24 @@ function DatePickerContent({ value, onChange, onBack }: {
     return `custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${customYearWD}`;
   };
 
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const todayISO = todayStr();
-  const year = viewDate.getFullYear(); const month = viewDate.getMonth();
-  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  // ── Smart repeat suggestions ─────────────────────────────────────────────────
+  const selD = value.dueDate ? new Date(value.dueDate + 'T00:00:00') : new Date();
+  const sDOW = selD.getDay(); const sDOM = selD.getDate(); const sMon = selD.getMonth();
+  const ord = (n: number) => { const v = n%100; return (['th','st','nd','rd'][(v-20)%10]||['th','st','nd','rd'][v]||'th'); };
+  const DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const repeatSugg = [
+    { v: 'none',     l: 'None',                                           arrow: false },
+    { v: 'daily',    l: 'Daily',                                          arrow: false },
+    { v: 'weekly',   l: `Weekly (${DS[sDOW]})`,                          arrow: false },
+    { v: 'monthly',  l: `Monthly (the ${sDOM}${ord(sDOM)} day)`,          arrow: false },
+    { v: 'yearly',   l: `Yearly (${sDOM} ${MONTH_SHORT[sMon]})`,          arrow: false },
+    { v: 'weekdays', l: 'Every Weekday (Mon - Fri)',                       arrow: false },
+    { v: 'weekends', l: 'Every Weekend (Sat - Sun)',                       arrow: false },
+    { v: 'custom',   l: 'Custom',                                          arrow: true  },
+  ];
+  const repeatLabel = value.repeat === 'none' ? '' : value.repeat.startsWith('custom:') ? buildCustomLabel(value.repeat)
+    : repeatSugg.find(r => r.v === value.repeat)?.l ?? value.repeat;
+  const remindLabel = REMIND_OPTS.find(o => o.v === value.reminder)?.l ?? '';
 
   const QUICK = [
     { label: 'Today',    v: todayStr()     },
@@ -495,51 +569,58 @@ function DatePickerContent({ value, onChange, onBack }: {
     { label: 'Next Mon', v: getNextMonday() },
     { label: 'No Date',  v: ''             },
   ];
-  const repeatLabel = value.repeat === 'none' ? 'None'
-    : value.repeat.startsWith('custom:') ? buildCustomLabel(value.repeat)
-    : REPEAT_OPTS.find(o => o.v === value.repeat)?.l ?? value.repeat;
-  const remindLabel = REMIND_OPTS.find(o => o.v === value.reminder)?.l ?? 'None';
 
   return (
     <View style={{ flex: 1 }}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onBack} />
-      <ScrollView style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} contentContainerStyle={{ paddingBottom: 36 }} keyboardShouldPersistTaps="handled">
-        {/* handle + Done */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-          <View style={{ flex: 1, height: 4, backgroundColor: BORDER, borderRadius: 2 }} />
-          <TouchableOpacity onPress={onBack} style={{ paddingLeft: 16 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: ACCENT }}>Done</Text>
+      <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+
+        {/* ── Header: X | Date / Duration | ✓ ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
+          <TouchableOpacity onPress={onBack} style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
+            <X size={16} color={TXT} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', marginHorizontal: 12 }}>
+            <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 20, padding: 3 }}>
+              <View style={{ paddingHorizontal: 22, paddingVertical: 7, borderRadius: 17, backgroundColor: SURFACE }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>Date</Text>
+              </View>
+              <View style={{ paddingHorizontal: 22, paddingVertical: 7 }}>
+                <Text style={{ fontSize: 14, color: MUTED }}>Duration</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity onPress={onBack} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+            <Check size={18} color="white" />
           </TouchableOpacity>
         </View>
 
-        {/* Quick chips */}
-        <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+        {/* ── Quick chips ── */}
+        <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BORDER }}>
           {QUICK.map(q => {
             const active = value.dueDate === q.v || (q.v === '' && !value.dueDate);
             return (
               <TouchableOpacity key={q.label} onPress={() => onChange({ ...value, dueDate: q.v })}
                 style={{ flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT : 'transparent' }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: active ? TXT : MUTED }}>{q.label}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: active ? 'white' : MUTED }}>{q.label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Month nav */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 }}>
-          <TouchableOpacity onPress={() => setViewDate(new Date(year, month - 1, 1))} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: SURFACE2 }}>
-            <ChevronLeft size={16} color={TXT2} />
+        {/* ── Month nav ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10 }}>
+          <TouchableOpacity onPress={() => setViewDate(new Date(year, month - 1, 1))} style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}>
+            <ChevronLeft size={20} color={TXT2} />
           </TouchableOpacity>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>
-            {viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-          </Text>
-          <TouchableOpacity onPress={() => setViewDate(new Date(year, month + 1, 1))} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: SURFACE2 }}>
-            <ChevronRight size={16} color={TXT2} />
+          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT }}>{viewDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</Text>
+          <TouchableOpacity onPress={() => setViewDate(new Date(year, month + 1, 1))} style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}>
+            <ChevronRight size={20} color={TXT2} />
           </TouchableOpacity>
         </View>
 
-        {/* Day headers */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 4 }}>
+        {/* ── Day headers ── */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 2 }}>
           {['M','T','W','T','F','S','S'].map((d, i) => (
             <View key={i} style={{ flex: 1, alignItems: 'center' }}>
               <Text style={{ fontSize: 11, fontWeight: '600', color: MUTED }}>{d}</Text>
@@ -547,8 +628,8 @@ function DatePickerContent({ value, onChange, onBack }: {
           ))}
         </View>
 
-        {/* Day grid */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, marginBottom: 8 }}>
+        {/* ── Day grid ── */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, marginBottom: 4 }}>
           {cells.map((day, idx) => {
             if (!day) return <View key={idx} style={{ width: `${100/7}%`, height: 36 }} />;
             const ds = `${year}-${pad(month + 1)}-${pad(day)}`;
@@ -556,252 +637,225 @@ function DatePickerContent({ value, onChange, onBack }: {
             return (
               <TouchableOpacity key={ds} onPress={() => onChange({ ...value, dueDate: ds })}
                 style={{ width: `${100/7}%`, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: isSel ? ACCENT : isTod ? ACCENT + '33' : 'transparent' }}>
-                  <Text style={{ fontSize: 13, fontWeight: isSel || isTod ? '700' : '400', color: isSel ? TXT : isTod ? ACCENT : TXT2 }}>{day}</Text>
+                <View style={{ width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: isSel ? ACCENT : isTod ? ACCENT + '33' : 'transparent' }}>
+                  <Text style={{ fontSize: 13, fontWeight: isSel || isTod ? '700' : '400', color: isSel ? 'white' : isTod ? ACCENT : TXT2 }}>{day}</Text>
                 </View>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Time row */}
-        <TouchableOpacity onPress={() => { setExpandTime(v => !v); setExpandRepeat(false); setExpandRemind(false); }}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
-          <Clock size={16} color={MUTED} />
-          <Text style={{ flex: 1, fontSize: 14, color: TXT2 }}>Time</Text>
-          <Text style={{ fontSize: 12, color: value.dueTime ? ACCENT : MUTED }}>{value.dueTime || 'None'}</Text>
-          {expandTime ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
-        </TouchableOpacity>
-        {expandTime && (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
-                {['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00'].map(t => {
-                  const active = value.dueTime === t;
-                  return (
-                    <TouchableOpacity key={t} onPress={() => onChange({ ...value, dueTime: active ? '' : t })}
-                      style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT + '22' : 'transparent' }}>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: active ? ACCENT : TXT2 }}>{t}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-            <TextInput
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: TXT }}
-              placeholder="Custom: HH:MM"
-              placeholderTextColor={MUTED}
-              value={value.dueTime}
-              onChangeText={t => onChange({ ...value, dueTime: t })}
-              keyboardType="numbers-and-punctuation"
-            />
+        {/* ── Time row ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
+          <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }} onPress={() => setShowTime(true)}>
+            <Clock size={16} color={value.dueTime ? ACCENT : MUTED} />
+            <Text style={{ flex: 1, fontSize: 15, color: TXT }}>Time</Text>
+            {value.dueTime ? <Text style={{ fontSize: 14, color: ACCENT }}>{fmt12(value.dueTime)}</Text> : null}
+          </TouchableOpacity>
+          {value.dueTime ? (
+            <TouchableOpacity onPress={() => onChange({ ...value, dueTime: '' })} style={{ padding: 4 }}>
+              <X size={14} color={MUTED} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* ── Reminder row ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
+          <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }} onPress={() => setShowRemind(true)}>
+            <Bell size={16} color={value.reminder !== 'none' ? ACCENT : MUTED} />
+            <Text style={{ flex: 1, fontSize: 15, color: TXT }}>Reminder</Text>
+            {value.reminder !== 'none' ? <Text style={{ fontSize: 14, color: ACCENT }}>{remindLabel}</Text> : null}
+          </TouchableOpacity>
+          {value.reminder !== 'none' ? (
+            <TouchableOpacity onPress={() => onChange({ ...value, reminder: 'none' })} style={{ padding: 4 }}>
+              <X size={14} color={MUTED} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* ── Repeat row ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
+          <TouchableOpacity style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }} onPress={() => setShowRepeat(true)}>
+            <RotateCcw size={16} color={value.repeat !== 'none' ? ACCENT : MUTED} />
+            <Text style={{ flex: 1, fontSize: 15, color: TXT }}>Repeat</Text>
+            {value.repeat !== 'none' ? <Text style={{ fontSize: 14, color: ACCENT }} numberOfLines={1}>{repeatLabel}</Text> : null}
+          </TouchableOpacity>
+          {value.repeat !== 'none' ? (
+            <TouchableOpacity onPress={() => { onChange({ ...value, repeat: 'none' }); setShowCustom(false); }} style={{ padding: 4 }}>
+              <X size={14} color={MUTED} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {/* ── Repeat Ends row (only when repeat is active) ── */}
+        {value.repeat !== 'none' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
+            <RotateCcw size={16} color={MUTED} style={{ opacity: 0.5 }} />
+            <Text style={{ flex: 1, fontSize: 15, color: TXT }}>Repeat Ends</Text>
+            <Text style={{ fontSize: 14, color: MUTED }}>Never</Text>
+            <ChevronDown size={14} color={MUTED} />
           </View>
         )}
+        <View style={{ height: 28 }} />
+      </View>
 
-        {/* Reminder row */}
-        <TouchableOpacity onPress={() => { setExpandRemind(v => !v); setExpandTime(false); setExpandRepeat(false); }}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
-          <Bell size={16} color={MUTED} />
-          <Text style={{ flex: 1, fontSize: 14, color: TXT2 }}>Reminder</Text>
-          <Text style={{ fontSize: 12, color: value.reminder !== 'none' ? ACCENT : MUTED }}>{remindLabel}</Text>
-          {expandRemind ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
-        </TouchableOpacity>
-        {expandRemind && REMIND_OPTS.map(o => (
-          <TouchableOpacity key={o.v} onPress={() => { onChange({ ...value, reminder: o.v }); setExpandRemind(false); }}
-            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 10, gap: 12, backgroundColor: value.reminder === o.v ? ACCENT + '22' : 'transparent' }}>
-            <Text style={{ flex: 1, fontSize: 14, color: value.reminder === o.v ? ACCENT : TXT2 }}>{o.l}</Text>
-            {value.reminder === o.v && <Check size={14} color={ACCENT} />}
-          </TouchableOpacity>
-        ))}
-
-        {/* Repeat row */}
-        <TouchableOpacity onPress={() => { setExpandRepeat(v => !v); setExpandTime(false); setExpandRemind(false); }}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderTopWidth: 1, borderTopColor: BORDER, gap: 12 }}>
-          <RotateCcw size={16} color={MUTED} />
-          <Text style={{ flex: 1, fontSize: 14, color: TXT2 }}>Repeat</Text>
-          <Text style={{ fontSize: 12, color: value.repeat !== 'none' ? ACCENT : MUTED }}>{repeatLabel}</Text>
-          {expandRepeat ? <ChevronDown size={14} color={MUTED} /> : <ChevronRight size={14} color={MUTED} />}
-        </TouchableOpacity>
-        {expandRepeat && REPEAT_OPTS.map(o => {
-          const isCustom = o.v === 'custom';
-          const isActive = isCustom ? value.repeat.startsWith('custom:') : value.repeat === o.v;
-          return (
-            <TouchableOpacity key={o.v} onPress={() => {
-              if (isCustom) {
-                if (!value.repeat.startsWith('custom:')) {
-                  onChange({ ...value, repeat: `custom:week:${customWeekDays.join(',')}` });
-                }
-              } else {
-                onChange({ ...value, repeat: o.v });
-                setExpandRepeat(false);
-              }
-            }}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 10, gap: 12, backgroundColor: isActive ? ACCENT + '22' : 'transparent' }}>
-              <Text style={{ flex: 1, fontSize: 14, color: isActive ? ACCENT : TXT2 }}>{o.l}</Text>
-              {isActive && <Check size={14} color={ACCENT} />}
-            </TouchableOpacity>
-          );
-        })}
-        {expandRepeat && value.repeat.startsWith('custom:') && (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
-            {/* Period tabs: Week / Month / Year */}
-            <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 10, padding: 3, marginBottom: 14 }}>
-              {(['week','month','year'] as const).map(p => (
-                <TouchableOpacity key={p} onPress={() => { setCustomPeriod(p); const nv = p==='week'?`custom:week:${customWeekDays.join(',')}`:p==='month'?(customMonthMode==='each'?`custom:month:each:${customMonthDays.map(d=>d===-1?'last':String(d)).join(',') || '1'}`:`custom:month:onthe:${customMonthOrd}:${customMonthWD}`):(customYearMode==='each'?`custom:year:each:${customYearMonth}:${customYearDay}`:`custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${customYearWD}`); onChange({ ...value, repeat: nv }); }}
-                  style={{ flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center', backgroundColor: customPeriod===p ? SURFACE : 'transparent' }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: customPeriod===p ? TXT : MUTED }}>{p.charAt(0).toUpperCase()+p.slice(1)}</Text>
-                </TouchableOpacity>
-              ))}
+      {/* ──────────── Time drum picker overlay ──────────── */}
+      {showTime && (
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12 }} />
+          <View style={{ height: DRUM_H * 5, position: 'relative' }}>
+            <View style={{ position: 'absolute', top: DRUM_H * 2, left: 16, right: 16, height: DRUM_H, borderTopWidth: 1, borderBottomWidth: 1, borderColor: BORDER }} pointerEvents="none" />
+            <View style={{ flexDirection: 'row', height: DRUM_H * 5 }}>
+              <DrumCol items={Array.from({ length: 12 }, (_, i) => String(i + 1))} init={drumH} onSelect={setDrumH} />
+              <DrumCol items={Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))} init={drumM} onSelect={setDrumM} />
+              <DrumCol items={['AM', 'PM']} init={drumAP} onSelect={setDrumAP} />
             </View>
+          </View>
+          <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 12, borderTopWidth: 1, borderTopColor: BORDER }}>
+            <TouchableOpacity onPress={() => { onChange({ ...value, dueTime: '' }); setShowTime(false); }}
+              style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: BORDER }}>
+              <Text style={{ fontSize: 15, color: TXT }}>Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => {
+              let h24 = parseInt(drumH, 10);
+              if (drumAP === 'PM' && h24 !== 12) h24 += 12;
+              if (drumAP === 'AM' && h24 === 12) h24 = 0;
+              onChange({ ...value, dueTime: `${String(h24).padStart(2, '0')}:${drumM}` });
+              setShowTime(false);
+            }} style={{ flex: 2, alignItems: 'center', paddingVertical: 13, borderRadius: 12, backgroundColor: ACCENT }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: 'white' }}>OK</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ height: 24 }} />
+        </View>
+      )}
 
-            {/* Week */}
-            {customPeriod==='week' && (
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {WEEKDAY_LABELS.map((lbl, i) => {
-                  const active = customWeekDays.includes(i);
-                  return (
-                    <TouchableOpacity key={i} onPress={() => {
-                      const nd = active ? customWeekDays.filter(x=>x!==i) : [...customWeekDays,i].sort((a,b)=>a-b);
-                      setCustomWeekDays(nd);
-                      onChange({ ...value, repeat: `custom:week:${nd.join(',')}` });
-                    }}
-                      style={{ flex: 1, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT : 'transparent' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: active ? 'white' : TXT2 }}>{lbl}</Text>
+      {/* ──────────── Reminder overlay ──────────── */}
+      {showRemind && (
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 6 }} />
+          {REMIND_OPTS.map(o => (
+            <TouchableOpacity key={o.v} onPress={() => { onChange({ ...value, reminder: o.v }); setShowRemind(false); }}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+              <Text style={{ flex: 1, fontSize: 15, color: value.reminder === o.v ? ACCENT : TXT }}>{o.l}</Text>
+              {value.reminder === o.v && <Check size={16} color={ACCENT} />}
+            </TouchableOpacity>
+          ))}
+          <View style={{ height: 28 }} />
+        </View>
+      )}
+
+      {/* ──────────── Repeat overlay ──────────── */}
+      {showRepeat && (
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 6 }} />
+          <ScrollView style={{ maxHeight: 480 }} keyboardShouldPersistTaps="handled">
+            {repeatSugg.map(o => {
+              const isActive = o.v === 'custom' ? value.repeat.startsWith('custom:') : value.repeat === o.v;
+              return (
+                <TouchableOpacity key={o.v} onPress={() => {
+                  if (o.v === 'custom') { const cv = buildCustom(); onChange({ ...value, repeat: cv }); setShowCustom(v => !v); }
+                  else { onChange({ ...value, repeat: o.v }); setShowCustom(false); setShowRepeat(false); }
+                }}
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: isActive ? ACCENT + '12' : 'transparent' }}>
+                  <Text style={{ flex: 1, fontSize: 15, color: isActive ? ACCENT : TXT }}>{o.l}</Text>
+                  {o.arrow ? <ChevronRight size={16} color={MUTED} /> : isActive ? <Check size={16} color={ACCENT} /> : null}
+                </TouchableOpacity>
+              );
+            })}
+            {/* Custom repeat inline */}
+            {showCustom && (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: BORDER }}>
+                <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 10, padding: 3, marginBottom: 14 }}>
+                  {(['week','month','year'] as const).map(p => (
+                    <TouchableOpacity key={p} onPress={() => { setCustomPeriod(p); const nv = p==='week'?`custom:week:${customWeekDays.join(',')}`:p==='month'?(customMonthMode==='each'?`custom:month:each:${customMonthDays.map(d=>d===-1?'last':String(d)).join(',') || '1'}`:`custom:month:onthe:${customMonthOrd}:${customMonthWD}`):(customYearMode==='each'?`custom:year:each:${customYearMonth}:${customYearDay}`:`custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${customYearWD}`); onChange({ ...value, repeat: nv }); }}
+                      style={{ flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center', backgroundColor: customPeriod===p ? SURFACE : 'transparent' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: customPeriod===p ? TXT : MUTED }}>{p.charAt(0).toUpperCase()+p.slice(1)}</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  ))}
+                </View>
+                {customPeriod==='week' && (
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {WEEKDAY_LABELS.map((lbl, i) => {
+                      const active = customWeekDays.includes(i);
+                      return (
+                        <TouchableOpacity key={i} onPress={() => { const nd = active ? customWeekDays.filter(x=>x!==i) : [...customWeekDays,i].sort((a,b)=>a-b); setCustomWeekDays(nd); onChange({ ...value, repeat: `custom:week:${nd.join(',')}` }); }}
+                          style={{ flex: 1, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT : 'transparent' }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: active ? 'white' : TXT2 }}>{lbl}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                {customPeriod==='month' && (<>
+                  <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 10, padding: 3, marginBottom: 12 }}>
+                    {(['each','onthe'] as const).map(m => (
+                      <TouchableOpacity key={m} onPress={() => { setCustomMonthMode(m); const nv = m==='each'?`custom:month:each:${customMonthDays.map(d=>d===-1?'last':String(d)).join(',') || '1'}`:`custom:month:onthe:${customMonthOrd}:${customMonthWD}`; onChange({ ...value, repeat: nv }); }}
+                        style={{ flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center', backgroundColor: customMonthMode===m ? SURFACE : 'transparent' }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: customMonthMode===m ? TXT : MUTED }}>{m==='each'?'Each':'On the'}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {customMonthMode==='each' && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                      {Array.from({length:31},(_,i)=>i+1).map(d => { const on=customMonthDays.includes(d); return (
+                        <TouchableOpacity key={d} onPress={() => { const nd=on?customMonthDays.filter(x=>x!==d):[...customMonthDays,d].sort((a,b)=>a-b); setCustomMonthDays(nd); onChange({ ...value, repeat: `custom:month:each:${nd.map(x=>x===-1?'last':String(x)).join(',') || '1'}` }); }}
+                          style={{ width: 36, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? ACCENT : SURFACE2 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: on ? 'white' : TXT2 }}>{d}</Text>
+                        </TouchableOpacity>
+                      ); })}
+                    </View>
+                  )}
+                  {customMonthMode==='onthe' && (
+                    <View style={{ gap: 10 }}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {ORDINAL_VALUES.map((o,i) => (<TouchableOpacity key={o} onPress={() => { setCustomMonthOrd(o); onChange({ ...value, repeat: `custom:month:onthe:${o}:${customMonthWD}` }); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customMonthOrd===o ? ACCENT : SURFACE2 }}><Text style={{ fontSize: 12, fontWeight: '600', color: customMonthOrd===o ? 'white' : TXT2 }}>{ORDINAL_LABELS[i]}</Text></TouchableOpacity>))}
+                      </ScrollView>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {WEEKDAY_VALUES.map((w,i) => (<TouchableOpacity key={w} onPress={() => { setCustomMonthWD(w); onChange({ ...value, repeat: `custom:month:onthe:${customMonthOrd}:${w}` }); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customMonthWD===w ? ACCENT : SURFACE2 }}><Text style={{ fontSize: 12, fontWeight: '600', color: customMonthWD===w ? 'white' : TXT2 }}>{WEEKDAY_FULL[i].slice(0,3)}</Text></TouchableOpacity>))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </>)}
+                {customPeriod==='year' && (<>
+                  <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 10, padding: 3, marginBottom: 12 }}>
+                    {(['each','onthe'] as const).map(m => (
+                      <TouchableOpacity key={m} onPress={() => { setCustomYearMode(m); const nv = m==='each'?`custom:year:each:${customYearMonth}:${customYearDay}`:`custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${customYearWD}`; onChange({ ...value, repeat: nv }); }}
+                        style={{ flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center', backgroundColor: customYearMode===m ? SURFACE : 'transparent' }}>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: customYearMode===m ? TXT : MUTED }}>{m==='each'?'Each':'On the'}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {customYearMode==='each' && (<>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <TouchableOpacity onPress={() => { const m=customYearMonth===1?12:customYearMonth-1; setCustomYearMonth(m); onChange({ ...value, repeat: `custom:year:each:${m}:${customYearDay}` }); }} style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE2 }}><ChevronLeft size={16} color={TXT2} /></TouchableOpacity>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>{MONTH_NAMES[customYearMonth-1]}</Text>
+                      <TouchableOpacity onPress={() => { const m=customYearMonth===12?1:customYearMonth+1; setCustomYearMonth(m); onChange({ ...value, repeat: `custom:year:each:${m}:${customYearDay}` }); }} style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE2 }}><ChevronRight size={16} color={TXT2} /></TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                      {Array.from({length: new Date(new Date().getFullYear(), customYearMonth, 0).getDate()},(_,i)=>i+1).map(d => { const on=customYearDay===d; return (<TouchableOpacity key={d} onPress={() => { setCustomYearDay(d); onChange({ ...value, repeat: `custom:year:each:${customYearMonth}:${d}` }); }} style={{ width: 36, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? ACCENT : SURFACE2 }}><Text style={{ fontSize: 12, fontWeight: '600', color: on ? 'white' : TXT2 }}>{d}</Text></TouchableOpacity>); })}
+                    </View>
+                  </>)}
+                  {customYearMode==='onthe' && (
+                    <View style={{ gap: 10 }}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {MONTH_NAMES.map((mn,i) => (<TouchableOpacity key={i} onPress={() => { const m=i+1; setCustomYearOntheMon(m); onChange({ ...value, repeat: `custom:year:onthe:${m}:${customYearOrd}:${customYearWD}` }); }} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: customYearOntheMon===i+1 ? ACCENT : SURFACE2 }}><Text style={{ fontSize: 12, fontWeight: '600', color: customYearOntheMon===i+1 ? 'white' : TXT2 }}>{mn.slice(0,3)}</Text></TouchableOpacity>))}
+                      </ScrollView>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {ORDINAL_VALUES.map((o,i) => (<TouchableOpacity key={o} onPress={() => { setCustomYearOrd(o); onChange({ ...value, repeat: `custom:year:onthe:${customYearOntheMon}:${o}:${customYearWD}` }); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customYearOrd===o ? ACCENT : SURFACE2 }}><Text style={{ fontSize: 12, fontWeight: '600', color: customYearOrd===o ? 'white' : TXT2 }}>{ORDINAL_LABELS[i]}</Text></TouchableOpacity>))}
+                      </ScrollView>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {WEEKDAY_VALUES.map((w,i) => (<TouchableOpacity key={w} onPress={() => { setCustomYearWD(w); onChange({ ...value, repeat: `custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${w}` }); }} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customYearWD===w ? ACCENT : SURFACE2 }}><Text style={{ fontSize: 12, fontWeight: '600', color: customYearWD===w ? 'white' : TXT2 }}>{WEEKDAY_FULL[i].slice(0,3)}</Text></TouchableOpacity>))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </>)}
               </View>
             )}
-
-            {/* Month */}
-            {customPeriod==='month' && (<>
-              {/* Each / On the sub-tabs */}
-              <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 10, padding: 3, marginBottom: 12 }}>
-                {(['each','onthe'] as const).map(m => (
-                  <TouchableOpacity key={m} onPress={() => { setCustomMonthMode(m); const nv = m==='each'?`custom:month:each:${customMonthDays.map(d=>d===-1?'last':String(d)).join(',') || '1'}`:`custom:month:onthe:${customMonthOrd}:${customMonthWD}`; onChange({ ...value, repeat: nv }); }}
-                    style={{ flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center', backgroundColor: customMonthMode===m ? SURFACE : 'transparent' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: customMonthMode===m ? TXT : MUTED }}>{m==='each'?'Each':'On the'}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {customMonthMode==='each' && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                  {Array.from({length:31},(_,i)=>i+1).map(d => {
-                    const on = customMonthDays.includes(d);
-                    return (
-                      <TouchableOpacity key={d} onPress={() => {
-                        const nd = on ? customMonthDays.filter(x=>x!==d) : [...customMonthDays,d].sort((a,b)=>a-b);
-                        setCustomMonthDays(nd);
-                        onChange({ ...value, repeat: `custom:month:each:${nd.map(x=>x===-1?'last':String(x)).join(',') || '1'}` });
-                      }}
-                        style={{ width: 36, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: on ? 'white' : TXT2 }}>{d}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                  {(() => { const on = customMonthDays.includes(-1); return (
-                    <TouchableOpacity onPress={() => {
-                      const nd = on ? customMonthDays.filter(x=>x!==-1) : [...customMonthDays,-1];
-                      setCustomMonthDays(nd);
-                      onChange({ ...value, repeat: `custom:month:each:${nd.map(x=>x===-1?'last':String(x)).join(',') || '1'}` });
-                    }}
-                      style={{ paddingHorizontal: 10, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? ACCENT : SURFACE2 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: on ? 'white' : TXT2 }}>Last</Text>
-                    </TouchableOpacity>
-                  ); })()}
-                </View>
-              )}
-              {customMonthMode==='onthe' && (
-                <View style={{ gap: 10 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                    {ORDINAL_VALUES.map((o,i) => (
-                      <TouchableOpacity key={o} onPress={() => { setCustomMonthOrd(o); onChange({ ...value, repeat: `custom:month:onthe:${o}:${customMonthWD}` }); }}
-                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customMonthOrd===o ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: customMonthOrd===o ? 'white' : TXT2 }}>{ORDINAL_LABELS[i]}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                    {WEEKDAY_VALUES.map((w,i) => (
-                      <TouchableOpacity key={w} onPress={() => { setCustomMonthWD(w); onChange({ ...value, repeat: `custom:month:onthe:${customMonthOrd}:${w}` }); }}
-                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customMonthWD===w ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: customMonthWD===w ? 'white' : TXT2 }}>{WEEKDAY_FULL[i].slice(0,3)}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </>)}
-
-            {/* Year */}
-            {customPeriod==='year' && (<>
-              {/* Each / On the sub-tabs */}
-              <View style={{ flexDirection: 'row', backgroundColor: SURFACE2, borderRadius: 10, padding: 3, marginBottom: 12 }}>
-                {(['each','onthe'] as const).map(m => (
-                  <TouchableOpacity key={m} onPress={() => { setCustomYearMode(m); const nv = m==='each'?`custom:year:each:${customYearMonth}:${customYearDay}`:`custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${customYearWD}`; onChange({ ...value, repeat: nv }); }}
-                    style={{ flex: 1, paddingVertical: 6, borderRadius: 8, alignItems: 'center', backgroundColor: customYearMode===m ? SURFACE : 'transparent' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: customYearMode===m ? TXT : MUTED }}>{m==='each'?'Each':'On the'}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {customYearMode==='each' && (<>
-                {/* Month nav */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <TouchableOpacity onPress={() => { const m = customYearMonth===1?12:customYearMonth-1; setCustomYearMonth(m); onChange({ ...value, repeat: `custom:year:each:${m}:${customYearDay}` }); }}
-                    style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE2 }}>
-                    <ChevronLeft size={16} color={TXT2} />
-                  </TouchableOpacity>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>{MONTH_NAMES[customYearMonth-1]}</Text>
-                  <TouchableOpacity onPress={() => { const m = customYearMonth===12?1:customYearMonth+1; setCustomYearMonth(m); onChange({ ...value, repeat: `custom:year:each:${m}:${customYearDay}` }); }}
-                    style={{ width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE2 }}>
-                    <ChevronRight size={16} color={TXT2} />
-                  </TouchableOpacity>
-                </View>
-                {/* Days grid */}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
-                  {Array.from({length: new Date(new Date().getFullYear(), customYearMonth, 0).getDate()},(_,i)=>i+1).map(d => {
-                    const on = customYearDay===d;
-                    return (
-                      <TouchableOpacity key={d} onPress={() => { setCustomYearDay(d); onChange({ ...value, repeat: `custom:year:each:${customYearMonth}:${d}` }); }}
-                        style={{ width: 36, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: on ? 'white' : TXT2 }}>{d}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </>)}
-              {customYearMode==='onthe' && (
-                <View style={{ gap: 10 }}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                    {MONTH_NAMES.map((mn,i) => (
-                      <TouchableOpacity key={i} onPress={() => { const m=i+1; setCustomYearOntheMon(m); onChange({ ...value, repeat: `custom:year:onthe:${m}:${customYearOrd}:${customYearWD}` }); }}
-                        style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: customYearOntheMon===i+1 ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: customYearOntheMon===i+1 ? 'white' : TXT2 }}>{mn.slice(0,3)}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                    {ORDINAL_VALUES.map((o,i) => (
-                      <TouchableOpacity key={o} onPress={() => { setCustomYearOrd(o); onChange({ ...value, repeat: `custom:year:onthe:${customYearOntheMon}:${o}:${customYearWD}` }); }}
-                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customYearOrd===o ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: customYearOrd===o ? 'white' : TXT2 }}>{ORDINAL_LABELS[i]}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                    {WEEKDAY_VALUES.map((w,i) => (
-                      <TouchableOpacity key={w} onPress={() => { setCustomYearWD(w); onChange({ ...value, repeat: `custom:year:onthe:${customYearOntheMon}:${customYearOrd}:${w}` }); }}
-                        style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: customYearWD===w ? ACCENT : SURFACE2 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: customYearWD===w ? 'white' : TXT2 }}>{WEEKDAY_FULL[i].slice(0,3)}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </>)}
-          </View>
-        )}
-      </ScrollView>
+          </ScrollView>
+          <View style={{ height: 28 }} />
+        </View>
+      )}
     </View>
   );
 }
@@ -863,17 +917,18 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
   const [listId, setListId]     = useState('');
   const [tags, setTags]         = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [showDate, setShowDate] = useState(false);
-  const [showList, setShowList] = useState(false);
-  const [showPri, setShowPri]   = useState(false);
-  const [showTag, setShowTag]   = useState(false);
+  const [showDate, setShowDate]         = useState(false);
+  const [showDateTime, setShowDateTime] = useState(false);
+  const [showList, setShowList]         = useState(false);
+  const [showPri, setShowPri]           = useState(false);
+  const [showTag, setShowTag]           = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setTitle(''); setDueDate(defaultDueDate ?? ''); setDueTime('');
     setRepeat('none'); setReminder('none'); setPriority('none');
     setListId(defaultListId ?? ''); setTags([]); setTagInput('');
-    setShowDate(false); setShowList(false); setShowPri(false); setShowTag(false);
+    setShowDate(false); setShowDateTime(false); setShowList(false); setShowPri(false); setShowTag(false);
   }, [visible]);
 
   const submit = () => {
@@ -888,7 +943,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
   };
 
   const handleBack = () => {
-    if (showDate) { setShowDate(false); return; }
+    if (showDate || showDateTime) { setShowDate(false); setShowDateTime(false); return; }
     if (showList) { setShowList(false); return; }
     onClose();
   };
@@ -899,7 +954,7 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
   const datePickVal: DatePickVal = { dueDate, dueTime, repeat, reminder };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { if (showDate) setShowDate(false); else if (showList) setShowList(false); else onClose(); }}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { if (showDate || showDateTime) { setShowDate(false); setShowDateTime(false); } else if (showList) setShowList(false); else onClose(); }}>
       <View style={{ flex: 1 }}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
         <KeyboardAvoidingView behavior="padding">
@@ -969,6 +1024,12 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
                   {dateLabel && <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>{dateLabel}</Text>}
                 </TouchableOpacity>
 
+                <TouchableOpacity onPress={() => setShowDateTime(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: dueTime ? '#3B82F622' : 'transparent' }}>
+                  <Clock size={20} color={dueTime ? '#3B82F6' : MUTED} />
+                  {dueTime && <Text style={{ fontSize: 11, fontWeight: '600', color: '#3B82F6' }}>{dueTime}</Text>}
+                </TouchableOpacity>
+
                 <TouchableOpacity onPress={() => { setShowPri(v => !v); setShowTag(false); }}
                   style={{ width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }}>
                   <Flag size={20} color={priority !== 'none' ? priColor : MUTED} />
@@ -998,12 +1059,13 @@ function QuickAddSheet({ visible, lists, defaultListId, defaultDueDate, onClose,
           </KeyboardAvoidingView>
         </View>
 
-      {showDate && (
+      {(showDate || showDateTime) && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <DatePickerContent
             value={datePickVal}
+            autoExpandTime={showDateTime}
             onChange={v => { setDueDate(v.dueDate); setDueTime(v.dueTime); setRepeat(v.repeat); setReminder(v.reminder); }}
-            onBack={() => setShowDate(false)}
+            onBack={() => { setShowDate(false); setShowDateTime(false); }}
           />
         </View>
       )}
@@ -1024,9 +1086,10 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
   const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
   const isEdit = !!initial;
   const [form, setForm] = useState({ title: '', notes: '', priority: 'none', dueDate: '', dueTime: '', listId: '', tags: [] as string[], repeat: 'none', reminder: 'none' });
-  const [tagInput, setTagInput]             = useState('');
-  const [showListPicker, setShowListPicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tagInput, setTagInput]               = useState('');
+  const [showListPicker, setShowListPicker]   = useState(false);
+  const [showDatePicker, setShowDatePicker]   = useState(false);
+  const [datePickerAutoTime, setDatePickerAutoTime] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -1035,7 +1098,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
     } else {
       setForm({ title: '', notes: '', priority: 'none', dueDate: '', dueTime: '', listId: '', tags: [], repeat: 'none', reminder: 'none' });
     }
-    setTagInput(''); setShowDatePicker(false); setShowListPicker(false);
+    setTagInput(''); setShowDatePicker(false); setDatePickerAutoTime(false); setShowListPicker(false);
   }, [visible, initial?.id]);
 
   const addTag = () => {
@@ -1051,7 +1114,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
   };
 
   const handleBack = () => {
-    if (showDatePicker) { setShowDatePicker(false); return; }
+    if (showDatePicker) { setShowDatePicker(false); setDatePickerAutoTime(false); return; }
     if (showListPicker) { setShowListPicker(false); return; }
     onClose();
   };
@@ -1061,7 +1124,7 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
   const datePickVal: DatePickVal = { dueDate: form.dueDate, dueTime: form.dueTime, repeat: form.repeat, reminder: form.reminder };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { if (showDatePicker) setShowDatePicker(false); else if (showListPicker) setShowListPicker(false); else onClose(); }}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={() => { if (showDatePicker) { setShowDatePicker(false); setDatePickerAutoTime(false); } else if (showListPicker) setShowListPicker(false); else onClose(); }}>
       <View style={{ flex: 1 }}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
         <KeyboardAvoidingView behavior="padding">
@@ -1092,14 +1155,19 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
                 placeholder="Add notes…" placeholderTextColor={MUTED} multiline value={form.notes} onChangeText={t => setForm(f => ({ ...f, notes: t }))} />
 
               <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Due Date & Time</Text>
-              <TouchableOpacity onPress={() => setShowDatePicker(true)}
-                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 }}>
-                <CalendarDays size={16} color={form.dueDate ? ACCENT : MUTED} />
-                <Text style={{ flex: 1, fontSize: 14, color: form.dueDate ? TXT2 : MUTED }}>{dateLabel}</Text>
-                {form.dueTime && <Text style={{ fontSize: 13, color: ACCENT }}>{form.dueTime}</Text>}
-                {form.repeat !== 'none' && <Text style={{ fontSize: 11, color: MUTED }}>{REPEAT_OPTS.find(o => o.v === form.repeat)?.l}</Text>}
-                <ChevronRight size={14} color={MUTED} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <TouchableOpacity onPress={() => { setDatePickerAutoTime(false); setShowDatePicker(true); }}
+                  style={{ flex: 1, borderWidth: 1, borderColor: form.dueDate ? ACCENT + '55' : BORDER, borderRadius: 12, backgroundColor: form.dueDate ? ACCENT + '12' : SURFACE2, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <CalendarDays size={16} color={form.dueDate ? ACCENT : MUTED} />
+                  <Text style={{ flex: 1, fontSize: 14, color: form.dueDate ? TXT2 : MUTED }}>{dateLabel}</Text>
+                  {form.repeat !== 'none' && <Text style={{ fontSize: 11, color: MUTED }}>{REPEAT_OPTS.find(o => o.v === form.repeat)?.l}</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setDatePickerAutoTime(true); setShowDatePicker(true); }}
+                  style={{ borderWidth: 1, borderColor: form.dueTime ? '#3B82F655' : BORDER, borderRadius: 12, backgroundColor: form.dueTime ? '#3B82F612' : SURFACE2, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Clock size={16} color={form.dueTime ? '#3B82F6' : MUTED} />
+                  <Text style={{ fontSize: 14, color: form.dueTime ? '#3B82F6' : MUTED }}>{form.dueTime || 'Time'}</Text>
+                </TouchableOpacity>
+              </View>
 
               <Text style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>Priority</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -1168,8 +1236,9 @@ function TaskModal({ visible, initial, lists, onClose, onSave, onDelete }: {
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <DatePickerContent
             value={datePickVal}
+            autoExpandTime={datePickerAutoTime}
             onChange={v => setForm(f => ({ ...f, dueDate: v.dueDate, dueTime: v.dueTime, repeat: v.repeat, reminder: v.reminder }))}
-            onBack={() => setShowDatePicker(false)}
+            onBack={() => { setShowDatePicker(false); setDatePickerAutoTime(false); }}
           />
         </View>
       )}
@@ -1621,24 +1690,35 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
   isFromNotification?: boolean;
 }) {
   const { SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, INPUT } = useColors();
-  const [showSnooze, setShowSnooze]   = useState(false);
-  const [showDelete, setShowDelete]   = useState(false);
-  const [editingField, setEditingField] = useState<'title' | 'notes' | 'priority' | 'list' | 'tag' | null>(null);
-  const [localTask, setLocalTask]     = useState<Task | null>(null);
-  const [tagInput, setTagInput]       = useState('');
-  const [titleDraft, setTitleDraft]   = useState('');
-  const [notesDraft, setNotesDraft]   = useState('');
+  const [showSnooze, setShowSnooze]       = useState(false);
+  const [showDelete, setShowDelete]       = useState(false);
+  const [editingField, setEditingField]   = useState<'title' | 'notes' | 'priority' | 'list' | 'tag' | null>(null);
+  const [localTask, setLocalTask]         = useState<Task | null>(null);
+  const [tagInput, setTagInput]           = useState('');
+  const [titleDraft, setTitleDraft]       = useState('');
+  const [notesDraft, setNotesDraft]       = useState('');
+  const [localSubtasks, setLocalSubtasks]     = useState<TaskSubtask[]>([]);
+  const [addingSubtask, setAddingSubtask]     = useState(false);
+  const [subtaskInput, setSubtaskInput]       = useState('');
+  const [showDatePicker, setShowDatePicker]   = useState(false);
+  const [datePickerTime, setDatePickerTime]   = useState(false);
+  const subtaskInputRef = useRef<any>(null);
 
   useEffect(() => {
     if (task) {
       setLocalTask({ ...task });
       setTitleDraft(task.title);
       setNotesDraft(task.notes ?? '');
+      setLocalSubtasks(task.subtasks ?? []);
     }
     setEditingField(null);
     setShowSnooze(false);
     setShowDelete(false);
     setTagInput('');
+    setAddingSubtask(false);
+    setSubtaskInput('');
+    setShowDatePicker(false);
+    setDatePickerTime(false);
   }, [task?.id]);
 
   if (!task) return null;
@@ -1673,6 +1753,7 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
   const handleSnooze  = () => { if (onSnooze) setShowSnooze(true); };
   const openFullEdit  = () => { onClose(); setTimeout(() => onFullEdit(t), 280); };
   const dismissSub    = () => {
+    if (showDatePicker) { setShowDatePicker(false); setDatePickerTime(false); return; }
     if (editingField) { setEditingField(null); return; }
     if (showSnooze || showDelete) { setShowSnooze(false); setShowDelete(false); return; }
     onClose();
@@ -1790,24 +1871,42 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
             </TouchableOpacity>
           </View>
 
-          {/* Date + Repeat (tappable → full edit for date change) */}
-          {(dateLabel || repeat !== 'none') && (
-            <TouchableOpacity onPress={!isFromNotification ? openFullEdit : undefined} activeOpacity={isFromNotification ? 1 : 0.7}
-              style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 5 }}>
-              {dateLabel && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <CalendarDays size={13} color={dateColor} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: dateColor }}>{dateLabel}</Text>
-                </View>
-              )}
-              {repeat !== 'none' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <RotateCcw size={12} color={MUTED} />
-                  <Text style={{ fontSize: 12, color: MUTED }}>{getRepeatDisplay(repeat)}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
+          {/* Date + Time chips + Repeat */}
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {/* Date chip */}
+              <TouchableOpacity
+                onPress={() => !isFromNotification && (setDatePickerTime(false), setShowDatePicker(true))}
+                activeOpacity={isFromNotification ? 1 : 0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: t.dueDate ? dateColor + '18' : SURFACE2, borderWidth: 1, borderColor: t.dueDate ? dateColor + '44' : BORDER }}>
+                <CalendarDays size={13} color={t.dueDate ? dateColor : MUTED} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: t.dueDate ? dateColor : MUTED }}>
+                  {t.dueDate ? (() => {
+                    const d = new Date(t.dueDate + 'T00:00:00');
+                    const diff = Math.round((d.getTime() - new Date(todayStr() + 'T00:00:00').getTime()) / 86400000);
+                    if (diff === 0) return 'Today';
+                    if (diff === 1) return 'Tomorrow';
+                    if (diff === -1) return 'Yesterday';
+                    return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+                  })() : 'Set date'}
+                </Text>
+              </TouchableOpacity>
+              {/* Time chip */}
+              <TouchableOpacity
+                onPress={() => !isFromNotification && (setDatePickerTime(true), setShowDatePicker(true))}
+                activeOpacity={isFromNotification ? 1 : 0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: t.dueTime ? ACCENT + '18' : SURFACE2, borderWidth: 1, borderColor: t.dueTime ? ACCENT + '44' : BORDER }}>
+                <Clock size={13} color={t.dueTime ? ACCENT : MUTED} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: t.dueTime ? ACCENT : MUTED }}>{t.dueTime || 'Set time'}</Text>
+              </TouchableOpacity>
+            </View>
+            {repeat !== 'none' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <RotateCcw size={12} color={MUTED} />
+                <Text style={{ fontSize: 12, color: MUTED }}>{getRepeatDisplay(repeat)}</Text>
+              </View>
+            )}
+          </View>
 
           {/* Title — inline edit */}
           {editingField === 'title' ? (
@@ -1878,6 +1977,57 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
             )}
           </View>
 
+          {/* Subtasks */}
+          {!isFromNotification && (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+              {localSubtasks.length > 0 && (
+                <View style={{ marginBottom: 8 }}>
+                  {localSubtasks.map(s => (
+                    <TouchableOpacity key={s.id}
+                      onPress={async () => {
+                        const updated = { ...s, isDone: !s.isDone };
+                        setLocalSubtasks(prev => prev.map(x => x.id === s.id ? updated : x));
+                        try { await updateSubtask(t.id, s.id, { isDone: updated.isDone }); } catch { setLocalSubtasks(prev => prev.map(x => x.id === s.id ? s : x)); }
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                      {s.isDone
+                        ? <CheckCircle size={18} color={ACCENT} />
+                        : <Circle size={18} color="#4B5563" />}
+                      <Text style={{ flex: 1, fontSize: 14, color: s.isDone ? MUTED : TXT2, textDecorationLine: s.isDone ? 'line-through' : 'none' }}>{s.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {addingSubtask && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: ACCENT + '66', backgroundColor: INPUT, paddingHorizontal: 10, paddingVertical: 6, gap: 8, marginBottom: 4 }}>
+                  <Circle size={16} color="#4B5563" />
+                  <TextInput
+                    ref={subtaskInputRef}
+                    autoFocus
+                    value={subtaskInput}
+                    onChangeText={setSubtaskInput}
+                    placeholder="New subtask…"
+                    placeholderTextColor={MUTED}
+                    style={{ flex: 1, fontSize: 14, color: TXT }}
+                    returnKeyType="done"
+                    onSubmitEditing={async () => {
+                      const title = subtaskInput.trim();
+                      if (!title) { setAddingSubtask(false); return; }
+                      setSubtaskInput('');
+                      try {
+                        const created = await createSubtask(t.id, title);
+                        setLocalSubtasks(prev => [...prev, created]);
+                      } catch {}
+                      setAddingSubtask(false);
+                    }}
+                    onBlur={() => { if (!subtaskInput.trim()) setAddingSubtask(false); }}
+                  />
+                  <TouchableOpacity onPress={() => { setSubtaskInput(''); setAddingSubtask(false); }}><X size={14} color={MUTED} /></TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
             </ScrollView>
           {/* Bottom toolbar */}
           <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28, borderTopWidth: 1, borderTopColor: BORDER }}>
@@ -1906,9 +2056,9 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
                 <Tag size={20} color={displayTags.length > 0 ? '#8888BE' : MUTED} />
               </TouchableOpacity>
               {!isFromNotification && (<>
-                <TouchableOpacity onPress={openFullEdit}
-                  style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER }}>
-                  <Plus size={18} color={TXT2} />
+                <TouchableOpacity onPress={() => { setAddingSubtask(true); setTimeout(() => subtaskInputRef.current?.focus(), 80); }}
+                  style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: addingSubtask ? ACCENT + '22' : SURFACE2, borderWidth: 1, borderColor: addingSubtask ? ACCENT + '55' : BORDER }}>
+                  <Plus size={18} color={addingSubtask ? ACCENT : TXT2} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }} />
                 <TouchableOpacity onPress={handleDelete}
@@ -1921,6 +2071,16 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
           </>)}
         </View>
       </KeyboardAvoidingView>
+      {showDatePicker && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <DatePickerContent
+            autoExpandTime={datePickerTime}
+            value={{ dueDate: t.dueDate ?? '', dueTime: t.dueTime ?? '', repeat: getRepeat(t.tags), reminder: getReminder(t.tags) }}
+            onChange={v => updateField({ dueDate: v.dueDate || null, dueTime: v.dueTime || null, tags: JSON.stringify(buildTagsArray(parseTags(t.tags), v.repeat, v.reminder)) })}
+            onBack={() => { setShowDatePicker(false); setDatePickerTime(false); }}
+          />
+        </View>
+      )}
     </Modal>
   );
 }
@@ -2012,8 +2172,14 @@ export default function TasksScreen() {
   const todaySections = SECTION_CONFIG.map(({ key, label, color, bg }) => {
     let raw: TaskInstance[];
     if (key === 'overdue') {
-      // Merge missed (past uncommitted tasks) into overdue
-      raw = [...((todayData as any)?.overdue ?? []), ...((todayData as any)?.missed ?? [])];
+      const merged: TaskInstance[] = [...((todayData as any)?.overdue ?? []), ...((todayData as any)?.missed ?? [])];
+      // For recurring tasks missed multiple days, keep only the most recent past instance
+      const seen = new Map<string, TaskInstance>();
+      merged.forEach(inst => {
+        const existing = seen.get(inst.task.id);
+        if (!existing || inst.date > existing.date) seen.set(inst.task.id, inst);
+      });
+      raw = Array.from(seen.values());
     } else {
       raw = (todayData as any)?.[key] ?? [];
     }

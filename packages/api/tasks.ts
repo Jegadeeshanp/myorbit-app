@@ -1,6 +1,6 @@
 import { apiRequest } from './client';
 import type {
-  Task, TaskList, TaskInstance, TodayResponse, CreateTaskInput,
+  Task, TaskList, TaskInstance, TodayResponse, CreateTaskInput, TaskSubtask,
 } from './types';
 
 export const getTodayTasks = (): Promise<TodayResponse> =>
@@ -54,3 +54,15 @@ export const completeInstance = (instanceId: string): Promise<TaskInstance> =>
 
 export const deleteInstance = (instanceId: string): Promise<void> =>
   apiRequest<void>(`/api/tasks/instances/${instanceId}`, { method: 'DELETE' });
+
+export const createSubtask = (taskId: string, title: string): Promise<TaskSubtask> =>
+  apiRequest<TaskSubtask>(`/api/tasks/${taskId}/subtasks`, {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  });
+
+export const updateSubtask = (taskId: string, subtaskId: string, data: { title?: string; isDone?: boolean }): Promise<TaskSubtask> =>
+  apiRequest<TaskSubtask>(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
