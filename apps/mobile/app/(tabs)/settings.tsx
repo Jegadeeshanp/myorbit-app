@@ -1,6 +1,8 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Switch, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
+import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '@/lib/authStore';
 import { useThemeStore, getTheme } from '@/lib/themeStore';
 import AppHeader from '@/components/shared/AppHeader';
@@ -30,6 +32,36 @@ export default function SettingsScreen() {
   const logout = useAuthStore((s) => s.logout);
   const { isDark, toggle } = useThemeStore();
   const T = getTheme(isDark);
+
+  const [notifGranted, setNotifGranted] = useState(false);
+
+  useEffect(() => {
+    Notifications.getPermissionsAsync().then(({ status }) => {
+      setNotifGranted(status === 'granted');
+    });
+  }, []);
+
+  const handleNotifications = useCallback(async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') {
+      Alert.alert('Notifications enabled', 'You\'ll receive reminders for tasks with due dates. Set a reminder when creating or editing a task.');
+      return;
+    }
+    const { status: newStatus } = await Notifications.requestPermissionsAsync();
+    if (newStatus === 'granted') {
+      setNotifGranted(true);
+      Alert.alert('Notifications enabled', 'You\'ll receive reminders for tasks with due dates.');
+    } else {
+      Alert.alert(
+        'Enable Notifications',
+        'Notifications are blocked. Open your device settings to allow them.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
+    }
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -64,9 +96,10 @@ export default function SettingsScreen() {
     makeSection('Account', [
       {
         label: 'Notifications',
-        subtitle: 'Push alerts & reminders',
+        subtitle: notifGranted ? 'Enabled — task reminders active' : 'Tap to enable task reminders',
         icon: Bell,
         color: '#F59E0B',
+        onPress: handleNotifications,
       },
       {
         label: 'Subscription',

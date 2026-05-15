@@ -9,7 +9,7 @@ function getReminder(raw: string): string {
   } catch { return 'none'; }
 }
 
-export async function setupNotifications(): Promise<void> {
+export async function setupNotifications(): Promise<boolean> {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -27,7 +27,12 @@ export async function setupNotifications(): Promise<void> {
     });
   }
 
-  await Notifications.requestPermissionsAsync();
+  // Check existing permission first — avoids re-prompting if already granted/denied
+  const existing = await Notifications.getPermissionsAsync();
+  if (existing.status === 'granted') return true;
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === 'granted';
 }
 
 export async function scheduleTaskNotification(task: Task): Promise<void> {
