@@ -84,7 +84,7 @@ function ResetPasswordForm() {
         </p>
         <Link
           href="/signin"
-          className="mt-6 inline-block rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-700"
+          className="mt-6 inline-block rounded-full bg-emerald-700 px-8 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
         >
           Sign in
         </Link>
@@ -96,7 +96,7 @@ function ResetPasswordForm() {
   return (
     <>
       <div className="mb-6 flex flex-col items-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-700">
           <Lock className="h-5 w-5 text-white" />
         </div>
         <h1 className="mt-4 text-2xl font-bold text-gray-900">Set new password</h1>
@@ -117,7 +117,7 @@ function ResetPasswordForm() {
               required
               minLength={8}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 pr-10 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
             />
             <button
               type="button"
@@ -158,7 +158,7 @@ function ResetPasswordForm() {
               onChange={e => setConfirm(e.target.value)}
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 pr-10 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
             />
             <button
               type="button"
@@ -185,7 +185,7 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={status === 'loading'}
-          className="w-full rounded-full bg-gray-900 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-700 disabled:opacity-60"
+          className="w-full rounded-full bg-emerald-700 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-60"
         >
           {status === 'loading' ? 'Updating password…' : 'Reset password'}
         </button>
@@ -204,7 +204,7 @@ function ResetPasswordForm() {
 // ── Page wrapper with Suspense (required for useSearchParams in App Router) ──
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#F7F7F5] px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
         <Suspense fallback={<div className="text-center text-sm text-gray-400">Loading…</div>}>
           <ResetPasswordForm />

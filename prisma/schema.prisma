@@ -13,10 +13,11 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  passwordHash String
+  passwordHash String?  // null for OAuth-only users (Google / Apple)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  authAccounts        AuthAccount[]
   accounts            Account[]
   transactions        Transaction[]
   assets              Asset[]
@@ -171,6 +172,21 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([token])
+}
+
+// OAuth provider accounts (Google, Apple). Separate from Finance Account model.
+model AuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String   // "google" | "apple"
+  providerAccountId String   // unique ID issued by the provider
+  email             String?
+  name              String?
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 // Persisted user preferences (theme, currency, locale).

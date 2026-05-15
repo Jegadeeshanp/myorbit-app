@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Green rounded square background -->
+  <rect width="512" height="512" rx="110" fill="#16A34A"/>
+  <!-- Orbit ring -->
+  <circle cx="256" cy="256" r="165" stroke="rgba(255,255,255,0.35)" stroke-width="12" fill="none"/>
+  <!-- Orbit corner dots -->
+  <circle cx="256" cy="91" r="22" fill="white" fill-opacity="0.9"/>
+  <circle cx="421" cy="256" r="22" fill="white" fill-opacity="0.9"/>
+  <circle cx="256" cy="421" r="22" fill="white" fill-opacity="0.9"/>
+  <circle cx="91" cy="256" r="22" fill="white" fill-opacity="0.9"/>
+  <!-- M letter -->
+  <text x="256" y="310" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="200" fill="white">M</text>
+</svg>

@@ -28,9 +28,19 @@ export async function POST(req: NextRequest) {
   const { name, email, password } = parsed.data;
 
   try {
-    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const existing = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: { authAccounts: { select: { provider: true } } },
+    });
     if (existing) {
-      return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
+      // If the account was created via Google/Apple, guide the user
+      const oauthProvider = existing.authAccounts[0]?.provider;
+      const suggestion = oauthProvider === 'google'
+        ? 'This email is linked to Google. Please sign in with Google.'
+        : oauthProvider === 'apple'
+          ? 'This email is linked to Apple. Please sign in with Apple.'
+          : 'An account with this email already exists.';
+      return NextResponse.json({ error: suggestion }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);

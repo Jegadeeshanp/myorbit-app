@@ -217,6 +217,7 @@ type HealthContextValue = HealthState & {
   deleteWorkout: (id: string) => Promise<void>;
   completeHealthTask: (taskId: string, steps?: number, durationMins?: number) => Promise<any>;
   undoHealthTask: (taskId: string) => Promise<any>;
+  toggleHealthHabit: (habitId: string, currentlyCompleted: boolean) => Promise<void>;
   reload: () => Promise<void>;
 };
 
@@ -311,6 +312,36 @@ export function HealthProvider({ children }: PropsWithChildren) {
     return result;
   };
 
+  const toggleHealthHabit = async (habitId: string, currentlyCompleted: boolean): Promise<void> => {
+    const prevHabits = state.dashboard?.healthHabits;
+    // Optimistic update
+    if (state.dashboard) {
+      dispatch({
+        type: 'patchDashboard',
+        payload: {
+          healthHabits: state.dashboard.healthHabits.map(h =>
+            h.id === habitId ? { ...h, completedToday: !currentlyCompleted } : h
+          ),
+        },
+      });
+    }
+    try {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      await fetch(`/api/habits/${habitId}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: today, value: 1 }),
+      });
+    } catch {
+      // Revert optimistic update on failure
+      if (prevHabits) {
+        dispatch({ type: 'patchDashboard', payload: { healthHabits: prevHabits } });
+      }
+      throw new Error('Failed to toggle habit');
+    }
+  };
+
   return (
     <HealthContext.Provider
       value={{
@@ -322,6 +353,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
         deleteWorkout,
         completeHealthTask,
         undoHealthTask,
+        toggleHealthHabit,
         reload: load,
       }}
     >

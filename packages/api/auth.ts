@@ -5,6 +5,35 @@ interface AuthResponse {
   user: { id: string; name: string; email: string };
 }
 
+export async function loginWithGoogle(accessToken: string): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/mobile/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Google sign-in failed');
+  }
+  return res.json() as Promise<AuthResponse>;
+}
+
+export async function loginWithApple(
+  identityToken: string,
+  fullName?: string
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/mobile/auth/apple`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identityToken, fullName }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Apple sign-in failed');
+  }
+  return res.json() as Promise<AuthResponse>;
+}
+
 export async function loginUser(
   email: string,
   password: string

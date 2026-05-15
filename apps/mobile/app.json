@@ -47,7 +47,9 @@
           "color": "#10B981",
           "sounds": []
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {

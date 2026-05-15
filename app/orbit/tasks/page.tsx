@@ -362,10 +362,11 @@ function MoreOptionsDropdown({ priority, listId, lists, tags, addToHabit, onPrio
         <span className="flex-1 text-left">Add to Habit tracker</span>
       </label>
 
-      {/* Attachment */}
-      <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5 transition border-t border-gray-100 dark:border-gray-700/60">
-        <Paperclip className="h-4 w-4 text-gray-400" />
+      {/* Attachment — not yet implemented */}
+      <button disabled className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-400 dark:text-gray-600 border-t border-gray-100 dark:border-gray-700/60 cursor-not-allowed opacity-50">
+        <Paperclip className="h-4 w-4" />
         <span className="flex-1 text-left">Attachment</span>
+        <span className="text-[10px] rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 font-medium">Soon</span>
       </button>
     </div>
   );
@@ -569,8 +570,9 @@ function AddTaskOverlay({ onClose, onAdd, lists }: {
               />
               <span>Add to Habit tracker</span>
             </label>
-            <button onClick={() => setShowMore(false)} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">
-              <Paperclip className="h-4 w-4 text-gray-400" /><span>Attach file</span>
+            <button disabled className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50">
+              <Paperclip className="h-4 w-4" /><span>Attach file</span>
+              <span className="ml-auto text-[10px] rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 font-medium">Soon</span>
             </button>
             <button
               onClick={async () => { setShowMore(false); await submit(); }}
@@ -888,10 +890,14 @@ export default function TasksPage() {
     } catch { /* silently ignore */ }
   };
 
-  // Map a TaskInstance to the Task shape that TaskItem expects
-  function instanceToDisplayTask(inst: TaskInstanceWithTask): Task {
+  // Map a TaskInstance to the Task shape that TaskItem expects.
+  // id = instanceId (used for complete/delete instance endpoints).
+  // isActive flag carries the real taskId so priority/date/list handlers
+  // can call /api/tasks/:taskId instead of /api/tasks/:instanceId.
+  function instanceToDisplayTask(inst: TaskInstanceWithTask): Task & { _taskId: string } {
     return {
-      id:       inst.id,
+      id:       inst.id,       // instance id — used by handleInstanceComplete/Delete
+      _taskId:  inst.taskId,   // underlying task id — used by metadata handlers
       title:    inst.task.title,
       priority: inst.task.priority,
       dueDate:  inst.date,
@@ -905,6 +911,23 @@ export default function TasksPage() {
       subtasks: [],
     };
   }
+
+  // Wrapper handlers that extract the real task ID from an instance display-task
+  const handleInstanceSetPriority = (id: string, priority: string) => {
+    const inst = [...todayData.overdue, ...todayData.today, ...todayData.missed, ...todayData.completed]
+      .find(i => i.id === id);
+    if (inst) handleSetPriority(inst.taskId, priority);
+  };
+  const handleInstanceSetDueDate = (id: string, date: string) => {
+    const inst = [...todayData.overdue, ...todayData.today, ...todayData.missed, ...todayData.completed]
+      .find(i => i.id === id);
+    if (inst) handleSetDueDate(inst.taskId, date);
+  };
+  const handleInstanceMoveToList = (id: string, listId: string | null) => {
+    const inst = [...todayData.overdue, ...todayData.today, ...todayData.missed, ...todayData.completed]
+      .find(i => i.id === id);
+    if (inst) handleMoveToList(inst.taskId, listId);
+  };
   const toggleGroup = (label: string) => { setCollapsedGroups(p => { const n = new Set(p); n.has(label) ? n.delete(label) : n.add(label); return n; }); };
 
   const todayStr = todayString();
@@ -929,6 +952,7 @@ export default function TasksPage() {
   };
 
   const groupedTasks = useMemo((): TaskGroup[] => {
+    // For Today view, filtering is handled inline in the render — groupedTasks is only used for non-today views
     const filtered = searchQuery ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())) : tasks;
     // next7: group by day
     if (selected === 'next7') {
@@ -1043,7 +1067,7 @@ export default function TasksPage() {
                       <Plus className="h-5 w-5 flex-none text-gray-400 transition group-hover:text-emerald-500" onClick={() => inputRef.current?.focus()} />
                       <input ref={inputRef} className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:text-white dark:placeholder-gray-600" placeholder="Add task" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)}
                         onKeyDown={e => {
-                          if (e.key === 'Enter') {
+                          if (e.key === 'Enter' && !addingTask) {
                             void handleAddTask(undefined, { dueDate: desktopDueDate || undefined, dueTime: desktopDueTime || undefined, reminder: desktopReminder, repeat: desktopRepeat, priority: desktopPriority, listId: desktopListId || undefined, tags: desktopTags, addToHabit: desktopAddToHabit });
                             setDesktopDueDate(''); setDesktopDueTime(''); setDesktopReminder('none'); setDesktopRepeat('none');
                             setDesktopPriority('none'); setDesktopListId(''); setDesktopTags([]); setDesktopAddToHabit(false);
@@ -1117,10 +1141,15 @@ export default function TasksPage() {
                         );
                       }
 
+                      const filterInstances = (arr: TaskInstanceWithTask[]) =>
+                        searchQuery
+                          ? arr.filter(i => i.task.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                          : arr;
+
                       const SECTIONS = [
-                        { key: 'overdue',   label: 'Overdue',   instances: [...td.overdue, ...td.missed], headerCls: 'text-rose-600 dark:text-rose-400',     badgeCls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',     borderCls: 'border-rose-200 dark:border-rose-800/30' },
-                        { key: 'today',     label: 'Today',     instances: td.today,                      headerCls: 'text-emerald-700 dark:text-emerald-400', badgeCls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', borderCls: 'border-emerald-200 dark:border-emerald-800/30' },
-                        { key: 'completed', label: 'Completed', instances: td.completed,                  headerCls: 'text-gray-500 dark:text-gray-400',      badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',        borderCls: 'border-gray-200 dark:border-gray-700/40' },
+                        { key: 'overdue',   label: 'Overdue',   instances: filterInstances([...td.overdue, ...td.missed]), headerCls: 'text-rose-600 dark:text-rose-400',     badgeCls: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',     borderCls: 'border-rose-200 dark:border-rose-800/30' },
+                        { key: 'today',     label: 'Today',     instances: filterInstances(td.today),                      headerCls: 'text-emerald-700 dark:text-emerald-400', badgeCls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', borderCls: 'border-emerald-200 dark:border-emerald-800/30' },
+                        { key: 'completed', label: 'Completed', instances: filterInstances(td.completed),                  headerCls: 'text-gray-500 dark:text-gray-400',      badgeCls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',        borderCls: 'border-gray-200 dark:border-gray-700/40' },
                       ] as const;
 
                       return (
@@ -1144,9 +1173,9 @@ export default function TasksPage() {
                                       isActive={activeTask?.id === inst.taskId}
                                       showList
                                       lists={lists}
-                                      onSetPriority={handleSetPriority}
-                                      onSetDueDate={handleSetDueDate}
-                                      onMoveToList={handleMoveToList}
+                                      onSetPriority={handleInstanceSetPriority}
+                                      onSetDueDate={handleInstanceSetDueDate}
+                                      onMoveToList={handleInstanceMoveToList}
                                     />
                                   ))}
                                 </div>

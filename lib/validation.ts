@@ -8,7 +8,11 @@ const noHtml = (field: string) =>
 
 export const signUpSchema = z.object({
   name: z.string().min(2).max(100),
-  email: z.string().email(),
+  email: z.string()
+    .email()
+    .refine((e) => e.toLowerCase().endsWith('@gmail.com'), {
+      message: 'Only Gmail addresses (@gmail.com) are accepted for email sign-up.',
+    }),
   password: z.string().min(8).max(128),
 });
 

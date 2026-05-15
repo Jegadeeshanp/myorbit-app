@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Plus, Dumbbell, Target, CheckCircle2, Circle,
   Flame, Clock, ChevronRight, Pencil, Trash2, Activity,
@@ -21,15 +20,12 @@ const WORKOUT_EMOJI: Record<string, string> = {
 const MOOD_LABELS = ['', '😞', '😕', '😐', '😊', '😄'];
 
 export default function HealthPage() {
-  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask, undoHealthTask } = useHealth();
-  const router = useRouter();
+  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask, undoHealthTask, toggleHealthHabit } = useHealth();
 
   const [logOpen, setLogOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [completingTask, setCompletingTask] = useState<string | null>(null);
   const [togglingHabit, setTogglingHabit] = useState<string | null>(null);
-
-  const today = new Date().toISOString().split('T')[0];
 
   if (loadState === 'loading' || loadState === 'idle') {
     return (
@@ -82,13 +78,8 @@ export default function HealthPage() {
   async function handleToggleHabit(habitId: string, completed: boolean) {
     setTogglingHabit(habitId);
     try {
-      await fetch(`/api/habits/${habitId}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: today, value: 1 }),
-      });
+      await toggleHealthHabit(habitId, completed);
       toast(completed ? 'Habit unmarked' : 'Habit marked done!');
-      router.refresh();
     } catch {
       toast('Failed to update habit');
     } finally {

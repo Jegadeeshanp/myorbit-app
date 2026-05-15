@@ -57,15 +57,19 @@ const TIME_OF_DAY_OPTIONS = [
 
 const TIME_OF_DAY_ORDER = ['all_day', 'morning', 'noon', 'evening', 'night', 'custom'];
 
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getTodayString() {
-  return new Date().toISOString().split('T')[0];
+  return localDateStr(new Date());
 }
 
 function getLast7Days() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   });
 }
 
@@ -76,7 +80,7 @@ function getStreakCount(logs: { logDate: string }[]): number {
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    if (logSet.has(d.toISOString().split('T')[0])) streak++;
+    if (logSet.has(localDateStr(d))) streak++;
     else break;
   }
   return streak;
@@ -125,7 +129,7 @@ function getWeekDays(weekOffset = 0): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   });
 }
 
@@ -216,8 +220,9 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
                 title: name.trim(),
                 dueDate: getTodayString(),
                 dueTime: dueTime || null,
-                tags: [`habit:${habit.id}`],  // send as array, not pre-stringified
+                tags: [`habit:${habit.id}`],
                 listId: habitListId,
+                repeat: 'daily',
               }),
             });
           }
@@ -744,7 +749,7 @@ function YearView({ habits }: { habits: Habit[] }) {
   const days = useMemo(() => {
     return Array.from({ length: totalDays }, (_, i) => {
       const d = new Date(currentYear, 0, i + 1);
-      return d.toISOString().split('T')[0];
+      return localDateStr(d);
     });
   }, [currentYear, totalDays]);
 
@@ -767,7 +772,7 @@ function YearView({ habits }: { habits: Habit[] }) {
 
   // Month label positions (week index where month starts)
   const monthPositions = MONTH_LABELS.map((_, mi) => {
-    const firstOfMonth = new Date(currentYear, mi, 1).toISOString().split('T')[0];
+    const firstOfMonth = localDateStr(new Date(currentYear, mi, 1));
     const dayIndex = days.indexOf(firstOfMonth);
     if (dayIndex < 0) return { label: MONTH_LABELS[mi], col: 0 };
     const col = Math.floor((dayIndex + jan1DayOfWeek) / 7);
@@ -1253,7 +1258,7 @@ export default function HabitsPage() {
               <Trash2 className="h-6 w-6 text-rose-500" />
             </div>
             <p className="font-semibold text-gray-900 dark:text-white mb-1">Archive this habit?</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">All logs will be kept. You can restore it later.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">This will permanently remove the habit and all its logs. This cannot be undone.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDeleteId(null)}
