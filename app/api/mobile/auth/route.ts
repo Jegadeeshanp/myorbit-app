@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       where: { email: email.toLowerCase().trim() },
     });
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
