@@ -33,6 +33,8 @@ import {
   Gift, Package, Coffee, Receipt, Heart, Film, PiggyBank,
   Briefcase, Award, Laptop, Building2, Percent, RotateCcw,
   Undo2, Star, Repeat2, ChevronDown,
+  Car, Train, Bike, Music, BookOpen, Camera, Dumbbell, Globe, Wrench,
+  Scissors, Baby, PawPrint, Gauge, HeartPulse,
 } from 'lucide-react-native';
 import AppHeader from '@/components/shared/AppHeader';
 import { Svg, Path } from 'react-native-svg';
@@ -171,6 +173,51 @@ function getCatIcon(cat: string): CatCfg {
   }
   return { Icon: Tag, bg: '#1F2937', color: '#9CA3AF' };
 }
+
+type CustomIconType = React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
+type CustomCatDef = { name: string; Icon: CustomIconType };
+
+const CUSTOM_ICON_OPTIONS: { label: string; Icon: CustomIconType; color: string }[] = [
+  { label: 'Home',        Icon: Home,          color: '#C084FC' },
+  { label: 'Cart',        Icon: ShoppingCart,  color: '#4ADE80' },
+  { label: 'Food',        Icon: Utensils,      color: '#FB923C' },
+  { label: 'Fuel',        Icon: Fuel,          color: '#FCD34D' },
+  { label: 'Car',         Icon: Car,           color: '#FDBA74' },
+  { label: 'Bus',         Icon: Bus,           color: '#60A5FA' },
+  { label: 'Train',       Icon: Train,         color: '#93C5FD' },
+  { label: 'Bike',        Icon: Bike,          color: '#A3E635' },
+  { label: 'Coffee',      Icon: Coffee,        color: '#FCD34D' },
+  { label: 'Zap',         Icon: Zap,           color: '#FDE047' },
+  { label: 'Wifi',        Icon: Wifi,          color: '#38BDF8' },
+  { label: 'Phone',       Icon: Smartphone,    color: '#2DD4BF' },
+  { label: 'Bag',         Icon: ShoppingBag,   color: '#F472B6' },
+  { label: 'Gift',        Icon: Gift,          color: '#FB7185' },
+  { label: 'Heart',       Icon: Heart,         color: '#F87171' },
+  { label: 'Music',       Icon: Music,         color: '#A78BFA' },
+  { label: 'Book',        Icon: BookOpen,      color: '#818CF8' },
+  { label: 'Film',        Icon: Film,          color: '#C084FC' },
+  { label: 'Camera',      Icon: Camera,        color: '#94A3B8' },
+  { label: 'Dumbbell',    Icon: Dumbbell,      color: '#FB923C' },
+  { label: 'Globe',       Icon: Globe,         color: '#2DD4BF' },
+  { label: 'Wrench',      Icon: Wrench,        color: '#94A3B8' },
+  { label: 'Star',        Icon: Star,          color: '#FDE047' },
+  { label: 'Tag',         Icon: Tag,           color: '#9CA3AF' },
+  { label: 'Package',     Icon: Package,       color: '#94A3B8' },
+  { label: 'Shield',      Icon: Shield,        color: '#34D399' },
+  { label: 'Plane',       Icon: Plane,         color: '#93C5FD' },
+  { label: 'School',      Icon: GraduationCap, color: '#C084FC' },
+  { label: 'Medical',     Icon: Stethoscope,   color: '#FCA5A5' },
+  { label: 'Briefcase',   Icon: Briefcase,     color: '#4ADE80' },
+  { label: 'Scissors',    Icon: Scissors,      color: '#94A3B8' },
+  { label: 'Baby',        Icon: Baby,          color: '#F9A8D4' },
+  { label: 'Paw',         Icon: PawPrint,      color: '#FDBA74' },
+  { label: 'Gauge',       Icon: Gauge,         color: '#FCD34D' },
+  { label: 'HeartPulse',  Icon: HeartPulse,    color: '#FCA5A5' },
+  { label: 'Landmark',    Icon: Landmark,      color: '#FDBA74' },
+  { label: 'PiggyBank',   Icon: PiggyBank,     color: '#4ADE80' },
+  { label: 'Percent',     Icon: Percent,       color: '#34D399' },
+  { label: 'Receipt',     Icon: Receipt,       color: '#94A3B8' },
+];
 
 const ASSET_CATEGORY_LIST = [
   'Stocks & Equity', 'Mutual Funds', 'Real Estate', 'Gold & Silver',
@@ -875,9 +922,10 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
 
   const [activeDropdown,   setActiveDropdown]   = useState<'from' | 'to' | 'acct' | null>(null);
   const [showDatePicker,   setShowDatePicker]   = useState(false);
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [customCategories, setCustomCategories] = useState<CustomCatDef[]>([]);
   const [showCustomCat,    setShowCustomCat]    = useState(false);
   const [customCatText,    setCustomCatText]    = useState('');
+  const [customCatIcon,    setCustomCatIcon]    = useState<CustomIconType>(() => Tag);
 
   const openDropdown = (key: 'from' | 'to' | 'acct') => setActiveDropdown(key);
   const closeDropdown = () => setActiveDropdown(null);
@@ -983,18 +1031,19 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                     );
                   })}
                   {customCategories.map((c) => {
-                    const isSelected = category === c;
+                    const isSelected = category === c.name;
+                    const CIcon = c.Icon;
                     return (
-                      <TouchableOpacity key={c} onPress={() => setCategory(c)}
+                      <TouchableOpacity key={c.name} onPress={() => setCategory(c.name)}
                         style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: isSelected ? typeColor : BORDER, backgroundColor: isSelected ? typeColor + '18' : SURFACE }}>
                         <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Tag size={17} color={isSelected ? typeColor : MUTED} />
+                          <CIcon size={17} color={isSelected ? typeColor : MUTED} />
                         </View>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? typeColor : '#D1D5DB', flex: 1 }} numberOfLines={1}>{c}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? typeColor : '#D1D5DB', flex: 1 }} numberOfLines={1}>{c.name}</Text>
                       </TouchableOpacity>
                     );
                   })}
-                  <TouchableOpacity onPress={() => { setCustomCatText(''); setShowCustomCat(true); }}
+                  <TouchableOpacity onPress={() => { setCustomCatText(''); setCustomCatIcon(() => Tag); setShowCustomCat(true); }}
                     style={{ width: '31%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 14, borderWidth: 2, borderColor: BORDER, borderStyle: 'dashed' }}>
                     <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: SURFACE, alignItems: 'center', justifyContent: 'center' }}>
                       <Plus size={17} color={ACCENT} />
@@ -1055,6 +1104,21 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
               autoFocus
               style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE_ALT, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TXT, marginBottom: 16 }}
             />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: MUTED, letterSpacing: 1, marginBottom: 10 }}>ICON</Text>
+            <ScrollView horizontal={false} showsVerticalScrollIndicator={false} style={{ maxHeight: 180, marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {CUSTOM_ICON_OPTIONS.map((opt) => {
+                  const isSelected = customCatIcon === opt.Icon;
+                  const OIcon = opt.Icon;
+                  return (
+                    <TouchableOpacity key={opt.label} onPress={() => setCustomCatIcon(() => opt.Icon)}
+                      style={{ width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: isSelected ? ACCENT : 'transparent', backgroundColor: isSelected ? ACCENT + '22' : SURFACE_ALT }}>
+                      <OIcon size={18} color={isSelected ? ACCENT : opt.color} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity onPress={() => setShowCustomCat(false)}
                 style={{ flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: BORDER }}>
@@ -1064,7 +1128,9 @@ function AddTxModal({ visible, onClose, accounts, onSave }: {
                 onPress={() => {
                   const cat = customCatText.trim();
                   if (!cat) return;
-                  if (!customCategories.includes(cat)) setCustomCategories(prev => [...prev, cat]);
+                  if (!customCategories.some(c => c.name === cat)) {
+                    setCustomCategories(prev => [...prev, { name: cat, Icon: customCatIcon }]);
+                  }
                   setCategory(cat);
                   setShowCustomCat(false);
                 }}

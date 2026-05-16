@@ -106,6 +106,8 @@ export default function TaskItem({
   const [showMenu, setShowMenu] = useState(false);
   const [menuStep, setMenuStep] = useState<MenuStep>('main');
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
   const isCompleted = task.status === 'completed';
   const todayStr = new Date().toISOString().split('T')[0];
@@ -115,7 +117,7 @@ export default function TaskItem({
   const hasRepeat = task.tags.toLowerCase().includes('recurr') || task.tags.includes('repeat:');
   const accentColor = task.list?.color || PRIORITY_COLOR[task.priority] || PRIORITY_COLOR.none;
   const dateInfo = smartDateLabel(task.dueDate, task.dueTime);
-  const tags = parseTags(task.tags).filter(t => !t.startsWith('repeat:'));
+  const tags = parseTags(task.tags).filter(t => !t.startsWith('repeat:') && !t.startsWith('reminder:') && !t.startsWith('habit:'));
 
   useEffect(() => {
     if (!showMenu) return;
@@ -142,7 +144,7 @@ export default function TaskItem({
     setExpanded(v => !v);
   };
 
-  const closeMenu = () => { setShowMenu(false); setMenuStep('main'); };
+  const closeMenu = () => { setShowMenu(false); setMenuStep('main'); setMenuPos(null); };
 
   return (
     <div>
@@ -252,14 +254,22 @@ export default function TaskItem({
             onClick={e => e.stopPropagation()}
           >
             <button
-              onClick={() => { setShowMenu(v => !v); if (showMenu) setMenuStep('main'); }}
+              ref={menuBtnRef}
+              onClick={() => {
+                if (showMenu) { setShowMenu(false); setMenuStep('main'); return; }
+                const rect = menuBtnRef.current?.getBoundingClientRect();
+                if (rect) setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                setShowMenu(true);
+              }}
               className={`flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/10 ${showMenu ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-[#1C1F26]">
+            {showMenu && menuPos && (
+              <div className="fixed z-[200] w-44 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-[#1C1F26]"
+                style={{ top: menuPos.top, right: menuPos.right }}
+              >
 
                 {menuStep === 'main' && (
                   <>

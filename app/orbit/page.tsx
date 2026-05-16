@@ -218,7 +218,7 @@ export default function Orbit() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20">
         <div className="flex flex-col items-center text-center">
           <OrbitIcon
-            src="/icons/top-icon.png"
+            src="/icons/app-logo.svg"
             className="h-14 w-14 rounded-2xl object-cover shadow-sm"
             fallbackClassName="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white text-3xl shadow-sm"
           />

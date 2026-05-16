@@ -18,6 +18,7 @@ type Task = {
   tags: string;
   listId?: string;
   isActive?: boolean;
+  isRecurring?: boolean;
   subtasks: Subtask[];
   list?: { id: string; name: string; emoji?: string } | null;
 };
@@ -174,11 +175,40 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
   const tasksByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
 
+    // Generate date range: today ± 90 days to cover any visible calendar range
+    const rangeStart = addDays(today, -90);
+    const rangeEnd   = addDays(today, 90);
+    const allDays: string[] = [];
+    for (let d = new Date(rangeStart); d <= rangeEnd; d = addDays(d, 1)) {
+      allDays.push(formatDateKey(d));
+    }
+
     for (const task of tasks) {
-      if (!task.dueDate) continue;
-      const bucket = map.get(task.dueDate) ?? [];
-      bucket.push(task);
-      map.set(task.dueDate, bucket);
+      if (task.isRecurring) {
+        let tagArr: string[] = [];
+        try { tagArr = JSON.parse(task.tags || '[]'); } catch { /* ignore */ }
+        const repeatTag = tagArr.find(t => t.startsWith('repeat:'));
+        const repeatType = repeatTag?.replace('repeat:', '');
+        const taskDow = task.dueDate ? parseDate(task.dueDate).getDay() : new Date().getDay();
+        for (const day of allDays) {
+          const dow = new Date(day + 'T00:00:00').getDay();
+          const matches =
+            repeatType === 'daily' ||
+            (repeatType === 'weekdays' && dow >= 1 && dow <= 5) ||
+            (repeatType === 'weekends' && (dow === 0 || dow === 6)) ||
+            (repeatType === 'weekly' && dow === taskDow);
+          if (matches) {
+            const bucket = map.get(day) ?? [];
+            bucket.push({ ...task, dueDate: day });
+            map.set(day, bucket);
+          }
+        }
+      } else {
+        if (!task.dueDate) continue;
+        const bucket = map.get(task.dueDate) ?? [];
+        bucket.push(task);
+        map.set(task.dueDate, bucket);
+      }
     }
 
     for (const [key, value] of map.entries()) {
@@ -186,7 +216,7 @@ export default function TaskCalendar({ tasks, onTaskClick, onOpenSidebar }: Prop
     }
 
     return map;
-  }, [tasks]);
+  }, [tasks, today]);
 
   const selectedDateValue = parseDate(selectedDate);
   const visibleDays = useMemo(() => buildRange(referenceDate, calendarView), [referenceDate, calendarView]);

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
     if (smartList === 'today')          where = { userId, isDeleted: false, dueDate: today, status: 'active', isActive: true };
     else if (smartList === 'inbox')     where = { userId, isDeleted: false, listId: null, status: 'active', isActive: true };
-    else if (smartList === 'next7')     where = { userId, isDeleted: false, status: 'active', isActive: true, dueDate: { gte: today, lte: next7 } };
+    else if (smartList === 'next7')     where = { userId, isDeleted: false, status: 'active', isActive: true, OR: [{ dueDate: { gte: today, lte: next7 } }, { isRecurring: true }] };
     else if (smartList === 'completed') where = { userId, isDeleted: false, status: 'completed', isActive: true };
     else if (smartList === 'trash')     where = { userId, isDeleted: false, isActive: false };
     else if (smartList === 'all')       where = { userId, isDeleted: false, status: 'active', isActive: true };

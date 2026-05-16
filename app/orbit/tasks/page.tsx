@@ -28,6 +28,7 @@ type TaskList = { id: string; name: string; emoji?: string; color?: string };
 type Task = {
   id: string; title: string; notes?: string; status: string; priority: string;
   dueDate?: string; dueTime?: string; tags: string; listId?: string; isActive?: boolean;
+  isRecurring?: boolean; recurrenceDays?: number[];
   subtasks: Subtask[];
   list?: { id: string; name: string; emoji?: string; color?: string } | null;
 };
@@ -954,12 +955,38 @@ export default function TasksPage() {
   const groupedTasks = useMemo((): TaskGroup[] => {
     // For Today view, filtering is handled inline in the render — groupedTasks is only used for non-today views
     const filtered = searchQuery ? tasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase())) : tasks;
-    // next7: group by day
+    // next7: group by day, expanding recurring tasks
     if (selected === 'next7') {
-      const order = [0,1,2,3,4,5,6,7].map(i => todayString(i));
+      const days = [0,1,2,3,4,5,6,7].map(i => todayString(i));
       const grouped = new Map<string, Task[]>();
-      for (const t of filtered) { const key = t.dueDate || todayStr; grouped.set(key, [...(grouped.get(key) ?? []), t]); }
-      return order.filter(d => grouped.has(d)).map(d => ({ label: next7Label(d), tasks: sortTaskList(grouped.get(d) ?? []) }));
+      for (const t of filtered) {
+        if (t.isRecurring) {
+          let tagArr: string[] = [];
+          try { tagArr = JSON.parse(t.tags || '[]'); } catch { /* ignore */ }
+          const repeatTag = tagArr.find(tag => tag.startsWith('repeat:'));
+          const repeatType = repeatTag?.replace('repeat:', '');
+          const taskDow = t.dueDate ? new Date(t.dueDate + 'T00:00:00').getDay() : new Date().getDay();
+          for (const day of days) {
+            const dow = new Date(day + 'T00:00:00').getDay();
+            const matches =
+              repeatType === 'daily' ||
+              (repeatType === 'weekdays' && dow >= 1 && dow <= 5) ||
+              (repeatType === 'weekends' && (dow === 0 || dow === 6)) ||
+              (repeatType === 'weekly' && dow === taskDow);
+            if (matches) {
+              const bucket = grouped.get(day) ?? [];
+              bucket.push({ ...t, dueDate: day });
+              grouped.set(day, bucket);
+            }
+          }
+        } else {
+          const key = t.dueDate;
+          if (key && days.includes(key)) {
+            grouped.set(key, [...(grouped.get(key) ?? []), t]);
+          }
+        }
+      }
+      return days.filter(d => grouped.has(d)).map(d => ({ label: next7Label(d), tasks: sortTaskList(grouped.get(d) ?? []) }));
     }
     // All other list views: single flat group — no overdue/completed sections
     // (inline label logic — avoids TDZ from calling getListName before it's initialized)
