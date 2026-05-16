@@ -313,9 +313,10 @@ function TaskPanel({
   const [showPri,     setShowPri]     = useState(false);
   const [priDropUp,   setPriDropUp]   = useState(false);
   const [showList,    setShowList]    = useState(false);
-  const [openAction,  setOpenAction]  = useState<null|'subtask'|'tag'|'delete'|'moveto'>(null);
-  const [newStTitle,  setNewStTitle]  = useState('');
-  const [tagInput,    setTagInput]    = useState('');
+  const [openAction,       setOpenAction]       = useState<null|'subtask'|'tag'|'delete'|'moveto'>(null);
+  const [newStTitle,       setNewStTitle]       = useState('');
+  const [tagInput,         setTagInput]         = useState('');
+  const [subtasksExpanded, setSubtasksExpanded] = useState(true);
 
   const dateBtnRef = useRef<HTMLButtonElement>(null);
   const priRef     = useRef<HTMLDivElement>(null);
@@ -527,17 +528,11 @@ function TaskPanel({
               : <><Calendar className="h-3.5 w-3.5 flex-none"/><span>Set date</span></>
             }
           </button>
-          {localRepeat !== 'none' && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-              <RotateCcw className="h-3 w-3 flex-none text-emerald-500"/>
-              <span>{repeatLabel(localRepeat, tags)}</span>
-            </p>
-          )}
         </div>
       </div>
 
       {/* ── Scrollable body ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-gray-300/60 dark:hover:[&::-webkit-scrollbar-thumb]:bg-gray-600/60">
         {/* Title */}
         <div className="px-5 pt-1 pb-1">
           <input
@@ -550,64 +545,64 @@ function TaskPanel({
           {saving && <p className="mt-0.5 text-[10px] text-gray-400">Saving...</p>}
         </div>
 
-        {/* Priority pill + overdue indicator */}
-        <div className="flex items-center gap-2 px-5 pb-2">
-          <button
-            onClick={() => setShowPri(v => !v)}
-            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition ${
-              priority === 'high'   ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
-              priority === 'medium' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
-              priority === 'low'    ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-              'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-            }`}
-          >
-            <Flag className="h-2.5 w-2.5" />
-            {PRIORITY_LABEL[priority] ?? 'None'}
-          </button>
-          {isOverdue && (
+        {/* Overdue indicator */}
+        {isOverdue && (
+          <div className="flex items-center gap-1 px-5 pb-1">
             <span className="flex items-center gap-1 text-xs font-medium text-red-500">
               <Clock className="h-3 w-3" />
               Overdue
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Notes — auto-grow, pushes content down */}
         <div className="px-5 pb-3">
           <AutoTextarea value={notes} onChange={onNotesChange} onBlur={() => void onSave({notes})}
             placeholder="Add notes..."
-            className="text-sm text-gray-500 placeholder-gray-400 dark:text-gray-400 dark:placeholder-gray-600"
+            className="text-sm text-gray-900 placeholder-gray-400 dark:text-white dark:placeholder-gray-600"
           />
         </div>
 
-        {/* Subtasks list — FIX: clickable rows, no chevron */}
+        {/* Subtasks list with expand/collapse toggle */}
         {!isSubtask && subtasks && subtasks.length > 0 && (
-          <div className="px-4 pb-3 space-y-0.5">
-            {subtasks.map(st => {
-              const stTags = parseTags(st.tags);
-              const stRepeat = extractTag(stTags, 'repeat', 'none');
-              return (
-                <div key={st.id} role="button" tabIndex={0}
-                  onClick={() => onSubtaskClick?.(st)}
-                  onKeyDown={e => e.key==='Enter' && onSubtaskClick?.(st)}
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left transition hover:bg-gray-50 dark:hover:bg-white/5"
-                >
-                  <div
-                    className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${st.isDone?'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30':'border-gray-300 dark:border-gray-600'}`}
-                  >
-                    {st.isDone && <Check className="h-3 w-3 text-emerald-600"/>}
-                  </div>
-                  <span className={`flex-1 text-sm ${st.isDone?'line-through text-gray-400':'text-gray-700 dark:text-gray-300'}`}>{st.title}</span>
-                  {(st.dueDate || st.dueTime) && (
-                    <span className="flex items-center gap-1 text-[10px] text-sky-500">
-                      {st.dueTime && <><Clock className="h-3 w-3"/><span>{st.dueTime}</span></>}
-                      {!st.dueTime && st.dueDate && <span>{formatDateLabel(st.dueDate)}</span>}
-                      {stRepeat!=='none' && <RotateCcw className="h-2.5 w-2.5 text-emerald-400"/>}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+          <div className="px-4 pb-3">
+            <button
+              type="button"
+              onClick={() => setSubtasksExpanded(v => !v)}
+              className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+            >
+              <ChevronRight className={`h-3.5 w-3.5 transition-transform ${subtasksExpanded ? 'rotate-90' : ''}`}/>
+              Subtasks ({subtasks.length})
+            </button>
+            {subtasksExpanded && (
+              <div className="space-y-0.5">
+                {subtasks.map(st => {
+                  const stTags = parseTags(st.tags);
+                  const stRepeat = extractTag(stTags, 'repeat', 'none');
+                  return (
+                    <div key={st.id} role="button" tabIndex={0}
+                      onClick={() => onSubtaskClick?.(st)}
+                      onKeyDown={e => e.key==='Enter' && onSubtaskClick?.(st)}
+                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left transition hover:bg-gray-50 dark:hover:bg-white/5"
+                    >
+                      <div
+                        className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${st.isDone?'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30':'border-gray-300 dark:border-gray-600'}`}
+                      >
+                        {st.isDone && <Check className="h-3 w-3 text-emerald-600"/>}
+                      </div>
+                      <span className={`flex-1 text-sm ${st.isDone?'line-through text-gray-400':'text-gray-700 dark:text-gray-300'}`}>{st.title}</span>
+                      {(st.dueDate || st.dueTime) && (
+                        <span className="flex items-center gap-1 text-[10px] text-sky-500">
+                          {st.dueTime && <><Clock className="h-3 w-3"/><span>{st.dueTime}</span></>}
+                          {!st.dueTime && st.dueDate && <span>{formatDateLabel(st.dueDate)}</span>}
+                          {stRepeat!=='none' && <RotateCcw className="h-2.5 w-2.5 text-emerald-400"/>}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

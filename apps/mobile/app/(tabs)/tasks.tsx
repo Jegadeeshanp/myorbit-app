@@ -1698,9 +1698,10 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
   const [titleDraft, setTitleDraft]       = useState('');
   const [notesDraft, setNotesDraft]       = useState('');
   const [localSubtasks, setLocalSubtasks]     = useState<TaskSubtask[]>([]);
-  const [addingSubtask, setAddingSubtask]     = useState(false);
-  const [subtaskInput, setSubtaskInput]       = useState('');
-  const [showDatePicker, setShowDatePicker]   = useState(false);
+  const [addingSubtask, setAddingSubtask]         = useState(false);
+  const [subtaskInput, setSubtaskInput]           = useState('');
+  const [subtasksExpanded, setSubtasksExpanded]   = useState(true);
+  const [showDatePicker, setShowDatePicker]       = useState(false);
   const [datePickerTime, setDatePickerTime]   = useState(false);
   const subtaskInputRef = useRef<any>(null);
 
@@ -1900,12 +1901,6 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
                 <Text style={{ fontSize: 13, fontWeight: '600', color: t.dueTime ? ACCENT : MUTED }}>{t.dueTime || 'Set time'}</Text>
               </TouchableOpacity>
             </View>
-            {repeat !== 'none' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <RotateCcw size={12} color={MUTED} />
-                <Text style={{ fontSize: 12, color: MUTED }}>{getRepeatDisplay(repeat)}</Text>
-              </View>
-            )}
           </View>
 
           {/* Title — inline edit */}
@@ -1931,11 +1926,11 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
               onChangeText={setNotesDraft}
               placeholder="Add notes…" placeholderTextColor={MUTED}
               onBlur={() => { updateField({ notes: notesDraft }); setEditingField(null); }}
-              style={{ fontSize: 14, color: TXT2, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}
+              style={{ fontSize: 14, color: TXT, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}
             />
           ) : (
             <TouchableOpacity onPress={() => !isFromNotification && setEditingField('notes')} activeOpacity={isFromNotification ? 1 : 0.7}>
-              <Text style={{ fontSize: 14, color: t.notes ? TXT2 : MUTED, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}>{t.notes || 'Add notes…'}</Text>
+              <Text style={{ fontSize: 14, color: t.notes ? TXT : MUTED, paddingHorizontal: 16, paddingBottom: 20, minHeight: 56 }}>{t.notes || 'Add notes…'}</Text>
             </TouchableOpacity>
           )}
 
@@ -1981,6 +1976,16 @@ function TaskDetailSheet({ visible, task, lists, onClose, onFullEdit, onDelete, 
           {!isFromNotification && (
             <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
               {localSubtasks.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSubtasksExpanded(v => !v)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}
+                  activeOpacity={0.7}
+                >
+                  <ChevronRight size={14} color={MUTED} style={{ transform: [{ rotate: subtasksExpanded ? '90deg' : '0deg' }] }} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: MUTED }}>Subtasks ({localSubtasks.length})</Text>
+                </TouchableOpacity>
+              )}
+              {localSubtasks.length > 0 && subtasksExpanded && (
                 <View style={{ marginBottom: 8 }}>
                   {localSubtasks.map(s => (
                     <TouchableOpacity key={s.id}
