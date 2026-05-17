@@ -149,19 +149,19 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          amount:          { type: 'number', description: 'Positive amount in INR' },
-          description:     { type: 'string', description: 'Short label, e.g. "Netflix", "Petrol"' },
-          category:        { type: 'string', description: `One of: ${CATEGORIES.join(', ')}` },
-          type:            { type: 'string', enum: ['expense','income'] },
-          accountName:     { type: 'string', description: 'Partial name of account/card (optional)' },
-          recurring:       {
+          amount:         { type: 'number', description: 'Positive amount in INR' },
+          description:    { type: 'string', description: 'Short label, e.g. "Netflix", "Petrol"' },
+          category:       { type: 'string', description: `One of: ${CATEGORIES.join(', ')}` },
+          type:           { type: 'string', enum: ['expense','income'] },
+          accountId:      { type: 'string', description: 'Exact account ID from the ACCOUNTS LIST in your context. Use null if no account mentioned.' },
+          recurring:      {
             type: 'string',
             enum: ['daily','weekly','monthly','yearly','custom'],
             description: 'Make this a recurring transaction.',
           },
-          customInterval:  { type: 'string', description: 'For recurring=custom: e.g. "every 2 weeks", "every 3 months"' },
-          endAfterTimes:   { type: 'number', description: 'Stop recurring after this many occurrences (optional)' },
-          endDate:         { type: 'string', description: 'Stop recurring on this date YYYY-MM-DD (optional)' },
+          customInterval: { type: 'string', description: 'For recurring=custom: e.g. "every 2 weeks", "every 3 months"' },
+          endAfterTimes:  { type: 'number', description: 'Stop recurring after N occurrences (optional)' },
+          endDate:        { type: 'string', description: 'Stop recurring on YYYY-MM-DD (optional)' },
         },
         required: ['amount','description','category','type'],
       },
@@ -175,12 +175,12 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          amount:      { type: 'number', description: 'Amount to transfer in INR' },
-          fromAccount: { type: 'string', description: 'Source account name (partial match)' },
-          toAccount:   { type: 'string', description: 'Destination account name (partial match)' },
-          description: { type: 'string', description: 'Transfer note, e.g. "HDFC to SBI transfer"' },
+          amount:        { type: 'number', description: 'Amount to transfer in INR' },
+          fromAccountId: { type: 'string', description: 'Exact ID of source account from the ACCOUNTS LIST' },
+          toAccountId:   { type: 'string', description: 'Exact ID of destination account from the ACCOUNTS LIST' },
+          description:   { type: 'string', description: 'Transfer note (optional)' },
         },
-        required: ['amount','fromAccount','toAccount'],
+        required: ['amount','fromAccountId','toAccountId'],
       },
     },
   },
@@ -249,22 +249,28 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    // Build a numbered account list Groq can reference by ID
+    const accountList = accounts.length
+      ? accounts.map(a => `  • "${a.name}" (${a.type}) → id: ${a.id}`).join('\n')
+      : '  (no accounts yet)';
+
     const systemPrompt = `You are a command interpreter for MyOrbit, a personal productivity app (Indian user, currency INR).
 Today is ${today}. Tomorrow is ${tomorrow}. Next week starts ${nextWeek}.
 
-Active tasks:  ${tasks.map(t => t.title).join(' | ') || 'none'}
-Habits:        ${habits.map(h => h.name).join(' | ') || 'none'}
-Bank accounts: ${accounts.map(a => `${a.name} (${a.type})`).join(' | ') || 'none'}
+ACCOUNTS LIST (use the exact id value when calling add_transaction or transfer_money):
+${accountList}
+
+Active tasks: ${tasks.map(t => t.title).join(' | ') || 'none'}
+Habits:       ${habits.map(h => h.name).join(' | ') || 'none'}
 
 Rules:
-- Convert all natural date/time to YYYY-MM-DD and HH:MM.
-- For recurring tasks: use repeat="weekly" + repeatOnDays=["monday"] for "every Monday".
-  Multiple days: "Mon and Wed" → repeatOnDays=["monday","wednesday"].
-  "Every weekday" → repeat="weekdays". "Every day" → repeat="daily".
-- For "first Monday", "last Sunday" etc: use repeat="weekly" on that day (the schema does not support nth-weekday-of-month yet — weekly is the closest).
-- For recurring transactions: set recurring field to the frequency.
-- For transfers: use transfer_money with fromAccount and toAccount names.
-- Match account/task/habit names loosely against the lists above.
+- For accountId / fromAccountId / toAccountId: read the ACCOUNTS LIST above and return the EXACT id string that matches what the user said. If the user says "Axis savings", pick the Savings Account entry. If "Regalia", pick the Regalia credit card. Never guess — only use IDs from the list above.
+- If no account is mentioned, omit accountId (leave it out, do not set it to null or "").
+- Convert all natural date/time to YYYY-MM-DD and HH:MM 24h.
+- Recurring tasks: repeat="weekly" + repeatOnDays=["monday"] for "every Monday". Multiple days: ["monday","wednesday"].
+  "Every weekday"→repeat="weekdays". "Every day"→repeat="daily".
+- For "first Monday"/"last Sunday": use repeat="weekly" on that day (nth-weekday-of-month not yet supported).
+- Recurring transactions: set the recurring field to the frequency.
 - Call exactly one function.`;
 
     const completion = await groq.chat.completions.create({
@@ -339,11 +345,10 @@ Rules:
       const amount = Math.abs(Number(args.amount));
       if (!amount || isNaN(amount)) return NextResponse.json({ success: false, message: 'Invalid amount' });
 
-      let accountId: string | null = null;
-      if (args.accountName) {
-        const acct = fuzzyMatch(accounts, args.accountName);
-        if (acct) accountId = acct.id;
-      }
+      // Groq returns the exact ID from the system prompt — validate it belongs to this user
+      const accountId: string | null = args.accountId
+        ? (accounts.find(a => a.id === args.accountId)?.id ?? null)
+        : null;
 
       const category = CATEGORIES.includes(args.category) ? args.category : 'Miscellaneous';
       const type     = args.type === 'income' ? 'income' : 'expense';
@@ -407,11 +412,12 @@ Rules:
       const amount = Math.abs(Number(args.amount));
       if (!amount || isNaN(amount)) return NextResponse.json({ success: false, message: 'Invalid transfer amount' });
 
-      const fromAcct = fuzzyMatch(accounts, args.fromAccount);
-      const toAcct   = fuzzyMatch(accounts, args.toAccount);
+      // Validate both IDs belong to this user
+      const fromAcct = accounts.find(a => a.id === args.fromAccountId);
+      const toAcct   = accounts.find(a => a.id === args.toAccountId);
 
-      if (!fromAcct) return NextResponse.json({ success: false, message: `Account "${args.fromAccount}" not found` });
-      if (!toAcct)   return NextResponse.json({ success: false, message: `Account "${args.toAccount}" not found` });
+      if (!fromAcct) return NextResponse.json({ success: false, message: `Source account not found. Say the full account name clearly.` });
+      if (!toAcct)   return NextResponse.json({ success: false, message: `Destination account not found. Say the full account name clearly.` });
       if (fromAcct.id === toAcct.id) return NextResponse.json({ success: false, message: 'Source and destination accounts are the same' });
 
       const desc = args.description ?? `Transfer to ${toAcct.name}`;
