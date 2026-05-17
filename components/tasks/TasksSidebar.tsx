@@ -53,9 +53,11 @@ export default function TasksSidebar({ selected, onSelect, refreshKey, view, onV
   }, []);
 
   const fetchCounts = useCallback(() => {
-    Promise.all(['today', 'inbox', 'next7'].map(s =>
-      fetch(`/api/tasks?smartList=${s}`).then(r => r.json()).then(d => Array.isArray(d) ? d.length : 0).catch(() => 0)
-    )).then(([today, inbox, next7]) => setCounts({ today, inbox, next7 }));
+    Promise.all([
+      fetch('/api/tasks/today').then(r => r.json()).then((d: { today?: unknown[] }) => d.today?.length ?? 0).catch(() => 0),
+      fetch('/api/tasks?smartList=inbox').then(r => r.json()).then(d => Array.isArray(d) ? d.length : 0).catch(() => 0),
+      fetch('/api/tasks?smartList=next7').then(r => r.json()).then(d => Array.isArray(d) ? d.length : 0).catch(() => 0),
+    ]).then(([today, inbox, next7]) => setCounts({ today, inbox, next7 }));
   }, []);
 
   useEffect(() => { fetchLists(); fetchCounts(); }, [fetchLists, fetchCounts, refreshKey]);

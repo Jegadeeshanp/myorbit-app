@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
-  X, Plus, Trash2, CheckCircle2, Circle, Flag, Calendar, Bell,
+  X, Plus, Trash2, CheckCircle2, Flag, Calendar, Bell,
   RotateCcw, Clock, ChevronRight, Tag, ChevronLeft, Check,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
@@ -26,16 +26,6 @@ const PRIORITY_FLAG_COLOR: Record<string, string> = {
   high: 'text-rose-500', medium: 'text-amber-500', low: 'text-blue-500', none: 'text-gray-400 dark:text-gray-500',
 };
 const PRIORITY_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
-const REMINDER_OPTIONS = [
-  { value: 'on-time', label: 'On time' }, { value: '5m', label: '5 min early' },
-  { value: '30m', label: '30 min early' }, { value: '1h', label: '1 hour early' },
-  { value: '1d', label: '1 day early' }, { value: 'custom', label: 'Custom' },
-];
-const REPEAT_OPTIONS = [
-  { value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' }, { value: 'yearly', label: 'Yearly' },
-  { value: 'weekdays', label: 'Every Weekday' }, { value: 'custom', label: 'Custom' },
-];
 
 function formatDateLabel(d?: string) {
   if (!d) return 'Set date';
@@ -75,11 +65,11 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
 
 // ── Compact Date Picker ────────────────────────────────────────────────────────
 function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
-  setDueDate, setDueTime, setReminder, setRepeat, onSave, onClose, inline }: {
+  setDueDate, setDueTime, setReminder, setRepeat, onSave, onClose }: {
   dueDate: string; dueTime: string; reminder: string; repeat: string;
   setDueDate: (v:string)=>void; setDueTime: (v:string)=>void;
   setReminder: (v:string)=>void; setRepeat: (v:string)=>void;
-  onSave: ()=>void; onClose: ()=>void; inline?: boolean;
+  onSave: ()=>void; onClose: ()=>void;
 }) {
   const today = new Date();
   const pad = (n: number) => String(n).padStart(2,'0');
@@ -249,25 +239,6 @@ function CompactDatePicker({ dueDate, dueTime, reminder, repeat,
   );
 }
 
-
-function repeatLabel(repeat: string, tags: string[]): string {
-  switch (repeat) {
-    case 'daily':    return 'Every Day';
-    case 'weekly':   return 'Every Week';
-    case 'weekdays': return 'Every Weekday (Mon – Fri)';
-    case 'weekends': return 'Every Weekend (Sat – Sun)';
-    case 'monthly':  return 'Every Month';
-    case 'yearly':   return 'Every Year';
-    case 'custom': {
-      const raw = tags.find(t => t.startsWith('repeat-config:'));
-      if (raw) {
-        try { return buildCustomLabel(raw.slice('repeat-config:'.length)); } catch { /* fall through */ }
-      }
-      return 'Custom repeat';
-    }
-    default: return '';
-  }
-}
 
 // ── Single panel (used for both main task and subtask) ────────────────────────
 interface PanelProps {
@@ -556,7 +527,7 @@ function TaskPanel({
         )}
 
         {/* Notes — auto-grow, pushes content down */}
-        <div className="px-5 pb-3">
+        <div className="px-5 pb-3 bg-white dark:bg-[#1C1F26]">
           <AutoTextarea value={notes} onChange={onNotesChange} onBlur={() => void onSave({notes})}
             placeholder="Add notes..."
             className="text-sm text-gray-900 placeholder-gray-400 dark:text-white dark:placeholder-gray-600"

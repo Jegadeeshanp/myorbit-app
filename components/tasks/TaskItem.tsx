@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  Check, Clock, RotateCcw, Trash2, ChevronRight, Flag, Calendar, Layers,
+  Check, Clock, RotateCcw, Trash2, ChevronRight, Flag, Calendar,
   MoreHorizontal, Bell, Pencil, FolderOpen, ChevronLeft,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
@@ -190,10 +190,13 @@ export default function TaskItem({
             <div className="mt-0.5 sm:mt-0 flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-0.5 sm:flex-none">
               {hasRepeat && <RotateCcw className="h-3 w-3 text-emerald-500" />}
               {hasSubtasks && (
-                <span className="flex items-center gap-0.5 text-gray-400 dark:text-slate-500">
-                  <Layers className="h-3 w-3" />
+                <button
+                  onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
+                  className="flex items-center gap-0.5 text-gray-400 hover:text-emerald-500 dark:text-slate-500 dark:hover:text-emerald-400 transition"
+                >
+                  <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
                   <span className="text-[10px] leading-none">{task.subtasks.length}</span>
-                </span>
+                </button>
               )}
               {task.priority !== 'none' && (
                 <Flag className={`h-3 w-3 ${task.priority === 'high' ? 'text-rose-500' : task.priority === 'medium' ? 'text-amber-500' : 'text-blue-500'}`} />
