@@ -1,7 +1,7 @@
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
-  'https://myorbit.vercel.app';
+  'https://myorbit-jegadeeshanps-projects.vercel.app';
 
 export const COLORS = {
   emerald: '#10B981',
