@@ -10,6 +10,7 @@ import { useAuthStore } from '@/lib/authStore';
 import { useNotificationStore } from '@/lib/notificationStore';
 import { setupNotifications } from '@/lib/notifications';
 import { useThemeStore } from '@/lib/themeStore';
+import AIFab from '@/components/shared/AIFab';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +89,12 @@ function NotificationBootstrap() {
   return null;
 }
 
+function GlobalOverlays() {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return null;
+  return <AIFab />;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -98,6 +105,7 @@ export default function RootLayout() {
           <AuthBootstrap />
           <NotificationBootstrap />
           <Stack screenOptions={{ headerShown: false }} />
+          <GlobalOverlays />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
