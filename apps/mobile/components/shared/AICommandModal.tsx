@@ -16,10 +16,10 @@ import { sendAICommand } from '@myorbit/api';
 import { useTheme } from '@/lib/themeStore';
 
 const EXAMPLES = [
-  'Add task call dentist tomorrow',
-  'Add ₹200 food expense',
+  'Add task gym every weekday 6am',
+  'Add ₹5000 rent monthly on HDFC',
+  'Transfer ₹2000 SBI to HDFC',
   'Log meditation done',
-  'Mark task done: buy groceries',
 ];
 
 interface Props {

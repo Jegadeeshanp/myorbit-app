@@ -5,11 +5,14 @@ import { Sparkles, X, ArrowUp, Loader2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
 const EXAMPLES = [
-  'Add task call dentist tomorrow',
-  'Add ₹200 food expense on HDFC',
-  'Log meditation habit done',
-  'Add task review report high priority',
+  'Add task call dentist every Monday at 9:00',
+  'Add ₹5000 rent expense monthly on HDFC',
+  'Transfer ₹2000 from SBI to HDFC',
+  'Add task gym every weekday at 6:00 high priority',
+  'Add ₹200 food expense on Regalia',
+  'Log meditation done',
   'Mark task done: buy groceries',
+  'Add goal learn Spanish by December',
 ];
 
 export default function CommandBar() {
