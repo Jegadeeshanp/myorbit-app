@@ -69,3 +69,5 @@ jobs:
       - name: Build mobile app (preview)
         working-directory: apps/mobile
         run: eas build --platform all --profile preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
