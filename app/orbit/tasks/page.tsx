@@ -887,7 +887,7 @@ export default function TasksPage() {
     setShowFab(false);
     try {
       const res = await fetch(`/api/tasks/${inst.taskId}`);
-      if (res.ok) { const task = await res.json(); setActiveTask(task); }
+      if (res.ok) { const task = await res.json(); setActiveTask({ ...task, dueDate: inst.date }); }
     } catch { /* silently ignore */ }
   };
 
