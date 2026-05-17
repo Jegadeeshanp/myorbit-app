@@ -129,7 +129,7 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'complete_task',
-      description: 'Mark an existing task as completed',
+      description: "Mark a single specific task (or today's instance) as completed by name",
       parameters: {
         type: 'object',
         properties: {
@@ -137,6 +137,14 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
         },
         required: ['taskTitle'],
       },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'complete_all_overdue',
+      description: 'Mark ALL overdue task instances as done in one go. Use when user says "mark all overdue as done", "complete all overdue", "clear all overdue", etc.',
+      parameters: { type: 'object', properties: {}, required: [] },
     },
   },
 
@@ -271,6 +279,7 @@ Rules:
   "Every weekday"→repeat="weekdays". "Every day"→repeat="daily".
 - For "first Monday"/"last Sunday": use repeat="weekly" on that day (nth-weekday-of-month not yet supported).
 - Recurring transactions: set the recurring field to the frequency.
+- "Mark all overdue as done" / "complete all overdue" / "clear overdue" → call complete_all_overdue (no args).
 - Call exactly one function.`;
 
     const completion = await groq.chat.completions.create({
@@ -336,8 +345,39 @@ Rules:
     if (fn === 'complete_task') {
       const match = fuzzyMatch(tasks, args.taskTitle);
       if (!match) return NextResponse.json({ success: false, message: `Couldn't find a task matching "${args.taskTitle}"` });
-      await prisma.task.update({ where: { id: match.id }, data: { status: 'completed', completedAt: new Date() } });
+
+      // Complete today's instance if one exists, otherwise fall back to the task itself
+      const todayInstance = await prisma.taskInstance.findUnique({
+        where: { taskId_date: { taskId: match.id, date: today } },
+      });
+      if (todayInstance) {
+        await prisma.taskInstance.update({
+          where: { id: todayInstance.id },
+          data:  { status: 'completed', completedAt: new Date() },
+        });
+      } else {
+        await prisma.task.update({ where: { id: match.id }, data: { status: 'completed', completedAt: new Date() } });
+      }
       return NextResponse.json({ success: true, action: 'COMPLETE_TASK', message: `✅ Completed "${match.title}"`, data: { id: match.id } });
+    }
+
+    // ── COMPLETE ALL OVERDUE ──────────────────────────────────────────────────
+    if (fn === 'complete_all_overdue') {
+      const result = await prisma.taskInstance.updateMany({
+        where: {
+          userId,
+          date:      { lt: today },
+          status:    'pending',
+          isDeleted: false,
+        },
+        data: { status: 'completed', completedAt: new Date() },
+      });
+      return NextResponse.json({
+        success: true,
+        action:  'COMPLETE_ALL_OVERDUE',
+        message: `✅ Marked ${result.count} overdue task${result.count === 1 ? '' : 's'} as done`,
+        data:    { count: result.count },
+      });
     }
 
     // ── ADD TRANSACTION ───────────────────────────────────────────────────────

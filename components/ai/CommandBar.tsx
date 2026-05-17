@@ -147,7 +147,7 @@ export default function CommandBar() {
       <button
         onClick={() => setOpen(v => !v)}
         title="AI Command (⌘K)"
-        className={`fixed bottom-6 right-6 z-[57] flex h-12 w-12 items-center justify-center rounded-full shadow-lg shadow-emerald-200/60 transition-all duration-200 ${
+        className={`fixed bottom-6 left-6 z-[57] flex h-12 w-12 items-center justify-center rounded-full shadow-lg shadow-emerald-200/60 transition-all duration-200 ${
           open
             ? 'bg-gray-800 text-white scale-95'
             : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105'

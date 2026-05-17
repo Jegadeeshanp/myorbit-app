@@ -819,6 +819,7 @@ export default function TasksPage() {
       const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       setTasks(p => p.filter(t => t.id !== id));
+      setRefreshKey(k => k + 1);
       toast('Moved to deleted');
     } catch { toast('Failed to delete', 'error'); }
   };
