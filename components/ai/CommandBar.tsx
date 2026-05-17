@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, X, ArrowUp, Loader2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
+import { useDraggableFab } from '@/lib/useDraggableFab';
 
 const EXAMPLES = [
   'Add task call dentist every Monday at 9:00',
@@ -21,6 +22,11 @@ export default function CommandBar() {
   const [loading, setLoading] = useState(false);
   const [hint,    setHint]    = useState(EXAMPLES[0]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { pos, dragging, hasMoved, pointerHandlers } = useDraggableFab(
+    'ai-commandbar-position',
+    { right: 24, bottom: 24 },
+  );
 
   // Cycle hint examples
   useEffect(() => {
@@ -83,7 +89,7 @@ export default function CommandBar() {
         />
       )}
 
-      {/* Command panel — slides up from bottom */}
+      {/* Command panel — centered, slides up from bottom */}
       <div
         className={`fixed bottom-20 left-1/2 z-[59] w-full max-w-xl -translate-x-1/2 px-4 transition-all duration-200 ${
           open ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
@@ -143,17 +149,21 @@ export default function CommandBar() {
         </div>
       </div>
 
-      {/* Floating trigger button */}
+      {/* Draggable floating trigger button */}
       <button
-        onClick={() => setOpen(v => !v)}
-        title="AI Command (⌘K)"
-        className={`fixed bottom-6 left-6 z-[57] flex h-12 w-12 items-center justify-center rounded-full shadow-lg shadow-emerald-200/60 transition-all duration-200 ${
-          open
-            ? 'bg-gray-800 text-white scale-95'
-            : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105'
+        {...pointerHandlers}
+        onClick={() => { if (!hasMoved.current) setOpen(v => !v); }}
+        title="AI Command (⌘K) — drag to move"
+        style={{ right: pos.right, bottom: pos.bottom }}
+        className={`fixed z-[57] flex h-12 w-12 items-center justify-center rounded-full shadow-lg shadow-emerald-200/60 transition-colors duration-200 ${
+          dragging
+            ? 'cursor-grabbing scale-110 bg-emerald-700 text-white'
+            : open
+              ? 'cursor-grab bg-gray-800 text-white'
+              : 'cursor-grab bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105'
         }`}
       >
-        {open
+        {open && !dragging
           ? <X className="h-5 w-5" />
           : <Sparkles className="h-5 w-5" />
         }
