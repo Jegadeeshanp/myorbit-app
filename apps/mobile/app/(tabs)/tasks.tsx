@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  getTodayTasks, getAllTasks, createTask, updateTask, completeInstance, deleteTask,
+  getTodayTasks, getAllTasks, getNext7Tasks, createTask, updateTask, completeInstance, deleteTask,
   getTaskLists, createTaskList, updateTaskList, deleteTaskList,
   createSubtask, updateSubtask,
 } from '@myorbit/api';
@@ -2131,6 +2131,9 @@ export default function TasksScreen() {
   const { data: allTasks = [], isLoading: loadingAll, refetch: refetchAll } =
     useQuery({ queryKey: ['tasks', 'all'], queryFn: () => getAllTasks() });
 
+  const { data: next7Tasks = [], isLoading: loadingNext7, refetch: refetchNext7 } =
+    useQuery({ queryKey: ['tasks', 'next7'], queryFn: getNext7Tasks });
+
   // Show task detail card when tapped from a notification
   useEffect(() => {
     if (!pendingTaskId || allTasks.length === 0) return;
@@ -2201,16 +2204,46 @@ export default function TasksScreen() {
   // Recompute dates when user returns to this tab so they never go stale past midnight
   const next7Dates = useMemo(() => getNext7Dates(), [activeTab]);
   const next7Groups = useMemo(() => {
-    const filtered = allTasks.filter(t => t.status === 'active' && (!searchQuery || t.title.toLowerCase().includes(searchQuery.toLowerCase())));
-    return next7Dates.map(date => ({ date, tasks: sortList(filtered.filter(t => t.dueDate === date)) })).filter(g => g.tasks.length > 0);
-  }, [allTasks, next7Dates, searchQuery, sortList]);
+    const filtered = next7Tasks.filter(t => t.status === 'active' && (!searchQuery || t.title.toLowerCase().includes(searchQuery.toLowerCase())));
+    const grouped = new Map<string, Task[]>();
+    for (const t of filtered) {
+      if (t.isRecurring) {
+        let tagArr: string[] = [];
+        try { tagArr = JSON.parse(t.tags || '[]'); } catch { /* ignore */ }
+        const repeatTag = tagArr.find(tag => tag.startsWith('repeat:'));
+        const repeatType = repeatTag?.replace('repeat:', '');
+        const taskDow = t.dueDate ? new Date(t.dueDate + 'T00:00:00').getDay() : new Date().getDay();
+        for (const date of next7Dates) {
+          const dow = new Date(date + 'T00:00:00').getDay();
+          const matches =
+            repeatType === 'daily' ||
+            (repeatType === 'weekdays' && dow >= 1 && dow <= 5) ||
+            (repeatType === 'weekends' && (dow === 0 || dow === 6)) ||
+            (repeatType === 'weekly' && dow === taskDow);
+          if (matches) {
+            const bucket = grouped.get(date) ?? [];
+            bucket.push({ ...t, dueDate: date });
+            grouped.set(date, bucket);
+          }
+        }
+      } else {
+        const key = t.dueDate;
+        if (key && next7Dates.includes(key)) {
+          grouped.set(key, [...(grouped.get(key) ?? []), t]);
+        }
+      }
+    }
+    return next7Dates
+      .filter(d => grouped.has(d))
+      .map(d => ({ date: d, tasks: sortList(grouped.get(d) ?? []) }));
+  }, [next7Tasks, next7Dates, searchQuery, sortList]);
 
   const filteredListTasks = useMemo(() => {
     const active = listTasks.filter(t => t.status === 'active' && (!searchQuery || t.title.toLowerCase().includes(searchQuery.toLowerCase())));
     return sortList(active);
   }, [listTasks, searchQuery, sortList]);
 
-  const isLoading = activeTab === 'today' ? loadingToday : activeList ? loadingList : loadingAll;
+  const isLoading = activeTab === 'today' ? loadingToday : activeTab === 'next7' ? loadingNext7 : activeList ? loadingList : loadingAll;
 
   // ── Handlers ───────────────────────────────────────────────────────────────────
   const handleTabSelect = (tab: SubTab) => {
@@ -2402,7 +2435,7 @@ export default function TasksScreen() {
 
             {/* ── NEXT 7 ───────────────────────────────────────────────────── */}
             {activeTab === 'next7' && !activeList && (
-              <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetchAll} />}>
+              <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={loadingNext7} onRefresh={refetchNext7} />}>
                 {next7Groups.length === 0 ? (
                   <View style={{ alignItems: 'center', paddingVertical: 64 }}>
                     <CalendarDays size={40} color={MUTED} />

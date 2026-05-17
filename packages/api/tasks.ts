@@ -13,6 +13,9 @@ export const getAllTasks = (listId?: string): Promise<Task[]> => {
   return apiRequest<Task[]>(url);
 };
 
+export const getNext7Tasks = (): Promise<Task[]> =>
+  apiRequest<Task[]>('/api/tasks?smartList=next7');
+
 export const getTaskLists = (): Promise<TaskList[]> =>
   apiRequest<TaskList[]>('/api/task-lists');
 
