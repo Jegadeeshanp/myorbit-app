@@ -2126,7 +2126,7 @@ export default function TasksScreen() {
 
   // ── Queries ────────────────────────────────────────────────────────────────────
   const { data: todayData, isLoading: loadingToday, refetch: refetchToday } =
-    useQuery({ queryKey: ['tasks', 'today'], queryFn: getTodayTasks, enabled: activeTab === 'today' });
+    useQuery({ queryKey: ['tasks', 'today'], queryFn: getTodayTasks });
 
   const { data: allTasks = [], isLoading: loadingAll, refetch: refetchAll } =
     useQuery({ queryKey: ['tasks', 'all'], queryFn: () => getAllTasks() });
@@ -2205,6 +2205,8 @@ export default function TasksScreen() {
   const next7Dates = useMemo(() => getNext7Dates(), [activeTab]);
   const next7Groups = useMemo(() => {
     const filtered = next7Tasks.filter(t => t.status === 'active' && (!searchQuery || t.title.toLowerCase().includes(searchQuery.toLowerCase())));
+    const todayDate = next7Dates[0];
+    const completedTodayIds = new Set((todayData?.completed ?? []).map(i => i.taskId));
     const grouped = new Map<string, Task[]>();
     for (const t of filtered) {
       if (t.isRecurring) {
@@ -2221,6 +2223,7 @@ export default function TasksScreen() {
             (repeatType === 'weekends' && (dow === 0 || dow === 6)) ||
             (repeatType === 'weekly' && dow === taskDow);
           if (matches) {
+            if (date === todayDate && completedTodayIds.has(t.id)) continue;
             const bucket = grouped.get(date) ?? [];
             bucket.push({ ...t, dueDate: date });
             grouped.set(date, bucket);
@@ -2229,6 +2232,7 @@ export default function TasksScreen() {
       } else {
         const key = t.dueDate;
         if (key && next7Dates.includes(key)) {
+          if (key === todayDate && completedTodayIds.has(t.id)) continue;
           grouped.set(key, [...(grouped.get(key) ?? []), t]);
         }
       }
@@ -2236,7 +2240,7 @@ export default function TasksScreen() {
     return next7Dates
       .filter(d => grouped.has(d))
       .map(d => ({ date: d, tasks: sortList(grouped.get(d) ?? []) }));
-  }, [next7Tasks, next7Dates, searchQuery, sortList]);
+  }, [next7Tasks, next7Dates, searchQuery, sortList, todayData]);
 
   const filteredListTasks = useMemo(() => {
     const active = listTasks.filter(t => t.status === 'active' && (!searchQuery || t.title.toLowerCase().includes(searchQuery.toLowerCase())));

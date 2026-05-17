@@ -752,6 +752,24 @@ export default function TasksPage() {
     return () => clearTimeout(t);
   }, [fetchTasks]);
 
+  // When viewing Next 7 Days, also keep today's completed instances in sync
+  // so we can hide tasks already done today from the Today group.
+  useEffect(() => {
+    if (selected !== 'next7') return;
+    fetch('/api/tasks/today')
+      .then(r => r.ok ? (r.json() as Promise<TodayResponse>) : null)
+      .then(data => {
+        if (!data) return;
+        setTodayData({
+          overdue:   Array.isArray(data.overdue)   ? data.overdue   : [],
+          today:     Array.isArray(data.today)     ? data.today     : [],
+          missed:    Array.isArray(data.missed)    ? data.missed    : [],
+          completed: Array.isArray(data.completed) ? data.completed : [],
+        });
+      })
+      .catch(() => {});
+  }, [selected, refreshKey]);
+
   const handleAddTask = async (titleArg?: string, opts?: { dueDate?: string; dueTime?: string; reminder?: string; repeat?: string; priority?: string; tags?: string[]; listId?: string; addToHabit?: boolean }): Promise<Task | null> => {
     const t = (titleArg ?? newTaskTitle).trim(); if (!t) return null;
     setAddingTask(true);
@@ -888,7 +906,14 @@ export default function TasksPage() {
     setShowFab(false);
     try {
       const res = await fetch(`/api/tasks/${inst.taskId}`);
-      if (res.ok) { const task = await res.json(); setActiveTask({ ...task, dueDate: inst.date }); }
+      if (res.ok) {
+        const task = await res.json();
+        // For recurring tasks use the instance date (the specific occurrence);
+        // for one-off tasks use the task's own dueDate so edits in the detail
+        // panel reflect the real stored date rather than today's instance date.
+        const dueDate = task.isRecurring ? inst.date : (task.dueDate ?? inst.date);
+        setActiveTask({ ...task, dueDate });
+      }
     } catch { /* silently ignore */ }
   };
 
@@ -959,6 +984,8 @@ export default function TasksPage() {
     // next7: group by day, expanding recurring tasks
     if (selected === 'next7') {
       const days = [0,1,2,3,4,5,6,7].map(i => todayString(i));
+      const todayDate = todayString(0);
+      const completedTodayIds = new Set(todayData.completed.map(i => i.taskId));
       const grouped = new Map<string, Task[]>();
       for (const t of filtered) {
         if (t.isRecurring) {
@@ -975,6 +1002,7 @@ export default function TasksPage() {
               (repeatType === 'weekends' && (dow === 0 || dow === 6)) ||
               (repeatType === 'weekly' && dow === taskDow);
             if (matches) {
+              if (day === todayDate && completedTodayIds.has(t.id)) continue;
               const bucket = grouped.get(day) ?? [];
               bucket.push({ ...t, dueDate: day });
               grouped.set(day, bucket);
@@ -983,6 +1011,7 @@ export default function TasksPage() {
         } else {
           const key = t.dueDate;
           if (key && days.includes(key)) {
+            if (key === todayDate && completedTodayIds.has(t.id)) continue;
             grouped.set(key, [...(grouped.get(key) ?? []), t]);
           }
         }
@@ -1005,7 +1034,7 @@ export default function TasksPage() {
     }
     return [{ label, tasks: sortTaskList(filtered) }];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, lists, selected, todayStr, searchQuery, sortBy]);
+  }, [tasks, lists, selected, todayStr, searchQuery, sortBy, todayData]);
 
   const getListName = (v: string) => {
     if (v.startsWith('list:')) {
