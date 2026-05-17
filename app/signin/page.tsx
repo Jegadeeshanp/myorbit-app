@@ -67,8 +67,8 @@ export default function SignInPage() {
     <main className="min-h-screen bg-[#F7F7F5] flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-3xl bg-white p-9 shadow-lg shadow-emerald-200/40">
         <div className="mb-8 text-center">
-          <Link href="/" className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-sm text-lg">
-            ⭑
+          <Link href="/" className="mx-auto block h-12 w-12">
+            <img src="/icons/app-logo.svg" alt="MyOrbit" className="h-12 w-12" />
           </Link>
           <h1 className="mt-5 text-2xl font-semibold text-gray-900">Sign in to MyOrbit</h1>
           <p className="mt-2 text-sm text-gray-600">Access your dashboard and track your life.</p>
