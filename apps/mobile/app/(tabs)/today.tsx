@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, RefreshControl, SectionList } from 'react-native';
+import { View, Text, RefreshControl, SectionList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTodayTasks, completeInstance } from '@myorbit/api';
 import type { TaskInstance, TodayResponse } from '@myorbit/api';
@@ -8,7 +8,8 @@ import LoadingSkeleton from '@/components/shared/LoadingSkeleton';
 import EmptyState from '@/components/shared/EmptyState';
 import TodaySectionHeader from '@/components/tasks/TodaySectionHeader';
 import TaskItem from '@/components/tasks/TaskItem';
-import { Sun } from 'lucide-react-native';
+import AICommandModal from '@/components/shared/AICommandModal';
+import { Sun, Sparkles } from 'lucide-react-native';
 
 interface Section {
   key:   'overdue' | 'today' | 'missed' | 'completed';
@@ -26,8 +27,9 @@ const SECTION_CONFIG = [
 
 export default function TodayScreen() {
   const queryClient = useQueryClient();
-  const [collapsed, setCollapsed]   = useState<Set<string>>(new Set());
-  const [refreshing, setRefreshing] = useState(false);
+  const [collapsed,   setCollapsed]   = useState<Set<string>>(new Set());
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [showAI,      setShowAI]      = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery<TodayResponse>({
     queryKey: ['today'],
@@ -74,6 +76,16 @@ export default function TodayScreen() {
     (data?.today.length    ?? 0) +
     (data?.missed.length   ?? 0);
 
+  const aiFab = (
+    <TouchableOpacity
+      onPress={() => setShowAI(true)}
+      style={styles.fab}
+      activeOpacity={0.85}
+    >
+      <Sparkles size={22} color="#fff" />
+    </TouchableOpacity>
+  );
+
   if (sections.length === 0) {
     return (
       <Screen>
@@ -84,6 +96,12 @@ export default function TodayScreen() {
           icon={Sun}
           title="All caught up!"
           subtitle="No pending tasks for today"
+        />
+        {aiFab}
+        <AICommandModal
+          visible={showAI}
+          onClose={() => setShowAI(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['today'] })}
         />
       </Screen>
     );
@@ -135,6 +153,32 @@ export default function TodayScreen() {
         )}
         showsVerticalScrollIndicator={false}
       />
+
+      {aiFab}
+      <AICommandModal
+        visible={showAI}
+        onClose={() => setShowAI(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['today'] })}
+      />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position:        'absolute',
+    bottom:          24,
+    right:           20,
+    width:           52,
+    height:          52,
+    borderRadius:    26,
+    backgroundColor: '#10B981',
+    alignItems:      'center',
+    justifyContent:  'center',
+    shadowColor:     '#10B981',
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   0.4,
+    shadowRadius:    8,
+    elevation:       8,
+  },
+});

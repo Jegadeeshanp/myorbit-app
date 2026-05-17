@@ -7,3 +7,4 @@ export * from './goals';
 export * from './habits';
 export * from './health';
 export * from './insights';
+export * from './ai';
