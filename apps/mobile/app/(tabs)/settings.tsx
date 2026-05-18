@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '@/lib/authStore';
 import { useThemeStore, getTheme } from '@/lib/themeStore';
+import { useModuleStore, type ModuleKey } from '@/lib/moduleStore';
 import AppHeader from '@/components/shared/AppHeader';
 import {
   User, Bell, Shield, LogOut, ChevronRight, Info, Database,
@@ -27,11 +28,23 @@ interface SettingItem {
 
 // ── Settings Screen ────────────────────────────────────────────────────────────
 
+const MODULE_META: Record<ModuleKey, { label: string; subtitle: string; icon: React.ComponentType<{ size: number; color: string }>; color: string }> = {
+  finance:  { label: 'Finance',  subtitle: 'Accounts, expenses & investments', icon: DollarSign,  color: '#10B981' },
+  tasks:    { label: 'To-Do',    subtitle: 'Tasks, projects & reminders',       icon: CheckSquare, color: '#8B5CF6' },
+  habits:   { label: 'Habits',   subtitle: 'Streaks, routines & nudges',        icon: Flame,       color: '#F59E0B' },
+  goals:    { label: 'Goals',    subtitle: 'Targets, milestones & progress',    icon: Target,      color: '#3B82F6' },
+  health:   { label: 'Health',   subtitle: 'Sleep, workouts & wellness',        icon: Heart,       color: '#EF4444' },
+  insights: { label: 'Insights', subtitle: 'Scores, trends & suggestions',      icon: ChartBar,   color: '#64748B' },
+};
+
+const MODULE_ORDER: ModuleKey[] = ['finance', 'tasks', 'habits', 'goals', 'health', 'insights'];
+
 export default function SettingsScreen() {
   const user   = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { isDark, toggle } = useThemeStore();
   const T = getTheme(isDark);
+  const { enabledModules, toggle: toggleModule } = useModuleStore();
 
   const [notifGranted, setNotifGranted] = useState(false);
 
@@ -107,15 +120,6 @@ export default function SettingsScreen() {
         icon: CreditCard,
         color: '#8B5CF6',
       },
-    ]),
-
-    makeSection('Modules', [
-      { label: 'Finance',  subtitle: 'Currency, default account',        icon: DollarSign,  color: '#10B981', onPress: () => router.push('/(tabs)/finance') },
-      { label: 'Health',   subtitle: 'Units, step goal, reminders',      icon: Heart,       color: '#EF4444', onPress: () => router.push('/(tabs)/health') },
-      { label: 'Habits',   subtitle: 'Week start, notification time',    icon: Flame,       color: '#F59E0B', onPress: () => router.push('/(tabs)/habits') },
-      { label: 'Goals',    subtitle: 'Review frequency, horizon',        icon: Target,      color: '#3B82F6', onPress: () => router.push('/(tabs)/goals') },
-      { label: 'To-Do',    subtitle: 'Default list, priority labels',    icon: CheckSquare, color: '#8B5CF6', onPress: () => router.push('/(tabs)/tasks') },
-      { label: 'Insights', subtitle: 'Score weights, refresh interval',  icon: ChartBar,   color: '#64748B', onPress: () => router.push('/(tabs)/insights') },
     ]),
 
     makeSection('Data & Privacy', [
@@ -195,6 +199,49 @@ export default function SettingsScreen() {
               thumbColor="white"
             />
           </View>
+        </View>
+
+        {/* Active Modules */}
+        <Text style={{ fontSize: 11, fontWeight: '600', color: T.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 2 }}>
+          Active Modules
+        </Text>
+        <Text style={{ fontSize: 12, color: T.subText, marginBottom: 10, paddingHorizontal: 2 }}>
+          Only enabled modules appear on your home screen. At least one must stay active.
+        </Text>
+        <View style={{ backgroundColor: T.cardBg, borderRadius: 16, borderWidth: 1, borderColor: T.border, overflow: 'hidden', marginBottom: 20 }}>
+          {MODULE_ORDER.map((key, idx) => {
+            const meta = MODULE_META[key];
+            const Icon = meta.icon;
+            const isEnabled = enabledModules.includes(key);
+            const isLast = idx === MODULE_ORDER.length - 1;
+            const isOnlyOne = enabledModules.length === 1 && isEnabled;
+            return (
+              <View
+                key={key}
+                style={{
+                  flexDirection: 'row', alignItems: 'center',
+                  paddingHorizontal: 14, paddingVertical: 13,
+                  borderBottomWidth: isLast ? 0 : 1,
+                  borderBottomColor: T.border,
+                  opacity: isOnlyOne ? 0.5 : 1,
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: meta.color + '18', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Icon size={18} color={meta.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: T.text }}>{meta.label}</Text>
+                  <Text style={{ fontSize: 12, color: T.subText, marginTop: 1 }}>{meta.subtitle}</Text>
+                </View>
+                <Switch
+                  value={isEnabled}
+                  onValueChange={() => { if (!isOnlyOne) toggleModule(key); }}
+                  trackColor={{ false: T.border, true: '#059669' }}
+                  thumbColor="white"
+                />
+              </View>
+            );
+          })}
         </View>
 
         {/* Dynamic sections */}

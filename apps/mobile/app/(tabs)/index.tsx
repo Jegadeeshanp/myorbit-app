@@ -8,6 +8,7 @@ import {
 } from 'lucide-react-native';
 import Svg, { Rect, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 import { useThemeStore, getTheme } from '@/lib/themeStore';
+import { useModuleStore } from '@/lib/moduleStore';
 
 const MODULES = [
   {
@@ -71,6 +72,8 @@ export default function HomeScreen() {
   const logout = useAuthStore((s) => s.logout);
   const { isDark, toggle } = useThemeStore();
   const T = getTheme(isDark);
+  const enabledModules = useModuleStore((s) => s.enabledModules);
+  const visibleModules = MODULES.filter((m) => enabledModules.includes(m.key as any));
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -118,7 +121,7 @@ export default function HomeScreen() {
         </View>
 
         {/* ── Module Cards ── */}
-        {MODULES.map((m) => {
+        {visibleModules.map((m) => {
           const Icon = m.icon;
           return (
             <View

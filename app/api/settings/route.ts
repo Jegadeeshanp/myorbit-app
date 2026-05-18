@@ -5,6 +5,9 @@ import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
+const MODULE_KEYS = ['finance', 'tasks', 'habits', 'goals', 'health', 'insights'] as const;
+type ModuleKey = typeof MODULE_KEYS[number];
+
 const settingsSchema = z.object({
   // Profile
   name:         z.string().min(2).max(100).optional(),
@@ -22,6 +25,8 @@ const settingsSchema = z.object({
   sleepGoal:    z.number().min(0).max(24).nullable().optional(),
   waterGoal:    z.number().int().min(0).max(10_000).nullable().optional(),
   caloriesGoal: z.number().int().min(0).max(10_000).nullable().optional(),
+  // Active modules
+  enabledModules: z.array(z.enum(MODULE_KEYS)).min(1).optional(),
 });
 
 export async function GET() {
@@ -44,17 +49,19 @@ export async function GET() {
         createdAt: user.createdAt,
       },
       preferences: {
-        currency:     prefs?.currency     ?? 'INR',
-        theme:        prefs?.theme        ?? 'system',
-        locale:       prefs?.locale       ?? 'en-IN',
-        age:          prefs?.age          ?? null,
-        dependents:   prefs?.dependents   ?? null,
-        termCover:    prefs?.termCover    ?? null,
-        healthCover:  prefs?.healthCover  ?? null,
-        stepsGoal:    prefs?.stepsGoal    ?? 10000,
-        sleepGoal:    prefs?.sleepGoal    ?? 7.5,
-        waterGoal:    prefs?.waterGoal    ?? 2000,
-        caloriesGoal: prefs?.caloriesGoal ?? 2000,
+        currency:       prefs?.currency       ?? 'INR',
+        theme:          prefs?.theme          ?? 'system',
+        locale:         prefs?.locale         ?? 'en-IN',
+        age:            prefs?.age            ?? null,
+        dependents:     prefs?.dependents     ?? null,
+        termCover:      prefs?.termCover      ?? null,
+        healthCover:    prefs?.healthCover    ?? null,
+        stepsGoal:      prefs?.stepsGoal      ?? 10000,
+        sleepGoal:      prefs?.sleepGoal      ?? 7.5,
+        waterGoal:      prefs?.waterGoal      ?? 2000,
+        caloriesGoal:   prefs?.caloriesGoal   ?? 2000,
+        enabledModules: (prefs?.enabledModules ?? 'finance,tasks,habits,goals,health,insights')
+          .split(',').filter(Boolean) as ModuleKey[],
       },
     });
   } catch (e: any) {
@@ -91,6 +98,11 @@ export async function PATCH(req: NextRequest) {
       if ((prefsData as any)[key] !== undefined) {
         prefsUpdate[key] = (prefsData as any)[key];
       }
+    }
+
+    // enabledModules arrives as string[] — serialize to comma-separated string for storage
+    if (parsed.data.enabledModules !== undefined) {
+      prefsUpdate['enabledModules'] = parsed.data.enabledModules.join(',');
     }
 
     if (Object.keys(prefsUpdate).length > 0) {

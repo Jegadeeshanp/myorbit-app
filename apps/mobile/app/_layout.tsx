@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { router, Stack, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,6 +11,7 @@ import { useAuthStore } from '@/lib/authStore';
 import { useNotificationStore } from '@/lib/notificationStore';
 import { setupNotifications } from '@/lib/notifications';
 import { useThemeStore } from '@/lib/themeStore';
+import { useModuleStore } from '@/lib/moduleStore';
 import AIFab from '@/components/shared/AIFab';
 
 const queryClient = new QueryClient({
@@ -38,6 +40,15 @@ function OTAUpdateBootstrap() {
 function ThemeBootstrap() {
   const hydrate = useThemeStore((s) => s.hydrate);
   useEffect(() => { hydrate(); }, [hydrate]);
+  return null;
+}
+
+function ModuleBootstrap() {
+  const hydrate = useModuleStore((s) => s.hydrate);
+  const syncFromServer = useModuleStore((s) => s.syncFromServer);
+  const user = useAuthStore((s) => s.user);
+  useEffect(() => { hydrate(); }, [hydrate]);
+  useEffect(() => { if (user) syncFromServer(); }, [user, syncFromServer]);
   return null;
 }
 
@@ -95,6 +106,23 @@ function GlobalOverlays() {
   return <AIFab />;
 }
 
+function RootContent() {
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
+  if (isAuthLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#10B981" />
+      </View>
+    );
+  }
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      <GlobalOverlays />
+    </>
+  );
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -102,10 +130,10 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <OTAUpdateBootstrap />
           <ThemeBootstrap />
+          <ModuleBootstrap />
           <AuthBootstrap />
           <NotificationBootstrap />
-          <Stack screenOptions={{ headerShown: false }} />
-          <GlobalOverlays />
+          <RootContent />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
