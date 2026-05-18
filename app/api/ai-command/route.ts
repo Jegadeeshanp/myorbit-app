@@ -18,9 +18,20 @@ import { encryptNumber, decryptNumber } from '@/lib/encryption';
 import { applyTransactionBalanceDelta } from '@/lib/financeBalance';
 import { nextFinanceDate } from '@/lib/financeRecurrence';
 import type { RecurringConfig } from '@/lib/financeData';
-import type { DailySummary } from '@myorbit/api';
-
 export const runtime = 'nodejs';
+
+interface DailySummary {
+  tasks:    { completed: number; pending: number; overdue: number };
+  spending: { total: number; topCategories: { category: string; amount: number }[] };
+  habits:   { logged: number; total: number; done: string[]; missed: string[] };
+  health?: {
+    steps?: number | null; sleepHours?: number | null; waterMl?: number | null;
+    mood?: number | null; energyLevel?: number | null;
+    workouts: { name: string; durationMins: number; caloriesBurned?: number | null }[];
+    totalCalories: number;
+  };
+  goals?: { active: number; nearDeadline: { title: string; deadline: string }[] };
+}
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -455,8 +466,14 @@ async function executeToolCall(
   if (fn === 'add_habit') {
     const COLORS = ['#10B981','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
     const color = args.color ?? COLORS[Math.floor(Math.random() * COLORS.length)];
-    const habit = await prisma.habit.create({ data: { userId, name: args.name, frequency: args.frequency ?? 'daily', color, isActive: true } });
-    return { success: true, action: 'ADD_HABIT', message: `🔥 Habit "${habit.name}" created (${habit.frequency})`, data: { id: habit.id } };
+    const freq  = (args.frequency ?? 'daily') as string;
+    const daysOfWeek =
+      freq === 'weekdays' ? JSON.stringify([1,2,3,4,5]) :
+      freq === 'weekends' ? JSON.stringify([6,7])       :
+                            JSON.stringify([1,2,3,4,5,6,7]); // daily / weekly / default
+    const habit = await prisma.habit.create({ data: { userId, name: args.name, daysOfWeek, color, isActive: true } });
+    const freqLabel = freq === 'weekdays' ? 'weekdays' : freq === 'weekends' ? 'weekends' : 'daily';
+    return { success: true, action: 'ADD_HABIT', message: `🔥 Habit "${habit.name}" created (${freqLabel})`, data: { id: habit.id } };
   }
 
   // ── LOG HABIT ───────────────────────────────────────────────────────────────
