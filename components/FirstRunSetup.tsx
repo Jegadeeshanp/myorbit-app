@@ -277,7 +277,18 @@ export default function FirstRunSetup({ onComplete }: Props) {
 
               {focus && (
                 <button
-                  onClick={async () => { setSaving(true); try { await fetch('/api/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim(), currency, onboardingDone: true, focusModule: focus }) }); } catch {} onComplete(); }}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      await fetch('/api/settings', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name.trim(), currency, onboardingDone: true, focusModule: focus }),
+                      });
+                    } catch { /* best-effort */ }
+                    setSaving(false);
+                    onComplete();
+                  }}
                   disabled={saving}
                   className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition"
                 >

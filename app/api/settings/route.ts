@@ -44,6 +44,21 @@ export async function GET() {
     ]);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    // Migration shim: users who existed before the onboardingDone column was added
+    // will have onboardingDone=false by default. If they already have data, skip the wizard.
+    let onboardingDone = prefs?.onboardingDone ?? false;
+    if (!onboardingDone) {
+      const existingCount = await prisma.account.count({ where: { userId } });
+      if (existingCount > 0) {
+        onboardingDone = true;
+        await prisma.userPreferences.upsert({
+          where:  { userId },
+          update: { onboardingDone: true },
+          create: { userId, onboardingDone: true },
+        });
+      }
+    }
+
     return NextResponse.json({
       profile: {
         id:        user.id,
@@ -65,7 +80,7 @@ export async function GET() {
         caloriesGoal:   prefs?.caloriesGoal   ?? 2000,
         enabledModules: (prefs?.enabledModules ?? 'finance,tasks,habits,goals,health,insights')
           .split(',').filter(Boolean) as ModuleKey[],
-        onboardingDone: prefs?.onboardingDone ?? false,
+        onboardingDone,
         focusModule:    prefs?.focusModule    ?? '',
       },
     });
