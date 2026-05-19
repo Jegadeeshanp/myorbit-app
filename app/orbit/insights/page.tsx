@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Flame, Target, CheckCircle2, Heart, Wallet, AlertCircle } from 'lucide-react';
+import { RefreshCw, Flame, Target, CheckCircle2, Heart, Wallet, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 type Scores = {
   lifeScore: number;
@@ -53,6 +53,162 @@ function ScoreBar({ score, color }: { score: number; color: string }) {
   return (
     <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700">
       <div className={`h-1.5 rounded-full ${color} transition-all duration-700`} style={{ width: `${score}%` }} />
+    </div>
+  );
+}
+
+// ── Score Explainer ────────────────────────────────────────────────────────────
+
+const FACTOR_DETAILS = [
+  {
+    key: 'habit' as const,
+    label: 'Habits',
+    weight: 30,
+    Icon: Flame,
+    iconBg: 'bg-amber-50 dark:bg-amber-900/30',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    goodText: 'You\'re building strong daily routines.',
+    needsWorkText: 'Try logging at least one habit every day.',
+    tip: 'Pick one anchor habit (e.g. morning water) and log it at the same time each day.',
+    href: '/orbit/habits',
+  },
+  {
+    key: 'task' as const,
+    label: 'Tasks',
+    weight: 20,
+    Icon: CheckCircle2,
+    iconBg: 'bg-sky-50 dark:bg-sky-900/30',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+    goodText: 'You\'re completing tasks consistently.',
+    needsWorkText: 'Clear your overdue backlog to unlock points.',
+    tip: 'Spend 5 minutes each morning triaging your inbox so nothing stays overdue.',
+    href: '/orbit/tasks',
+  },
+  {
+    key: 'goal' as const,
+    label: 'Goals',
+    weight: 20,
+    Icon: Target,
+    iconBg: 'bg-violet-50 dark:bg-violet-900/30',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    goodText: 'Your goals are active and progressing.',
+    needsWorkText: 'Add at least one active goal to boost this score.',
+    tip: 'Break each goal into monthly milestones — progress on milestones counts toward your score.',
+    href: '/orbit/goals',
+  },
+  {
+    key: 'health' as const,
+    label: 'Health',
+    weight: 20,
+    Icon: Heart,
+    iconBg: 'bg-rose-50 dark:bg-rose-900/30',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    goodText: 'You\'re tracking your health regularly.',
+    needsWorkText: 'Log a daily check-in to earn full health points.',
+    tip: 'Log steps, sleep, or mood once per day — consistency matters more than perfection.',
+    href: '/orbit/health',
+  },
+  {
+    key: 'finance' as const,
+    label: 'Finance',
+    weight: 10,
+    Icon: Wallet,
+    iconBg: 'bg-emerald-50 dark:bg-emerald-900/30',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    goodText: 'Your finances are connected and tracked.',
+    needsWorkText: 'Connect an account or log a transaction to earn points.',
+    tip: 'Add a recurring expense (like rent or subscriptions) so your monthly spend is automatically tracked.',
+    href: '/orbit/finance',
+  },
+] as const;
+
+function ScoreExplainer({ scores }: { scores: Record<string, number> }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white">What's in your Life Score?</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">5 areas of life, each weighted by impact.</p>
+      </div>
+
+      {/* Factor rows */}
+      <div className="divide-y divide-gray-50 dark:divide-gray-700/40">
+        {FACTOR_DETAILS.map(({ key, label, weight, Icon, iconBg, iconColor, goodText, needsWorkText, tip, href }) => {
+          const score = scores[key] ?? 0;
+          const isGood = score >= 70;
+          return (
+            <div key={key} className="px-5 py-3.5">
+              <div className="flex items-start gap-3">
+                <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-xl ${iconBg} mt-0.5`}>
+                  <Icon className={`h-4 w-4 ${iconColor}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{label}</p>
+                    <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{weight}% weight</span>
+                    <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      isGood
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    }`}>
+                      {isGood ? '✓ Good' : '↑ Needs work'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+                    {isGood ? goodText : needsWorkText}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700">
+                      <div
+                        className={`h-1.5 rounded-full transition-all duration-700 ${
+                          isGood ? 'bg-emerald-400' : score >= 40 ? 'bg-amber-400' : 'bg-rose-400'
+                        }`}
+                        style={{ width: `${score}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 w-7 text-right">{score}</span>
+                  </div>
+                  {!isGood && (
+                    <p className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+                      💡 {tip}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Expandable calculation section */}
+      <div className="border-t border-gray-100 dark:border-gray-700/60">
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="flex w-full items-center justify-between px-5 py-3 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition"
+        >
+          <span className="font-medium">How is this calculated?</span>
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {open && (
+          <div className="px-5 pb-4 space-y-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              Your Life Score is a weighted average recalculated each time you refresh. Each module contributes based on recent activity:
+            </p>
+            <ul className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <li><span className="font-medium text-gray-700 dark:text-gray-300">Habits (30%)</span> — ratio of habits logged vs. scheduled today × 100.</li>
+              <li><span className="font-medium text-gray-700 dark:text-gray-300">Tasks (20%)</span> — tasks completed this week divided by total tasks created, capped at 100.</li>
+              <li><span className="font-medium text-gray-700 dark:text-gray-300">Goals (20%)</span> — number of active goals with milestones, scaled 0–100.</li>
+              <li><span className="font-medium text-gray-700 dark:text-gray-300">Health (20%)</span> — daily check-in streak. Logging today gives full points.</li>
+              <li><span className="font-medium text-gray-700 dark:text-gray-300">Finance (10%)</span> — presence of connected accounts and recent transactions.</li>
+            </ul>
+            <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">
+              Score = (habit×0.30) + (task×0.20) + (goal×0.20) + (health×0.20) + (finance×0.10), rounded to nearest integer.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -154,6 +310,9 @@ export default function InsightsPage() {
           );
         })}
       </div>
+
+      {/* Score Explainer */}
+      <ScoreExplainer scores={scores} />
 
       {/* Insights Feed */}
       <div className="space-y-3">

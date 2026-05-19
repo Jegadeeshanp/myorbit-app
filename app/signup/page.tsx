@@ -40,8 +40,17 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   return             { score, label: 'Very strong', color: 'bg-emerald-600' };
 }
 
+const FOCUS_OPTIONS = [
+  { id: 'finance', label: 'Finances', emoji: '💰', description: 'Budget, spending & savings',       href: '/orbit/finance' },
+  { id: 'goals',   label: 'Goals',    emoji: '🎯', description: 'Life targets & milestones',        href: '/orbit/goals'   },
+  { id: 'health',  label: 'Health',   emoji: '🏃', description: 'Fitness, sleep & wellness',        href: '/orbit/health'  },
+  { id: 'tasks',   label: 'Tasks',    emoji: '✅', description: 'To-dos, projects & reminders',     href: '/orbit/tasks'   },
+  { id: 'habits',  label: 'Habits',   emoji: '🔄', description: 'Daily routines & streak building', href: '/orbit/habits'  },
+] as const;
+
 export default function SignUpPage() {
   const { signUp } = useAuth();
+  const [step,     setStep]     = useState<1 | 2>(1);
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -90,13 +99,60 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await signUp(email.trim(), password, name.trim());
-      window.location.href = '/orbit';
+      setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleFocusSelect = (href: string) => {
+    try { localStorage.setItem('orbitFocusModule', href); } catch { /* ignore */ }
+    window.location.href = href;
+  };
+
+  if (step === 2) {
+    return (
+      <main className="min-h-screen bg-[#F7F7F5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-3xl bg-white p-9 shadow-lg shadow-emerald-200/40">
+          <div className="mb-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+              <span className="text-2xl">🎉</span>
+            </div>
+            <h1 className="mt-4 text-2xl font-semibold text-gray-900">Welcome to MyOrbit!</h1>
+            <p className="mt-2 text-sm text-gray-600">What do you want to improve first?</p>
+          </div>
+
+          <div className="space-y-2">
+            {FOCUS_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleFocusSelect(opt.href)}
+                className="flex w-full items-center gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <span className="text-2xl">{opt.emoji}</span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{opt.label}</p>
+                  <p className="text-xs text-gray-500">{opt.description}</p>
+                </div>
+                <span className="text-gray-300">→</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/orbit'; }}
+            className="mt-5 w-full text-center text-sm text-gray-400 hover:text-gray-600"
+          >
+            Skip — take me to the dashboard
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#F7F7F5] flex items-center justify-center p-6">

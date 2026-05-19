@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Landmark, CreditCard, Wallet, Banknote, PlusCircle, TrendingDown, Search } from 'lucide-react';
 import { StandardCard, CreditCardCard } from '@/components/finance/AccountCard';
 import AddAccountModal from '@/components/finance/AddAccountModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { Account, useFinance } from '@/lib/financeStore';
 import { AccountsSkeleton } from '@/components/finance/SkeletonLoader';
+import Confetti from '@/components/Confetti';
 
 function fmt(v: number) {
   return Math.abs(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -26,6 +27,15 @@ export default function AccountsPage() {
   const { state, addAccount } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevLenRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (state.loadState !== 'ready') return;
+    const len = state.accounts.length;
+    if (prevLenRef.current === 0 && len === 1) setShowConfetti(true);
+    prevLenRef.current = len;
+  }, [state.accounts.length, state.loadState]);
 
   const { totalBalance, liquidBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
     let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;
@@ -87,6 +97,7 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
+      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
       <FinanceTopBar />
 
       {/* Primary balance card */}
@@ -124,6 +135,25 @@ export default function AccountsPage() {
           <PlusCircle className="h-4 w-4" /> Add account
         </button>
       </div>
+
+      {/* Empty state */}
+      {!search && state.accounts.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 bg-white py-16 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
+            <Landmark className="h-8 w-8 text-emerald-500" />
+          </div>
+          <p className="text-base font-semibold text-gray-900">No accounts yet</p>
+          <p className="mt-1 text-sm text-gray-500">See exactly where your money goes</p>
+          <p className="mt-0.5 text-xs text-gray-400">Add a bank account, wallet, or cash to get started</p>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Connect your first account
+          </button>
+        </div>
+      )}
 
       {/* Bank Accounts */}
       {filteredByType['Bank'].length > 0 && (

@@ -57,7 +57,7 @@ const modules = [
   },
   {
     id: 'tasks',
-    title: 'To-Do',
+    title: 'Tasks',
     description: 'Manage tasks, projects, and quick notes. Lists, subtasks & calendar.',
     cta: 'Get Things Done →',
     icon: CheckSquare,

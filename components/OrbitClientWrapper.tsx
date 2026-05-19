@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { FinanceProvider } from '@/lib/financeStore';
 import { onForegroundMessage } from '@/lib/firebase';
 import CommandBar from '@/components/ai/CommandBar';
+import OfflineBanner from '@/components/OfflineBanner';
 
 // Show a native notification even when the app tab is in focus.
 function ForegroundNotificationListener() {
@@ -38,6 +39,7 @@ function ForegroundNotificationListener() {
 export default function OrbitClientWrapper({ children }: { children: React.ReactNode }) {
   return (
     <FinanceProvider>
+      <OfflineBanner />
       <ForegroundNotificationListener />
       {children}
       <CommandBar />

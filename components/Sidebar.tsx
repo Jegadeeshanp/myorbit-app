@@ -20,7 +20,7 @@ export default function Sidebar() {
     { name: 'Accounts', icon: <IconAccounts className="w-6 h-6" />, href: '/orbit/finance/accounts' },
     { name: 'Expenses', icon: <IconExpenses className="w-6 h-6" />, href: '/orbit/finance/expenses' },
     { name: 'Investments', icon: <IconInvestments className="w-6 h-6" />, href: '/orbit/finance/investments' },
-    { name: 'Budgets', icon: <IconBudgets className="w-6 h-6" />, href: '/orbit/finance/budgets' },
+    { name: 'Budget', icon: <IconBudgets className="w-6 h-6" />, href: '/orbit/finance/budget' },
     { name: 'Liabilities', icon: <IconLiabilities className="w-6 h-6" />, href: '/orbit/finance/liabilities' },
   ];
 

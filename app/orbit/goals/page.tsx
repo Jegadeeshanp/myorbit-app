@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Target, Calendar, CheckCircle2, Zap, ChevronRight, X,
   Repeat, Clock, ListChecks, CheckSquare, AlertCircle,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
+import Confetti from '@/components/Confetti';
 
 type GoalMilestone = { id: string; title: string; horizon: string; isCompleted: boolean };
 type GoalProcess    = { id: string; title: string; frequency: string };
@@ -897,6 +898,12 @@ function StatCard({ label, value, sub, color = 'indigo' }: { label: string; valu
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 
+const GOAL_TEMPLATES = [
+  { title: 'Save ₹1,00,000 this year',   category: 'Finance',  why: 'Build my emergency fund' },
+  { title: 'Run a 5K without stopping',  category: 'Health',   why: 'Get back in shape'       },
+  { title: 'Read 12 books this year',    category: 'Learning', why: 'Grow every month'        },
+];
+
 export default function GoalsPage() {
   const router = useRouter();
   const [goals, setGoals]               = useState<Goal[]>([]);
@@ -904,12 +911,17 @@ export default function GoalsPage() {
   const [showModal, setShowModal]       = useState(false);
   const [catFilter, setCatFilter]       = useState('All');
   const [postGoal, setPostGoal]         = useState<Goal | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const wasEmptyRef                     = useRef(false);
 
   useEffect(() => {
     fetch('/api/goals')
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) setGoals(data);
+        if (Array.isArray(data)) {
+          setGoals(data);
+          wasEmptyRef.current = data.length === 0;
+        }
       })
       .catch(() => toast('Failed to load goals', 'error'))
       .finally(() => setLoading(false));
@@ -925,6 +937,7 @@ export default function GoalsPage() {
 
   return (
     <div className="space-y-6">
+      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Goals"  value={stats.total}     color="indigo" />
@@ -974,18 +987,42 @@ export default function GoalsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50">
-            <Target className="h-8 w-8 text-indigo-400" />
+        <div className="rounded-2xl border border-gray-200 bg-white p-8">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
+              <Target className="h-7 w-7 text-indigo-500" />
+            </div>
+            <p className="text-base font-semibold text-gray-900">
+              {catFilter === 'All' ? 'No goals yet' : `No ${catFilter} goals yet`}
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              {catFilter === 'All' ? 'Pick a template to get started, or create your own.' : 'Try a template or start from scratch.'}
+            </p>
           </div>
-          <p className="text-base font-semibold text-gray-900">No goals yet</p>
-          <p className="mt-1 text-sm text-gray-500">Start by creating your first goal</p>
+          {catFilter === 'All' && (
+            <div className="mb-5 space-y-2">
+              {GOAL_TEMPLATES.map((t) => (
+                <button
+                  key={t.title}
+                  onClick={() => setShowModal(true)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50 group"
+                >
+                  <span className="text-lg">🎯</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{t.title}</p>
+                    <p className="text-xs text-gray-400">{t.category} · "{t.why}"</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 flex-none text-gray-300 group-hover:text-indigo-400 transition" />
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setShowModal(true)}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition"
           >
             <Plus className="h-4 w-4" />
-            Create Goal
+            {catFilter === 'All' ? 'Create your own goal' : `Create ${catFilter} goal`}
           </button>
         </div>
       ) : (
@@ -1013,6 +1050,8 @@ export default function GoalsPage() {
         <AddGoalModal
           onClose={() => setShowModal(false)}
           onCreated={goal => {
+            if (wasEmptyRef.current) setShowConfetti(true);
+            wasEmptyRef.current = false;
             setGoals(prev => [goal, ...prev]);
             setShowModal(false);
             setPostGoal(goal);

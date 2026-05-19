@@ -49,7 +49,7 @@ const MODULES = [
   },
   {
     key: 'tasks',
-    label: 'To-Do',
+    label: 'Tasks',
     description: 'Manage tasks, projects, quick notes and reminders.',
     cta: 'Get Things Done ->',
     icon: CheckSquare,

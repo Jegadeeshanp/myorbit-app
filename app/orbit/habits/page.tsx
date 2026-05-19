@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Plus, Flame, CheckCircle2, X, Trash2, ChevronLeft, ChevronRight, Clock, Pencil } from 'lucide-react';
 import { toast } from '@/components/Toast';
+import Confetti from '@/components/Confetti';
 
 type Habit = {
   id: string;
@@ -1090,19 +1091,34 @@ function HabitCard({ habit, dates, onLog, onDelete, onEdit }: {
 }
 
 // ── Main Page ───────────────────────────────────────────────────────────────
+const HABIT_TEMPLATES = [
+  { name: 'Drink 8 glasses of water', iconEmoji: '💧', color: '#3B82F6' },
+  { name: 'Exercise for 30 minutes',  iconEmoji: '🏃', color: '#10B981' },
+  { name: 'Read for 20 minutes',      iconEmoji: '📚', color: '#8B5CF6' },
+  { name: 'Meditate for 10 minutes',  iconEmoji: '🧘', color: '#F59E0B' },
+  { name: 'No social media before 9am', iconEmoji: '📵', color: '#EF4444' },
+];
+
 export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const totalLogsRef = useRef(0);
   const dates = useMemo(() => getLast7Days(), []);
   const today = dates[dates.length - 1];
 
   const fetchHabits = useCallback(() => {
     fetch('/api/habits')
       .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setHabits(d); })
+      .then(d => {
+        if (Array.isArray(d)) {
+          setHabits(d);
+          totalLogsRef.current = d.reduce((s: number, h: Habit) => s + h.logs.length, 0);
+        }
+      })
       .catch(() => toast('Failed to load habits', 'error'))
       .finally(() => setLoading(false));
   }, []);
@@ -1117,15 +1133,21 @@ export default function HabitsPage() {
         body: JSON.stringify({ date }),
       });
       const data = await res.json();
-      setHabits(prev => prev.map(h => {
-        if (h.id !== habitId) return h;
-        if (data.removed) {
-          return { ...h, logs: h.logs.filter(l => l.logDate !== date) };
+      setHabits(prev => {
+        const next = prev.map(h => {
+          if (h.id !== habitId) return h;
+          if (data.removed) return { ...h, logs: h.logs.filter(l => l.logDate !== date) };
+          const existing = h.logs.find(l => l.logDate === date);
+          if (existing) return h;
+          return { ...h, logs: [...h.logs, { logDate: date, value: 1 }] };
+        });
+        if (!data.removed) {
+          const newTotal = next.reduce((s, h) => s + h.logs.length, 0);
+          if (totalLogsRef.current === 0 && newTotal === 1) setShowConfetti(true);
+          totalLogsRef.current = newTotal;
         }
-        const existing = h.logs.find(l => l.logDate === date);
-        if (existing) return h;
-        return { ...h, logs: [...h.logs, { logDate: date, value: 1 }] };
-      }));
+        return next;
+      });
     } catch {
       toast('Failed to log habit', 'error');
     }
@@ -1164,6 +1186,7 @@ export default function HabitsPage() {
 
   return (
     <div className="space-y-6">
+      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
 
       {/* ── Overview: Insight + Stats + New Habit button ── */}
       {/* Insight message */}
@@ -1209,16 +1232,31 @@ export default function HabitsPage() {
           {[1, 2, 3, 4].map(i => <div key={i} className="h-44 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />)}
         </div>
       ) : habits.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950">
-            <Flame className="h-8 w-8 text-amber-500" />
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950">
+              <Flame className="h-7 w-7 text-amber-500" />
+            </div>
+            <p className="text-base font-semibold text-gray-900 dark:text-white">No habits yet</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start small — pick one habit from below, or create your own.</p>
           </div>
-          <p className="text-base font-semibold text-gray-900 dark:text-white">No habits yet</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start building your daily system</p>
+          <div className="mb-5 space-y-2">
+            {HABIT_TEMPLATES.map((t) => (
+              <button
+                key={t.name}
+                onClick={() => setShowModal(true)}
+                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-left transition hover:border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 group"
+              >
+                <span className="text-xl">{t.iconEmoji}</span>
+                <p className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{t.name}</p>
+                <ChevronRight className="h-4 w-4 flex-none text-gray-300 group-hover:text-amber-500 transition" />
+              </button>
+            ))}
+          </div>
           <button onClick={() => setShowModal(true)}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition">
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition">
             <Plus className="h-4 w-4" />
-            Create Habit
+            Create your own habit
           </button>
         </div>
       ) : (

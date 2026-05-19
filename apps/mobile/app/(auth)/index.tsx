@@ -18,7 +18,7 @@ const FEATURES = [
   { title: 'Goals',    description: 'Set targets and watch progress over time with gentle nudges.',               Icon: Target },
   { title: 'Health',   description: 'Track habits, fitness, and wellness metrics with a calm dashboard.',         Icon: HeartPulse },
   { title: 'Habits',   description: 'Build momentum with habit streaks and daily check-ins.',                     Icon: CheckCircle },
-  { title: 'To-Do',    description: 'Capture tasks, projects, and reminders in a single view.',                   Icon: ClipboardList },
+  { title: 'Tasks',    description: 'Capture tasks, projects, and reminders in a single view.',                   Icon: ClipboardList },
   { title: 'Insights', description: 'Smart prompts and summaries help you stay on track.',                        Icon: Lightbulb },
 ];
 

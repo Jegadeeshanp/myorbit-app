@@ -2152,7 +2152,10 @@ export default function TasksScreen() {
     useQuery({ queryKey: ['taskLists'], queryFn: getTaskLists });
 
   // ── Mutations ──────────────────────────────────────────────────────────────────
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['tasks'] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['tasks'] });
+    qc.invalidateQueries({ queryKey: ['today'] });
+  };
   const onMutateError = () => Alert.alert('Error', 'Something went wrong. Please try again.');
   const invalidateLists = () => { qc.invalidateQueries({ queryKey: ['taskLists'] }); invalidate(); };
   const completeMut  = useMutation({ mutationFn: completeInstance,  onSuccess: invalidate, onError: onMutateError });

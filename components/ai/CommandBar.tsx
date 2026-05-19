@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, X, ArrowUp, Loader2, RotateCcw, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
+import { Sparkles, X, ArrowUp, Loader2, RotateCcw, CheckCircle2, AlertCircle, TrendingUp, Undo2 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 import { useDraggableFab } from '@/lib/useDraggableFab';
-import type { AIMessage, DailySummary } from '@myorbit/api';
+// ── Types inlined from @myorbit/api (package not linked in monorepo) ─────────
+interface AIMessage    { role: 'user' | 'assistant'; content: string }
+interface DailySummary {
+  tasks:    { completed: number; pending: number; overdue: number };
+  spending: { total: number; topCategories: { category: string; amount: number }[] };
+  habits:   { logged: number; total: number; done: string[]; missed: string[] };
+}
 
 // ── Card data types (mirrored from packages/api/ai.ts) ────────────────────────
 interface WaterCardData    { amount_ml: number; total_ml: number; goal_ml: number }
@@ -257,21 +263,50 @@ function SummaryCard({ summary }: { summary: DailySummary }) {
   );
 }
 
+// ── Undo config ───────────────────────────────────────────────────────────────
+
+const UNDO_WINDOW_MS = 60_000;
+
+const UNDO_ACTIONS: Record<string, { label: string; endpoint: (id: string) => string }> = {
+  ADD_TASK:        { label: 'task',        endpoint: id => `/api/tasks/${id}` },
+  ADD_HABIT:       { label: 'habit',       endpoint: id => `/api/habits/${id}` },
+  ADD_GOAL:        { label: 'goal',        endpoint: id => `/api/goals/${id}` },
+  ADD_TRANSACTION: { label: 'transaction', endpoint: id => `/api/transactions/${id}` },
+};
+
 // ── Chat message type ─────────────────────────────────────────────────────────
 
 type ChatMsg = {
-  role:     'user' | 'assistant';
-  content:  string;
-  ok?:      boolean;
-  action?:  string;
-  summary?: DailySummary;
+  role:      'user' | 'assistant';
+  content:   string;
+  ok?:       boolean;
+  action?:   string;
+  entityId?: string;
+  summary?:  DailySummary;
   cardData?: AnyCardData;
 };
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
-function ChatBubble({ msg }: { msg: ChatMsg }) {
+function ChatBubble({ msg, onUndo }: { msg: ChatMsg; onUndo?: (msg: ChatMsg) => void }) {
   const isUser = msg.role === 'user';
+  const undoCfg = msg.action ? UNDO_ACTIONS[msg.action] : undefined;
+  const canUndo = !!(undoCfg && msg.entityId && msg.ok !== false);
+
+  const [secsLeft, setSecsLeft] = useState<number | null>(canUndo ? Math.floor(UNDO_WINDOW_MS / 1000) : null);
+  const [undone, setUndone] = useState(false);
+
+  useEffect(() => {
+    if (!canUndo || undone) return;
+    const start = Date.now();
+    const id = setInterval(() => {
+      const remaining = Math.ceil((UNDO_WINDOW_MS - (Date.now() - start)) / 1000);
+      if (remaining <= 0) { setSecsLeft(null); clearInterval(id); }
+      else setSecsLeft(remaining);
+    }, 500);
+    return () => clearInterval(id);
+  }, [canUndo, undone]);
+
   return (
     <div className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
@@ -289,6 +324,27 @@ function ChatBubble({ msg }: { msg: ChatMsg }) {
         }`}>
           {msg.content}
         </div>
+
+        {/* AI badge + undo row */}
+        {!isUser && msg.ok !== false && canUndo && !undone && (
+          <div className="flex items-center gap-2 mt-1.5 px-1">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              <Sparkles className="h-2.5 w-2.5" /> Created by AI
+            </span>
+            {secsLeft !== null && onUndo && (
+              <button
+                onClick={() => { setUndone(true); setSecsLeft(null); onUndo(msg); }}
+                className="flex items-center gap-1 rounded-full bg-gray-100 hover:bg-gray-200 border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-600 transition"
+              >
+                <Undo2 className="h-2.5 w-2.5" /> Undo <span className="text-gray-400">{secsLeft}s</span>
+              </button>
+            )}
+          </div>
+        )}
+        {!isUser && undone && (
+          <p className="mt-1 px-1 text-[10px] text-gray-400">↩ Undone</p>
+        )}
+
         {msg.summary && <SummaryCard summary={msg.summary} />}
         {msg.action === 'WATER'    && msg.cardData && <WaterCard     data={msg.cardData as WaterCardData}     />}
         {msg.action === 'ACTIVITY' && msg.cardData && <ActivityCard  data={msg.cardData as ActivityCardData}  />}
@@ -363,13 +419,21 @@ export default function CommandBar() {
       const cardData = data.data?.cardData as AnyCardData  | undefined;
       const action   = data.action         as string       | undefined;
 
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message, summary, cardData, action, ok: data.success }]);
+      const entityId = (data.data?.id as string | undefined);
+
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: data.message, summary, cardData, action, ok: data.success, entityId,
+      }]);
 
       const CARD_ACTIONS = new Set(['DAILY_SUMMARY', 'QUERY', 'GOAL_PLAN', 'WATER', 'FOOD_LOG', 'ACTIVITY']);
       if (data.success) {
         if (!CARD_ACTIONS.has(action ?? '')) {
-          toast(data.message, 'success');
-          setTimeout(() => { setMessages([]); setOpen(false); }, 2500);
+          if (!UNDO_ACTIONS[action ?? '']) {
+            // Non-undoable success: close as before
+            toast(data.message, 'success');
+            setTimeout(() => { setMessages([]); setOpen(false); }, 2500);
+          }
+          // Undoable successes stay open so user can see the undo button
         }
       } else {
         toast(data.message || 'Could not process command', 'error');
@@ -381,6 +445,18 @@ export default function CommandBar() {
       setLoading(false);
     }
   }, [input, loading, messages]);
+
+  const handleUndo = useCallback(async (msg: ChatMsg) => {
+    if (!msg.action || !msg.entityId) return;
+    const cfg = UNDO_ACTIONS[msg.action];
+    if (!cfg) return;
+    try {
+      await fetch(cfg.endpoint(msg.entityId), { method: 'DELETE' });
+      toast(`↩ ${cfg.label} removed`, 'success');
+    } catch {
+      toast(`Could not undo — please delete it manually`, 'error');
+    }
+  }, []);
 
   const fillInput = (text: string) => {
     setInput(text);
@@ -426,7 +502,7 @@ export default function CommandBar() {
           {/* Chat history */}
           {showHistory && (
             <div ref={scrollRef} className="flex flex-col gap-2.5 px-4 py-3 max-h-72 overflow-y-auto border-b border-gray-100">
-              {messages.map((msg, i) => <ChatBubble key={i} msg={msg} />)}
+              {messages.map((msg, i) => <ChatBubble key={i} msg={msg} onUndo={handleUndo} />)}
               {loading && (
                 <div className="flex gap-2 justify-start">
                   <div className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-emerald-100 mt-0.5">

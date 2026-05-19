@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import TasksSidebar from '@/components/tasks/TasksSidebar';
 import TaskItem from '@/components/tasks/TaskItem';
+import Confetti from '@/components/Confetti';
 import type { TaskInstanceWithTask, TodayResponse } from '@/lib/taskTypes';
 import TaskDetail from '@/components/tasks/TaskDetail';
 import TaskReminderModal from '@/components/tasks/TaskReminderModal';
@@ -660,6 +661,8 @@ export default function TasksPage() {
   const [dragging, setDragging]       = useState(false);
   const [sortBy, setSortBy]           = useState<SortBy>('custom');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const completedCountRef = useRef(-1); // -1 = not yet initialised
   const [showDesktopCal, setShowDesktopCal]   = useState(false);
   const [showDesktopMore, setShowDesktopMore] = useState(false);
   const [desktopDueDate, setDesktopDueDate]   = useState('');
@@ -702,11 +705,15 @@ export default function TasksPage() {
         })
         .then(data => {
           // Guard: ensure the response has the expected shape
+          const completed = Array.isArray(data?.completed) ? data.completed : [];
+          if (completedCountRef.current === -1) {
+            completedCountRef.current = completed.length;
+          }
           setTodayData({
             overdue:   Array.isArray(data?.overdue)   ? data.overdue   : [],
             today:     Array.isArray(data?.today)     ? data.today     : [],
             missed:    Array.isArray(data?.missed)    ? data.missed    : [],
-            completed: Array.isArray(data?.completed) ? data.completed : [],
+            completed,
           });
         })
         .catch(() => {
@@ -816,6 +823,8 @@ export default function TasksPage() {
     try {
       const res = await fetch(`/api/tasks/${id}/complete`, { method: 'PATCH' }); if (!res.ok) throw new Error();
       setTasks(prev => prev.filter(t => t.id !== id));
+      if (completedCountRef.current === 0) { setShowConfetti(true); }
+      if (completedCountRef.current >= 0) completedCountRef.current += 1;
       setRefreshKey(k => k + 1); toast('Task completed!');
     } catch { toast('Failed to complete', 'error'); return; }
 
@@ -1055,6 +1064,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F6F8FB] text-gray-900 dark:bg-[#12161D] dark:text-gray-100">
+      {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
       <div className="hidden md:flex">
         <TasksSidebar selected={selected} onSelect={handleSelectList} refreshKey={refreshKey} view={view} onViewChange={setView} />
       </div>
@@ -1245,12 +1255,19 @@ export default function TasksPage() {
 
                   ) : tasks.length === 0 ? (
                     /* ── LIST VIEW EMPTY STATE ───────────────────────────────── */
-                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-20 text-center dark:border-gray-700/60 dark:bg-[#1C1F26]">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-800">
-                        {selected === 'inbox' ? <Inbox className="h-8 w-8 text-sky-500" /> : <CalendarDays className="h-8 w-8 text-indigo-500" />}
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center dark:border-gray-700/60 dark:bg-[#1C1F26]">
+                      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 dark:bg-gray-800">
+                        {selected === 'inbox' ? <Inbox className="h-7 w-7 text-sky-500" /> : <CalendarDays className="h-7 w-7 text-indigo-500" />}
                       </div>
-                      <p className="font-semibold text-gray-900 dark:text-white">No tasks here</p>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Tap + to add your first task</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">Nothing here yet</p>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Capture what's on your mind</p>
+                      <button
+                        onClick={() => setShowFab(true)}
+                        className="mt-4 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add your first task
+                      </button>
                     </div>
 
                   ) : (

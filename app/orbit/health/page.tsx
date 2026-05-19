@@ -12,6 +12,7 @@ import HealthInsights from '@/components/health/HealthInsights';
 import LogHealthModal from '@/components/health/LogHealthModal';
 import AddWorkoutModal from '@/components/health/AddWorkoutModal';
 import { toast } from '@/components/Toast';
+import ErrorState from '@/components/ErrorState';
 
 const WORKOUT_EMOJI: Record<string, string> = {
   running: '🏃', cycling: '🚴', strength: '💪', yoga: '🧘', sports: '⚽', other: '🏋️',
@@ -38,11 +39,7 @@ export default function HealthPage() {
   }
 
   if (loadState === 'error') {
-    return (
-      <div className="flex items-center justify-center h-48">
-        <p className="text-sm text-gray-400">Failed to load health data. Please refresh.</p>
-      </div>
-    );
+    return <ErrorState message="Couldn't load health data." />;
   }
 
   const d = dashboard;
@@ -96,6 +93,8 @@ export default function HealthPage() {
     }
   }
 
+  const isFirstVisit = entries.length === 0 && !todayEntry;
+
   return (
     <div className="space-y-5">
       {/* Quick actions */}
@@ -114,6 +113,24 @@ export default function HealthPage() {
           </button>
         </div>
       </div>
+
+      {/* Empty state for first-time visitors */}
+      {isFirstVisit && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-white py-14 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50">
+            <Activity className="h-7 w-7 text-rose-400" />
+          </div>
+          <p className="text-base font-semibold text-gray-900">Start tracking your health</p>
+          <p className="mt-1 text-sm text-gray-500">Log sleep, steps, mood, and more — one entry starts your streak.</p>
+          <button
+            onClick={() => setLogOpen(true)}
+            className="mt-5 flex items-center gap-2 rounded-xl bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-600"
+          >
+            <Plus className="h-4 w-4" />
+            Log your first check-in
+          </button>
+        </div>
+      )}
 
       {/* Rings */}
       <HealthRings

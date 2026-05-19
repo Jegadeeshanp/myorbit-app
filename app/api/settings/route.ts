@@ -27,6 +27,9 @@ const settingsSchema = z.object({
   caloriesGoal: z.number().int().min(0).max(10_000).nullable().optional(),
   // Active modules
   enabledModules: z.array(z.enum(MODULE_KEYS)).min(1).optional(),
+  // Onboarding
+  onboardingDone: z.boolean().optional(),
+  focusModule:    z.string().max(20).optional(),
 });
 
 export async function GET() {
@@ -62,6 +65,8 @@ export async function GET() {
         caloriesGoal:   prefs?.caloriesGoal   ?? 2000,
         enabledModules: (prefs?.enabledModules ?? 'finance,tasks,habits,goals,health,insights')
           .split(',').filter(Boolean) as ModuleKey[],
+        onboardingDone: prefs?.onboardingDone ?? false,
+        focusModule:    prefs?.focusModule    ?? '',
       },
     });
   } catch (e: any) {
@@ -91,6 +96,7 @@ export async function PATCH(req: NextRequest) {
       'currency', 'theme', 'locale',
       'age', 'dependents', 'termCover', 'healthCover',
       'stepsGoal', 'sleepGoal', 'waterGoal', 'caloriesGoal',
+      'onboardingDone', 'focusModule',
     ] as const;
 
     const prefsUpdate: Record<string, unknown> = {};

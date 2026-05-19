@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { Wallet, Target, HeartPulse, CheckCircle2, ClipboardList, Lightbulb, Sparkles, Clock, Layers } from 'lucide-react';
 import ForceLightMode from '@/components/ForceLightMode';
 import OrbitIcon from '@/components/OrbitIcon';
@@ -49,7 +50,7 @@ function NavBar() {
               Sign In
             </Link>
             <Link
-              href="/signin"
+              href="/signup"
               className="rounded-full bg-gradient-to-r from-emerald-600 to-green-700 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-300/30 transition hover:from-emerald-700 hover:to-green-800"
             >
               Get Started
@@ -103,7 +104,7 @@ function NavBar() {
                 Sign In
               </Link>
               <Link
-                href="/signin"
+                href="/signup"
                 className="rounded-full bg-gradient-to-r from-emerald-600 to-green-700 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm shadow-emerald-300/30 hover:from-emerald-700 hover:to-green-800"
                 onClick={() => setOpen(false)}
               >
@@ -128,9 +129,31 @@ function FloatingShapes() {
 }
 
 function HeroText() {
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError,   setDemoError]   = useState<string | null>(null);
+
+  const handleDemo = async () => {
+    setDemoLoading(true);
+    setDemoError(null);
+    try {
+      const res  = await fetch('/api/demo', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to set up demo');
+      const result = await signIn('credentials', {
+        email:    data.email,
+        password: data.password,
+        redirect: false,
+      });
+      if (result?.error) throw new Error('Sign-in failed');
+      window.location.href = '/orbit';
+    } catch {
+      setDemoError('Could not start demo. Please try again.');
+      setDemoLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl">
-      {/* FIX: Removed "New • Updated components" dev badge — not appropriate for production */}
       <h1 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
         Your life. One orbit.
       </h1>
@@ -140,12 +163,31 @@ function HeroText() {
 
       <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
         <Link
-          href="/signin"
+          href="/signup"
           className="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-8 py-3 text-base font-semibold text-white shadow-lg shadow-emerald-700/40 transition hover:bg-emerald-800 sm:w-auto"
         >
           Get Started
         </Link>
+        <button
+          type="button"
+          onClick={handleDemo}
+          disabled={demoLoading}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white px-8 py-3 text-base font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {demoLoading ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
+              Loading demo…
+            </>
+          ) : (
+            'Try Demo'
+          )}
+        </button>
       </div>
+
+      {demoError && (
+        <p className="mt-3 text-sm text-red-600">{demoError}</p>
+      )}
 
       <div className="mt-10 grid grid-cols-2 gap-2 text-xs text-gray-500 sm:grid-cols-3">
         <div className="flex items-center gap-2">
@@ -280,7 +322,7 @@ function FeaturesSection() {
       icon: <CheckCircle2 className="h-6 w-6" />,
     },
     {
-      title: 'To-Do',
+      title: 'Tasks',
       description: 'Capture tasks, projects, and reminders in a single view.',
       icon: <ClipboardList className="h-6 w-6" />,
     },
@@ -452,7 +494,7 @@ function CallToAction() {
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Link
-            href="/signin"
+            href="/signup"
             className="inline-flex items-center justify-center rounded-full bg-white px-8 py-3 text-sm font-semibold text-emerald-700 shadow-lg shadow-emerald-800/10 transition hover:bg-white/90"
           >
             Get Started

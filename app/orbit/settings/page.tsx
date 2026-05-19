@@ -2,23 +2,19 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/authStore';
-import { ArrowLeft, User, Settings, Users, Shield, CreditCard, Layout } from 'lucide-react';
+import { ArrowLeft, User, Settings, Shield, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import AccountTab from '@/components/settings/AccountTab';
 import PreferencesTab from '@/components/settings/PreferencesTab';
-import ProfilesTab from '@/components/settings/ProfilesTab';
 import DataPrivacyTab from '@/components/settings/DataPrivacyTab';
-import DashboardModulesTab from '@/components/settings/DashboardModulesTab';
 import { FinanceProvider } from '@/lib/financeStore';
 import SubscriptionTab from '@/components/settings/SubscriptionTab';
 
 const TABS = [
-  { id: 'account',      label: 'Account',           icon: User },
-  { id: 'preferences',  label: 'Preferences',        icon: Settings },
-  { id: 'dashboard',    label: 'Dashboard',          icon: Layout },
-  { id: 'profiles',     label: 'Profiles & Sharing', icon: Users },
-  { id: 'data',         label: 'Data & Privacy',     icon: Shield },
-  { id: 'subscription', label: 'Subscription',       icon: CreditCard },
+  { id: 'account',      label: 'Account',     icon: User       },
+  { id: 'preferences',  label: 'Preferences', icon: Settings   },
+  { id: 'data',         label: 'Data',        icon: Shield     },
+  { id: 'billing',      label: 'Billing',     icon: CreditCard },
 ];
 
 export default function SettingsPage() {
@@ -74,12 +70,10 @@ export default function SettingsPage() {
 
         {/* Tab content */}
         <div className="space-y-6">
-          {activeTab === 'account'      && <AccountTab onSignOut={handleSignOut} />}
-          {activeTab === 'preferences'  && <PreferencesTab />}
-          {activeTab === 'dashboard'    && <DashboardModulesTab />}
-          {activeTab === 'profiles'     && <ProfilesTab />}
-          {activeTab === 'data'         && <DataPrivacyTab />}
-          {activeTab === 'subscription' && <SubscriptionTab />}
+          {activeTab === 'account'     && <AccountTab onSignOut={handleSignOut} />}
+          {activeTab === 'preferences' && <PreferencesTab />}
+          {activeTab === 'data'        && <DataPrivacyTab />}
+          {activeTab === 'billing'     && <SubscriptionTab />}
         </div>
       </div>
     </div>

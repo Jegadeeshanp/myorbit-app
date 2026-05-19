@@ -46,6 +46,7 @@ export default function TodayScreen() {
     try {
       await completeInstance(instanceId);
       queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch { /* silent */ }
   };
 

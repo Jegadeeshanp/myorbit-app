@@ -30,7 +30,7 @@ interface SettingItem {
 
 const MODULE_META: Record<ModuleKey, { label: string; subtitle: string; icon: React.ComponentType<{ size: number; color: string }>; color: string }> = {
   finance:  { label: 'Finance',  subtitle: 'Accounts, expenses & investments', icon: DollarSign,  color: '#10B981' },
-  tasks:    { label: 'To-Do',    subtitle: 'Tasks, projects & reminders',       icon: CheckSquare, color: '#8B5CF6' },
+  tasks:    { label: 'Tasks',    subtitle: 'Tasks, projects & reminders',       icon: CheckSquare, color: '#8B5CF6' },
   habits:   { label: 'Habits',   subtitle: 'Streaks, routines & nudges',        icon: Flame,       color: '#F59E0B' },
   goals:    { label: 'Goals',    subtitle: 'Targets, milestones & progress',    icon: Target,      color: '#3B82F6' },
   health:   { label: 'Health',   subtitle: 'Sleep, workouts & wellness',        icon: Heart,       color: '#EF4444' },
