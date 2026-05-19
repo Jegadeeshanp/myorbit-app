@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { taskCreateSchema } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 
@@ -82,11 +83,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const body = await req.json();
-    const { title, notes, priority, dueDate, dueTime, tags, listId } = body;
-    if (!title?.trim()) return NextResponse.json({ error: 'Title required' }, { status: 400 });
+    const parsed = taskCreateSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+    }
+    const { title, notes, priority, dueDate, dueTime, tags, listId } = parsed.data;
 
-    const tagsRaw = Array.isArray(tags) ? JSON.stringify(tags) : (typeof tags === 'string' ? tags : '[]');
+    const tagsRaw = Array.isArray(tags) ? JSON.stringify(tags) : '[]';
     const { isRecurring, recurrenceDays } = getRecurrenceFromTags(tags ?? [], dueDate);
 
     const task = await prisma.task.create({

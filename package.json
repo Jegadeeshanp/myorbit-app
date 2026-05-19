@@ -20,6 +20,7 @@
     "bcryptjs": "^2.4.3",
     "firebase": "^12.11.0",
     "firebase-admin": "^13.7.0",
+    "geist": "^1.7.0",
     "groq-sdk": "^1.2.0",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
@@ -27,6 +28,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.8.0",
+    "resend": "^6.12.3",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },

@@ -323,6 +323,53 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
     },
   },
 
+  // ── Health — Water ──────────────────────────────────────────────────────────
+  {
+    type: 'function', function: {
+      name: 'log_water',
+      description: 'Log water intake. Use for "Xml water", "drank X glasses", "X litres water". 1 glass = 250ml, 1 litre = 1000ml.',
+      parameters: { type: 'object', properties: {
+        amount_ml: { type: 'number', description: 'Amount in ml (normalised). 1 glass=250ml, 1 litre=1000ml.' },
+      }, required: ['amount_ml'] },
+    },
+  },
+
+  // ── Health — Activity ───────────────────────────────────────────────────────
+  {
+    type: 'function', function: {
+      name: 'log_activity',
+      description: 'Log a physical activity (walk, run, cycle, swim, etc.). Use for "Xkm walk", "ran Xkm", "X min cycling".',
+      parameters: { type: 'object', properties: {
+        activity_type:  { type: 'string', description: 'e.g. "walking", "running", "cycling"' },
+        distance_km:    { type: 'number', description: 'Distance in km if mentioned, else null' },
+        duration_min:   { type: 'number', description: 'Duration in minutes if mentioned, else null' },
+        estimated_kcal: { type: 'number', description: 'Estimated kcal burned (MET×70×hours): walk=3.5, run=8, cycle=6' },
+      }, required: ['activity_type', 'estimated_kcal'] },
+    },
+  },
+
+  // ── Health — Food ───────────────────────────────────────────────────────────
+  {
+    type: 'function', function: {
+      name: 'log_food_by_description',
+      description: 'Log food / calorie intake. Use for "ate X", "had X for lunch", "2 dosa and sambar", "banana and coffee".',
+      parameters: { type: 'object', properties: {
+        description: { type: 'string', description: 'The raw food description from the user' },
+      }, required: ['description'] },
+    },
+  },
+
+  // ── Goals — Fitness Plan ────────────────────────────────────────────────────
+  {
+    type: 'function', function: {
+      name: 'plan_fitness_goal',
+      description: 'Generate a structured 1m/3m/6m training plan and create the 3 goals. Use for "want to run a marathon", "training for 10k", "preparing for triathlon".',
+      parameters: { type: 'object', properties: {
+        event: { type: 'string', description: 'The fitness event/goal, e.g. "marathon", "10k run", "triathlon"' },
+      }, required: ['event'] },
+    },
+  },
+
   // ── Queries (read) ──────────────────────────────────────────────────────────
   {
     type: 'function', function: {
@@ -784,6 +831,164 @@ async function executeToolCall(
     return { success: true, action: 'QUERY', message: `🔥 Habits today (${done.length}/${allH.length}):\n${[...done,...missed].join('\n')}` };
   }
 
+  // ── LOG WATER ───────────────────────────────────────────────────────────────
+  if (fn === 'log_water') {
+    const amount_ml = Math.round(Math.abs(Number(args.amount_ml)));
+    if (!amount_ml || isNaN(amount_ml)) return { success: false, message: 'Invalid water amount' };
+
+    const prefs    = await prisma.userPreferences.findUnique({ where: { userId } });
+    const goal_ml  = prefs?.waterGoal ?? 2000;
+    const existing = await prisma.healthEntry.findUnique({ where: { userId_date: { userId, date: today } } });
+    const total_ml = (existing?.waterMl ?? 0) + amount_ml;
+
+    await prisma.healthEntry.upsert({
+      where:  { userId_date: { userId, date: today } },
+      create: { userId, date: today, waterMl: total_ml },
+      update: { waterMl: total_ml },
+    });
+
+    const pct = Math.min(100, Math.round((total_ml / goal_ml) * 100));
+    return {
+      success: true, action: 'WATER',
+      message: `💧 +${amount_ml}ml logged — ${total_ml}/${goal_ml}ml (${pct}%) today`,
+      data: { cardData: { amount_ml, total_ml, goal_ml } },
+    };
+  }
+
+  // ── LOG ACTIVITY ─────────────────────────────────────────────────────────────
+  if (fn === 'log_activity') {
+    const activity_type  = String(args.activity_type ?? 'Activity');
+    const distance_km    = args.distance_km != null ? Number(args.distance_km)  : null;
+    const duration_min   = args.duration_min != null ? Math.round(Number(args.duration_min)) : null;
+    const estimated_kcal = Math.round(Math.abs(Number(args.estimated_kcal)));
+
+    await prisma.workout.create({ data: {
+      userId,
+      name:           activity_type,
+      type:           'cardio',
+      durationMins:   duration_min ?? 30,
+      caloriesBurned: estimated_kcal || null,
+      distanceKm:     distance_km,
+      date:           today,
+    } });
+
+    const parts: string[] = [activity_type];
+    if (distance_km)  parts.push(`${distance_km}km`);
+    if (duration_min) parts.push(`${duration_min}min`);
+    parts.push(`${estimated_kcal} kcal`);
+    return {
+      success: true, action: 'ACTIVITY',
+      message: `🏃 ${parts.join(' · ')} burned`,
+      data: { cardData: { activity_type, distance_km, duration_min, estimated_kcal } },
+    };
+  }
+
+  // ── LOG FOOD ─────────────────────────────────────────────────────────────────
+  if (fn === 'log_food_by_description') {
+    const description = String(args.description ?? '').trim();
+    if (!description) return { success: false, message: 'Food description is required' };
+
+    const nutritionCompletion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content:
+        `Analyze nutritional content for this Indian meal: "${description}"\n` +
+        `Use Indian portion sizes and common Indian foods. Return ONLY valid JSON, no markdown:\n` +
+        `{"items":[{"name":string,"quantity":string,"calories":number,"protein":number,"carbs":number,"fat":number,"fibre":number}],` +
+        `"totals":{"calories":number,"protein":number,"carbs":number,"fat":number,"fibre":number}}`,
+      }],
+      max_tokens:  600,
+      temperature: 0.1,
+    });
+
+    const raw       = nutritionCompletion.choices[0]?.message?.content ?? '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { success: false, message: 'Could not analyse food — please try rephrasing' };
+
+    const nutrition = JSON.parse(jsonMatch[0]) as {
+      items:  { name: string; quantity: string; calories: number; protein: number; carbs: number; fat: number; fibre: number }[];
+      totals: { calories: number; protein: number; carbs: number; fat: number; fibre: number };
+    };
+
+    await Promise.all(nutrition.items.map(item =>
+      prisma.foodLog.create({ data: {
+        userId, date: today,
+        foodName:  `${item.name} (${item.quantity})`,
+        mealType:  'snack',
+        calories:  item.calories,
+        protein:   item.protein,
+        carbs:     item.carbs,
+        fats:      item.fat,
+        fiber:     item.fibre,
+      } }),
+    ));
+
+    return {
+      success: true, action: 'FOOD_LOG',
+      message: `🍽️ Logged ${nutrition.items.length} items — ${Math.round(nutrition.totals.calories)} kcal`,
+      data: { cardData: { items: nutrition.items, totals: nutrition.totals } },
+    };
+  }
+
+  // ── PLAN FITNESS GOAL ────────────────────────────────────────────────────────
+  if (fn === 'plan_fitness_goal') {
+    const event = String(args.event ?? '').trim();
+    if (!event) return { success: false, message: 'Fitness event is required' };
+
+    const addMonths = (n: number) => {
+      const d = new Date(); d.setMonth(d.getMonth() + n); return d.toISOString().split('T')[0];
+    };
+
+    const planCompletion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content:
+        `Generate a structured fitness training plan for "${event}" with exactly 3 goals.\n` +
+        `Today: ${today}. Target dates: 1-month=${addMonths(1)}, 3-month=${addMonths(3)}, 6-month=${addMonths(6)}.\n` +
+        `Return ONLY valid JSON, no markdown:\n` +
+        `{"event":"${event}","goals":[` +
+        `{"duration":"1month","title":string,"description":string,"milestones":["week1 goal","week2 goal","week3 goal","week4 goal"],"targetDate":"${addMonths(1)}"},` +
+        `{"duration":"3month","title":string,"description":string,"milestones":["month1 goal","month2 goal","month3 goal"],"targetDate":"${addMonths(3)}"},` +
+        `{"duration":"6month","title":string,"description":string,"milestones":["month2 goal","month3 goal","month4 goal","month6 goal"],"targetDate":"${addMonths(6)}"}` +
+        `]}`,
+      }],
+      max_tokens:  800,
+      temperature: 0.3,
+    });
+
+    const raw       = planCompletion.choices[0]?.message?.content ?? '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { success: false, message: 'Could not generate goal plan — try again' };
+
+    const plan  = JSON.parse(jsonMatch[0]) as {
+      event: string;
+      goals: { duration: string; title: string; description: string; milestones: string[]; targetDate: string }[];
+    };
+
+    const horizonMap: Record<string, string> = { '1month': '1m', '3month': '3m', '6month': '6m' };
+
+    const created = await Promise.all(plan.goals.map(g =>
+      prisma.goal.create({ data: {
+        userId, title: g.title, category: 'Health',
+        why: g.description, deadline: g.targetDate, status: 'active',
+        milestones: { create: g.milestones.map(m => ({ userId, title: m, horizon: horizonMap[g.duration] ?? '1m' })) },
+      }, include: { milestones: true } }),
+    ));
+
+    const cardGoals = plan.goals.map((g, i) => ({
+      id:          created[i].id,
+      duration:    g.duration,
+      title:       g.title,
+      description: g.description,
+      milestones:  g.milestones,
+      targetDate:  g.targetDate,
+    }));
+
+    return {
+      success: true, action: 'GOAL_PLAN',
+      message: `🎯 Created 3 training goals for ${event}`,
+      data: { cardData: { event, goals: cardGoals } },
+    };
+  }
+
   return { success: false, message: 'Unknown action — please rephrase' };
 }
 
@@ -842,7 +1047,11 @@ Goals:  ${goals.map(g=>g.title).join(' | ') || 'none'}
 3. Merchant names auto-map categories (Swiggy→Restaurants, Ola→Transport, etc.) — still provide best guess.
 4. For account IDs use exact id from ACCOUNTS. Omit if no account mentioned.
 5. Natural times → HH:MM 24h. Natural dates → YYYY-MM-DD.
-6. Correct obvious typos in titles before returning them.`;
+6. Correct obvious typos in titles before returning them.
+7. Water intake ("Xml water", "drank X glasses", "X litres") → log_water. 1 glass=250ml, 1 litre=1000ml.
+8. Physical activity ("Xkm walk", "ran Xkm", "Xmin cycling") → log_activity. MET kcal: walk=3.5×70×hrs, run=8×70×hrs, cycle=6×70×hrs.
+9. Food/meals ("ate X", "had X for lunch", "2 dosa and sambar") → log_food_by_description.
+10. Fitness events ("want to run marathon", "training for 10k", "preparing for triathlon") → plan_fitness_goal.`;
 
     // Build messages with conversation history (last 6 turns max)
     const recentHistory = history.slice(-6).map(m => ({

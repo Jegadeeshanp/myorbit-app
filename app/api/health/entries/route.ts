@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { healthEntrySchema } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 
@@ -33,9 +34,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const body = await req.json();
-    const { date, steps, sleepHours, waterMl, weightKg, mood, energyLevel, heartRate, notes } = body;
-    if (!date) return NextResponse.json({ error: 'Date required' }, { status: 400 });
+    const parsed = healthEntrySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+    }
+    const { date, steps, sleepHours, waterMl, weightKg, mood, energyLevel, heartRate, notes } = parsed.data;
 
     const entry = await prisma.healthEntry.upsert({
       where: { userId_date: { userId, date } },

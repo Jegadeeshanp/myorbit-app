@@ -95,3 +95,59 @@ export const budgetSchema = z.object({
   spent: z.number().nonnegative().optional(),
   category: z.string().max(500).optional(),
 });
+
+// ── Health Entry ──────────────────────────────────────────────────────────────
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').refine(
+  (d) => !isNaN(new Date(d).getTime()),
+  { message: 'Invalid calendar date' },
+);
+
+export const healthEntrySchema = z.object({
+  date:        isoDate,
+  steps:       z.number().int().min(0).max(200_000).optional().nullable(),
+  sleepHours:  z.number().min(0).max(24).optional().nullable(),
+  waterMl:     z.number().int().min(0).max(20_000).optional().nullable(),
+  weightKg:    z.number().min(0).max(500).optional().nullable(),
+  mood:        z.number().int().min(1).max(10).optional().nullable(),
+  energyLevel: z.number().int().min(1).max(10).optional().nullable(),
+  heartRate:   z.number().int().min(20).max(300).optional().nullable(),
+  notes:       z.string().max(2000).refine((v) => !/<[^>]*>/.test(v), { message: 'Notes cannot contain HTML' }).optional().nullable(),
+});
+
+// ── Task ──────────────────────────────────────────────────────────────────────
+const TASK_PRIORITIES = ['none', 'low', 'medium', 'high'] as const;
+const TASK_STATUSES   = ['active', 'completed', 'wont_do'] as const;
+
+export const taskCreateSchema = z.object({
+  title:   z.string().min(1, 'Title required').max(500).refine((v) => !/<[^>]*>/.test(v), { message: 'Title cannot contain HTML' }),
+  notes:   z.string().max(5000).refine((v) => !/<[^>]*>/.test(v), { message: 'Notes cannot contain HTML' }).optional().nullable(),
+  priority: z.enum(TASK_PRIORITIES).optional(),
+  dueDate: isoDate.optional().nullable(),
+  dueTime: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:MM').optional().nullable(),
+  tags:    z.array(z.string().max(100)).optional(),
+  listId:  z.string().optional().nullable(),
+});
+
+export const taskUpdateSchema = taskCreateSchema.partial().extend({
+  status:   z.enum(TASK_STATUSES).optional(),
+  isDone:   z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+// ── Habit ─────────────────────────────────────────────────────────────────────
+const TIME_OF_DAY = ['all_day', 'morning', 'afternoon', 'evening', 'custom'] as const;
+
+export const habitCreateSchema = z.object({
+  name:         z.string().min(1, 'Name required').max(200).refine((v) => !/<[^>]*>/.test(v), { message: 'Name cannot contain HTML' }),
+  color:        z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex color').optional(),
+  iconEmoji:    z.string().max(10).optional(),
+  goalPerDay:   z.number().int().min(1).max(1000).optional(),
+  isCountBased: z.boolean().optional(),
+  daysOfWeek:   z.array(z.number().int().min(0).max(6)).min(1, 'Select at least one day').optional(),
+  timeOfDay:    z.enum(TIME_OF_DAY).optional(),
+  customTime:   z.string().regex(/^\d{2}:\d{2}$/, 'Time must be HH:MM').optional().nullable(),
+}).refine(
+  (d) => d.timeOfDay !== 'custom' || !!d.customTime,
+  { message: 'customTime is required when timeOfDay is "custom"', path: ['customTime'] },
+);

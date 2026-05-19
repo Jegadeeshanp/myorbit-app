@@ -59,7 +59,13 @@ export async function POST(req: NextRequest) {
       .sign(secret);
 
     return NextResponse.json({ token, user }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Service unavailable. Please try again later.' }, { status: 503 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[POST /api/register]', msg);
+    const detail = process.env.NODE_ENV === 'development' ? msg : undefined;
+    return NextResponse.json(
+      { error: 'Service unavailable. Please try again later.', ...(detail && { detail }) },
+      { status: 503 },
+    );
   }
 }

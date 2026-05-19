@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-
-const HTML_RE = /<[^>]*>/;
+import { habitCreateSchema } from '@/lib/validation';
 
 export const runtime = 'nodejs';
 
@@ -30,10 +29,11 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const body = await req.json();
-    const { name, color, iconEmoji, goalPerDay, isCountBased, daysOfWeek, timeOfDay, customTime } = body;
-    if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 });
-    if (HTML_RE.test(name)) return NextResponse.json({ error: 'Name cannot contain HTML' }, { status: 400 });
+    const parsed = habitCreateSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+    }
+    const { name, color, iconEmoji, goalPerDay, isCountBased, daysOfWeek, timeOfDay, customTime } = parsed.data;
     const maxOrder = await prisma.habit.aggregate({
       where: { userId },
       _max: { sortOrder: true },

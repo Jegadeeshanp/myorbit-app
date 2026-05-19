@@ -1,12 +1,11 @@
-// app/api/auth/forgot-password/route.ts
-// Generates a secure password reset token.
-// TODO: integrate with Resend / SendGrid to actually send the email.
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Resend } from 'resend';
 import crypto from 'crypto';
 
 export const runtime = 'nodejs';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +24,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Generate a secure random token (expires in 1 hour)
     const token     = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
@@ -35,24 +33,42 @@ export async function POST(req: NextRequest) {
     });
 
     await prisma.passwordResetToken.create({
-      data: {
-        userId:    user.id,
-        token,
-        expiresAt,
-      },
+      data: { userId: user.id, token, expiresAt },
     });
 
-    // In production: send email via Resend/SendGrid
-    // const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
-    // await sendEmail({ to: email, subject: 'Reset your MyOrbit password', html: ... });
-
-    // For now: log the URL (visible in Vercel function logs)
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
-    console.log(`[Password Reset] URL for ${email}: ${resetUrl}`);
+
+    if (resend) {
+      await resend.emails.send({
+        from:    'MyOrbit <noreply@myorbit.app>',
+        to:      email,
+        subject: 'Reset your MyOrbit password',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+            <h2 style="color:#059669">Reset your password</h2>
+            <p>Hi ${user.name},</p>
+            <p>We received a request to reset your MyOrbit password. Click the button below — this link expires in <strong>1 hour</strong>.</p>
+            <p style="margin:24px 0">
+              <a href="${resetUrl}"
+                 style="background:#059669;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+                Reset Password
+              </a>
+            </p>
+            <p style="color:#6b7280;font-size:13px">
+              If you didn't request this, you can safely ignore this email.<br>
+              Or copy this link: ${resetUrl}
+            </p>
+          </div>
+        `,
+      });
+    } else {
+      // No email provider configured — log URL so dev/staging can still test the flow
+      console.warn('[Password Reset] RESEND_API_KEY not set. Reset URL:', resetUrl);
+    }
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    console.error('Forgot password error:', e);
+  } catch (err: unknown) {
+    console.error('[POST /api/auth/forgot-password]', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

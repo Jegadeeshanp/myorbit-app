@@ -1,14 +1,13 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+// Geist is imported from the vendored npm package — no network fetch at build time
 import { SessionProvider } from 'next-auth/react';
 import { AuthProvider } from '@/lib/authStore';
 import { ThemeProvider } from '@/lib/themeStore';
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration';
-import NotificationListener from "@/components/NotificationListener"; 
+import NotificationListener from "@/components/NotificationListener";
 import './globals.css';
-
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
-const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'MyOrbit — Your life, one orbit',
@@ -43,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icons/app-logo.png" />
       </head>
 
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <SessionProvider>
           <AuthProvider>
             <ThemeProvider>
