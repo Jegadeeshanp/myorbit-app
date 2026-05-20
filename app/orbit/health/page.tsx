@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   Plus, Dumbbell, Target, CheckCircle2, Circle,
-  Flame, Clock, ChevronRight, Pencil, Trash2, Activity,
+  Flame, Clock, ChevronRight, Pencil, Trash2, Activity, Utensils,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useHealth } from '@/lib/healthStore';
@@ -384,6 +384,72 @@ export default function HealthPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Today's Nutrition */}
+      <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-gray-900">Today&apos;s Nutrition</p>
+          <Link href="/orbit/health/nutrition" className="text-xs text-rose-400 hover:text-rose-500 transition">
+            Full log →
+          </Link>
+        </div>
+
+        {(d?.todayFoodLogs ?? []).length === 0 ? (
+          <div className="flex flex-col items-center py-6 text-center">
+            <Utensils className="h-8 w-8 text-gray-200 mb-2" />
+            <p className="text-xs text-gray-400">No food logged today.</p>
+            <p className="text-xs text-gray-300 mt-0.5">
+              Use the AI command — type &quot;had 2 rotis and dal&quot; to log instantly.
+            </p>
+          </div>
+        ) : (() => {
+          const logs = d!.todayFoodLogs;
+          const totalCal  = logs.reduce((s, f) => s + (f.calories  ?? 0), 0);
+          const totalProt = logs.reduce((s, f) => s + (f.protein   ?? 0), 0);
+          const totalCarb = logs.reduce((s, f) => s + (f.carbs     ?? 0), 0);
+          const totalFat  = logs.reduce((s, f) => s + (f.fats      ?? 0), 0);
+          return (
+            <>
+              {/* Macro summary bar */}
+              <div className="mb-3 flex items-center gap-4 rounded-xl bg-rose-50 px-4 py-2.5">
+                <div className="flex-1">
+                  <p className="text-[22px] font-bold text-rose-600 leading-none">{Math.round(totalCal)}</p>
+                  <p className="text-[10px] text-rose-400 mt-0.5">kcal consumed</p>
+                </div>
+                <div className="flex gap-4 text-center">
+                  {[
+                    { label: 'Protein', val: totalProt, color: 'text-blue-600' },
+                    { label: 'Carbs',   val: totalCarb, color: 'text-amber-600' },
+                    { label: 'Fat',     val: totalFat,  color: 'text-rose-500' },
+                  ].map(m => (
+                    <div key={m.label}>
+                      <p className={`text-sm font-bold ${m.color}`}>{Math.round(m.val)}g</p>
+                      <p className="text-[10px] text-gray-400">{m.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Food items list */}
+              <div className="space-y-1">
+                {logs.map(f => (
+                  <div key={f.id} className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-gray-50 transition">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm flex-none">
+                        {f.mealType === 'breakfast' ? '🌅' : f.mealType === 'lunch' ? '☀️' : f.mealType === 'dinner' ? '🌙' : '🍽️'}
+                      </span>
+                      <p className="text-sm text-gray-800 truncate">{f.foodName}</p>
+                    </div>
+                    {f.calories != null && (
+                      <span className="text-xs font-medium text-gray-500 flex-none ml-2">{Math.round(f.calories)} kcal</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Health Goals */}

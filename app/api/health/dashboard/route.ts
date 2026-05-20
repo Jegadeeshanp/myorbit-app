@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     const [
       todayEntry,
       todayWorkouts,
+      todayFoodLogs,
       healthHabits,
       healthGoals,
       weeklyEntries,
@@ -24,6 +25,11 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       prisma.healthEntry.findUnique({ where: { userId_date: { userId, date: today } } }),
       prisma.workout.findMany({ where: { userId, date: today }, orderBy: { createdAt: 'desc' } }),
+      prisma.foodLog.findMany({
+        where: { userId, date: today },
+        select: { id: true, foodName: true, mealType: true, calories: true, protein: true, carbs: true, fats: true, fiber: true },
+        orderBy: { createdAt: 'asc' },
+      }),
       prisma.habit.findMany({
         where: { userId, category: 'health', isActive: true },
         include: {
@@ -113,6 +119,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       todayEntry,
       todayWorkouts,
+      todayFoodLogs,
       healthHabits: shapedHabits,
       healthTasks: {
         today: todayTasks,

@@ -84,6 +84,17 @@ export type HealthGoal = {
   milestones: GoalMilestone[];
 };
 
+export type FoodLog = {
+  id:       string;
+  foodName: string;
+  mealType: string;
+  calories?: number | null;
+  protein?:  number | null;
+  carbs?:    number | null;
+  fats?:     number | null;
+  fiber?:    number | null;
+};
+
 export type WeeklyStats = {
   habitsCompletedThisWeek: number;
   workoutsThisWeek: number;
@@ -93,6 +104,7 @@ export type WeeklyStats = {
 export type DashboardData = {
   todayEntry: HealthEntry | null;
   todayWorkouts: Workout[];
+  todayFoodLogs: FoodLog[];
   healthHabits: HealthHabit[];
   healthTasks: {
     today: HealthTask[];
