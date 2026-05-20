@@ -8,7 +8,7 @@ import ToastContainer from '@/components/Toast';
 export default function HealthLayout({ children }: { children: React.ReactNode }) {
   return (
     <HealthProvider>
-      <div className="min-h-screen bg-[#F7F7F5]">
+      <div className="min-h-screen bg-[#F7F7F5] dark:bg-[#0d1117]">
         <div className="flex min-h-screen w-full">
           {/* Sidebar — desktop only */}
           <HealthSidebar />

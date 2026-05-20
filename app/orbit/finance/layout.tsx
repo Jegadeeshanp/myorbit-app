@@ -7,7 +7,7 @@ import ToastContainer from '@/components/Toast';
 export default function FinanceLayout({ children }: { children: ReactNode }) {
   return (
     <FinanceProvider>
-      <div className="min-h-screen bg-[#F7F7F5] text-gray-900">
+      <div className="min-h-screen bg-[#F7F7F5] dark:bg-[#0d1117] text-gray-900 dark:text-gray-100">
         <div className="flex min-h-screen w-full">
           {/* Sidebar — desktop only */}
           <FinanceSidebar />

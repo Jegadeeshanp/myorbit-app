@@ -1,11 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Animated,
+  ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Animated, Image, Alert,
 } from 'react-native';
-import { Sparkles, X, ArrowUp, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react-native';
-import { sendAICommand } from '@myorbit/api';
-import type { AIMessage, DailySummary } from '@myorbit/api';
+import { Sparkles, X, ArrowUp, TrendingUp, CheckCircle, AlertCircle, Paperclip, Camera, TrendingDown } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { sendAICommand, sendImageScan } from '@myorbit/api';
+import type { AIMessage, DailySummary, ImageScanResult, VisionUpdatedAsset, VisionUnmatched, VisionParsed } from '@myorbit/api';
 import { useTheme } from '@/lib/themeStore';
 
 // ── Example commands ──────────────────────────────────────────────────────────
@@ -130,6 +131,79 @@ function SummaryCard({ summary, t }: { summary: DailySummary; t: ReturnType<type
   );
 }
 
+// ── Image vision result card ──────────────────────────────────────────────────
+
+const IMAGE_TYPE_LABELS: Record<string, string> = {
+  bank_statement:       '🏦 Bank Statement',
+  investment_portfolio: '📈 Investment Portfolio',
+  property_valuation:   '🏠 Property Valuation',
+  net_worth:            '💼 Net Worth',
+  expense_receipt:      '🧾 Receipt',
+  unknown:              '📄 Document',
+};
+
+function ImageVisionCard({ data, t }: { data: NonNullable<ImageScanResult['data']>; t: ReturnType<typeof useTheme> }) {
+  const sym = data.parsed?.currency === 'INR' ? '₹' : '$';
+  const updated   = data.updated   ?? [];
+  const unmatched = data.unmatched ?? [];
+  const imageType = data.parsed?.imageType ?? 'unknown';
+
+  return (
+    <View style={[visionStyles.card, { backgroundColor: t.cardBg, borderColor: t.border }]}>
+      {/* Header */}
+      <View style={[visionStyles.header, { backgroundColor: '#D1FAE5', borderBottomColor: '#A7F3D0' }]}>
+        <Text style={visionStyles.headerText}>{IMAGE_TYPE_LABELS[imageType] ?? '📄 Document'}</Text>
+        {data.parsed?.institution ? (
+          <Text style={[visionStyles.institutionText, { color: '#059669' }]}> · {data.parsed.institution}</Text>
+        ) : null}
+        {data.parsed?.date ? (
+          <Text style={[visionStyles.dateText, { color: '#6B7280' }]}>{data.parsed.date}</Text>
+        ) : null}
+      </View>
+
+      {/* Updated assets */}
+      {updated.length > 0 && (
+        <View style={visionStyles.section}>
+          <Text style={[visionStyles.sectionLabel, { color: '#059669' }]}>
+            ✓ Updated {updated.length} asset{updated.length > 1 ? 's' : ''}
+          </Text>
+          {updated.map((u: VisionUpdatedAsset) => {
+            const diff = u.newValue - u.oldValue;
+            return (
+              <View key={u.id} style={visionStyles.assetRow}>
+                <Text style={[visionStyles.assetName, { color: t.text }]} numberOfLines={1}>{u.name}</Text>
+                <View style={visionStyles.assetValues}>
+                  <Text style={[visionStyles.oldValue, { color: t.subText }]}>{sym}{u.oldValue.toLocaleString()}</Text>
+                  <Text style={[visionStyles.arrow, { color: t.subText }]}> → </Text>
+                  <Text style={[visionStyles.newValue, { color: t.text }]}>{sym}{u.newValue.toLocaleString()}</Text>
+                  <Text style={[visionStyles.diff, { color: diff >= 0 ? '#10B981' : '#EF4444' }]}>
+                    {' '}({diff >= 0 ? '+' : ''}{sym}{Math.abs(diff).toLocaleString()})
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Unmatched */}
+      {unmatched.length > 0 && (
+        <View style={[visionStyles.section, { backgroundColor: '#FFFBEB', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#FDE68A' }]}>
+          <Text style={[visionStyles.sectionLabel, { color: '#D97706' }]}>
+            ⚠ {unmatched.length} unmatched — add these assets first
+          </Text>
+          {unmatched.map((u: VisionUnmatched, i: number) => (
+            <View key={i} style={visionStyles.unmatchedRow}>
+              <Text style={[visionStyles.unmatchedName, { color: '#92400E' }]} numberOfLines={1}>{u.name}</Text>
+              <Text style={[visionStyles.unmatchedValue, { color: '#92400E' }]}>{sym}{u.value.toLocaleString()}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ── Chat message bubble ───────────────────────────────────────────────────────
 
 function ChatBubble({ role, content, t }: { role: 'user' | 'assistant'; content: string; t: ReturnType<typeof useTheme> }) {
@@ -163,13 +237,29 @@ interface Props {
 
 // ── Main modal ────────────────────────────────────────────────────────────────
 
+interface ImageAttachment {
+  base64:     string;
+  mimeType:   string;
+  localUri:   string;
+}
+
+type ChatMessage = {
+  role:       'user' | 'assistant';
+  content:    string;
+  summary?:   DailySummary;
+  visionData?: NonNullable<ImageScanResult['data']>;
+  currency?:  string;
+  thumbUri?:  string;
+};
+
 export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
   const t = useTheme();
-  const [input,      setInput]      = useState('');
-  const [loading,    setLoading]    = useState(false);
-  const [activeTab,  setActiveTab]  = useState(0);
-  const [hintIdx,    setHintIdx]    = useState(0);
-  const [messages,   setMessages]   = useState<{ role: 'user' | 'assistant'; content: string; summary?: DailySummary }[]>([]);
+  const [input,           setInput]           = useState('');
+  const [loading,         setLoading]         = useState(false);
+  const [activeTab,       setActiveTab]       = useState(0);
+  const [hintIdx,         setHintIdx]         = useState(0);
+  const [messages,        setMessages]        = useState<ChatMessage[]>([]);
+  const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null);
   const inputRef  = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
   const hintOpacity = useRef(new Animated.Value(1)).current;
@@ -192,7 +282,7 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
     if (messages.length) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [messages]);
 
-  const reset = useCallback(() => { setInput(''); setLoading(false); }, []);
+  const reset = useCallback(() => { setInput(''); setLoading(false); setImageAttachment(null); }, []);
 
   const handleClose = useCallback(() => {
     reset();
@@ -200,27 +290,90 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
     onClose();
   }, [reset, onClose]);
 
+  // ── Image picker ───────────────────────────────────────────────────────────
+  const pickImage = useCallback(async (source: 'camera' | 'library') => {
+    try {
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Camera access is needed to scan documents.');
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Photo library access is needed to select images.');
+          return;
+        }
+      }
+
+      const result = await (source === 'camera'
+        ? ImagePicker.launchCameraAsync({ base64: true, quality: 0.8, mediaTypes: ImagePicker.MediaTypeOptions.Images })
+        : ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.8, mediaTypes: ImagePicker.MediaTypeOptions.Images })
+      );
+
+      if (!result.canceled && result.assets[0]?.base64) {
+        const asset = result.assets[0];
+        const ext   = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+        const mime  = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        setImageAttachment({ base64: asset.base64!, mimeType: mime, localUri: asset.uri });
+      }
+    } catch {
+      Alert.alert('Error', 'Could not open image picker.');
+    }
+  }, []);
+
+  const showImagePicker = useCallback(() => {
+    Alert.alert(
+      'Attach Document',
+      'Scan a bank statement, portfolio screenshot, or any financial document',
+      [
+        { text: 'Take Photo', onPress: () => pickImage('camera') },
+        { text: 'Choose from Library', onPress: () => pickImage('library') },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  }, [pickImage]);
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const submit = useCallback(async () => {
     const cmd = input.trim();
-    if (!cmd || loading) return;
+    if ((!cmd && !imageAttachment) || loading) return;
 
-    const userMsg = { role: 'user' as const, content: cmd };
-    setMessages(prev => [...prev, userMsg]);
+    const thumbUri = imageAttachment?.localUri;
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: cmd || '📎 Attached a financial document for scanning',
+      thumbUri,
+    }]);
     setInput('');
+    const img = imageAttachment;
+    setImageAttachment(null);
     setLoading(true);
 
-    // Build history for context (exclude summary data, just role+content)
-    const history: AIMessage[] = messages.map(m => ({ role: m.role, content: m.content }));
-
     try {
+      // ── Vision path ────────────────────────────────────────────────────────
+      if (img) {
+        const data = await sendImageScan(img.base64, img.mimeType, cmd || undefined);
+        const visionData = data.data;
+        const currency   = visionData?.parsed?.currency;
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: data.message, visionData, currency,
+        }]);
+        if (data.success) {
+          onSuccess?.(data.message, 'UPDATE_ASSET');
+        }
+        return;
+      }
+
+      // ── Text path ──────────────────────────────────────────────────────────
+      const history: AIMessage[] = messages.map(m => ({ role: m.role, content: m.content }));
       const data = await sendAICommand(cmd, history);
       const summary = data.data?.summary as DailySummary | undefined;
-      const aiMsg = { role: 'assistant' as const, content: data.message, summary };
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages(prev => [...prev, { role: 'assistant' as const, content: data.message, summary }]);
 
       if (data.success) {
         onSuccess?.(data.message, data.action);
-        // Auto-close after 2.5 s if no summary (summaries stay open for reading)
         if (data.action !== 'DAILY_SUMMARY' && data.action !== 'QUERY') {
           setTimeout(() => { reset(); setMessages([]); onClose(); }, 2500);
         }
@@ -232,7 +385,7 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, onClose, onSuccess, reset]);
+  }, [input, imageAttachment, loading, messages, onClose, onSuccess, reset]);
 
   const fillInput = (text: string) => {
     setInput(text);
@@ -247,16 +400,16 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
         <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
-        <View style={[styles.sheet, { backgroundColor: t.modalBg, borderColor: t.border }]}>
+        <View style={[styles.sheet, { backgroundColor: t.cardBg, borderColor: t.border }]}>
 
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: t.border }]}>
+          <View style={[styles.header, { borderBottomColor: t.border, backgroundColor: t.cardBg }]}>
             <View style={styles.headerLeft}>
-              <View style={styles.sparkleWrap}>
-                <Sparkles size={13} color="#10B981" />
+              <View style={[styles.sparkleWrap, { backgroundColor: '#D1FAE5' }]}>
+                <Sparkles size={13} color="#059669" />
               </View>
               <View>
-                <Text style={[styles.headerTitle, { color: t.text }]}>AI Command</Text>
+                <Text style={[styles.headerTitle, { color: t.text, fontSize: 14, fontWeight: '700' }]}>AI Command</Text>
                 <Text style={[styles.headerSub, { color: t.subText }]}>
                   {showHistory ? 'Conversation active · typos ok!' : 'Just tell me what to do'}
                 </Text>
@@ -281,7 +434,11 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
               {messages.map((msg, idx) => (
                 <View key={idx}>
                   <ChatBubble role={msg.role} content={msg.content} t={t} />
+                  {msg.thumbUri && (
+                    <Image source={{ uri: msg.thumbUri }} style={styles.thumbPreview} resizeMode="cover" />
+                  )}
                   {msg.summary && <SummaryCard summary={msg.summary} t={t} />}
+                  {msg.visionData && <ImageVisionCard data={msg.visionData} t={t} />}
                 </View>
               ))}
               {loading && (
@@ -295,12 +452,34 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
             </ScrollView>
           )}
 
+          {/* Image attachment preview */}
+          {imageAttachment && (
+            <View style={[styles.attachPreviewRow, { borderBottomColor: t.border }]}>
+              <Image source={{ uri: imageAttachment.localUri }} style={styles.attachThumb} resizeMode="cover" />
+              <Text style={[styles.attachLabel, { color: '#059669' }]} numberOfLines={2}>
+                📎 Document attached — I'll scan and update your assets
+              </Text>
+              <TouchableOpacity onPress={() => setImageAttachment(null)} style={styles.attachRemove}>
+                <X size={12} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Input */}
           <View style={[styles.inputWrap, { borderBottomColor: t.border }]}>
+            {/* Attach button */}
+            <TouchableOpacity
+              onPress={showImagePicker}
+              disabled={loading}
+              style={[styles.attachBtn, imageAttachment && { backgroundColor: '#D1FAE5' }]}
+            >
+              <Paperclip size={16} color={imageAttachment ? '#059669' : t.subText} />
+            </TouchableOpacity>
+
             <View style={[styles.inputBox, { backgroundColor: t.inputBg ?? t.surface, borderColor: t.border }]}>
               {!input && !loading && (
                 <Animated.Text style={[styles.placeholder, { color: t.subText, opacity: hintOpacity }]} numberOfLines={1}>
-                  {ALL_EXAMPLES[hintIdx]}
+                  {imageAttachment ? 'Optional context…' : ALL_EXAMPLES[hintIdx]}
                 </Animated.Text>
               )}
               <TextInput
@@ -319,8 +498,8 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
             </View>
             <TouchableOpacity
               onPress={() => void submit()}
-              disabled={!input.trim() || loading}
-              style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
+              disabled={(!input.trim() && !imageAttachment) || loading}
+              style={[styles.sendBtn, ((!input.trim() && !imageAttachment) || loading) && styles.sendBtnDisabled]}
             >
               {loading
                 ? <ActivityIndicator size="small" color="#fff" />
@@ -370,32 +549,38 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  overlay:          { flex: 1, justifyContent: 'flex-end' },
-  backdrop:         { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet:            { borderTopLeftRadius: 22, borderTopRightRadius: 22, borderWidth: 1, borderBottomWidth: 0, paddingBottom: 34, maxHeight: '92%' },
-  header:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerLeft:       { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  sparkleWrap:      { width: 28, height: 28, borderRadius: 9, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' },
-  headerTitle:      { fontSize: 13, fontWeight: '700' },
-  headerSub:        { fontSize: 10, marginTop: 1 },
-  clearBtn:         { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, marginRight: 6 },
-  clearBtnText:     { fontSize: 11 },
-  closeBtn:         { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  chatArea:         { maxHeight: 300, borderBottomWidth: StyleSheet.hairlineWidth },
-  chatContent:      { padding: 12, gap: 8 },
-  inputWrap:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  inputBox:         { flex: 1, borderRadius: 13, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 9, minHeight: 40, justifyContent: 'center' },
-  placeholder:      { position: 'absolute', left: 12, right: 12, fontSize: 13 },
-  input:            { fontSize: 13, paddingVertical: 0 },
-  sendBtn:          { width: 38, height: 38, borderRadius: 12, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
-  sendBtnDisabled:  { opacity: 0.35 },
-  examplesWrap:     { paddingTop: 10 },
-  tabsContent:      { gap: 6, paddingHorizontal: 12, paddingBottom: 8 },
-  tab:              { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  tabText:          { fontSize: 11 },
-  chipsContent:     { gap: 7, paddingHorizontal: 12, paddingBottom: 4 },
-  chip:             { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, maxWidth: 240 },
-  chipText:         { fontSize: 11 },
+  overlay:           { flex: 1, justifyContent: 'flex-end' },
+  backdrop:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet:             { borderTopLeftRadius: 22, borderTopRightRadius: 22, borderWidth: 1, borderBottomWidth: 0, paddingBottom: 34, maxHeight: '92%' },
+  header:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  headerLeft:        { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  sparkleWrap:       { width: 28, height: 28, borderRadius: 9, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' },
+  headerTitle:       { fontSize: 13, fontWeight: '700' },
+  headerSub:         { fontSize: 10, marginTop: 1 },
+  clearBtn:          { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, marginRight: 6 },
+  clearBtnText:      { fontSize: 11 },
+  closeBtn:          { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  chatArea:          { maxHeight: 300, borderBottomWidth: StyleSheet.hairlineWidth },
+  chatContent:       { padding: 12, gap: 8 },
+  thumbPreview:      { width: 120, height: 80, borderRadius: 10, marginTop: 6, marginLeft: 26 },
+  attachPreviewRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  attachThumb:       { width: 52, height: 40, borderRadius: 8 },
+  attachLabel:       { flex: 1, fontSize: 11, fontWeight: '500' },
+  attachRemove:      { width: 22, height: 22, borderRadius: 11, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  attachBtn:         { width: 34, height: 34, borderRadius: 10, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  inputWrap:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  inputBox:          { flex: 1, borderRadius: 13, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 9, minHeight: 40, justifyContent: 'center' },
+  placeholder:       { position: 'absolute', left: 12, right: 12, fontSize: 13 },
+  input:             { fontSize: 13, paddingVertical: 0 },
+  sendBtn:           { width: 38, height: 38, borderRadius: 12, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
+  sendBtnDisabled:   { opacity: 0.35 },
+  examplesWrap:      { paddingTop: 10 },
+  tabsContent:       { gap: 6, paddingHorizontal: 12, paddingBottom: 8 },
+  tab:               { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  tabText:           { fontSize: 11 },
+  chipsContent:      { gap: 7, paddingHorizontal: 12, paddingBottom: 4 },
+  chip:              { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, maxWidth: 240 },
+  chipText:          { fontSize: 11 },
 });
 
 const chatStyles = StyleSheet.create({
@@ -405,6 +590,26 @@ const chatStyles = StyleSheet.create({
   aiAvatar:      { width: 20, height: 20, borderRadius: 10, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   bubbleContent: { maxWidth: '82%', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, minHeight: 34, justifyContent: 'center' },
   bubbleText:    { fontSize: 13, lineHeight: 19 },
+});
+
+const visionStyles = StyleSheet.create({
+  card:           { borderRadius: 14, borderWidth: 1, marginTop: 6, marginLeft: 26, overflow: 'hidden' },
+  header:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  headerText:     { fontSize: 12, fontWeight: '700', color: '#065F46' },
+  institutionText:{ fontSize: 11, fontWeight: '500' },
+  dateText:       { fontSize: 10, marginLeft: 'auto' as any },
+  section:        { paddingHorizontal: 12, paddingVertical: 10 },
+  sectionLabel:   { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' as any, letterSpacing: 0.5, marginBottom: 8 },
+  assetRow:       { marginBottom: 6 },
+  assetName:      { fontSize: 12, fontWeight: '600', marginBottom: 2 },
+  assetValues:    { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' as any },
+  oldValue:       { fontSize: 11, textDecorationLine: 'line-through' as any },
+  arrow:          { fontSize: 11 },
+  newValue:       { fontSize: 12, fontWeight: '700' },
+  diff:           { fontSize: 11, fontWeight: '600' },
+  unmatchedRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
+  unmatchedName:  { fontSize: 11, flex: 1, marginRight: 8 },
+  unmatchedValue: { fontSize: 11, fontWeight: '600' },
 });
 
 const summaryStyles = StyleSheet.create({

@@ -29,7 +29,9 @@
       "bundleIdentifier": "com.jegadeeshan.myorbit",
       "icon": "./assets/icon.png",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "MyOrbit uses the camera to scan bank statements and financial documents to update your assets.",
+        "NSPhotoLibraryUsageDescription": "MyOrbit reads photos to scan financial documents and update your assets."
       }
     },
     "android": {
@@ -49,7 +51,58 @@
         }
       ],
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "./plugins/withHealthKit",
+      "./plugins/withHealthConnect",
+      "./plugins/withAndroidWidget",
+      "./plugins/withIOSWidget",
+      "./plugins/withWatchApp",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "SmallWidget",
+              "label": "MyOrbit Small",
+              "description": "Habit progress and overdue tasks at a glance",
+              "minWidth": "160dp",
+              "minHeight": "160dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "MediumWidget",
+              "label": "MyOrbit Medium",
+              "description": "Habits and tasks side by side",
+              "minWidth": "320dp",
+              "minHeight": "160dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "LargeWidget",
+              "label": "MyOrbit Large",
+              "description": "Full daily orbit summary",
+              "minWidth": "320dp",
+              "minHeight": "320dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 4,
+              "updatePeriodMillis": 1800000
+            }
+          ],
+          "taskHandler": "./widgets/MyOrbitWidget"
+        }
+      ],
+      [
+        "expo-background-fetch",
+        {}
+      ],
+      [
+        "expo-task-manager",
+        {}
+      ]
     ],
     "extra": {
       "eas": {

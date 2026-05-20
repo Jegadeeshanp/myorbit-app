@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { router } from 'expo-router';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Modal, KeyboardAvoidingView, Platform, Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,9 +14,11 @@ import {
   LayoutDashboard, Dumbbell, UtensilsCrossed, RefreshCw,
   MoreHorizontal, X, Settings, Heart,
   Footprints, Moon, Droplets, Scale, Smile, Zap, HeartPulse,
+  CheckCircle, AlertCircle,
 } from 'lucide-react-native';
 import AppHeader from '@/components/shared/AppHeader';
 import { useTheme } from '@/lib/themeStore';
+import healthSync from '@/lib/healthSync';
 
 function useC() {
   const T = useTheme();
@@ -253,28 +256,123 @@ function NutritionView() {
 
 function SyncView() {
   const C = useC();
-  const sources = [
-    { label: 'Apple Health',  emoji: '🍎', status: 'Not connected' },
-    { label: 'Google Fit',    emoji: '🏃', status: 'Not connected' },
-    { label: 'Fitbit',        emoji: '⌚', status: 'Not connected' },
-    { label: 'Garmin',        emoji: '🧭', status: 'Not connected' },
-  ];
+  const qc = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<'success' | 'error' | null>(null);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+
+  const isAvailable = healthSync.isAvailable;
+  const platformName = healthSync.platformName;
+
+  const platformEmoji = Platform.OS === 'ios' ? '🍎' : '🤖';
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const granted = await healthSync.requestPermissions();
+      if (!granted) {
+        Alert.alert(
+          'Permission Required',
+          `Please grant ${platformName} access in your device settings to sync health data.`,
+          [{ text: 'OK' }],
+        );
+        setSyncing(false);
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const data = await healthSync.syncDate(today);
+      if (!data) throw new Error('No data returned');
+
+      // Upsert into the app's health entry for today
+      await upsertHealthEntry({
+        date: today,
+        steps:       data.steps,
+        sleepHours:  data.sleepHours,
+        heartRate:   data.heartRate,
+        waterMl:     data.waterMl,
+        weightKg:    data.weightKg,
+      } as any);
+
+      qc.invalidateQueries({ queryKey: ['health'] });
+      setLastSync(new Date().toLocaleTimeString());
+      setSyncResult('success');
+    } catch {
+      setSyncResult('error');
+    } finally {
+      setSyncing(false);
+    }
+  }, [qc]);
+
+  const sources = Platform.OS === 'ios'
+    ? [
+        { label: 'Apple Health',  emoji: '🍎', note: 'Steps, sleep, heart rate, workouts, water, weight' },
+        { label: 'Apple Watch',   emoji: '⌚', note: 'Syncs automatically via Apple Health' },
+        { label: 'Garmin',        emoji: '🧭', note: 'Syncs via Apple Health' },
+        { label: 'Amazfit',       emoji: '⌚', note: 'Syncs via Apple Health' },
+      ]
+    : [
+        { label: 'Health Connect',   emoji: '🤖', note: 'Steps, sleep, heart rate, workouts, water, weight' },
+        { label: 'Samsung Health',   emoji: '📱', note: 'Syncs via Health Connect' },
+        { label: 'Google Fit',       emoji: '🏃', note: 'Syncs via Health Connect' },
+        { label: 'Wear OS / Galaxy', emoji: '⌚', note: 'Syncs via Health Connect' },
+        { label: 'Amazfit / Garmin', emoji: '🧭', note: 'Syncs natively into Health Connect' },
+      ];
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
-      <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT2, marginBottom: 4 }}>Health Data Sources</Text>
-      <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 16 }}>Connect your devices to sync health data automatically</Text>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+      <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT2, marginBottom: 4 }}>Health Data Sync</Text>
+      <Text style={{ fontSize: 13, color: C.SUB, marginBottom: 20 }}>
+        {isAvailable
+          ? `Sync with ${platformName} to import today's health data into your dashboard.`
+          : 'Health platform not available on this device.'}
+      </Text>
+
+      {/* Sync button */}
+      {isAvailable && (
+        <TouchableOpacity
+          onPress={handleSync}
+          disabled={syncing}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+            paddingVertical: 14, borderRadius: 14, marginBottom: 16,
+            backgroundColor: syncResult === 'success' ? '#10B98122' : syncResult === 'error' ? '#EF444422' : '#EF4444',
+          }}
+        >
+          {syncing
+            ? <ActivityIndicator color="white" size="small" />
+            : syncResult === 'success'
+              ? <CheckCircle size={18} color="#10B981" />
+              : syncResult === 'error'
+                ? <AlertCircle size={18} color="#EF4444" />
+                : <RefreshCw size={18} color="white" />
+          }
+          <Text style={{
+            fontSize: 15, fontWeight: '600',
+            color: syncResult === 'success' ? '#10B981' : syncResult === 'error' ? '#EF4444' : 'white',
+          }}>
+            {syncing ? 'Syncing…' : syncResult === 'success' ? `Synced at ${lastSync}` : syncResult === 'error' ? 'Sync failed — tap to retry' : `Sync from ${platformName}`}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Platform/sources list */}
+      <Text style={{ fontSize: 14, fontWeight: '600', color: C.TXT, marginBottom: 10 }}>Connected Sources</Text>
       {sources.map((s) => (
-        <View key={s.label} style={{ backgroundColor: C.CARD, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
-          <Text style={{ fontSize: 28 }}>{s.emoji}</Text>
+        <View key={s.label} style={{ backgroundColor: C.CARD, borderRadius: 14, padding: 14, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+          <Text style={{ fontSize: 26 }}>{s.emoji}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: C.TXT }}>{s.label}</Text>
-            <Text style={{ fontSize: 13, color: C.SUB, marginTop: 2 }}>{s.status}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: C.TXT }}>{s.label}</Text>
+            <Text style={{ fontSize: 12, color: C.SUB, marginTop: 2 }}>{s.note}</Text>
           </View>
-          <TouchableOpacity style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: C.BORD }}>
-            <Text style={{ fontSize: 13, fontWeight: '500', color: C.SUB }}>Connect</Text>
-          </TouchableOpacity>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isAvailable ? '#10B981' : '#D1D5DB' }} />
         </View>
       ))}
+
+      <Text style={{ fontSize: 11, color: C.SUB, marginTop: 8, textAlign: 'center' }}>
+        Data syncs into today's health dashboard entry. Manual values are preserved.
+      </Text>
     </ScrollView>
   );
 }

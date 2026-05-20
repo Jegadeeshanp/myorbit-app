@@ -5,7 +5,7 @@ import ToastContainer from '@/components/Toast';
 
 export default function GoalsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-[#F7F7F5]">
+    <div className="flex min-h-screen bg-[#F7F7F5] dark:bg-[#0d1117]">
       <GoalsSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <GoalsTopBar />

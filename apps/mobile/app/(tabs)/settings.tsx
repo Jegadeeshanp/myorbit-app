@@ -7,10 +7,12 @@ import { useAuthStore } from '@/lib/authStore';
 import { useThemeStore, getTheme } from '@/lib/themeStore';
 import { useModuleStore, type ModuleKey } from '@/lib/moduleStore';
 import AppHeader from '@/components/shared/AppHeader';
+import healthSync from '@/lib/healthSync';
+import watchConnectivity from '@/lib/watchConnectivity';
 import {
   User, Bell, Shield, LogOut, ChevronRight, Info, Database,
   Moon, Sun, Globe, CreditCard, Heart, Target, Flame, CheckSquare,
-  ChartBar, DollarSign,
+  ChartBar, DollarSign, Watch, LayoutGrid, Activity,
 } from 'lucide-react-native';
 
 // ── Section definitions ────────────────────────────────────────────────────────
@@ -280,6 +282,85 @@ export default function SettingsScreen() {
             </View>
           </View>
         ))}
+
+        {/* Widget Settings */}
+        <Text style={{ fontSize: 11, fontWeight: '600', color: T.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 2 }}>
+          Home Screen Widgets
+        </Text>
+        <View style={{ backgroundColor: T.cardBg, borderRadius: 16, borderWidth: 1, borderColor: T.border, overflow: 'hidden', marginBottom: 20 }}>
+          {[
+            { label: 'Small Widget (2×2)',  subtitle: 'Habit progress + overdue count', emoji: '🔲' },
+            { label: 'Medium Widget (4×2)', subtitle: 'Habits + tasks side by side',    emoji: '▬' },
+            { label: 'Large Widget (4×4)',  subtitle: 'Full daily orbit summary',        emoji: '⬛' },
+          ].map((w, idx, arr) => (
+            <View
+              key={w.label}
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: idx < arr.length - 1 ? 1 : 0, borderBottomColor: T.border }}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#10B98118', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <LayoutGrid size={18} color="#10B981" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: T.text }}>{w.label}</Text>
+                <Text style={{ fontSize: 12, color: T.subText, marginTop: 1 }}>{w.subtitle}</Text>
+              </View>
+              <Text style={{ fontSize: 11, color: T.subText }}>Long-press home screen to add</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Watch Settings */}
+        <Text style={{ fontSize: 11, fontWeight: '600', color: T.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 2 }}>
+          Smartwatch
+        </Text>
+        <View style={{ backgroundColor: T.cardBg, borderRadius: 16, borderWidth: 1, borderColor: T.border, overflow: 'hidden', marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: T.border }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#3B82F618', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+              <Watch size={18} color="#3B82F6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: T.text }}>{watchConnectivity.isSupported ? 'Watch Connected' : 'Watch Support'}</Text>
+              <Text style={{ fontSize: 12, color: T.subText, marginTop: 1 }}>
+                Apple Watch, Samsung Galaxy Watch, Wear OS
+              </Text>
+            </View>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: watchConnectivity.isSupported ? '#10B981' : '#D1D5DB' }} />
+          </View>
+          <View style={{ paddingHorizontal: 14, paddingVertical: 13 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#8B5CF618', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Activity size={18} color="#8B5CF6" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: T.text }}>Task Notifications</Text>
+                <Text style={{ fontSize: 12, color: T.subText, marginTop: 1 }}>Done / Postpone / Close from your wrist</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Health Sync */}
+        <Text style={{ fontSize: 11, fontWeight: '600', color: T.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingHorizontal: 2 }}>
+          Health Sync
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/health')}
+          style={{ backgroundColor: T.cardBg, borderRadius: 16, borderWidth: 1, borderColor: T.border, overflow: 'hidden', marginBottom: 20 }}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#EF444418', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+              <Heart size={18} color="#EF4444" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: T.text }}>{healthSync.platformName}</Text>
+              <Text style={{ fontSize: 12, color: T.subText, marginTop: 1 }}>
+                {healthSync.isAvailable ? 'Available — sync in Health → Sync tab' : 'Not available on this device'}
+              </Text>
+            </View>
+            <ChevronRight size={16} color={T.subText} />
+          </View>
+        </TouchableOpacity>
 
         {/* Sign out */}
         <TouchableOpacity

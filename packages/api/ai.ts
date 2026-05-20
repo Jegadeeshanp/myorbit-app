@@ -98,3 +98,55 @@ export async function sendAICommand(
     body:   JSON.stringify({ command, history }),
   });
 }
+
+// ── Vision / image scan ───────────────────────────────────────────────────────
+
+export interface VisionParsedEntry {
+  name:         string;
+  value:        number;
+  currency?:    string;
+  accountType?: string;
+}
+
+export interface VisionParsed {
+  imageType:    string;
+  institution?: string;
+  date?:        string;
+  currency:     string;
+  entries:      VisionParsedEntry[];
+}
+
+export interface VisionUpdatedAsset {
+  id:       string;
+  name:     string;
+  oldValue: number;
+  newValue: number;
+}
+
+export interface VisionUnmatched {
+  name:   string;
+  value:  number;
+  reason: string;
+}
+
+export interface ImageScanResult {
+  success:  boolean;
+  action:   string;
+  message:  string;
+  data?: {
+    parsed?:    VisionParsed;
+    updated?:   VisionUpdatedAsset[];
+    unmatched?: VisionUnmatched[];
+  };
+}
+
+export async function sendImageScan(
+  imageBase64: string,
+  mimeType:    string,
+  command?:    string,
+): Promise<ImageScanResult> {
+  return apiRequest<ImageScanResult>('/api/ai-command/vision', {
+    method: 'POST',
+    body:   JSON.stringify({ imageBase64, mimeType, command }),
+  });
+}
