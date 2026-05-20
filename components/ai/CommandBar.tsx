@@ -532,6 +532,7 @@ export default function CommandBar() {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64: img.base64, mimeType: img.mimeType, command: command || undefined }),
         });
+        if (!res.ok) throw new Error('Could not process the image — please try again.');
         const data = await res.json();
         const imageData = data.data as ImageScanData | undefined;
         const currency  = imageData?.parsed?.currency;
@@ -556,6 +557,7 @@ export default function CommandBar() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command, history }),
       });
+      if (!res.ok) throw new Error('Command failed — please try again.');
       const data = await res.json();
       const summary  = data.data?.summary  as DailySummary | undefined;
       const cardData = data.data?.cardData as AnyCardData  | undefined;

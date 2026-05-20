@@ -284,7 +284,7 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
       name: 'add_transaction',
       description: 'Add an expense or income. Can be recurring.',
       parameters: { type: 'object', properties: {
-        amount:         { type: 'number', description: 'Positive amount in INR' },
+        amount:         { type: 'string', description: 'Positive amount in INR as a number string, e.g. "500" or "1234.50"' },
         description:    { type: 'string', description: 'Short label e.g. "Netflix", "Petrol"' },
         category:       { type: 'string', description: `One of: ${CATEGORIES.join(', ')}` },
         type:           { type: 'string', enum: ['expense','income'] },
@@ -301,7 +301,7 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
       name: 'transfer_money',
       description: 'Transfer money between accounts.',
       parameters: { type: 'object', properties: {
-        amount:        { type: 'number' },
+        amount:        { type: 'string', description: 'Amount as a number string, e.g. "2000"' },
         fromAccountId: { type: 'string', description: 'Exact ID from ACCOUNTS LIST' },
         toAccountId:   { type: 'string', description: 'Exact ID from ACCOUNTS LIST' },
         description:   { type: 'string' },
@@ -1109,6 +1109,6 @@ Goals:  ${goals.map(g=>g.title).join(' | ') || 'none'}
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     console.error('[ai-command]', e);
-    return NextResponse.json({ error: 'Command failed', message: e.message }, { status: 500 });
+    return NextResponse.json({ error: 'Command failed', message: 'Something went wrong — please try rephrasing your command.' }, { status: 500 });
   }
 }

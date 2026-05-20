@@ -192,6 +192,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Receipts are expenses, not asset updates — redirect the user to the text command
+    if (parsed.imageType === 'expense_receipt') {
+      const entries = parsed.entries;
+      const sym     = parsed.currency === 'INR' ? '₹' : '$';
+      const lines   = entries.slice(0, 3).map(e => `${e.name}: ${sym}${e.value.toLocaleString()}`);
+      const hint    = entries.length > 0
+        ? `Detected: ${lines.join(' · ')}.\n\nTo log this expense, type it in the AI command box — e.g. "${sym}${entries[0]?.value ?? ''} ${entries[0]?.name ?? 'expense'}".`
+        : 'This looks like a receipt. To log the expense, type it in the AI command box.';
+      return NextResponse.json({
+        success: false,
+        action:  'VISION_RECEIPT',
+        message: hint,
+        data:    { parsed },
+      });
+    }
+
     // ── 2. Load user's assets ─────────────────────────────────────────────────
 
     const assetRows = await prisma.asset.findMany({
