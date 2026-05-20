@@ -253,6 +253,25 @@ export default function Orbit() {
           </div>
         </div>
 
+        {/* ── Module shortcuts ── */}
+        <div className="mb-6 grid grid-cols-6 gap-2">
+          {MODULES.map(m => {
+            const Icon = m.icon;
+            return (
+              <Link
+                key={m.id}
+                href={m.href}
+                className="flex flex-col items-center gap-2 rounded-2xl bg-white dark:bg-[#111827] px-2 py-3.5 shadow-[0_1px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.22)] transition hover:scale-[1.04] hover:shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: m.color + '18', color: m.color }}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400">{m.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
         {/* ── Monday review banner ── */}
         {new Date().getDay() === 1 && (
           <Link href="/orbit/insights/weekly"
@@ -505,28 +524,6 @@ export default function Orbit() {
                     )}
                   </div>
                 </Link>
-              </div>
-            </div>
-
-            {/* Module grid */}
-            <div>
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">Modules</p>
-              <div className="grid grid-cols-3 gap-2">
-                {MODULES.map(m => {
-                  const Icon = m.icon;
-                  return (
-                    <Link
-                      key={m.id}
-                      href={m.href}
-                      className="flex flex-col items-center gap-2 rounded-2xl bg-white dark:bg-[#111827] px-2 py-4 shadow-[0_1px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.22)] transition hover:scale-[1.04] hover:shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
-                    >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: m.color + '18', color: m.color }}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400">{m.label}</span>
-                    </Link>
-                  );
-                })}
               </div>
             </div>
 
