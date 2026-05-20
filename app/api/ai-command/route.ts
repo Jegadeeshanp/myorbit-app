@@ -910,15 +910,15 @@ async function executeToolCall(
     };
 
     await Promise.all(nutrition.items.map(item =>
-      prisma.foodLog.create({ data: {
+      prisma.foodEntry.create({ data: {
         userId, date: today,
-        foodName:  `${item.name} (${item.quantity})`,
+        name:      `${item.name} (${item.quantity})`,
         mealType:  'snack',
         calories:  item.calories,
-        protein:   item.protein,
-        carbs:     item.carbs,
-        fats:      item.fat,
-        fiber:     item.fibre,
+        proteinG:  item.protein,
+        carbsG:    item.carbs,
+        fatG:      item.fat,
+        fiberG:    item.fibre,
       } }),
     ));
 

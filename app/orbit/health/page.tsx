@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Plus, Dumbbell, Target, CheckCircle2, Circle,
   Flame, Clock, ChevronRight, Pencil, Trash2, Activity, Utensils,
@@ -21,7 +21,15 @@ const WORKOUT_EMOJI: Record<string, string> = {
 const MOOD_LABELS = ['', '😞', '😕', '😐', '😊', '😄'];
 
 export default function HealthPage() {
-  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask, undoHealthTask, toggleHealthHabit } = useHealth();
+  const { loadState, entries, dashboard, addHealthEntry, addWorkout, deleteWorkout, completeHealthTask, undoHealthTask, toggleHealthHabit, reload } = useHealth();
+
+  // Reload on every mount (navigation) + when AI command logs health data
+  useEffect(() => {
+    reload();
+    const handler = () => reload();
+    window.addEventListener('health:refresh', handler);
+    return () => window.removeEventListener('health:refresh', handler);
+  }, []);
 
   const [logOpen, setLogOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
@@ -406,9 +414,9 @@ export default function HealthPage() {
         ) : (() => {
           const logs = d!.todayFoodLogs;
           const totalCal  = logs.reduce((s, f) => s + (f.calories  ?? 0), 0);
-          const totalProt = logs.reduce((s, f) => s + (f.protein   ?? 0), 0);
-          const totalCarb = logs.reduce((s, f) => s + (f.carbs     ?? 0), 0);
-          const totalFat  = logs.reduce((s, f) => s + (f.fats      ?? 0), 0);
+          const totalProt = logs.reduce((s, f) => s + (f.proteinG  ?? 0), 0);
+          const totalCarb = logs.reduce((s, f) => s + (f.carbsG    ?? 0), 0);
+          const totalFat  = logs.reduce((s, f) => s + (f.fatG      ?? 0), 0);
           return (
             <>
               {/* Macro summary bar */}
@@ -439,7 +447,7 @@ export default function HealthPage() {
                       <span className="text-sm flex-none">
                         {f.mealType === 'breakfast' ? '🌅' : f.mealType === 'lunch' ? '☀️' : f.mealType === 'dinner' ? '🌙' : '🍽️'}
                       </span>
-                      <p className="text-sm text-gray-800 truncate">{f.foodName}</p>
+                      <p className="text-sm text-gray-800 truncate">{f.name}</p>
                     </div>
                     {f.calories != null && (
                       <span className="text-xs font-medium text-gray-500 flex-none ml-2">{Math.round(f.calories)} kcal</span>

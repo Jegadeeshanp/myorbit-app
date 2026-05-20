@@ -568,6 +568,11 @@ export default function CommandBar() {
         role: 'assistant', content: data.message, summary, cardData, action, ok: data.success, entityId,
       }]);
 
+      const HEALTH_ACTIONS = new Set(['WATER', 'FOOD_LOG', 'ACTIVITY']);
+      if (data.success && HEALTH_ACTIONS.has(action ?? '')) {
+        window.dispatchEvent(new CustomEvent('health:refresh'));
+      }
+
       const CARD_ACTIONS = new Set(['DAILY_SUMMARY', 'QUERY', 'GOAL_PLAN', 'WATER', 'FOOD_LOG', 'ACTIVITY']);
       if (data.success) {
         if (action === 'DAILY_SUMMARY') {

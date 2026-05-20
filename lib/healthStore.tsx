@@ -86,13 +86,13 @@ export type HealthGoal = {
 
 export type FoodLog = {
   id:       string;
-  foodName: string;
+  name:     string;
   mealType: string;
   calories?: number | null;
-  protein?:  number | null;
-  carbs?:    number | null;
-  fats?:     number | null;
-  fiber?:    number | null;
+  proteinG?: number | null;
+  carbsG?:   number | null;
+  fatG?:     number | null;
+  fiberG?:   number | null;
 };
 
 export type WeeklyStats = {

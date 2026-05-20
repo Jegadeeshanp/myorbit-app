@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl, Modal, KeyboardAvoidingView, Platform, Pressable,
@@ -390,9 +390,16 @@ export default function HealthScreen() {
   const qc = useQueryClient();
 
   const { data: entry, isLoading: loadingEntry, refetch: refetchEntry } =
-    useQuery({ queryKey: ['health', date], queryFn: () => getHealthEntry(date) });
+    useQuery({ queryKey: ['health', date], queryFn: () => getHealthEntry(date), staleTime: 0 });
   const { data: workouts = [], isLoading: loadingWorkouts, refetch: refetchWorkouts } =
-    useQuery({ queryKey: ['workouts', date], queryFn: () => getWorkouts(date) });
+    useQuery({ queryKey: ['workouts', date], queryFn: () => getWorkouts(date), staleTime: 0 });
+
+  // Refetch health data every time this tab comes into focus (covers AI command logging)
+  useFocusEffect(useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['health'] });
+    qc.invalidateQueries({ queryKey: ['workouts'] });
+    qc.invalidateQueries({ queryKey: ['food'] });
+  }, [qc]));
 
   const upsertMut = useMutation({
     mutationFn: upsertHealthEntry,

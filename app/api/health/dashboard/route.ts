@@ -25,9 +25,9 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       prisma.healthEntry.findUnique({ where: { userId_date: { userId, date: today } } }),
       prisma.workout.findMany({ where: { userId, date: today }, orderBy: { createdAt: 'desc' } }),
-      prisma.foodLog.findMany({
+      prisma.foodEntry.findMany({
         where: { userId, date: today },
-        select: { id: true, foodName: true, mealType: true, calories: true, protein: true, carbs: true, fats: true, fiber: true },
+        select: { id: true, name: true, mealType: true, calories: true, proteinG: true, carbsG: true, fatG: true, fiberG: true },
         orderBy: { createdAt: 'asc' },
       }),
       prisma.habit.findMany({
