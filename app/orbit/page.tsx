@@ -256,7 +256,7 @@ export default function Orbit() {
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       if (data.removed) {
-        toast('Habit unmarked', 'info');
+        toast('Habit unmarked', 'success');
       } else {
         toast('Habit done! 🎉', 'success');
       }
