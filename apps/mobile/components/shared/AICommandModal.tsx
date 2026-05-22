@@ -378,10 +378,12 @@ export default function AICommandModal({ visible, onClose, onSuccess }: Props) {
           setTimeout(() => { reset(); setMessages([]); onClose(); }, 2500);
         }
       }
-    } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant', content: 'Command failed — check your connection and try again.',
-      }]);
+    } catch (err: any) {
+      const serverMsg = err?.message;
+      const content = serverMsg && serverMsg !== 'Command failed'
+        ? serverMsg
+        : 'Command failed — check your connection and try again.';
+      setMessages(prev => [...prev, { role: 'assistant', content }]);
     } finally {
       setLoading(false);
     }

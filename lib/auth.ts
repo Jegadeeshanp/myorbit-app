@@ -17,6 +17,7 @@ const loginSchema = z.object({
 // Used by API routes and server components (NOT middleware)
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: { signIn: '/signin' },
   callbacks: {

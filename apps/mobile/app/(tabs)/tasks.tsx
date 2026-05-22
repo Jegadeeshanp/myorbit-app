@@ -2303,6 +2303,17 @@ export default function TasksScreen() {
   const defaultDueDate = activeTab === 'today' ? today : activeTab === 'calendar' ? calendarDate : undefined;
   const defaultListId  = activeList?.id;
 
+  if (loadingToday && !todayData) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={{ color: MUTED, fontSize: 14 }}>Loading tasks…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
       {/* Header */}

@@ -74,6 +74,12 @@ export default function AIFab() {
     queryClient.invalidateQueries({ queryKey: ['finance'] });
     queryClient.invalidateQueries({ queryKey: ['habits'] });
     queryClient.invalidateQueries({ queryKey: ['goals'] });
+    queryClient.invalidateQueries({ queryKey: ['health'] });
+    queryClient.invalidateQueries({ queryKey: ['workouts'] });
+    queryClient.invalidateQueries({ queryKey: ['food'] });
+    queryClient.invalidateQueries({ queryKey: ['home-tasks'] });
+    queryClient.invalidateQueries({ queryKey: ['home-habits'] });
+    queryClient.invalidateQueries({ queryKey: ['home-goals'] });
   };
 
   return (

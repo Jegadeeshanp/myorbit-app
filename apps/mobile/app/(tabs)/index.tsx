@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import {
   Wallet, Target, Heart, Flame, CheckSquare, ChartBar,
@@ -75,32 +75,30 @@ export default function HomeScreen() {
   const T = useTheme();
   const enabledModules = useModuleStore((s) => s.enabledModules);
   const visibleModules = ALL_MODULES.filter((m) => enabledModules.includes(m.key as any));
-  const qc = useQueryClient();
-
-  // Refresh on tab focus
-  useFocusEffect(useCallback(() => {
-    qc.invalidateQueries({ queryKey: ['home-tasks'] });
-    qc.invalidateQueries({ queryKey: ['home-habits'] });
-    qc.invalidateQueries({ queryKey: ['home-goals'] });
-  }, [qc]));
-
-  const { data: todayData } = useQuery({
+  const { data: todayData, refetch: refetchTasks } = useQuery({
     queryKey: ['home-tasks'],
     queryFn: getTodayTasks,
     staleTime: 0,
   });
 
-  const { data: habits = [] } = useQuery({
+  const { data: habits = [], refetch: refetchHabits } = useQuery({
     queryKey: ['home-habits'],
     queryFn: getHabits,
     staleTime: 0,
   });
 
-  const { data: goals = [] } = useQuery({
+  const { data: goals = [], refetch: refetchGoals } = useQuery({
     queryKey: ['home-goals'],
     queryFn: getGoals,
     staleTime: 0,
   });
+
+  // Refetch fresh data every time this screen is focused
+  useFocusEffect(useCallback(() => {
+    void refetchTasks();
+    void refetchHabits();
+    void refetchGoals();
+  }, [refetchTasks, refetchHabits, refetchGoals]));
 
   const today = new Date().toISOString().split('T')[0];
   const overdueTasks  = todayData?.overdue ?? [];

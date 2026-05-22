@@ -1085,8 +1085,13 @@ Goals:  ${goals.map(g=>g.title).join(' | ') || 'none'}
     const results: ToolResult[] = [];
 
     for (const call of toolCalls) {
-      const fn   = call.function.name;
-      const args = JSON.parse(call.function.arguments) as Record<string, any>;
+      const fn = call.function.name;
+      let args: Record<string, any>;
+      try {
+        args = JSON.parse(call.function.arguments) as Record<string, any>;
+      } catch {
+        return NextResponse.json({ success: false, message: 'Could not parse that command — please try again.' });
+      }
       const res  = await executeToolCall(fn, args, ctx);
       results.push(res);
       if (!res.success) {

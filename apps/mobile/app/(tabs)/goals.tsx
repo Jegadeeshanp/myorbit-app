@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '@/lib/themeStore';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/lib/authStore';
-import Svg, { Rect, Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Rect, Text as SvgText } from 'react-native-svg';
 import {
   View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
   RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform,
@@ -18,25 +18,26 @@ import {
 import type { Goal, GoalMilestone, GoalProcess } from '@myorbit/api';
 import {
   Plus, Target, CheckCircle, Circle, Trash2, ChevronRight,
-  LayoutDashboard, Pause, Pencil, Zap, MoreHorizontal, X, Settings,
-  CheckSquare, RotateCcw, Search, Menu, Flag,
+  LayoutDashboard, Pause, Pencil, Zap, X, Settings,
+  CheckSquare, RotateCcw, Search, Flag,
   Wallet, Heart, Briefcase, BookOpen, User, CalendarDays, Trophy, Inbox,
+  Play,
 } from 'lucide-react-native';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type SubTab = 'overview' | 'active' | 'completed' | 'all';
+type SubTab = 'overview' | 'active' | 'completed' | 'settings';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ACCENT  = '#7C3AED';
+const ACCENT = '#A78BFA';
 
 function useColors() {
   const T = useTheme();
   return {
     BG:      T.bg,
     SURFACE: T.cardBg,
-    SURFACE2:T.surfaceAlt,
+    SURFACE2: T.surfaceAlt ?? T.surface,
     BORDER:  T.border,
     MUTED:   T.subText,
     TXT:     T.text,
@@ -46,256 +47,202 @@ function useColors() {
   };
 }
 
-const SUB_TABS = [
-  { key: 'overview'  as SubTab, label: 'Overview',  Icon: LayoutDashboard },
-  { key: 'active'    as SubTab, label: 'Active',    Icon: CheckCircle },
-  { key: 'completed' as SubTab, label: 'Completed', Icon: CheckSquare },
-];
-const MORE_ITEMS = [
-  { key: 'all' as SubTab, label: 'All Goals', Icon: Target },
+const SUB_TABS: { key: SubTab; label: string; Icon: React.ComponentType<{ size: number; color: string }> }[] = [
+  { key: 'overview',   label: 'Overview',   Icon: LayoutDashboard },
+  { key: 'active',     label: 'Active',     Icon: Play },
+  { key: 'completed',  label: 'Completed',  Icon: CheckCircle },
+  { key: 'settings',   label: 'Settings',   Icon: Settings },
 ];
 
 const CAT_COLORS: Record<string, string> = {
-  Finance: '#10B981', Health: '#EF4444', Career: '#3B82F6',
-  Learning: '#8B5CF6', Personal: '#F59E0B', Other: '#64748B',
+  Finance: '#00E5A0', Health: '#FF6B6B', Career: '#5BE4FF',
+  Learning: '#6366F1', Personal: '#F9A44A', Other: '#A78BFA',
+  default: '#A78BFA',
 };
 
 const CAT_ICONS: Record<string, React.ComponentType<{ size: number; color: string }>> = {
   Finance: Wallet, Health: Heart, Career: Briefcase,
-  Learning: BookOpen, Personal: User, Other: MoreHorizontal,
+  Learning: BookOpen, Personal: User, Other: Flag,
 };
 
 const STATUS_CONFIG = {
-  active:    { label: 'Active',    color: '#10B981', bg: '#10B98122' },
-  completed: { label: 'Completed', color: '#3B82F6', bg: '#3B82F622' },
-  paused:    { label: 'Paused',    color: '#F59E0B', bg: '#F59E0B22' },
+  active:    { label: 'Active',    color: '#00E5A0', bg: '#00E5A022' },
+  completed: { label: 'Completed', color: '#5BE4FF', bg: '#5BE4FF22' },
+  paused:    { label: 'Paused',    color: '#F9A44A', bg: '#F9A44A22' },
 };
 
-const CATEGORIES: Goal['category'][] = ['Finance', 'Health', 'Career', 'Learning', 'Personal', 'Other'];
+const CATEGORIES = ['Finance', 'Health', 'Career', 'Learning', 'Personal', 'Other'] as const;
 const FREQ_OPTIONS = ['daily', 'weekly', 'monthly'] as const;
 
-// ── MyOrbit Logo ─────────────────────────────────────────────────────────────
+// ── Radial Progress Ring ──────────────────────────────────────────────────────
 
-function MyOrbitLogo() {
-  return (
-    <Svg width={28} height={28} viewBox="0 0 40 40">
-      <Rect x="0" y="0" width="40" height="40" rx="10" ry="10" fill="#10B981" />
-      <SvgCircle cx="20" cy="20" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
-      <SvgCircle cx="20" cy="7" r="2.5" fill="white" />
-      <SvgCircle cx="33" cy="20" r="2.5" fill="white" />
-      <SvgCircle cx="20" cy="33" r="2.5" fill="white" />
-      <SvgCircle cx="7" cy="20" r="2.5" fill="white" />
-      <SvgText x="20" y="26" textAnchor="middle" fontFamily="System" fontWeight="800" fontSize="16" fill="white">M</SvgText>
-    </Svg>
-  );
-}
-
-// ── Sub Nav ──────────────────────────────────────────────────────────────────
-
-function SubNav({ active, onSelect, onMore }: {
-  active: SubTab; onSelect: (t: SubTab) => void; onMore: () => void;
+function RadialProgress({ pct, color, size = 64, strokeWidth = 6, children }: {
+  pct: number; color: string; size?: number; strokeWidth?: number; children?: React.ReactNode;
 }) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
-  const isMoreActive = !SUB_TABS.some(t => t.key === active);
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = Math.min(pct / 100, 1) * circ;
+  const cx = size / 2;
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER }}>
-      {SUB_TABS.map(({ key, label, Icon }) => {
-        const on = active === key;
-        return (
-          <TouchableOpacity key={key} onPress={() => onSelect(key)}
-            style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
-            {on && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
-            <Icon size={20} color={on ? ACCENT : MUTED} />
-            <Text style={{ fontSize: 12, fontWeight: '500', color: on ? ACCENT : MUTED, marginTop: 3 }}>{label}</Text>
-          </TouchableOpacity>
-        );
-      })}
-      <TouchableOpacity onPress={onMore} style={{ width: 52, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
-        {isMoreActive && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
-        <MoreHorizontal size={20} color={isMoreActive ? ACCENT : MUTED} />
-        <Text style={{ fontSize: 12, fontWeight: '500', color: isMoreActive ? ACCENT : MUTED, marginTop: 3 }}>More</Text>
-      </TouchableOpacity>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <SvgCircle cx={cx} cy={cx} r={r} stroke="rgba(255,255,255,0.07)" strokeWidth={strokeWidth} fill="none" />
+        <SvgCircle cx={cx} cy={cx} r={r} stroke={color} strokeWidth={strokeWidth} fill="none"
+          strokeDasharray={`${dash} ${circ - dash}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cx})`}
+        />
+      </Svg>
+      {children}
     </View>
-  );
-}
-
-// ── More Sheet ───────────────────────────────────────────────────────────────
-
-function MoreSheet({ visible, active, onSelect, onClose, userName }: {
-  visible: boolean; active: SubTab; onSelect: (t: SubTab) => void; onClose: () => void; userName?: string;
-}) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
-  const initials = (userName ?? 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
-      <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40 }}>
-        <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
-
-        {/* User profile */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: BORDER }}>
-          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: 'white' }}>{initials}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: TXT2 }} numberOfLines={1}>{userName ?? 'User'}</Text>
-            <Text style={{ fontSize: 11, color: MUTED }}>Personal account</Text>
-          </View>
-          <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' }}>
-            <X size={14} color={MUTED} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Nav items */}
-        {MORE_ITEMS.map(({ key, label, Icon }) => (
-          <TouchableOpacity key={key} onPress={() => { onSelect(key); onClose(); }}
-            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: active === key ? ACCENT + '22' : 'transparent' }}>
-            <Icon size={16} color={active === key ? ACCENT : MUTED} />
-            <Text style={{ fontSize: 15, fontWeight: '500', color: active === key ? ACCENT : TXT2 }}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-
-        <View style={{ height: 1, backgroundColor: BORDER, marginHorizontal: 16, marginVertical: 4 }} />
-        <TouchableOpacity onPress={() => { onClose(); router.push('/(tabs)/settings' as any); }}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
-          <Settings size={16} color={MUTED} />
-          <Text style={{ fontSize: 15, fontWeight: '500', color: TXT2 }}>Goals Settings</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
   );
 }
 
 // ── Goal Card ────────────────────────────────────────────────────────────────
 
-function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilestone }: {
+function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilestone, compact }: {
   goal: Goal;
   onEdit: (g: Goal) => void;
   onDelete: (id: string) => void;
   onComplete: (id: string) => void;
   onPause: (id: string, current: Goal['status']) => void;
   onToggleMilestone: (goalId: string, ms: GoalMilestone) => void;
+  compact?: boolean;
 }) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
-  const catColor   = CAT_COLORS[goal.category] ?? '#64748B';
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2 } = useColors();
+  const catColor   = CAT_COLORS[goal.category ?? 'default'] ?? '#A78BFA';
   const cfg        = STATUS_CONFIG[goal.status];
   const milestones = goal.milestones ?? [];
-  const processes  = goal.processes ?? [];
+  const processes  = goal.processes  ?? [];
   const done       = milestones.filter(m => m.isCompleted).length;
   const pct        = milestones.length ? Math.round((done / milestones.length) * 100) : 0;
-  const isOverdue  = goal.deadline && goal.deadline < new Date().toLocaleDateString('en-CA') && goal.status === 'active';
+  const today      = new Date().toLocaleDateString('en-CA');
+  const isOverdue  = goal.deadline && goal.deadline < today && goal.status === 'active';
+  const daysLeft: number | null = goal.deadline
+    ? Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86_400_000)
+    : null;
 
   return (
-    <View style={{ backgroundColor: SURFACE, borderRadius: 16, padding: 14, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: catColor }}>
-      {/* Header row */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          {/* Badges */}
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: catColor + '22' }}>
-              {(() => { const CatIcon = CAT_ICONS[goal.category]; return CatIcon ? <CatIcon size={10} color={catColor} /> : null; })()}
-              <Text style={{ fontSize: 11, fontWeight: '600', color: catColor }}>{goal.category}</Text>
-            </View>
-            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: cfg.bg }}>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: cfg.color }}>{cfg.label}</Text>
-            </View>
-            {isOverdue && (
-              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20, backgroundColor: '#EF444422' }}>
-                <Text style={{ fontSize: 11, fontWeight: '500', color: '#EF4444' }}>Overdue</Text>
+    <View style={{
+      backgroundColor: SURFACE,
+      borderRadius: 18,
+      marginBottom: 12,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: BORDER,
+    }}>
+      {/* Top accent bar */}
+      <View style={{ height: 3, backgroundColor: catColor, opacity: 0.9 }} />
+
+      <View style={{ padding: 14 }}>
+        {/* Header row */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            {/* Chips row */}
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: catColor + '22' }}>
+                {(() => { const I = CAT_ICONS[goal.category]; return I ? <I size={10} color={catColor} /> : null; })()}
+                <Text style={{ fontSize: 11, fontWeight: '600', color: catColor }}>{goal.category}</Text>
               </View>
+              <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: cfg.bg }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: cfg.color }}>{cfg.label}</Text>
+              </View>
+              {isOverdue && (
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: '#FF6B6B22' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#FF6B6B' }}>Overdue</Text>
+                </View>
+              )}
+              {daysLeft !== null && !isOverdue && goal.status === 'active' && (
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: SURFACE2 }}>
+                  <Text style={{ fontSize: 11, color: MUTED }}>
+                    {daysLeft <= 0 ? 'Due today' : `${daysLeft}d left`}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: TXT }}>{goal.title}</Text>
+            {goal.why != null && !compact && (
+              <Text style={{ fontSize: 12, color: MUTED, marginTop: 3, fontStyle: 'italic' }} numberOfLines={1}>"{goal.why}"</Text>
             )}
           </View>
-          <Text style={{ fontSize: 17, fontWeight: '600', color: TXT }}>{goal.title}</Text>
-          {goal.why && <Text style={{ fontSize: 13, color: MUTED, marginTop: 3, fontStyle: 'italic' }} numberOfLines={2}>"{goal.why}"</Text>}
-        </View>
 
-        {/* Action buttons */}
-        <View style={{ flexDirection: 'row', gap: 4 }}>
-          <TouchableOpacity onPress={() => onEdit(goal)} style={{ padding: 6, borderRadius: 8, backgroundColor: ACCENT + '22' }}>
-            <Pencil size={13} color={ACCENT} />
-          </TouchableOpacity>
-          {goal.status !== 'completed' && (
-            <TouchableOpacity onPress={() => onPause(goal.id, goal.status)} style={{ padding: 6, borderRadius: 8, backgroundColor: goal.status === 'paused' ? '#F59E0B22' : SURFACE2 }}>
-              {goal.status === 'paused'
-                ? <RotateCcw size={13} color="#F59E0B" />
-                : <Pause size={13} color={MUTED} />}
+          {/* Actions */}
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <TouchableOpacity onPress={() => onEdit(goal)} style={{ padding: 6, borderRadius: 8, backgroundColor: ACCENT + '22' }}>
+              <Pencil size={13} color={ACCENT} />
             </TouchableOpacity>
-          )}
-          {goal.status !== 'completed' && (
-            <TouchableOpacity onPress={() => onComplete(goal.id)} style={{ padding: 6, borderRadius: 8, backgroundColor: '#10B98122' }}>
-              <CheckCircle size={13} color="#10B981" />
+            {goal.status !== 'completed' && (
+              <TouchableOpacity onPress={() => onPause(goal.id, goal.status)} style={{ padding: 6, borderRadius: 8, backgroundColor: goal.status === 'paused' ? '#F9A44A22' : SURFACE2 }}>
+                {goal.status === 'paused' ? <RotateCcw size={13} color="#F9A44A" /> : <Pause size={13} color={MUTED} />}
+              </TouchableOpacity>
+            )}
+            {goal.status !== 'completed' && (
+              <TouchableOpacity onPress={() => onComplete(goal.id)} style={{ padding: 6, borderRadius: 8, backgroundColor: '#00E5A022' }}>
+                <CheckCircle size={13} color="#00E5A0" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => onDelete(goal.id)} style={{ padding: 6, borderRadius: 8, backgroundColor: '#FF6B6B22' }}>
+              <Trash2 size={13} color="#FF6B6B" />
             </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={() => onDelete(goal.id)} style={{ padding: 6, borderRadius: 8, backgroundColor: '#EF444422' }}>
-            <Trash2 size={13} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Deadline */}
-      {goal.deadline && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-          <CalendarDays size={12} color={isOverdue ? '#EF4444' : MUTED} />
-          <Text style={{ fontSize: 12, color: isOverdue ? '#EF4444' : MUTED }}>{goal.deadline}</Text>
-        </View>
-      )}
-
-      {/* Milestone progress bar */}
-      {milestones.length > 0 && (
-        <View style={{ marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-            <Text style={{ fontSize: 11, color: MUTED }}>{done}/{milestones.length} milestones</Text>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: TXT2 }}>{pct}%</Text>
-          </View>
-          <View style={{ height: 5, backgroundColor: SURFACE2, borderRadius: 3, overflow: 'hidden' }}>
-            <View style={{ height: '100%', borderRadius: 3, width: `${pct}%`, backgroundColor: catColor }} />
           </View>
         </View>
-      )}
 
-      {/* Milestones list */}
-      {milestones.length > 0 && (
-        <View style={{ marginBottom: 8, gap: 4 }}>
-          {milestones.map(ms => {
-            const horizonLabel = ms.horizon === '1m' ? '1 Month' : ms.horizon === '3m' ? '3 Months' : '6 Months';
-            return (
+        {/* Progress bar */}
+        {milestones.length > 0 && (
+          <View style={{ marginBottom: compact ? 0 : 10 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+              <Text style={{ fontSize: 11, color: MUTED }}>{done}/{milestones.length} milestones</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: catColor }}>{pct}%</Text>
+            </View>
+            <View style={{ height: 5, backgroundColor: SURFACE2, borderRadius: 3, overflow: 'hidden' }}>
+              <View style={{ height: '100%', borderRadius: 3, width: `${pct}%`, backgroundColor: catColor }} />
+            </View>
+          </View>
+        )}
+
+        {/* Milestones list (non-compact) */}
+        {!compact && milestones.length > 0 && (
+          <View style={{ marginTop: 2, marginBottom: 8, gap: 5 }}>
+            {milestones.map(ms => (
               <TouchableOpacity key={ms.id} onPress={() => onToggleMilestone(goal.id, ms)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 2 }}>
                 {ms.isCompleted
-                  ? <CheckCircle size={14} color="#10B981" />
-                  : <Circle size={14} color="#4B5563" />}
-                <Text style={{ flex: 1, fontSize: 13, color: ms.isCompleted ? MUTED : '#E5E7EB', textDecorationLine: ms.isCompleted ? 'line-through' : 'none' }}>
+                  ? <CheckCircle size={14} color="#00E5A0" />
+                  : <Circle size={14} color={MUTED} />}
+                <Text style={{ flex: 1, fontSize: 12, color: ms.isCompleted ? MUTED : TXT2, textDecorationLine: ms.isCompleted ? 'line-through' : 'none' }} numberOfLines={1}>
                   {ms.title}
                 </Text>
-                <Text style={{ fontSize: 11, color: MUTED }}>{horizonLabel}</Text>
+                <Text style={{ fontSize: 10, color: MUTED }}>
+                  {ms.horizon === '1m' ? '1mo' : ms.horizon === '3m' ? '3mo' : ms.horizon === '6m' ? '6mo' : ms.horizon}
+                </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {/* Processes */}
-      {processes.length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {processes.map(p => (
-            <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: ACCENT + '18' }}>
-              <Zap size={9} color={ACCENT} />
-              <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>{p.title}</Text>
-              <Text style={{ fontSize: 10, color: MUTED }}>· {p.frequency}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+        {/* Processes (non-compact) */}
+        {!compact && processes.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
+            {processes.map(p => (
+              <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: ACCENT + '18' }}>
+                <Zap size={9} color={ACCENT} />
+                <Text style={{ fontSize: 11, color: ACCENT, fontWeight: '500' }}>{p.title}</Text>
+                <Text style={{ fontSize: 10, color: MUTED }}>· {p.frequency}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
-// ── Add / Edit Goal Modal (2-step) ───────────────────────────────────────────
+// ── Add / Edit Goal Modal ─────────────────────────────────────────────────────
 
 type GoalFormStep = 1 | 2;
 
 interface GoalFormData {
-  title: string; category: Goal['category']; why: string; metric: string; deadline: string;
+  title: string; category: string; why: string; metric: string; deadline: string;
   ms1m: string; ms3m: string; ms6m: string;
   proc1: string; proc1freq: typeof FREQ_OPTIONS[number];
   proc2: string; proc2freq: typeof FREQ_OPTIONS[number];
@@ -305,7 +252,7 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
   visible: boolean; initial?: Goal | null; onClose: () => void;
   onCreate: (data: GoalFormData) => void; onUpdate: (id: string, data: Partial<GoalFormData>) => void;
 }) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
+  const { SURFACE, SURFACE2, BORDER, MUTED, TXT } = useColors();
   const isEdit = !!initial;
   const [step, setStep] = useState<GoalFormStep>(1);
   const [form, setForm] = useState<GoalFormData>({
@@ -320,7 +267,7 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
       const ms = initial.milestones ?? [];
       const ps = initial.processes ?? [];
       setForm({
-        title: initial.title, category: initial.category, why: initial.why ?? '',
+        title: initial.title, category: initial.category ?? 'Personal', why: initial.why ?? '',
         metric: initial.metric ?? '', deadline: initial.deadline ?? '',
         ms1m: ms.find(m => m.horizon === '1m')?.title ?? '',
         ms3m: ms.find(m => m.horizon === '3m')?.title ?? '',
@@ -334,22 +281,19 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
   }, [visible, initial?.id]);
 
   const set = (k: keyof GoalFormData, v: string) => setForm(f => ({ ...f, [k]: v }));
-
   const handleSave = () => {
     if (!form.title.trim()) return;
     if (isEdit && initial) { onUpdate(initial.id, form); } else { onCreate(form); }
     onClose();
   };
-
   const today = new Date().toLocaleDateString('en-CA');
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} />
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={onClose} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ backgroundColor: SURFACE, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32, maxHeight: '90%' }}>
           <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
-
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: TXT }}>
               {isEdit ? 'Edit Goal' : step === 1 ? 'New Goal' : 'Milestones & Processes'}
@@ -362,7 +306,6 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
               </View>
             )}
           </View>
-
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {(step === 1 || isEdit) && (
               <>
@@ -370,37 +313,30 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
                 <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: TXT, marginBottom: 14 }}
                   placeholder="e.g. Save ₹5 lakhs, Run a marathon" placeholderTextColor={MUTED}
                   value={form.title} onChangeText={v => set('title', v)} autoFocus={!isEdit} />
-
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 8 }}>Category</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
                   {CATEGORIES.map(c => {
                     const CatIcon = CAT_ICONS[c];
                     const active  = form.category === c;
+                    const color   = CAT_COLORS[c];
                     return (
                       <TouchableOpacity key={c} onPress={() => set('category', c)}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: active ? ACCENT : BORDER, backgroundColor: active ? ACCENT + '22' : SURFACE2 }}>
-                        {CatIcon && <CatIcon size={12} color={active ? ACCENT : MUTED} />}
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: active ? ACCENT : MUTED }}>{c}</Text>
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: active ? color : BORDER, backgroundColor: active ? color + '22' : SURFACE2 }}>
+                        {CatIcon && <CatIcon size={12} color={active ? color : MUTED} />}
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: active ? color : MUTED }}>{c}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Why? (optional)</Text>
                 <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: TXT, marginBottom: 14, minHeight: 60, textAlignVertical: 'top' }}
                   placeholder="Your motivation for this goal..." placeholderTextColor={MUTED} multiline value={form.why} onChangeText={v => set('why', v)} />
-
-                <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Success Metric (optional)</Text>
-                <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 14 }}
-                  placeholder="How will you measure success?" placeholderTextColor={MUTED} value={form.metric} onChangeText={v => set('metric', v)} />
-
                 <Text style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>Deadline (optional)</Text>
                 <TextInput style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 12, backgroundColor: SURFACE2, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: TXT, marginBottom: 16 }}
                   placeholder={`YYYY-MM-DD (e.g. ${today})`} placeholderTextColor={MUTED}
                   value={form.deadline} onChangeText={v => set('deadline', v)} keyboardType="numbers-and-punctuation" />
               </>
             )}
-
             {(step === 2 && !isEdit) && (
               <>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Milestones (optional)</Text>
@@ -416,7 +352,6 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
                       value={form[key]} onChangeText={v => set(key, v)} />
                   </View>
                 ))}
-
                 <Text style={{ fontSize: 11, fontWeight: '700', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8, marginBottom: 10 }}>Recurring Processes (optional)</Text>
                 {([
                   { titleKey: 'proc1' as keyof GoalFormData, freqKey: 'proc1freq' as keyof GoalFormData, n: 1 },
@@ -440,7 +375,6 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
               </>
             )}
           </ScrollView>
-
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
             {!isEdit && step === 2 ? (
               <>
@@ -480,46 +414,36 @@ function GoalModal({ visible, initial, onClose, onCreate, onUpdate }: {
   );
 }
 
-// ── Goals List ───────────────────────────────────────────────────────────────
+// ── Sub Nav ──────────────────────────────────────────────────────────────────
 
-function GoalsList({ goals, isLoading, refetch, onEdit, onDelete, onComplete, onPause, onToggleMilestone, EmptyIcon, emptyText, emptySubtext }: {
-  goals: Goal[]; isLoading: boolean; refetch: () => void;
-  onEdit: (g: Goal) => void; onDelete: (id: string) => void; onComplete: (id: string) => void;
-  onPause: (id: string, current: Goal['status']) => void;
-  onToggleMilestone: (goalId: string, ms: GoalMilestone) => void;
-  EmptyIcon: React.ComponentType<{ size: number; color: string }>; emptyText: string; emptySubtext: string;
-}) {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
+function SubNav({ active, onSelect }: { active: SubTab; onSelect: (t: SubTab) => void }) {
+  const { BG, BORDER, MUTED } = useColors();
   return (
-    <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-      {isLoading ? (
-        <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
-      ) : goals.length === 0 ? (
-        <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-          <EmptyIcon size={40} color={MUTED} />
-          <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{emptyText}</Text>
-          <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{emptySubtext}</Text>
-        </View>
-      ) : (
-        goals.map(g => (
-          <GoalCard key={g.id} goal={g} onEdit={onEdit} onDelete={onDelete}
-            onComplete={onComplete} onPause={onPause} onToggleMilestone={onToggleMilestone} />
-        ))
-      )}
-    </ScrollView>
+    <View style={{ flexDirection: 'row', backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER }}>
+      {SUB_TABS.map(({ key, label, Icon }) => {
+        const on = active === key;
+        return (
+          <TouchableOpacity key={key} onPress={() => onSelect(key)}
+            style={{ flex: 1, alignItems: 'center', paddingTop: 8, paddingBottom: 7 }}>
+            {on && <View style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: ACCENT, borderRadius: 1 }} />}
+            <Icon size={20} color={on ? ACCENT : MUTED} />
+            <Text style={{ fontSize: 11, fontWeight: '500', color: on ? ACCENT : MUTED, marginTop: 3 }}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function GoalsScreen() {
-  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2, MODAL, INPUT } = useColors();
+  const { BG, SURFACE, SURFACE2, BORDER, MUTED, TXT, TXT2 } = useColors();
   const user = useAuthStore((s) => s.user);
-  const [activeTab, setActiveTab]   = useState<SubTab>('overview');
-  const [showAdd, setShowAdd]       = useState(false);
-  const [showMore, setShowMore]     = useState(false);
-  const [editGoal, setEditGoal]     = useState<Goal | null>(null);
-  const [catFilter, setCatFilter]   = useState<string>('All');
+  const [activeTab, setActiveTab] = useState<SubTab>('overview');
+  const [showAdd, setShowAdd]     = useState(false);
+  const [editGoal, setEditGoal]   = useState<Goal | null>(null);
+  const [catFilter, setCatFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const qc = useQueryClient();
 
@@ -532,7 +456,7 @@ export default function GoalsScreen() {
   const deleteMut   = useMutation({ mutationFn: deleteGoal, onSuccess: invalidate, onError: onMutateError });
   const completeMut = useMutation({ mutationFn: (id: string) => updateGoal(id, { status: 'completed' }), onSuccess: invalidate, onError: onMutateError });
   const pauseMut    = useMutation({ mutationFn: ({ id, status }: { id: string; status: Goal['status'] }) => updateGoal(id, { status: status === 'paused' ? 'active' : 'paused' }), onSuccess: invalidate, onError: onMutateError });
-  const updateMut   = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<Goal> }) => updateGoal(id, data), onSuccess: invalidate, onError: onMutateError });
+  const updateMut   = useMutation({ mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateGoal>[1] }) => updateGoal(id, data), onSuccess: invalidate, onError: onMutateError });
   const toggleMilestoneMut = useMutation({
     mutationFn: ({ goalId, ms }: { goalId: string; ms: GoalMilestone }) =>
       updateMilestone(goalId, ms.id, { isCompleted: !ms.isCompleted }),
@@ -556,7 +480,13 @@ export default function GoalsScreen() {
   };
 
   const handleUpdate = async (id: string, form: Partial<GoalFormData>) => {
-    await updateMut.mutateAsync({ id, data: { title: form.title?.trim(), category: form.category, why: form.why?.trim() || undefined, metric: form.metric?.trim() || undefined, deadline: form.deadline || undefined } });
+    await updateMut.mutateAsync({ id, data: {
+      title: form.title?.trim(),
+      category: form.category,
+      why: form.why?.trim() || undefined,
+      metric: form.metric?.trim() || undefined,
+      deadline: form.deadline || undefined,
+    } });
   };
 
   const handleDelete = (id: string) => {
@@ -567,10 +497,11 @@ export default function GoalsScreen() {
     ]);
   };
 
-  const totalGoals     = goals.length;
-  const activeGoals    = useMemo(() => goals.filter(g => g.status === 'active'), [goals]);
+  const activeGoals    = useMemo(() => goals.filter(g => g.status === 'active'),    [goals]);
   const completedGoals = useMemo(() => goals.filter(g => g.status === 'completed'), [goals]);
-  const avgProgress    = useMemo(() =>
+  const pausedGoals    = useMemo(() => goals.filter(g => g.status === 'paused'),    [goals]);
+
+  const avgProgress = useMemo(() =>
     activeGoals.length
       ? Math.round(activeGoals.reduce((s, g) => {
           const ms = g.milestones ?? [];
@@ -580,11 +511,11 @@ export default function GoalsScreen() {
   [activeGoals]);
 
   const applySearch = (list: Goal[]) =>
-    searchQuery ? list.filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()) || g.category.toLowerCase().includes(searchQuery.toLowerCase())) : list;
+    searchQuery ? list.filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase())) : list;
 
-  const filteredAll = useMemo(() => applySearch(catFilter === 'All' ? goals : goals.filter(g => g.category === catFilter)), [goals, catFilter, searchQuery]);
-
-  const headerTitle = activeTab === 'overview' ? 'Goals' : activeTab === 'active' ? 'Active' : activeTab === 'completed' ? 'Completed' : 'All Goals';
+  const filteredGoals = useMemo(() =>
+    applySearch(catFilter === 'All' ? goals : goals.filter(g => g.category === catFilter)),
+  [goals, catFilter, searchQuery]);
 
   const sharedProps = {
     onEdit: setEditGoal,
@@ -594,79 +525,112 @@ export default function GoalsScreen() {
     onToggleMilestone: (goalId: string, ms: GoalMilestone) => toggleMilestoneMut.mutate({ goalId, ms }),
   };
 
+  // ── Category stats for settings tab ──────────────────────────────────────
+  const catStats = useMemo(() =>
+    CATEGORIES.map(cat => {
+      const list = goals.filter(g => g.category === cat);
+      const active = list.filter(g => g.status === 'active').length;
+      const completed = list.filter(g => g.status === 'completed').length;
+      const total = list.length;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+      return { cat, total, active, completed, pct, color: CAT_COLORS[cat] };
+    }).filter(s => s.total > 0),
+  [goals]);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
 
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: BG }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-          <TouchableOpacity onPress={() => setShowMore(true)} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: SURFACE2, alignItems: 'center', justifyContent: 'center' }}>
-            <Menu size={20} color="#E5E7EB" />
-          </TouchableOpacity>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: TXT }} numberOfLines={1}>{headerTitle}</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/')} activeOpacity={0.7}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 6 }}>
-          <MyOrbitLogo />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: TXT }}>MyOrbit</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8, backgroundColor: BG }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: TXT }}>Goals</Text>
+        <TouchableOpacity onPress={() => setShowAdd(true)}
+          style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+          <Plus size={20} color="white" />
         </TouchableOpacity>
       </View>
 
-      {/* Search + Add */}
-      <View style={{ paddingHorizontal: 14, paddingBottom: 10, backgroundColor: BG, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
+      {/* Search bar */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 12, paddingVertical: 9, gap: 8 }}>
           <Search size={15} color={MUTED} />
           <TextInput style={{ flex: 1, fontSize: 14, color: TXT }} placeholder="Search goals…" placeholderTextColor={MUTED} value={searchQuery} onChangeText={setSearchQuery} />
           {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><X size={15} color={MUTED} /></TouchableOpacity>}
         </View>
-        <TouchableOpacity onPress={() => setShowAdd(true)}
-          style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
-          <Plus size={20} color="white" />
-        </TouchableOpacity>
       </View>
 
       <View style={{ flex: 1 }}>
 
         {/* ── OVERVIEW ── */}
         {activeTab === 'overview' && (
-          <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />} contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Stats */}
-            <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginVertical: 14 }}>
-              {[
-                { label: 'Total',    val: String(totalGoals),            color: '#64748B' },
-                { label: 'Active',   val: String(activeGoals.length),    color: ACCENT },
-                { label: 'Done',     val: String(completedGoals.length), color: '#3B82F6' },
-                { label: 'Progress', val: `${avgProgress}%`,             color: '#10B981' },
-              ].map(s => (
-                <View key={s.label} style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 10, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 17, fontWeight: '700', color: s.color }}>{s.val}</Text>
-                  <Text style={{ fontSize: 10, color: MUTED, marginTop: 2, textAlign: 'center' }}>{s.label}</Text>
+          <ScrollView
+            style={{ flex: 1 }}
+            refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Stats strip with radial rings */}
+            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {/* Overall progress ring */}
+                <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+                  <RadialProgress pct={avgProgress} color={ACCENT} size={72} strokeWidth={6}>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: ACCENT }}>{avgProgress}%</Text>
+                  </RadialProgress>
+                  <Text style={{ fontSize: 11, color: MUTED, marginTop: 6, fontWeight: '600' }}>Avg Progress</Text>
                 </View>
-              ))}
+
+                {/* Stat boxes */}
+                <View style={{ flex: 1.6, gap: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: '#00E5A0' }}>{activeGoals.length}</Text>
+                      <Text style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Active</Text>
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: '#5BE4FF' }}>{completedGoals.length}</Text>
+                      <Text style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Done</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: '#F9A44A' }}>{pausedGoals.length}</Text>
+                      <Text style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Paused</Text>
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: TXT }}>{goals.length}</Text>
+                      <Text style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Total</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             </View>
 
-            {/* Category filter */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-              {['All', ...CATEGORIES].map(c => (
-                <TouchableOpacity key={c} onPress={() => setCatFilter(c)}
-                  style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: catFilter === c ? ACCENT : BORDER, backgroundColor: catFilter === c ? ACCENT + '22' : SURFACE2, marginRight: 4 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: catFilter === c ? ACCENT : MUTED }}>{c}</Text>
-                </TouchableOpacity>
-              ))}
+            {/* Category filter pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+              {['All', ...CATEGORIES].map(c => {
+                const color = c === 'All' ? ACCENT : CAT_COLORS[c];
+                const active = catFilter === c;
+                return (
+                  <TouchableOpacity key={c} onPress={() => setCatFilter(c)}
+                    style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: active ? color : BORDER, backgroundColor: active ? color + '22' : SURFACE, marginRight: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: active ? color : MUTED }}>{c}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
-            {/* Goals */}
+            {/* Goal cards */}
             <View style={{ paddingHorizontal: 16 }}>
               {isLoading ? (
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
-              ) : filteredAll.length === 0 ? (
+              ) : filteredGoals.length === 0 ? (
                 <View style={{ paddingVertical: 48, alignItems: 'center' }}>
                   <Target size={40} color={MUTED} />
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{searchQuery ? 'No goals match your search' : 'No goals yet'}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{searchQuery ? 'No goals match' : 'No goals yet'}</Text>
                   <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{!searchQuery && 'Tap + to set your first goal'}</Text>
                 </View>
               ) : (
-                filteredAll.map(g => <GoalCard key={g.id} goal={g} {...sharedProps} />)
+                filteredGoals.map(g => <GoalCard key={g.id} goal={g} {...sharedProps} />)
               )}
             </View>
           </ScrollView>
@@ -674,30 +638,148 @@ export default function GoalsScreen() {
 
         {/* ── ACTIVE ── */}
         {activeTab === 'active' && (
-          <GoalsList goals={applySearch(activeGoals)} isLoading={isLoading} refetch={refetch} {...sharedProps}
-            EmptyIcon={Target} emptyText={searchQuery ? 'No active goals match' : 'No active goals'} emptySubtext={!searchQuery ? 'Tap + to start working towards something' : ''} />
+          <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+            {/* Urgency insight banner */}
+            {activeGoals.length > 0 && (() => {
+              const overdue = activeGoals.filter(g => g.deadline && g.deadline < new Date().toLocaleDateString('en-CA'));
+              const nearDeadline = activeGoals.filter(g => {
+                if (!g.deadline) return false;
+                const days = Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86_400_000);
+                return days >= 0 && days <= 7;
+              });
+              if (overdue.length === 0 && nearDeadline.length === 0) return null;
+              return (
+                <View style={{ backgroundColor: '#FF6B6B18', borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#FF6B6B33' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#FF6B6B', marginBottom: 4 }}>
+                    {overdue.length > 0 ? `⚠ ${overdue.length} goal${overdue.length > 1 ? 's' : ''} overdue` : `⏰ ${nearDeadline.length} goal${nearDeadline.length > 1 ? 's' : ''} due within 7 days`}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: MUTED }}>Review and take action to stay on track.</Text>
+                </View>
+              );
+            })()}
+
+            {/* Status summary chips */}
+            {activeGoals.length > 0 && (
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <View style={{ flex: 1, backgroundColor: '#00E5A022', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#00E5A033' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#00E5A0' }}>{activeGoals.length}</Text>
+                  <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>In Progress</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: SURFACE, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: BORDER }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: ACCENT }}>{avgProgress}%</Text>
+                  <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Avg Progress</Text>
+                </View>
+              </View>
+            )}
+
+            {isLoading ? (
+              <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
+            ) : applySearch(activeGoals).length === 0 ? (
+              <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+                <Play size={40} color={MUTED} />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{searchQuery ? 'No active goals match' : 'No active goals'}</Text>
+                <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{!searchQuery && 'Tap + to start working towards something'}</Text>
+              </View>
+            ) : (
+              applySearch(activeGoals).map(g => <GoalCard key={g.id} goal={g} {...sharedProps} />)
+            )}
+          </ScrollView>
         )}
 
         {/* ── COMPLETED ── */}
         {activeTab === 'completed' && (
-          <GoalsList goals={applySearch(completedGoals)} isLoading={isLoading} refetch={refetch} {...sharedProps}
-            EmptyIcon={Trophy} emptyText={searchQuery ? 'No completed goals match' : 'No completed goals yet'} emptySubtext={!searchQuery ? 'Keep working — you\'ll get there!' : ''} />
+          <ScrollView style={{ flex: 1 }} refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+            {/* Trophy banner */}
+            {completedGoals.length > 0 && (
+              <View style={{ backgroundColor: '#5BE4FF18', borderRadius: 18, padding: 18, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#5BE4FF33' }}>
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>🏆</Text>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#5BE4FF' }}>{completedGoals.length} Goal{completedGoals.length > 1 ? 's' : ''} Achieved</Text>
+                <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>Every completed goal is a victory worth celebrating.</Text>
+              </View>
+            )}
+
+            {isLoading ? (
+              <View style={{ paddingVertical: 48, alignItems: 'center' }}><ActivityIndicator size="large" color={ACCENT} /></View>
+            ) : applySearch(completedGoals).length === 0 ? (
+              <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+                <Trophy size={40} color={MUTED} />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: TXT2, marginTop: 12 }}>{searchQuery ? 'No completed goals match' : 'No completed goals yet'}</Text>
+                <Text style={{ fontSize: 13, color: MUTED, marginTop: 4 }}>{!searchQuery && "Keep working — you'll get there!"}</Text>
+              </View>
+            ) : (
+              applySearch(completedGoals).map(g => <GoalCard key={g.id} goal={g} {...sharedProps} compact />)
+            )}
+          </ScrollView>
         )}
 
-        {/* ── ALL ── */}
-        {activeTab === 'all' && (
-          <GoalsList goals={applySearch(goals)} isLoading={isLoading} refetch={refetch} {...sharedProps}
-            EmptyIcon={Inbox} emptyText={searchQuery ? 'No goals match your search' : 'No goals yet'} emptySubtext={!searchQuery ? 'Add your first goal to get started' : ''} />
+        {/* ── SETTINGS ── */}
+        {activeTab === 'settings' && (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+            {/* Overview stats */}
+            <View style={{ backgroundColor: SURFACE, borderRadius: 18, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: BORDER }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: TXT, marginBottom: 14 }}>Goal Overview</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+                {[
+                  { label: 'Total',     val: goals.length,           color: TXT },
+                  { label: 'Active',    val: activeGoals.length,     color: '#00E5A0' },
+                  { label: 'Completed', val: completedGoals.length,  color: '#5BE4FF' },
+                  { label: 'Paused',    val: pausedGoals.length,     color: '#F9A44A' },
+                ].map(s => (
+                  <View key={s.label} style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 22, fontWeight: '800', color: s.color }}>{s.val}</Text>
+                    <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{s.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Category breakdown */}
+            <Text style={{ fontSize: 13, fontWeight: '700', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>Category Breakdown</Text>
+            {catStats.length === 0 ? (
+              <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: MUTED }}>No goals yet to show breakdown</Text>
+              </View>
+            ) : (
+              catStats.map(s => {
+                const CatIcon = CAT_ICONS[s.cat];
+                return (
+                  <View key={s.cat} style={{ backgroundColor: SURFACE, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {CatIcon && <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: s.color + '22', alignItems: 'center', justifyContent: 'center' }}>
+                          <CatIcon size={15} color={s.color} />
+                        </View>}
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: TXT }}>{s.cat}</Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: MUTED }}>{s.completed}/{s.total} done</Text>
+                    </View>
+                    <View style={{ height: 6, backgroundColor: SURFACE2, borderRadius: 3, overflow: 'hidden' }}>
+                      <View style={{ height: '100%', borderRadius: 3, width: `${s.pct}%`, backgroundColor: s.color }} />
+                    </View>
+                    <Text style={{ fontSize: 11, color: s.color, fontWeight: '700', marginTop: 5 }}>{s.pct}% complete</Text>
+                  </View>
+                );
+              })
+            )}
+
+            {/* Navigation to app settings */}
+            <TouchableOpacity onPress={() => router.push('/(tabs)/settings' as any)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: SURFACE, borderRadius: 14, padding: 14, marginTop: 8, borderWidth: 1, borderColor: BORDER }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Settings size={16} color={MUTED} />
+                <Text style={{ fontSize: 14, fontWeight: '500', color: TXT2 }}>App Settings</Text>
+              </View>
+              <ChevronRight size={16} color={MUTED} />
+            </TouchableOpacity>
+          </ScrollView>
         )}
 
       </View>
 
       {/* Bottom Nav */}
-      <SubNav active={activeTab} onSelect={tab => { setActiveTab(tab); setSearchQuery(''); }} onMore={() => setShowMore(true)} />
+      <SubNav active={activeTab} onSelect={tab => { setActiveTab(tab); setSearchQuery(''); }} />
 
       {/* Modals */}
-      <MoreSheet visible={showMore} active={activeTab} onSelect={tab => { setActiveTab(tab); setSearchQuery(''); }} onClose={() => setShowMore(false)} userName={user?.name} />
-
       <GoalModal visible={showAdd} onClose={() => setShowAdd(false)} onCreate={handleCreate} onUpdate={() => {}} />
       <GoalModal visible={!!editGoal} initial={editGoal} onClose={() => setEditGoal(null)} onCreate={() => {}} onUpdate={handleUpdate} />
     </SafeAreaView>

@@ -2623,6 +2623,20 @@ export default function FinanceScreen() {
     liabilities: 'Liabilities', budget: 'Budget', vitals: 'Vitals', settings: 'Settings',
   };
 
+  const isInitialLoading = txLoading && transactions.length === 0 && accounts.length === 0;
+
+  if (isInitialLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_BG }}>
+        <AppHeader title="Finance" showBack={false} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={{ color: MUTED, fontSize: 14 }}>Loading your finances…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: SCREEN_BG }}>
       {/* Header — shows the current sub-tab name; tapping MyOrbit goes home */}

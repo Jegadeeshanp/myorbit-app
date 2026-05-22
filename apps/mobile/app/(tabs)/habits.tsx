@@ -494,6 +494,17 @@ export default function HabitsScreen() {
 
   const canAddHabit = activeTab === 'dashboard' || activeTab === 'streaks';
 
+  if (isLoading && habits.length === 0) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={{ color: MUTED, fontSize: 14 }}>Loading habits…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: BG }} edges={['top']}>
 

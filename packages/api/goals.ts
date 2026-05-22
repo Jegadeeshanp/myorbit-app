@@ -3,31 +3,33 @@ import { apiRequest } from './client';
 export interface GoalMilestone {
   id: string;
   goalId: string;
+  userId: string;
   title: string;
+  horizon: string;
   isCompleted: boolean;
   dueDate: string | null;
-  sortOrder: number;
+  createdAt: string;
 }
 
 export interface GoalProcess {
   id: string;
   goalId: string;
+  userId: string;
   title: string;
   frequency: string;
-  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface Goal {
   id: string;
   userId: string;
   title: string;
-  description: string | null;
-  category: string | null;
-  status: 'active' | 'completed' | 'paused';
+  category: string;
+  why: string | null;
+  metric: string | null;
   deadline: string | null;
-  progress: number;
-  emoji: string | null;
-  color: string | null;
+  status: 'active' | 'completed' | 'paused';
   createdAt: string;
   updatedAt: string;
   milestones?: GoalMilestone[];
@@ -40,11 +42,13 @@ export function getGoals(): Promise<Goal[]> {
 
 export function createGoal(input: {
   title: string;
-  description?: string;
   category?: string;
+  why?: string;
+  metric?: string;
   deadline?: string;
-  emoji?: string;
-  color?: string;
+  status?: 'active' | 'completed' | 'paused';
+  milestones?: Array<{ title: string; horizon?: string }>;
+  processes?: Array<{ title: string; frequency?: string }>;
 }): Promise<Goal> {
   return apiRequest<Goal>('/api/goals', {
     method: 'POST',
@@ -54,13 +58,11 @@ export function createGoal(input: {
 
 export function updateGoal(id: string, input: Partial<{
   title: string;
-  description: string;
   category: string;
+  why: string;
+  metric: string;
   status: 'active' | 'completed' | 'paused';
   deadline: string;
-  progress: number;
-  emoji: string;
-  color: string;
 }>): Promise<Goal> {
   return apiRequest<Goal>(`/api/goals/${id}`, {
     method: 'PATCH',
