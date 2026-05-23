@@ -20,7 +20,7 @@
     "runtimeVersion": "1.0.0",
     "updates": {
       "enabled": true,
-      "url": "https://u.expo.dev/1527815e-b05e-4d97-a446-fa295a56980d",
+      "url": "https://u.expo.dev/d0cdef2b-2c42-4f40-90cc-1d91fd32cd11",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 3000
     },
@@ -39,7 +39,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a1f0a"
       },
-      "package": "com.jegadeeshan.myorbit"
+      "package": "com.jegadeeshan.myorbit",
+      "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
     },
     "plugins": [
       [
@@ -106,8 +110,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "1527815e-b05e-4d97-a446-fa295a56980d"
+        "projectId": "d0cdef2b-2c42-4f40-90cc-1d91fd32cd11"
       }
-    }
+    },
+    "owner": "myorbitlife"
   }
 }
