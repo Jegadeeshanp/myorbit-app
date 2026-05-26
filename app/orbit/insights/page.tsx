@@ -1,211 +1,131 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Flame, Target, CheckCircle2, Heart, Wallet, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { RefreshCw, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 type Scores = {
   lifeScore: number;
   scores: { habit: number; task: number; goal: number; health: number; finance: number };
   insights: { type: string; title: string; body: string; severity: string }[];
-  history: { date: string; mood?: number; energy?: number; steps?: number }[];
 };
 
-const SCORE_MODULES = [
-  { key: 'habit',   label: 'Habits',  Icon: Flame,        iconBg: 'bg-amber-50 dark:bg-amber-900/30',   iconColor: 'text-amber-600 dark:text-amber-400',  barColor: 'bg-amber-400' },
-  { key: 'task',    label: 'Tasks',   Icon: CheckCircle2, iconBg: 'bg-sky-50 dark:bg-sky-900/30',       iconColor: 'text-sky-600 dark:text-sky-400',      barColor: 'bg-sky-400' },
-  { key: 'goal',    label: 'Goals',   Icon: Target,       iconBg: 'bg-violet-50 dark:bg-violet-900/30', iconColor: 'text-violet-600 dark:text-violet-400', barColor: 'bg-violet-400' },
-  { key: 'health',  label: 'Health',  Icon: Heart,        iconBg: 'bg-rose-50 dark:bg-rose-900/30',     iconColor: 'text-rose-600 dark:text-rose-400',    barColor: 'bg-rose-400' },
-  { key: 'finance', label: 'Finance', Icon: Wallet,       iconBg: 'bg-emerald-50 dark:bg-emerald-900/30', iconColor: 'text-emerald-600 dark:text-emerald-400', barColor: 'bg-emerald-400' },
+const TXT    = '#e4eaf4';
+const MUTED  = '#8fa3b8';
+const DIM    = '#3d5166';
+const GREEN  = '#00E5A0';
+const BLUE   = '#5BE4FF';
+const PURPLE = '#A78BFA';
+const AMBER  = '#F9A44A';
+const RED    = '#FF6B6B';
+const CARD: React.CSSProperties = { background: 'linear-gradient(145deg,#131c2e,#0e1420)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' };
+
+const MODULES = [
+  { key: 'habit',   label: 'Habits',  icon: '🔥', color: AMBER,  weight: 30, tip: 'Try logging at least one habit every day.', href: '/orbit/habits' },
+  { key: 'task',    label: 'Tasks',   icon: '📋', color: BLUE,   weight: 20, tip: 'Clear your overdue backlog to unlock points.', href: '/orbit/tasks' },
+  { key: 'goal',    label: 'Goals',   icon: '🎯', color: PURPLE, weight: 20, tip: 'Add at least one active goal to boost this score.', href: '/orbit/goals' },
+  { key: 'health',  label: 'Health',  icon: '❤️', color: RED,    weight: 20, tip: 'Log a daily check-in to earn full health points.', href: '/orbit/health' },
+  { key: 'finance', label: 'Finance', icon: '💰', color: GREEN,  weight: 10, tip: 'Connect an account or log a transaction to earn points.', href: '/orbit/finance' },
 ] as const;
 
-const SEVERITY_STYLE: Record<string, string> = {
-  info:     'border-blue-100 bg-blue-50/60 dark:border-blue-900/40 dark:bg-blue-900/20',
-  tip:      'border-indigo-100 bg-indigo-50/60 dark:border-indigo-900/40 dark:bg-indigo-900/20',
-  warning:  'border-amber-100 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-900/20',
-  critical: 'border-rose-100 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-900/20',
-};
+const IMPROVE = [
+  { label: '+ Log Habit',       href: '/orbit/habits',          bg: 'rgba(249,164,74,.12)', color: AMBER,  border: 'rgba(249,164,74,.22)' },
+  { label: '+ Add Task',        href: '/orbit/tasks',           bg: 'rgba(91,228,255,.1)',  color: BLUE,   border: 'rgba(91,228,255,.2)' },
+  { label: '+ New Goal',        href: '/orbit/goals',           bg: 'rgba(167,139,250,.1)', color: PURPLE, border: 'rgba(167,139,250,.2)' },
+  { label: '+ Log Health',      href: '/orbit/health',          bg: 'rgba(255,107,107,.1)', color: RED,    border: 'rgba(255,107,107,.2)' },
+  { label: '+ Add Transaction', href: '/orbit/finance',         bg: 'rgba(0,229,160,.08)',  color: GREEN,  border: 'rgba(0,229,160,.18)' },
+  { label: 'Weekly Review',     href: '/orbit/insights/weekly', bg: 'rgba(129,140,248,.1)', color: '#818cf8', border: 'rgba(129,140,248,.2)' },
+];
 
 function LifeScoreRing({ score }: { score: number }) {
-  const r = 70;
+  const r    = 72;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
-  const color = score >= 70 ? '#10b981' : score >= 40 ? '#d97706' : '#f43f5e';
+  const color = score >= 70 ? GREEN : score >= 40 ? AMBER : PURPLE;
   const label = score >= 70 ? 'Great' : score >= 40 ? 'Building' : 'Getting Started';
 
   return (
-    <div className="relative flex h-48 w-48 items-center justify-center mx-auto">
-      <svg className="absolute inset-0 -rotate-90" width="192" height="192">
-        <circle cx="96" cy="96" r={r} fill="none" stroke="#f3f4f6" strokeWidth="14" />
-        <circle cx="96" cy="96" r={r} fill="none" stroke={color} strokeWidth="14"
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 0.8s ease' }} />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <p style={{ fontSize: 9, color: DIM, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 14 }}>Life Score</p>
+      <svg width="172" height="172" viewBox="0 0 172 172" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="86" cy="86" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="11" />
+        <circle cx="86" cy="86" r={r} fill="none" stroke={color} strokeWidth="11"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`}
+          style={{ filter: `drop-shadow(0 0 7px ${color}80)`, transition: 'stroke-dasharray 0.8s ease' }} />
       </svg>
-      <div className="text-center z-10">
-        <p className="text-5xl font-bold text-gray-900 dark:text-white">{score}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{label}</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">Life Score</p>
+      <div style={{ marginTop: -86, marginBottom: 86, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <p style={{ fontSize: 40, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif', lineHeight: 1 }}>{score}</p>
+        <p style={{ fontSize: 11, color, marginTop: 3 }}>{label}</p>
+        <p style={{ fontSize: 10, color: DIM }}>Life Score</p>
       </div>
+      <p style={{ fontSize: 11, color: DIM, marginTop: 10, textAlign: 'center', maxWidth: 320 }}>
+        Weighted average across Habits (30%) · Tasks (20%) · Goals (20%) · Health (20%) · Finance (10%)
+      </p>
     </div>
   );
 }
-
-function ScoreBar({ score, color }: { score: number; color: string }) {
-  return (
-    <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700">
-      <div className={`h-1.5 rounded-full ${color} transition-all duration-700`} style={{ width: `${score}%` }} />
-    </div>
-  );
-}
-
-// ── Score Explainer ────────────────────────────────────────────────────────────
-
-const FACTOR_DETAILS = [
-  {
-    key: 'habit' as const,
-    label: 'Habits',
-    weight: 30,
-    Icon: Flame,
-    iconBg: 'bg-amber-50 dark:bg-amber-900/30',
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    goodText: 'You\'re building strong daily routines.',
-    needsWorkText: 'Try logging at least one habit every day.',
-    tip: 'Pick one anchor habit (e.g. morning water) and log it at the same time each day.',
-    href: '/orbit/habits',
-  },
-  {
-    key: 'task' as const,
-    label: 'Tasks',
-    weight: 20,
-    Icon: CheckCircle2,
-    iconBg: 'bg-sky-50 dark:bg-sky-900/30',
-    iconColor: 'text-sky-600 dark:text-sky-400',
-    goodText: 'You\'re completing tasks consistently.',
-    needsWorkText: 'Clear your overdue backlog to unlock points.',
-    tip: 'Spend 5 minutes each morning triaging your inbox so nothing stays overdue.',
-    href: '/orbit/tasks',
-  },
-  {
-    key: 'goal' as const,
-    label: 'Goals',
-    weight: 20,
-    Icon: Target,
-    iconBg: 'bg-violet-50 dark:bg-violet-900/30',
-    iconColor: 'text-violet-600 dark:text-violet-400',
-    goodText: 'Your goals are active and progressing.',
-    needsWorkText: 'Add at least one active goal to boost this score.',
-    tip: 'Break each goal into monthly milestones — progress on milestones counts toward your score.',
-    href: '/orbit/goals',
-  },
-  {
-    key: 'health' as const,
-    label: 'Health',
-    weight: 20,
-    Icon: Heart,
-    iconBg: 'bg-rose-50 dark:bg-rose-900/30',
-    iconColor: 'text-rose-600 dark:text-rose-400',
-    goodText: 'You\'re tracking your health regularly.',
-    needsWorkText: 'Log a daily check-in to earn full health points.',
-    tip: 'Log steps, sleep, or mood once per day — consistency matters more than perfection.',
-    href: '/orbit/health',
-  },
-  {
-    key: 'finance' as const,
-    label: 'Finance',
-    weight: 10,
-    Icon: Wallet,
-    iconBg: 'bg-emerald-50 dark:bg-emerald-900/30',
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    goodText: 'Your finances are connected and tracked.',
-    needsWorkText: 'Connect an account or log a transaction to earn points.',
-    tip: 'Add a recurring expense (like rent or subscriptions) so your monthly spend is automatically tracked.',
-    href: '/orbit/finance',
-  },
-] as const;
 
 function ScoreExplainer({ scores }: { scores: Record<string, number> }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] shadow-sm overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
-        <p className="text-sm font-semibold text-gray-900 dark:text-white">What's in your Life Score?</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">5 areas of life, each weighted by impact.</p>
+    <div style={{ ...CARD, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: TXT }}>What's in your Life Score?</p>
+        <p style={{ fontSize: 11, color: DIM, marginTop: 2 }}>5 areas of life, each weighted by impact.</p>
       </div>
 
-      {/* Factor rows */}
-      <div className="divide-y divide-gray-50 dark:divide-gray-700/40">
-        {FACTOR_DETAILS.map(({ key, label, weight, Icon, iconBg, iconColor, goodText, needsWorkText, tip, href }) => {
-          const score = scores[key] ?? 0;
-          const isGood = score >= 70;
-          return (
-            <div key={key} className="px-5 py-3.5">
-              <div className="flex items-start gap-3">
-                <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-xl ${iconBg} mt-0.5`}>
-                  <Icon className={`h-4 w-4 ${iconColor}`} />
+      {MODULES.map(({ key, label, icon, color, weight, tip, href }) => {
+        const score  = scores[key] ?? 0;
+        const isGood = score >= 70;
+        return (
+          <div key={key} style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}18`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>
+                {icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: TXT }}>{label}</p>
+                  <span style={{ fontSize: 9, color: DIM }}>{weight}% weight</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
+                    background: isGood ? 'rgba(0,229,160,0.12)' : 'rgba(249,164,74,0.12)',
+                    color: isGood ? GREEN : AMBER }}>
+                    {isGood ? '✓ Good' : '↑ Needs work'}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{label}</p>
-                    <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{weight}% weight</span>
-                    <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      isGood
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    }`}>
-                      {isGood ? '✓ Good' : '↑ Needs work'}
-                    </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: 99, transition: 'width 0.7s' }} />
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">
-                    {isGood ? goodText : needsWorkText}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700">
-                      <div
-                        className={`h-1.5 rounded-full transition-all duration-700 ${
-                          isGood ? 'bg-emerald-400' : score >= 40 ? 'bg-amber-400' : 'bg-rose-400'
-                        }`}
-                        style={{ width: `${score}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 w-7 text-right">{score}</span>
-                  </div>
-                  {!isGood && (
-                    <p className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
-                      💡 {tip}
-                    </p>
-                  )}
+                  <span style={{ fontSize: 12, fontWeight: 700, color: TXT, width: 24, textAlign: 'right' }}>{score}</span>
                 </div>
+                {!isGood && (
+                  <p style={{ marginTop: 5, fontSize: 10, color: DIM }}>💡 {tip}</p>
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
 
-      {/* Expandable calculation section */}
-      <div className="border-t border-gray-100 dark:border-gray-700/60">
-        <button
-          onClick={() => setOpen(v => !v)}
-          className="flex w-full items-center justify-between px-5 py-3 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition"
-        >
-          <span className="font-medium">How is this calculated?</span>
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button onClick={() => setOpen(v => !v)}
+          style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', fontSize: 12, color: MUTED, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <span style={{ fontWeight: 600 }}>How is this calculated?</span>
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         {open && (
-          <div className="px-5 pb-4 space-y-2">
-            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-              Your Life Score is a weighted average recalculated each time you refresh. Each module contributes based on recent activity:
-            </p>
-            <ul className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <li><span className="font-medium text-gray-700 dark:text-gray-300">Habits (30%)</span> — ratio of habits logged vs. scheduled today × 100.</li>
-              <li><span className="font-medium text-gray-700 dark:text-gray-300">Tasks (20%)</span> — tasks completed this week divided by total tasks created, capped at 100.</li>
-              <li><span className="font-medium text-gray-700 dark:text-gray-300">Goals (20%)</span> — number of active goals with milestones, scaled 0–100.</li>
-              <li><span className="font-medium text-gray-700 dark:text-gray-300">Health (20%)</span> — daily check-in streak. Logging today gives full points.</li>
-              <li><span className="font-medium text-gray-700 dark:text-gray-300">Finance (10%)</span> — presence of connected accounts and recent transactions.</li>
+          <div style={{ padding: '0 20px 16px', color: DIM, fontSize: 11, lineHeight: 1.6 }}>
+            <p style={{ marginBottom: 8 }}>Your Life Score is a weighted average recalculated each time you refresh.</p>
+            <ul style={{ paddingLeft: 16 }}>
+              <li><span style={{ color: MUTED, fontWeight: 600 }}>Habits (30%)</span> — ratio of habits logged vs. scheduled today × 100.</li>
+              <li><span style={{ color: MUTED, fontWeight: 600 }}>Tasks (20%)</span> — tasks completed this week ÷ total tasks created, capped at 100.</li>
+              <li><span style={{ color: MUTED, fontWeight: 600 }}>Goals (20%)</span> — number of active goals with milestones, scaled 0–100.</li>
+              <li><span style={{ color: MUTED, fontWeight: 600 }}>Health (20%)</span> — daily check-in streak. Logging today gives full points.</li>
+              <li><span style={{ color: MUTED, fontWeight: 600 }}>Finance (10%)</span> — presence of connected accounts and recent transactions.</li>
             </ul>
-            <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">
-              Score = (habit×0.30) + (task×0.20) + (goal×0.20) + (health×0.20) + (finance×0.10), rounded to nearest integer.
-            </p>
           </div>
         )}
       </div>
@@ -220,14 +140,12 @@ export default function InsightsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchScores = async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true);
-    else setLoading(true);
+    if (showRefresh) setRefreshing(true); else setLoading(true);
     setError(false);
     try {
       const res = await fetch('/api/insights/scores');
       if (!res.ok) throw new Error(`${res.status}`);
-      const d = await res.json();
-      setData(d);
+      setData(await res.json());
     } catch {
       setError(true);
     } finally {
@@ -240,11 +158,10 @@ export default function InsightsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto animate-pulse">
-        <div className="h-8 w-48 rounded-xl bg-gray-200 dark:bg-gray-700" />
-        <div className="h-64 rounded-2xl bg-gray-100 dark:bg-gray-800" />
-        <div className="grid grid-cols-2 gap-3">
-          {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-gray-100 dark:bg-gray-800" />)}
+      <div className="space-y-5 max-w-4xl mx-auto">
+        <div className="animate-pulse" style={{ height: 220, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
+          {[1,2,3,4,5].map(i => <div key={i} className="animate-pulse" style={{ height: 90, borderRadius: 13, background: 'rgba(255,255,255,0.04)' }} />)}
         </div>
       </div>
     );
@@ -252,20 +169,15 @@ export default function InsightsPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] py-20 text-center max-w-4xl mx-auto">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-900/20">
-          <AlertCircle className="h-7 w-7 text-rose-500" />
+      <div style={{ ...CARD, padding: '56px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 480, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,107,107,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AlertCircle size={28} color={RED} />
         </div>
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white">Failed to load insights</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Check your connection and try again.</p>
-        </div>
-        <button
-          onClick={() => fetchScores()}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Retry
+        <p style={{ fontSize: 14, fontWeight: 600, color: TXT }}>Failed to load insights</p>
+        <p style={{ fontSize: 12, color: DIM }}>Check your connection and try again.</p>
+        <button onClick={() => fetchScores()}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 10, background: `linear-gradient(135deg,${GREEN},#00c47a)`, border: 'none', padding: '10px 22px', color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+          <RefreshCw size={14} /> Retry
         </button>
       </div>
     );
@@ -276,36 +188,32 @@ export default function InsightsPage() {
   const lifeScore = data?.lifeScore ?? 0;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Refresh button */}
-      <div className="flex justify-end">
+    <div className="space-y-5 max-w-4xl mx-auto">
+      {/* Refresh */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button onClick={() => fetchScores(true)} disabled={refreshing}
-          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] dark:text-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
+          style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 9, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)', padding: '6px 13px', color: MUTED, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
-      {/* Life Score Hero */}
-      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] shadow-sm p-6">
+      {/* Life Score Ring */}
+      <div style={{ ...CARD, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <LifeScoreRing score={lifeScore} />
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-3">
-          Weighted average across Habits (30%) · Tasks (20%) · Goals (20%) · Health (20%) · Finance (10%)
-        </p>
       </div>
 
       {/* Module Scores Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {SCORE_MODULES.map(({ key, label, Icon, iconBg, iconColor, barColor }) => {
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 11 }}>
+        {MODULES.map(({ key, label, icon, color }) => {
           const score = scores[key as keyof typeof scores];
           return (
-            <div key={key} className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] shadow-sm p-4">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg} mb-2`}>
-                <Icon className={`h-5 w-5 ${iconColor}`} />
+            <div key={key} style={{ ...CARD, borderRadius: 13, padding: '13px 14px' }}>
+              <div style={{ fontSize: 16, marginBottom: 7 }}>{icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'Georgia,serif', lineHeight: 1, marginBottom: 3 }}>{score}</div>
+              <div style={{ fontSize: 10, color: DIM }}>{label}</div>
+              <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 99, marginTop: 5, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: 99 }} />
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{score}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{label}</p>
-              <ScoreBar score={score} color={barColor} />
             </div>
           );
         })}
@@ -315,38 +223,42 @@ export default function InsightsPage() {
       <ScoreExplainer scores={scores} />
 
       {/* Insights Feed */}
-      <div className="space-y-3">
-        <p className="text-sm font-semibold text-gray-900 dark:text-white">Insights</p>
-        {insights.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] shadow-sm p-6 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Keep using the app — insights will appear as you track more data across modules.</p>
+      {insights.length > 0 && (
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: TXT, marginBottom: 11 }}>Insights</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+            {insights.map((ins, i) => {
+              const isWarn = ins.severity === 'warning' || ins.severity === 'critical';
+              const c = isWarn ? AMBER : GREEN;
+              return (
+                <div key={i} style={{ padding: '14px 16px', borderRadius: 12, border: `1px solid ${c}30`, background: `${c}0d` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                    <span style={{ fontSize: 14 }}>{isWarn ? '⚡' : '✅'}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: c }}>{ins.title}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: MUTED, lineHeight: 1.5 }}>{ins.body}</p>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          insights.map((ins, i) => (
-            <div key={i} className={`rounded-2xl border p-4 ${SEVERITY_STYLE[ins.severity] ?? SEVERITY_STYLE.info}`}>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">{ins.title}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{ins.body}</p>
-            </div>
-          ))
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Quick links */}
-      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-[#1C1F26] shadow-sm p-5">
-        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Improve Your Scores</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {[
-            { label: '+ Log Habit',       href: '/orbit/habits',       color: 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300' },
-            { label: '+ Add Task',        href: '/orbit/tasks',        color: 'bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/20 dark:text-sky-300' },
-            { label: '+ New Goal',        href: '/orbit/goals',        color: 'bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/20 dark:text-violet-300' },
-            { label: '+ Log Health',      href: '/orbit/health',       color: 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300' },
-            { label: '+ Add Transaction', href: '/orbit/finance',      color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300' },
-            { label: 'Weekly Review',     href: '/orbit/insights/weekly', color: 'bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700' },
-          ].map(({ label, href, color }) => (
-            <a key={href} href={href}
-              className={`rounded-xl px-3 py-2.5 text-xs font-medium text-center transition ${color}`}>
+      {insights.length === 0 && (
+        <div style={{ ...CARD, padding: '24px', textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: DIM }}>Keep using the app — insights will appear as you track more data across modules.</p>
+        </div>
+      )}
+
+      {/* Improve Your Scores */}
+      <div style={{ ...CARD, padding: '18px 20px' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: TXT, marginBottom: 11 }}>Improve Your Scores</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 9 }}>
+          {IMPROVE.map(({ label, href, bg, color, border }) => (
+            <Link key={href} href={href}
+              style={{ padding: 11, borderRadius: 10, fontSize: 11, fontWeight: 600, textAlign: 'center', background: bg, color, border: `1px solid ${border}`, textDecoration: 'none', transition: 'all 0.18s' }}>
               {label}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

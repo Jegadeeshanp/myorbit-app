@@ -2,48 +2,38 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import OrbitIcon from '@/components/OrbitIcon';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/orbit/habits':             'Dashboard',
-  '/orbit/habits/calendar':    'Calendar',
-  '/orbit/habits/streaks':     'Streaks',
-  '/orbit/habits/focus':       'Focus Timer',
-  '/orbit/habits/countdowns':  'Countdowns',
+const SB   = '#0a0f1e';
+const BG   = '#0e1623';
+const BORD = '#1a2a3a';
+const TXT  = '#e2e8f0';
+const DIM  = '#3a5060';
+
+const PAGE_META: Record<string, { title: string; sub: string }> = {
+  '/orbit/habits':            { title: 'Overview',    sub: 'Build systems that compound over time.' },
+  '/orbit/habits/calendar':   { title: 'Calendar',    sub: 'See your habit history at a glance.' },
+  '/orbit/habits/streaks':    { title: 'Streaks',     sub: 'Keep the momentum going, every day.' },
+  '/orbit/habits/focus':      { title: 'Focus Timer', sub: 'Deep work, distraction-free.' },
+  '/orbit/habits/countdowns': { title: 'Countdowns',  sub: 'Track your upcoming milestones.' },
+  '/orbit/habits/settings':   { title: 'Settings',    sub: 'Configure your habits workspace.' },
 };
-
-const PAGE_SUBTITLES: Record<string, string> = {
-  '/orbit/habits':             'Build systems that compound over time.',
-  '/orbit/habits/calendar':    'Track your habit completion across days and months.',
-  '/orbit/habits/streaks':     'Your habit consistency and longest streaks at a glance.',
-  '/orbit/habits/focus':       'Deep work sessions with Pomodoro-style focus blocks.',
-  '/orbit/habits/countdowns':  'Important dates and milestone countdowns.',
-};
-
-const MyOrbitBadge = () => (
-  <Link
-    href="/orbit"
-    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
-  >
-    <OrbitIcon src="/icons/top-icon.svg" />
-    <span className="text-base font-semibold text-gray-800">MyOrbit</span>
-  </Link>
-);
 
 export default function HabitsTopBar({ action }: { action?: React.ReactNode }) {
   const pathname = usePathname() ?? '';
-  const title    = PAGE_TITLES[pathname] ?? 'Habits';
-  const subtitle = PAGE_SUBTITLES[pathname] ?? 'Track and build your daily habits.';
+  const meta = PAGE_META[pathname] ?? { title: 'Habits', sub: '' };
 
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:px-6 flex-none">
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-semibold text-gray-900">{title}</h1>
-        <p className="mt-0.5 hidden text-sm text-gray-400 sm:block">{subtitle}</p>
+    <div style={{ background: SB, borderBottom: `1px solid ${BORD}`, padding: '0 28px', display: 'flex', alignItems: 'center', height: 64, flexShrink: 0, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 2 }}>{meta.title}</div>
+        {meta.sub && <div style={{ fontSize: 12, color: DIM }}>{meta.sub}</div>}
       </div>
-      <div className="flex flex-none items-center gap-2">
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
         {action}
-        <MyOrbitBadge />
+        <Link href="/orbit" style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 5px', borderRadius: 10, background: BG, border: `1px solid ${BORD}`, textDecoration: 'none', transition: 'all 0.18s' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#00E5A0,#5BE4FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#000' }}>M</div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: TXT }}>MyOrbit</span>
+        </Link>
       </div>
     </div>
   );

@@ -1,535 +1,862 @@
 'use client';
 
-import {
-  Wallet, Target, HeartPulse, CheckCircle, ClipboardList, Lightbulb,
-  LogOut, Settings, ChevronRight, CheckCheck, Flame, Sparkles,
-} from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import {
+  Wallet, Target, HeartPulse, Flame, CheckSquare, Sparkles,
+  Search, Bell, Settings, ChevronRight, CheckCheck, BarChart2,
+} from 'lucide-react';
 import { useAuth } from '@/lib/authStore';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFinance } from '@/lib/financeStore';
-import OnboardingWizard from '@/components/OnboardingWizard';
-import FirstRunSetup from '@/components/FirstRunSetup';
-import OrbitIcon from '@/components/OrbitIcon';
-import { toast } from '@/components/Toast';
 
-// ── Types ──────────────────────────────────────────────────────────────────
-type Task  = { id: string; title: string; priority: string; dueDate: string | null; status: string };
-type Habit = { id: string; name: string; iconEmoji: string; color: string; daysOfWeek: string; logs: { logDate: string }[] };
-type Goal  = { id: string; title: string; deadline: string | null; status: string };
+// ── Types ─────────────────────────────────────────────────────────────────────
+type TaskInst = { id: string; task: { title: string; priority: string } };
+type Habit    = { id: string; name: string; iconEmoji: string; daysOfWeek: string; logs: { logDate: string }[] };
+type Goal     = { id: string; title: string; deadline: string | null; status: string };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function greeting(): string {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function greeting() {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
-function formatDate(): string {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+function fmtBal(n: number) {
+  const a = Math.abs(n);
+  if (a >= 100000) return `${(a / 100000).toFixed(1)}L`;
+  if (a >= 1000)   return `${(a / 1000).toFixed(1)}K`;
+  return a.toFixed(0);
 }
 
-function buildSmartSummary(
-  firstName: string,
-  doneCount: number,
-  habitTotal: number,
-  overdueCount: number,
-  totalTasks: number,
-): string {
-  const parts: string[] = [];
-
-  if (habitTotal > 0) {
-    const pct = Math.round((doneCount / habitTotal) * 100);
-    if (pct >= 80)        parts.push(`You're on fire — ${doneCount}/${habitTotal} habits done today.`);
-    else if (pct >= 50)   parts.push(`Halfway through your habits — ${doneCount}/${habitTotal} done.`);
-    else if (doneCount === 0) parts.push(`${habitTotal} habit${habitTotal > 1 ? 's' : ''} waiting for you today.`);
-    else                  parts.push(`${doneCount} of ${habitTotal} habits done so far.`);
-  }
-
-  if (overdueCount > 3)        parts.push(`${overdueCount} overdue tasks need attention — start with the top priority.`);
-  else if (overdueCount > 0)   parts.push(`${overdueCount} task${overdueCount > 1 ? 's are' : ' is'} overdue — a good time to clear the deck.`);
-  else if (totalTasks > 0 && parts.length < 2) parts.push(`${totalTasks} task${totalTasks > 1 ? 's' : ''} on your list, all on schedule.`);
-
-  return parts.slice(0, 2).join(' ') || `Let's make today count, ${firstName}.`;
+function daysUntil(d: string) {
+  return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
 }
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-gray-100 dark:bg-white/5 ${className ?? ''}`} />;
-}
+// ── Module strip config ───────────────────────────────────────────────────────
+const MODS = [
+  { key: 'finance',  label: 'Finance',  Icon: Wallet,      href: '/orbit/finance',
+    iconBg: { d: 'rgba(0,229,160,0.14)',   l: 'rgba(0,184,122,0.14)' },
+    iconColor: { d: '#00E5A0', l: '#00b87a' },
+    accent: { d: '#00E5A0', l: '#00b87a' },
+    border: { d: 'rgba(0,229,160,0.35)',   l: 'rgba(0,184,122,0.35)' },
+    glow:   { d: '0 0 18px rgba(0,229,160,0.2)', l: '0 0 18px rgba(0,184,122,0.2)' },
+  },
+  { key: 'health',   label: 'Health',   Icon: HeartPulse,  href: '/orbit/health',
+    iconBg: { d: 'rgba(255,107,107,0.14)', l: 'rgba(224,52,52,0.14)' },
+    iconColor: { d: '#FF6B6B', l: '#e03434' },
+    accent: { d: '#FF6B6B', l: '#e03434' },
+    border: { d: 'rgba(255,107,107,0.35)', l: 'rgba(224,52,52,0.35)' },
+    glow:   { d: '0 0 18px rgba(255,107,107,0.2)', l: '0 0 18px rgba(224,52,52,0.2)' },
+  },
+  { key: 'goals',    label: 'Goals',    Icon: Target,       href: '/orbit/goals',
+    iconBg: { d: 'rgba(167,139,250,0.14)', l: 'rgba(139,92,246,0.14)' },
+    iconColor: { d: '#A78BFA', l: '#8b5cf6' },
+    accent: { d: '#A78BFA', l: '#8b5cf6' },
+    border: { d: 'rgba(167,139,250,0.35)', l: 'rgba(139,92,246,0.35)' },
+    glow:   { d: '0 0 18px rgba(167,139,250,0.2)', l: '0 0 18px rgba(139,92,246,0.2)' },
+  },
+  { key: 'tasks',    label: 'Tasks',    Icon: CheckSquare,  href: '/orbit/tasks',
+    iconBg: { d: 'rgba(91,228,255,0.14)',  l: 'rgba(14,165,233,0.14)' },
+    iconColor: { d: '#5BE4FF', l: '#0ea5e9' },
+    accent: { d: '#5BE4FF', l: '#0ea5e9' },
+    border: { d: 'rgba(91,228,255,0.35)',  l: 'rgba(14,165,233,0.35)' },
+    glow:   { d: '0 0 18px rgba(91,228,255,0.2)', l: '0 0 18px rgba(14,165,233,0.2)' },
+  },
+  { key: 'habits',   label: 'Habits',   Icon: Flame,        href: '/orbit/habits',
+    iconBg: { d: 'rgba(249,164,74,0.14)',  l: 'rgba(224,123,16,0.14)' },
+    iconColor: { d: '#F9A44A', l: '#e07b10' },
+    accent: { d: '#F9A44A', l: '#e07b10' },
+    border: { d: 'rgba(249,164,74,0.35)',  l: 'rgba(224,123,16,0.35)' },
+    glow:   { d: '0 0 18px rgba(249,164,74,0.2)', l: '0 0 18px rgba(224,123,16,0.2)' },
+  },
+  { key: 'insights', label: 'Insights', Icon: Sparkles,     href: '/orbit/insights',
+    iconBg: { d: 'rgba(249,164,74,0.14)',  l: 'rgba(224,123,16,0.14)' },
+    iconColor: { d: '#F9A44A', l: '#e07b10' },
+    accent: { d: '#F9A44A', l: '#e07b10' },
+    border: { d: 'rgba(249,164,74,0.35)',  l: 'rgba(224,123,16,0.35)' },
+    glow:   { d: '0 0 18px rgba(249,164,74,0.2)', l: '0 0 18px rgba(224,123,16,0.2)' },
+  },
+] as const;
 
-// ── Page ───────────────────────────────────────────────────────────────────
-export default function Orbit() {
-  const { auth, signOut } = useAuth();
-  const router = useRouter();
+// ── Component ─────────────────────────────────────────────────────────────────
+export default function OrbitDashboard() {
+  const { auth }  = useAuth();
+  const user      = auth.status === 'authenticated' ? auth.user : null;
   const { state } = useFinance();
 
-  const [showFirstRun, setShowFirstRun] = useState(false);
-  useEffect(() => {
-    fetch('/api/settings').then(r => r.ok ? r.json() : null).then(data => {
-      if (data?.preferences?.onboardingDone === false) setShowFirstRun(true);
-    }).catch(() => {});
-  }, []);
+  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const initials  = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) ?? 'M';
+  const today     = new Date().toISOString().split('T')[0];
+  const weekday   = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-  const [tasks,        setTasks]        = useState<Task[]>([]);
+  const [tasks,        setTasks]        = useState<{ overdue: TaskInst[]; today: TaskInst[] } | null>(null);
   const [habits,       setHabits]       = useState<Habit[]>([]);
   const [goals,        setGoals]        = useState<Goal[]>([]);
   const [healthLogged, setHealthLogged] = useState<boolean | null>(null);
+  const [doneHabitIds, setDoneHabitIds] = useState<Set<string>>(new Set());
   const [dataLoading,  setDataLoading]  = useState(true);
-  const [showAllTasks, setShowAllTasks] = useState(false);
+  const [isDark,       setIsDark]       = useState(true);
+  const [activeKey,    setActiveKey]    = useState('finance');
 
-  const today = new Date().toISOString().split('T')[0];
+  // Detect live dark-mode state (for inline-style gradients)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
+    if (auth.status !== 'authenticated') return;
     Promise.all([
-      fetch('/api/tasks?smartList=all').then(r => r.ok ? r.json() : []),
-      fetch('/api/habits').then(r => r.ok ? r.json() : []),
-      fetch('/api/goals').then(r => r.ok ? r.json() : []),
-      fetch(`/api/health/entries?date=${today}`).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([t, h, g, health]) => {
-      setTasks(Array.isArray(t) ? t : []);
+      fetch('/api/tasks/today').then(r => r.json()).catch(() => ({ overdue: [], today: [] })),
+      fetch('/api/habits').then(r => r.json()).catch(() => []),
+      fetch('/api/goals').then(r => r.json()).catch(() => []),
+      fetch(`/api/health/entries?date=${today}`).then(r => r.json()).catch(() => null),
+    ]).then(([t, h, g, he]) => {
+      setTasks({ overdue: t?.overdue ?? [], today: t?.today ?? [] });
       setHabits(Array.isArray(h) ? h : []);
-      setGoals(Array.isArray(g) ? (g as Goal[]).filter(gl => gl.status === 'active') : []);
-      setHealthLogged(health && !health?.error ? true : false);
-    }).catch(() => {}).finally(() => setDataLoading(false));
-  }, [today]);
+      setGoals(Array.isArray(g) ? g : []);
+      setHealthLogged(!!he && !!he.id);
+      setDoneHabitIds(new Set(
+        (Array.isArray(h) ? h : [])
+          .filter((hb: Habit) => hb.logs?.some(l => l.logDate === today))
+          .map((hb: Habit) => hb.id),
+      ));
+      setDataLoading(false);
+    });
+  }, [auth.status, today]);
 
-  const handleSignOut = () => { signOut(); router.push('/signin'); };
-
-  const userName  = auth.status === 'authenticated' ? auth.user.name : '';
-  const firstName = userName.split(' ')[0] || 'there';
-
-  const showWizardRef = useRef<boolean | null>(null);
-  if (state.loadState === 'ready' && showWizardRef.current === null) {
-    showWizardRef.current = state.accounts.length === 0 && state.assets.length === 0;
-  }
-
-  const totalBalance = state.loadState === 'ready'
-    ? state.accounts.reduce((s: number, a: any) => s + (a.balance ?? 0), 0)
-    : null;
-
+  // ── Computed ──────────────────────────────────────────────────────────────
   const todayDow    = new Date().getDay();
   const todayHabits = habits.filter(h => {
-    try { const days: number[] = JSON.parse(h.daysOfWeek ?? '[0,1,2,3,4,5,6]'); return days.includes(todayDow); }
+    try { return (JSON.parse(h.daysOfWeek ?? '[0,1,2,3,4,5,6]') as number[]).includes(todayDow); }
     catch { return true; }
   });
+  const doneCount     = todayHabits.filter(h => doneHabitIds.has(h.id)).length;
+  const habitProgress = todayHabits.length > 0 ? Math.round((doneCount / todayHabits.length) * 100) : 0;
 
-  const [doneHabitIds, setDoneHabitIds] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    setDoneHabitIds(new Set(habits.filter(h => h.logs.some(l => l.logDate === today)).map(h => h.id)));
-  }, [habits, today]);
+  const overdueTasks = tasks?.overdue ?? [];
+  const todayTasks   = tasks?.today ?? [];
+  const allTasks     = [...overdueTasks, ...todayTasks];
 
-  const doneCount = todayHabits.filter(h => doneHabitIds.has(h.id)).length;
+  const activeGoals = (goals as any[]).filter(g => g.status === 'active');
+  const nearestGoal = activeGoals
+    .filter(g => g.deadline)
+    .sort((a, b) => (a.deadline < b.deadline ? -1 : 1))[0];
 
-  const toggleHabit = useCallback(async (habitId: string) => {
-    const wasDone = doneHabitIds.has(habitId);
-    setDoneHabitIds(prev => { const n = new Set(prev); wasDone ? n.delete(habitId) : n.add(habitId); return n; });
+  const totalBalance = state.loadState === 'ready'
+    ? state.accounts.reduce((s, a) => s + (a.balance ?? 0), 0)
+    : null;
+
+  const orbitScore = Math.min(100, Math.round(
+    (habitProgress * 0.4) +
+    (overdueTasks.length === 0 ? 30 : Math.max(0, 30 - overdueTasks.length * 5)) +
+    (activeGoals.length > 0 ? 20 : 0) +
+    (healthLogged ? 10 : 0),
+  ));
+  const scoreLabel = orbitScore >= 80 ? 'Excellent' : orbitScore >= 60 ? 'On Track' : orbitScore >= 40 ? 'Keep Going' : 'Slightly Behind';
+
+  const heroHeading = overdueTasks.length > 0
+    ? 'Your orbit looks slightly behind today.'
+    : (doneCount === todayHabits.length && todayHabits.length > 0)
+    ? 'Your orbit is looking great today!'
+    : `Let's keep your orbit on track.`;
+
+  const heroBullets: { color: string; text: string }[] = [
+    overdueTasks.length > 0 ? { color: isDark ? '#FF6B6B' : '#e03434', text: `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} overdue — clear these first` } : null,
+    todayHabits.length > 0  ? { color: isDark ? '#F9A44A' : '#e07b10', text: doneCount < todayHabits.length ? `Your habits are ${habitProgress}% done today` : 'All habits complete today 🎉' } : null,
+    nearestGoal             ? { color: isDark ? '#818cf8' : '#4f46e5', text: `${nearestGoal.title?.slice(0, 36)} — ${daysUntil(nearestGoal.deadline!)}d remaining` } : null,
+  ].filter(Boolean) as { color: string; text: string }[];
+
+  const heroRec = overdueTasks.length > 0
+    ? 'Clear overdue items before 6 PM, then log your health to boost your orbit score.'
+    : 'Stay consistent — your habits and goals are the foundation of your orbit.';
+
+  const toggleHabit = useCallback(async (id: string) => {
+    const wasDone = doneHabitIds.has(id);
+    setDoneHabitIds(prev => { const n = new Set(prev); wasDone ? n.delete(id) : n.add(id); return n; });
     try {
-      const res  = await fetch(`/api/habits/${habitId}/log`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logDate: today }) });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      toast(data.removed ? 'Habit unmarked' : 'Habit done! 🎉', 'success');
+      await fetch(`/api/habits/${id}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: today }),
+      });
     } catch {
-      setDoneHabitIds(prev => { const n = new Set(prev); wasDone ? n.add(habitId) : n.delete(habitId); return n; });
-      toast('Could not update habit', 'error');
+      setDoneHabitIds(prev => { const n = new Set(prev); wasDone ? n.add(id) : n.delete(id); return n; });
     }
   }, [doneHabitIds, today]);
 
-  const nearestGoal = goals.filter(g => g.deadline).sort((a, b) => a.deadline! < b.deadline! ? -1 : 1)[0];
-  const daysUntil   = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
-  const fmtBalance  = (n: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.abs(n));
+  // Orbit score ring
+  const ringR    = 76;
+  const ringCirc = 2 * Math.PI * ringR;
+  const ringArc  = (orbitScore / 100) * ringCirc;
 
-  const sortedTasks = [...tasks].sort((a, b) => {
-    const ao = a.dueDate && a.dueDate < today, bo = b.dueDate && b.dueDate < today;
-    const at = a.dueDate === today,            bt = b.dueDate === today;
-    if (ao && !bo) return -1; if (!ao && bo) return 1;
-    if (at && !bt) return -1; if (!at && bt) return 1;
-    if (a.dueDate && b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
-    return a.dueDate ? -1 : b.dueDate ? 1 : 0;
-  });
+  const PRIORITY_COLOR: Record<string, string> = {
+    urgent: isDark ? '#FF6B6B' : '#e03434',
+    high:   isDark ? '#FF6B6B' : '#e03434',
+    medium: isDark ? '#F9A44A' : '#e07b10',
+    low:    isDark ? '#00E5A0' : '#00b87a',
+    none:   isDark ? '#3d5166' : '#94a3b8',
+  };
 
-  const overdueTasks   = sortedTasks.filter(t => t.dueDate && t.dueDate < today);
-  const FOCUS_LIMIT    = 3;
-  const focusTasks     = sortedTasks.slice(0, FOCUS_LIMIT);
-  const remainingCount = Math.max(0, sortedTasks.length - FOCUS_LIMIT);
-  const habitProgress  = todayHabits.length > 0 ? Math.round((doneCount / todayHabits.length) * 100) : 0;
-  const smartSummary   = buildSmartSummary(firstName, doneCount, todayHabits.length, overdueTasks.length, sortedTasks.length);
+  // Theme-resolved shorthand
+  const t = isDark
+    ? { bg: '#090d16', card: '#0e1420', deep: '#070b13', bord: 'rgba(255,255,255,0.06)', bord2: 'rgba(255,255,255,0.11)', text: '#e4eaf4', text2: '#8fa3b8', dim: '#3d5166', green: '#00E5A0', blue: '#5BE4FF', amber: '#F9A44A', red: '#FF6B6B', purple: '#A78BFA', indigo: '#818cf8' }
+    : { bg: '#f0f4f8', card: '#ffffff', deep: '#e8edf4', bord: 'rgba(0,0,0,0.08)', bord2: 'rgba(0,0,0,0.14)', text: '#0f172a', text2: '#475569', dim: '#94a3b8', green: '#00b87a', blue: '#0ea5e9', amber: '#e07b10', red: '#e03434', purple: '#8b5cf6', indigo: '#4f46e5' };
 
-  const MODULES = [
-    { id: 'finance',  label: 'Finance',  icon: Wallet,       href: '/orbit/finance',  color: '#059669' },
-    { id: 'goals',    label: 'Goals',    icon: Target,       href: '/orbit/goals',    color: '#7C3AED' },
-    { id: 'health',   label: 'Health',   icon: HeartPulse,   href: '/orbit/health',   color: '#E11D48' },
-    { id: 'habits',   label: 'Habits',   icon: CheckCircle,  href: '/orbit/habits',   color: '#D97706' },
-    { id: 'tasks',    label: 'Tasks',    icon: ClipboardList,href: '/orbit/tasks',    color: '#2563EB' },
-    { id: 'insights', label: 'Insights', icon: Lightbulb,    href: '/orbit/insights', color: '#CA8A04' },
-  ];
+  const CARD: React.CSSProperties = {
+    background: t.card, border: `1px solid ${t.bord}`, borderRadius: 24,
+    padding: '28px 30px', position: 'relative', overflow: 'hidden', transition: 'box-shadow 0.2s, border-color 0.2s',
+  };
+
+  // Module strip pill live data
+  function modPillData(key: string): { value: string; sub: string; valueColor: string } {
+    switch (key) {
+      case 'finance':
+        if (totalBalance === null) return { value: '—', sub: 'Net position', valueColor: t.text2 };
+        return {
+          value: `${totalBalance < 0 ? '–' : ''}₹${fmtBal(totalBalance)}`,
+          sub: 'Net position',
+          valueColor: totalBalance < 0 ? t.red : t.green,
+        };
+      case 'health':
+        return {
+          value: healthLogged === null ? '—' : healthLogged ? 'Logged ✓' : 'Not logged',
+          sub: healthLogged ? 'Today\'s health' : 'Log today',
+          valueColor: healthLogged ? t.green : t.text2,
+        };
+      case 'goals':
+        return {
+          value: dataLoading ? '—' : `${activeGoals.length}`,
+          sub: nearestGoal ? `${daysUntil(nearestGoal.deadline!)}d · ${nearestGoal.title?.slice(0, 12)}` : 'Active goals',
+          valueColor: t.indigo,
+        };
+      case 'tasks':
+        return {
+          value: dataLoading ? '—' : `${overdueTasks.length}`,
+          sub: `overdue · ${allTasks.length} total`,
+          valueColor: overdueTasks.length > 0 ? t.red : t.green,
+        };
+      case 'habits':
+        return {
+          value: dataLoading ? '—' : `${doneCount}/${todayHabits.length}`,
+          sub: `today · ${habitProgress}% done`,
+          valueColor: t.amber,
+        };
+      case 'insights':
+        return { value: '4', sub: 'new updates', valueColor: t.amber };
+      default:
+        return { value: '—', sub: '', valueColor: t.text2 };
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-[#F4F4F2] dark:bg-[#0B1120] text-gray-900 dark:text-gray-100">
-      {showFirstRun && <FirstRunSetup onComplete={() => setShowFirstRun(false)} />}
-      {!showFirstRun && showWizardRef.current === true && (
-        <OnboardingWizard onDismiss={() => { showWizardRef.current = false; }} />
-      )}
+    <div style={{ minHeight: '100vh', background: t.bg, color: t.text, fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
 
-      <div className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-8 sm:px-6 lg:px-10 xl:px-14">
+      {/* ── Fixed Topbar ─────────────────────────────────────────────────────── */}
+      <header style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, height: 62,
+        background: isDark ? 'rgba(7,11,19,0.88)' : 'rgba(248,250,252,0.92)',
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        borderBottom: `1px solid ${t.bord}`,
+        display: 'flex', alignItems: 'center', padding: '0 48px', gap: 14,
+      }}>
+        {/* Avatar */}
+        <div style={{
+          width: 36, height: 36, borderRadius: 11, flexShrink: 0,
+          background: 'linear-gradient(135deg,#00E5A0,#5BE4FF)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 15, fontWeight: 800, color: '#000',
+          boxShadow: '0 0 18px rgba(0,229,160,0.25)',
+        }}>{initials}</div>
 
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <OrbitIcon
-              src="/icons/app-logo.svg"
-              className="h-8 w-8 rounded-xl object-cover"
-              fallbackClassName="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white"
-            />
-            <div>
-              <p className="text-[15px] font-semibold leading-tight text-gray-900 dark:text-gray-50">
-                {greeting()}, {firstName}
-              </p>
-              <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">{formatDate()}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/orbit/settings"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-white/5 text-gray-400 shadow-sm transition hover:text-gray-600 dark:hover:text-gray-300">
-              <Settings className="h-3.5 w-3.5" />
-            </Link>
-            <button onClick={handleSignOut}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-white/5 text-gray-400 shadow-sm transition hover:text-gray-600 dark:hover:text-gray-300">
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{greeting()}, {firstName}</div>
+          <div style={{ fontSize: 11, color: t.green, marginTop: 1, fontWeight: 500 }}>
+            {weekday} · {overdueTasks.length > 0 ? `${overdueTasks.length} thing${overdueTasks.length > 1 ? 's' : ''} need attention` : 'Everything on track'}
           </div>
         </div>
 
-        {/* ── Hero AI Summary Card ── */}
-        <div className="relative mb-7 overflow-hidden rounded-3xl bg-gradient-to-br from-[#071a10] via-[#0d2318] to-[#0a1628] p-6 shadow-[0_8px_48px_rgba(0,0,0,0.22)]">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-emerald-500/8 via-transparent to-transparent" />
-          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/6 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-32 w-64 rounded-full bg-blue-500/4 blur-3xl" />
-
-          <div className="relative">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/20">
-                <Sparkles className="h-3 w-3 text-emerald-400" />
-              </div>
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400/70">Daily Orbit</span>
-            </div>
-
-            <p className="mb-5 max-w-lg text-[15px] leading-relaxed text-gray-200/85">
-              {dataLoading
-                ? <span className="inline-block h-5 w-72 animate-pulse rounded bg-white/8" />
-                : smartSummary}
-            </p>
-
-            <div className="flex flex-wrap gap-2">
-              {!dataLoading && todayHabits.length > 0 && (
-                <Link href="/orbit/habits"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/12 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 transition hover:bg-emerald-500/20">
-                  <Flame className="h-3 w-3" />
-                  {doneCount}/{todayHabits.length} habits
-                </Link>
-              )}
-              {!dataLoading && overdueTasks.length > 0 && (
-                <Link href="/orbit/tasks"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/12 px-3 py-1.5 text-[11px] font-semibold text-rose-300 transition hover:bg-rose-500/20">
-                  ⚠ {overdueTasks.length} overdue
-                </Link>
-              )}
-              {!dataLoading && nearestGoal && (
-                <Link href="/orbit/goals"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/12 px-3 py-1.5 text-[11px] font-semibold text-violet-300 transition hover:bg-violet-500/20">
-                  <Target className="h-3 w-3" />
-                  {nearestGoal.title.length > 22 ? nearestGoal.title.slice(0, 22) + '…' : nearestGoal.title} · {daysUntil(nearestGoal.deadline!)}d
-                </Link>
-              )}
-              {!dataLoading && totalBalance !== null && (
-                <Link href="/orbit/finance"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/12 px-3 py-1.5 text-[11px] font-semibold text-blue-300 transition hover:bg-blue-500/20">
-                  <Wallet className="h-3 w-3" />
-                  ₹{fmtBalance(totalBalance)} net
-                </Link>
-              )}
-            </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Search */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 16px', borderRadius: 10, minWidth: 180,
+            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+            border: `1px solid ${t.bord}`, fontSize: 12, color: t.dim, cursor: 'pointer',
+          }}>
+            <Search size={14} color={t.dim} style={{ flexShrink: 0 }} />
+            Search everything...
           </div>
-        </div>
-
-        {/* ── Module shortcuts ── */}
-        <div className="mb-6 grid grid-cols-6 gap-2">
-          {MODULES.map(m => {
-            const Icon = m.icon;
-            return (
-              <Link
-                key={m.id}
-                href={m.href}
-                className="flex flex-col items-center gap-2 rounded-2xl bg-white dark:bg-[#111827] px-2 py-3.5 shadow-[0_1px_8px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.22)] transition hover:scale-[1.04] hover:shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: m.color + '18', color: m.color }}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400">{m.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* ── Monday review banner ── */}
-        {new Date().getDay() === 1 && (
-          <Link href="/orbit/insights/weekly"
-            className="mb-6 flex items-center gap-3 rounded-2xl bg-violet-50 dark:bg-violet-950/25 px-4 py-3 transition hover:bg-violet-100 dark:hover:bg-violet-950/40 group">
-            <span className="text-lg">📊</span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">Your week in review is ready</p>
-              <p className="text-xs text-violet-500 dark:text-violet-400 mt-0.5">Life Score, wins, and focus areas from last week</p>
+          {/* Bell */}
+          <div style={{
+            width: 36, height: 36, borderRadius: 10, cursor: 'pointer',
+            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+            border: `1px solid ${t.bord}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Bell size={16} color={t.text2} strokeWidth={1.75} />
+          </div>
+          {/* Settings */}
+          <Link href="/orbit/settings" style={{ textDecoration: 'none' }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, cursor: 'pointer',
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+              border: `1px solid ${t.bord}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Settings size={16} color={t.text2} strokeWidth={1.75} />
             </div>
-            <ChevronRight className="h-4 w-4 text-violet-300 transition group-hover:text-violet-500" />
           </Link>
-        )}
+        </div>
+      </header>
 
-        {/* ── Main grid ── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
+      <div style={{ marginTop: 62 }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '40px 48px 0' }}>
+          <div style={{
+            borderRadius: 28, padding: '40px 44px', position: 'relative', overflow: 'hidden',
+            background: isDark
+              ? 'linear-gradient(140deg,#071c12 0%,#08131e 40%,#090d16 100%)'
+              : 'linear-gradient(140deg,#e8fdf4 0%,#eff6ff 55%,#f0f4f8 100%)',
+            border: `1px solid ${isDark ? 'rgba(0,229,160,0.18)' : 'rgba(0,184,122,0.28)'}`,
+          }}>
+            {/* Glow overlay */}
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: isDark
+                ? 'radial-gradient(ellipse 55% 80% at 100% 50%, rgba(0,229,160,0.1) 0%,transparent 65%), radial-gradient(ellipse 30% 40% at 0% 0%, rgba(91,228,255,0.05) 0%,transparent 60%)'
+                : 'radial-gradient(ellipse 55% 80% at 100% 50%, rgba(0,184,122,0.08) 0%,transparent 65%), radial-gradient(ellipse 30% 40% at 0% 0%, rgba(14,165,233,0.05) 0%,transparent 60%)',
+            }} />
 
-          {/* ── Left / Focus column ── */}
-          <div className="space-y-5 lg:col-span-2">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 40, alignItems: 'center', position: 'relative' }}>
+              {/* Left: text content */}
+              <div>
+                {/* Tag */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                  <div style={{
+                    width: 8, height: 8, borderRadius: '50%', background: t.green,
+                    boxShadow: `0 0 12px ${t.green}`,
+                    animation: 'orbitPulse 2.5s ease-in-out infinite',
+                  }} />
+                  <span style={{ fontSize: 9, color: t.green, letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }}>
+                    Daily Orbit
+                  </span>
+                </div>
 
-            {/* Today's Focus */}
-            <div className="rounded-3xl bg-white dark:bg-[#111827] p-6 shadow-[0_2px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_32px_rgba(0,0,0,0.28)]">
-              <div className="mb-5 flex items-end justify-between">
-                <div>
-                  <h2 className="text-[15px] font-semibold text-gray-900 dark:text-gray-50">Today&apos;s Focus</h2>
-                  {!dataLoading && sortedTasks.length > 0 && (
-                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-                      {overdueTasks.length > 0 ? `${overdueTasks.length} overdue · ` : ''}{sortedTasks.length} total
-                    </p>
+                {/* Heading */}
+                <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'Georgia, serif', color: t.text, lineHeight: 1.25, marginBottom: 20 }}>
+                  {heroHeading}
+                </div>
+
+                {/* Bullets */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
+                  {heroBullets.map((b, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, fontSize: 13, color: t.text2, lineHeight: 1.5 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color, boxShadow: `0 0 7px ${b.color}`, flexShrink: 0, marginTop: 5 }} />
+                      {b.text}
+                    </div>
+                  ))}
+                  {heroBullets.length === 0 && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, fontSize: 13, color: t.text2, lineHeight: 1.5 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: t.green, boxShadow: `0 0 7px ${t.green}`, flexShrink: 0, marginTop: 5 }} />
+                      All caught up — great work today!
+                    </div>
                   )}
                 </div>
-                <Link href="/orbit/tasks" className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition">
-                  All tasks →
-                </Link>
+
+                {/* Recommendation */}
+                <div style={{
+                  fontSize: 13, color: t.text2, lineHeight: 1.65, padding: '14px 18px', borderRadius: 14, marginBottom: 24,
+                  background: isDark ? 'rgba(0,229,160,0.05)' : 'rgba(0,184,122,0.07)',
+                  border: `1px solid ${isDark ? 'rgba(0,229,160,0.12)' : 'rgba(0,184,122,0.18)'}`,
+                }}>
+                  <strong style={{ color: t.green, fontWeight: 600 }}>Recommended focus: </strong>
+                  {heroRec}
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Link href="/orbit/tasks">
+                    <button style={{
+                      padding: '12px 26px', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 13, border: 'none', color: '#000',
+                      background: 'linear-gradient(135deg,#00E5A0,#00c47a)', transition: 'all 0.2s',
+                    }}>Review Tasks</button>
+                  </Link>
+                  <Link href="/orbit/insights">
+                    <button style={{
+                      padding: '12px 26px', borderRadius: 12, cursor: 'pointer', fontSize: 13, color: t.text2,
+                      background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                      border: `1px solid ${t.bord2}`, transition: 'all 0.2s',
+                    }}>View Insights</button>
+                  </Link>
+                </div>
               </div>
 
-              {dataLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              ) : sortedTasks.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="mb-2 text-2xl">✅</p>
-                  <p className="text-sm text-gray-400 dark:text-gray-500">
-                    All clear.{' '}
-                    <Link href="/orbit/tasks" className="text-emerald-600 dark:text-emerald-400 hover:underline">Add a task →</Link>
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                    {(showAllTasks ? sortedTasks : focusTasks).map((task, i) => {
-                      const isOverdue  = task.dueDate && task.dueDate < today;
-                      const isDueToday = task.dueDate === today;
-                      return (
-                        <div key={task.id} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-                          <span className={`w-4 flex-none text-center text-[11px] font-bold tabular-nums ${isOverdue ? 'text-rose-400' : isDueToday ? 'text-blue-400' : 'text-gray-200 dark:text-gray-700'}`}>
-                            {i + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">{task.title}</p>
-                            {(isOverdue || isDueToday) && (
-                              <p className={`mt-0.5 text-[10px] ${isOverdue ? 'text-rose-500 dark:text-rose-400' : 'text-blue-500 dark:text-blue-400'}`}>
-                                {isOverdue ? 'Overdue' : 'Due today'}
-                              </p>
-                            )}
-                          </div>
-                          {task.priority && task.priority !== 'none' && (
-                            <span className={`flex-none text-[10px] font-semibold uppercase tracking-wide ${
-                              task.priority === 'urgent' || task.priority === 'high' ? 'text-rose-400' :
-                              task.priority === 'medium' ? 'text-amber-500 dark:text-amber-400' :
-                              'text-gray-300 dark:text-gray-600'
-                            }`}>
-                              {task.priority}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+              {/* Right: Orbit Score Ring */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                <div style={{ position: 'relative' }}>
+                  <svg width="180" height="180" viewBox="0 0 180 180">
+                    <defs>
+                      <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#00E5A0" />
+                        <stop offset="100%" stopColor="#5BE4FF" />
+                      </linearGradient>
+                      <filter id="scoreGlow">
+                        <feGaussianBlur stdDeviation="3" result="b" />
+                        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                      </filter>
+                    </defs>
+                    <circle cx="90" cy="90" r={ringR} fill="none" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'} strokeWidth="10" />
+                    <circle cx="90" cy="90" r={ringR} fill="none" stroke="url(#scoreGrad)" strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray={`${ringArc} ${ringCirc}`}
+                      strokeDashoffset={ringCirc * 0.25}
+                      filter="url(#scoreGlow)" />
+                  </svg>
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-64%)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 38, fontWeight: 700, lineHeight: 1, fontFamily: 'Georgia, serif', color: t.text }}>{orbitScore}</div>
+                    <div style={{ fontSize: 10, color: t.green, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, marginTop: 4 }}>Orbit Score</div>
                   </div>
-
-                  {remainingCount > 0 && (
-                    <button
-                      onClick={() => setShowAllTasks(v => !v)}
-                      className="mt-4 w-full rounded-xl bg-gray-50 dark:bg-white/4 py-2 text-[12px] font-medium text-gray-400 dark:text-gray-500 transition hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      {showAllTasks ? '↑ Show less' : `+${remainingCount} more task${remainingCount > 1 ? 's' : ''}`}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Today's Habits */}
-            <div className="rounded-3xl bg-white dark:bg-[#111827] p-6 shadow-[0_2px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_32px_rgba(0,0,0,0.28)]">
-              <div className="mb-5 flex items-end justify-between">
-                <div>
-                  <h2 className="text-[15px] font-semibold text-gray-900 dark:text-gray-50">Today&apos;s Habits</h2>
-                  {!dataLoading && todayHabits.length > 0 && (
-                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">{doneCount} of {todayHabits.length} complete</p>
-                  )}
                 </div>
-                <Link href="/orbit/habits" className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition">
-                  All habits →
-                </Link>
+                {/* Breakdown */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', width: '100%' }}>
+                  {[
+                    { label: 'Habits',  val: `${habitProgress}%`, color: t.amber },
+                    { label: 'Health',  val: healthLogged === null ? '—' : healthLogged ? '✓' : '0%', color: healthLogged ? t.green : t.red },
+                    { label: 'Tasks',   val: `${Math.max(0, 100 - overdueTasks.length * 20)}%`, color: t.blue },
+                    { label: 'Goals',   val: activeGoals.length > 0 ? '✓' : '—', color: t.indigo },
+                  ].map(r => (
+                    <div key={r.label} style={{ fontSize: 11, color: t.text2, display: 'flex', justifyContent: 'space-between' }}>
+                      {r.label} <span style={{ fontWeight: 600, color: r.color }}>{r.val}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-              {!dataLoading && todayHabits.length > 0 && (
-                <div className="mb-5 h-1 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                  <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${habitProgress}%` }} />
-                </div>
-              )}
+      {/* ── Sticky Module Strip ────────────────────────────────────────────────── */}
+      <div style={{
+        position: 'sticky', top: 62, zIndex: 100,
+        background: isDark ? 'rgba(9,13,22,0.88)' : 'rgba(248,250,252,0.92)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: `1px solid ${t.bord}`,
+      }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 48px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12 }}>
+            {MODS.map(m => {
+              const isActive = activeKey === m.key;
+              const pd = modPillData(m.key);
+              const d = isDark;
+              return (
+                <Link key={m.key} href={m.href} onClick={() => setActiveKey(m.key)} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', padding: '16px 18px 15px',
+                    borderRadius: 18, cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                    transition: 'all 0.2s',
+                    background: isActive
+                      ? (d ? 'linear-gradient(145deg,#071a10,#0a0e18)' : 'linear-gradient(145deg,#e8fdf4,#f0fdf8)')
+                      : (d ? '#0e1420' : '#ffffff'),
+                    border: isActive ? `1px solid ${d ? m.border.d : m.border.l}` : `1px solid ${t.bord}`,
+                    boxShadow: isActive
+                      ? `0 0 0 1px ${d ? m.border.d.replace('0.35', '0.18') : m.border.l.replace('0.35', '0.18')}, 0 8px 24px ${d ? m.border.d.replace('0.35', '0.1') : m.border.l.replace('0.35', '0.1')}`
+                      : 'none',
+                  }}>
+                    {/* Active top accent */}
+                    {isActive && (
+                      <div style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                        borderRadius: '18px 18px 0 0',
+                        background: `linear-gradient(90deg,${d ? m.accent.d : m.accent.l},transparent)`,
+                      }} />
+                    )}
+                    {/* Icon + name */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <div style={{
+                        width: 52, height: 52, borderRadius: 18, marginBottom: 2,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: d ? m.iconBg.d : m.iconBg.l,
+                        border: `1px solid ${d ? m.border.d : m.border.l}`,
+                        boxShadow: d ? m.glow.d : m.glow.l,
+                      }}>
+                        <m.Icon size={22} color={d ? m.iconColor.d : m.iconColor.l} strokeWidth={1.75} />
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: isActive ? (d ? m.accent.d : m.accent.l) : t.text, marginTop: 10 }}>
+                        {m.label}
+                      </div>
+                    </div>
+                    {/* Value */}
+                    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Georgia, serif', color: pd.valueColor, marginBottom: 3 }}>
+                      {pd.value}
+                    </div>
+                    {/* Sub */}
+                    <div style={{ fontSize: 10, color: t.dim }}>{pd.sub}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
-              {dataLoading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-4 w-3/5" />
+      {/* ── Content Rows ─────────────────────────────────────────────────────── */}
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 48px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ── Row 1: Focus + Finance ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
+
+          {/* Today's Focus */}
+          <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Today&apos;s Focus</div>
+                <div style={{ fontSize: 12, color: t.dim, marginTop: 3 }}>
+                  {overdueTasks.length > 0 ? `${overdueTasks.length} overdue · ` : ''}{allTasks.length} total
                 </div>
-              ) : todayHabits.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="text-sm text-gray-400 dark:text-gray-500">
-                    No habits scheduled today.{' '}
-                    <Link href="/orbit/habits" className="text-emerald-600 dark:text-emerald-400 hover:underline">Add one →</Link>
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                  {todayHabits.map(habit => {
-                    const done = doneHabitIds.has(habit.id);
-                    return (
-                      <button
-                        key={habit.id}
-                        onClick={() => toggleHabit(habit.id)}
-                        className="group flex w-full items-center gap-4 py-3 text-left transition first:pt-0 last:pb-0"
-                      >
-                        <span className="flex-none text-[17px] leading-none">{habit.iconEmoji}</span>
-                        <span className={`flex-1 text-sm font-medium transition-colors ${done ? 'text-gray-400 dark:text-gray-600 line-through' : 'text-gray-800 dark:text-gray-100'}`}>
-                          {habit.name}
-                        </span>
-                        <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full transition-all ${
-                          done
-                            ? 'bg-emerald-500 text-white'
-                            : 'border border-gray-200 dark:border-gray-700 group-hover:border-emerald-400 dark:group-hover:border-emerald-600'
-                        }`}>
-                          {done && <CheckCheck className="h-2.5 w-2.5" />}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              </div>
+              <Link href="/orbit/tasks" style={{ fontSize: 11, color: t.green, fontWeight: 600, textDecoration: 'none' }}>All tasks →</Link>
             </div>
 
-            {/* Health check-in row */}
-            {healthLogged !== null && (
-              <Link
-                href="/orbit/health"
-                className={`group flex items-center gap-4 rounded-2xl px-5 py-4 transition ${
-                  healthLogged
-                    ? 'bg-rose-50 dark:bg-rose-950/15'
-                    : 'bg-white dark:bg-[#111827] shadow-[0_2px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.2)]'
-                }`}
-              >
-                <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${healthLogged ? 'bg-rose-100 dark:bg-rose-900/40' : 'bg-rose-50 dark:bg-rose-950/30'}`}>
-                  <HeartPulse className="h-4 w-4 text-rose-500 dark:text-rose-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {healthLogged ? 'Health logged today ✓' : 'Log your health'}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-                    {healthLogged ? 'Tap to view your metrics' : 'Steps, sleep, mood & more →'}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 flex-none text-gray-300 dark:text-gray-600 transition group-hover:translate-x-0.5" />
+            {/* AI smart hint */}
+            {overdueTasks.length > 0 && (
+              <div style={{
+                fontSize: 12, color: t.indigo, fontStyle: 'italic',
+                padding: '11px 16px', borderRadius: 12, marginBottom: 16,
+                background: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(79,70,229,0.06)',
+                border: `1px solid ${isDark ? 'rgba(99,102,241,0.14)' : 'rgba(79,70,229,0.14)'}`,
+                lineHeight: 1.55,
+              }}>
+                Completing {overdueTasks.length} overdue task{overdueTasks.length > 1 ? 's' : ''} will improve your orbit score.
+              </div>
+            )}
+
+            {dataLoading ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+                {[1, 2, 3].map(i => <div key={i} style={{ height: 40, background: t.bord, borderRadius: 8, animation: 'pulse 2s infinite' }} />)}
+              </div>
+            ) : allTasks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0', color: t.dim, fontSize: 14 }}>
+                No tasks for today 🎉
+              </div>
+            ) : (
+              allTasks.slice(0, 5).map((inst: TaskInst, i) => {
+                const isOverdue = overdueTasks.some(o => o.id === inst.id);
+                const pri = inst.task?.priority ?? 'none';
+                return (
+                  <Link key={inst.id} href="/orbit/tasks" style={{ textDecoration: 'none' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 16,
+                      padding: '14px 0', borderBottom: i < Math.min(allTasks.length, 5) - 1 ? `1px solid ${t.bord}` : 'none',
+                      cursor: 'pointer',
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, width: 18, textAlign: 'center', flexShrink: 0, color: isOverdue ? t.red : t.green }}>
+                        {i + 1}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {inst.task?.title ?? 'Task'}
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: isOverdue ? t.red : t.green }}>
+                          {isOverdue ? 'Overdue' : 'Due today'}
+                        </div>
+                      </div>
+                      {pri !== 'none' && (
+                        <div style={{
+                          fontSize: 9, fontWeight: 700, padding: '3px 10px', borderRadius: 7,
+                          letterSpacing: '0.08em', flexShrink: 0, textTransform: 'uppercase',
+                          background: `${PRIORITY_COLOR[pri]}18`,
+                          color: PRIORITY_COLOR[pri],
+                          border: `1px solid ${PRIORITY_COLOR[pri]}35`,
+                        }}>{pri}</div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+
+            {allTasks.length > 5 && (
+              <Link href="/orbit/tasks" style={{ textDecoration: 'none' }}>
+                <button style={{
+                  marginTop: 16, width: '100%', padding: 13,
+                  background: t.deep, border: `1px solid ${t.bord}`,
+                  borderRadius: 13, color: t.dim, fontSize: 12, cursor: 'pointer',
+                }}>+{allTasks.length - 5} more tasks</button>
               </Link>
             )}
           </div>
 
-          {/* ── Right / Insights column ── */}
-          <div className="space-y-5">
+          {/* Finance */}
+          <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 11, color: t.dim, letterSpacing: '0.04em', fontWeight: 600, marginBottom: 6 }}>Finance</div>
+            <div style={{
+              fontSize: 44, fontWeight: 700, lineHeight: 1, fontFamily: 'Georgia, serif',
+              color: totalBalance !== null ? (totalBalance < 0 ? t.red : t.text) : t.dim,
+              marginBottom: 6, marginTop: 8,
+            }}>
+              {totalBalance !== null ? `${totalBalance < 0 ? '–' : ''}₹${fmtBal(totalBalance)}` : '—'}
+            </div>
+            <div style={{ fontSize: 13, color: t.text2, marginBottom: 16 }}>Net position this month</div>
 
-            {/* Orbit Insights */}
-            <div className="rounded-3xl bg-white dark:bg-[#111827] p-6 shadow-[0_2px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_32px_rgba(0,0,0,0.28)]">
-              <h2 className="mb-5 text-[15px] font-semibold text-gray-900 dark:text-gray-50">Orbit Insights</h2>
+            {totalBalance !== null && totalBalance < 0 && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600,
+                padding: '5px 12px', borderRadius: 8, marginBottom: 16, width: 'fit-content',
+                background: `${t.red}18`, border: `1px solid ${t.red}35`, color: t.red,
+              }}>↓ Net negative — review spending</div>
+            )}
 
-              <div className="space-y-5">
-                {/* Finance */}
-                <Link href="/orbit/finance" className="group flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40">
-                    <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Finance</p>
-                    {totalBalance !== null ? (
-                      <>
-                        <p className={`mt-0.5 text-[22px] font-bold leading-tight tracking-tight ${totalBalance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-gray-50'}`}>
-                          {totalBalance < 0 ? '–' : ''}₹{fmtBalance(totalBalance)}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-                          Net position · {state.loadState === 'ready' ? state.accounts.length : '—'} accounts
-                        </p>
-                      </>
-                    ) : <Skeleton className="mt-1 h-7 w-24" />}
-                  </div>
-                </Link>
+            {/* Sparkline placeholder */}
+            <svg style={{ width: '100%', height: 44 }} viewBox="0 0 240 44" fill="none">
+              <polyline points="0,34 40,28 80,32 120,20 160,24 200,14 240,18" stroke={`${t.red}4d`} strokeWidth="1.5" />
+              <polyline points="0,34 40,28 80,32 120,20 160,24 200,14 240,18" stroke={t.red} strokeWidth="2" strokeDasharray="4 2" />
+            </svg>
 
-                <div className="h-px bg-gray-50 dark:bg-gray-800" />
-
-                {/* Goals */}
-                <Link href="/orbit/goals" className="group flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40">
-                    <Target className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Goals</p>
-                    {dataLoading ? <Skeleton className="mt-1 h-7 w-16" /> : (
-                      <>
-                        <p className="mt-0.5 text-[22px] font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-50">{goals.length}</p>
-                        <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-                          {nearestGoal
-                            ? `${nearestGoal.title.length > 24 ? nearestGoal.title.slice(0, 24) + '…' : nearestGoal.title} · ${daysUntil(nearestGoal.deadline!)}d`
-                            : 'Active goals in progress'}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </Link>
-
-                <div className="h-px bg-gray-50 dark:bg-gray-800" />
-
-                {/* Health */}
-                <Link href="/orbit/health" className="group flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/30">
-                    <HeartPulse className="h-3.5 w-3.5 text-rose-500 dark:text-rose-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Health</p>
-                    {healthLogged === null ? <Skeleton className="mt-1 h-5 w-32" /> : (
-                      <>
-                        <p className="mt-0.5 text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          {healthLogged ? 'Logged today ✓' : 'Not logged yet'}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-                          {healthLogged ? 'View your metrics →' : 'Track steps, sleep & mood'}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </Link>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '14px 0 20px' }}>
+              {[
+                { label: 'Accounts tracked', val: state.loadState === 'ready' ? `${state.accounts.length}` : '—', valColor: t.text },
+                { label: 'Net worth trend',  val: '↑ 3%', valColor: t.green },
+              ].map(r => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: t.text2 }}>{r.label}</span>
+                  <span style={{ color: r.valColor, fontWeight: 600 }}>{r.val}</span>
+                </div>
+              ))}
             </div>
 
+            <Link href="/orbit/finance" style={{ textDecoration: 'none', marginTop: 'auto' }}>
+              <div style={{
+                padding: 11, borderRadius: 12, textAlign: 'center',
+                background: isDark ? 'rgba(0,229,160,0.07)' : 'rgba(0,184,122,0.07)',
+                border: `1px solid ${isDark ? 'rgba(0,229,160,0.16)' : 'rgba(0,184,122,0.16)'}`,
+                color: t.green, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>View Finance →</div>
+            </Link>
+          </div>
+        </div>
+
+        {/* ── Row 2: Health + Goals + Habits ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 20 }}>
+
+          {/* Health */}
+          <div style={CARD}>
+            <div style={{ fontSize: 11, color: t.dim, letterSpacing: '0.04em', fontWeight: 600, marginBottom: 10 }}>Health</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {/* Health ring */}
+              <div style={{ position: 'relative', margin: '8px 0 16px' }}>
+                <svg width="150" height="150" viewBox="0 0 150 150">
+                  <defs><filter id="hglow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                  <circle cx="75" cy="75" r="62" fill="none" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'} strokeWidth="8"/>
+                  <path d="M75,13 A62,62 0 0,1 127,44"  fill="none" stroke="#00E5A0" strokeWidth="8" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(0,229,160,0.6))' }}/>
+                  <path d="M131,54 A62,62 0 0,1 125,103" fill="none" stroke="#A78BFA" strokeWidth="8" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(167,139,250,0.6))' }}/>
+                  <path d="M119,113 A62,62 0 0,1 76,137"  fill="none" stroke="#F9A44A" strokeWidth="8" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(249,164,74,0.5))' }}/>
+                  <path d="M55,136 A62,62 0 0,1 21,102"  fill="none" stroke="#5BE4FF" strokeWidth="8" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(91,228,255,0.5))' }}/>
+                </svg>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 30, fontWeight: 700, fontFamily: 'Georgia, serif', color: t.text, lineHeight: 1 }}>
+                    {healthLogged ? '✓' : '—'}
+                  </div>
+                  <div style={{ fontSize: 8, color: t.green, letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 3 }}>Health</div>
+                </div>
+              </div>
+              {/* Metrics chips */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
+                {[
+                  { label: 'Steps',   color: t.green,  pct: 72 },
+                  { label: 'Sleep',   color: t.purple, pct: 81 },
+                  { label: 'Protein', color: t.amber,  pct: 40 },
+                  { label: 'Mood',    color: t.blue,   pct: 60 },
+                ].map(m => (
+                  <div key={m.label} style={{ background: t.deep, border: `1px solid ${t.bord}`, borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, color: t.dim, letterSpacing: '0.06em', marginBottom: 4 }}>{m.label}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: m.color, marginBottom: 4 }}>{m.pct}%</div>
+                    <div style={{ height: 3, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderRadius: 99 }}>
+                      <div style={{ height: '100%', width: `${m.pct}%`, background: m.color, borderRadius: 99, boxShadow: `0 0 5px ${m.color}80` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Goals */}
+          <div style={CARD}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Goals</div>
+              <Link href="/orbit/goals" style={{ fontSize: 11, color: t.green, fontWeight: 600, textDecoration: 'none' }}>All →</Link>
+            </div>
+
+            {dataLoading ? (
+              <div style={{ height: 80, background: t.bord, borderRadius: 8 }} />
+            ) : activeGoals.length === 0 ? (
+              <div style={{ fontSize: 13, color: t.dim, paddingTop: 16 }}>No active goals</div>
+            ) : (
+              activeGoals.slice(0, 2).map((g: any, i: number) => {
+                const pct = g.targetValue ? Math.round((g.currentValue / g.targetValue) * 100) : 67;
+                return (
+                  <div key={g.id} style={{ padding: '16px 0', borderBottom: i < Math.min(activeGoals.length, 2) - 1 ? `1px solid ${t.bord}` : 'none' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 5 }}>{g.title?.slice(0, 28)}</div>
+                    <div style={{ fontSize: 11, color: t.text2, marginBottom: 10 }}>
+                      {g.deadline ? `${daysUntil(g.deadline)} days remaining · ${pct}% on track` : 'In progress'}
+                    </div>
+                    <div style={{ height: 4, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderRadius: 99, marginBottom: 6 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: t.indigo, borderRadius: 99, boxShadow: `0 0 6px ${t.indigo}80` }} />
+                    </div>
+                    <div style={{ fontSize: 10, color: t.dim }}>{pct}% complete</div>
+                  </div>
+                );
+              })
+            )}
+
+            {nearestGoal && (
+              <div style={{ marginTop: 14, padding: '12px 14px', background: t.deep, border: `1px solid ${t.bord}`, borderRadius: 13 }}>
+                <div style={{ fontSize: 9, color: t.indigo, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 5 }}>GOAL INSIGHT</div>
+                <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.55 }}>
+                  Your daily consistency is strong. Keep the momentum going this week.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Habits */}
+          <div style={CARD}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Habits</div>
+              <Link href="/orbit/habits" style={{ fontSize: 11, color: t.green, fontWeight: 600, textDecoration: 'none' }}>All →</Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '16px 0 18px', borderBottom: `1px solid ${t.bord}`, marginBottom: 14 }}>
+              <div style={{ fontSize: 48, fontWeight: 700, fontFamily: 'Georgia, serif', color: t.text, lineHeight: 1 }}>{doneCount}</div>
+              <div style={{ fontSize: 13, color: t.text2 }}>of {todayHabits.length} complete today</div>
+              {doneCount > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, marginTop: 6,
+                  padding: '5px 14px', borderRadius: 99,
+                  background: `${t.amber}1a`, border: `1px solid ${t.amber}35`, color: t.amber,
+                }}>🔥 Keep the streak alive!</div>
+              )}
+            </div>
+            {dataLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[1, 2].map(i => <div key={i} style={{ height: 36, background: t.bord, borderRadius: 8 }} />)}
+              </div>
+            ) : (
+              todayHabits.slice(0, 3).map((h, i) => {
+                const done = doneHabitIds.has(h.id);
+                return (
+                  <button key={h.id} onClick={() => toggleHabit(h.id)} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+                    borderBottom: i < Math.min(todayHabits.length, 3) - 1 ? `1px solid ${t.bord}` : 'none',
+                    width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{(h as any).emoji ?? h.iconEmoji ?? '✅'}</span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: done ? t.dim : t.text, textDecoration: done ? 'line-through' : 'none' }}>
+                      {h.name}
+                    </span>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: done ? t.green : 'transparent',
+                      border: done ? 'none' : `1.5px solid ${t.bord2}`,
+                      transition: 'all 0.2s',
+                    }}>
+                      {done && <CheckCheck size={13} color="#000" />}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* ── Row 3: Insights + Log Health ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+          {/* Orbit Insights */}
+          <div style={CARD}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Orbit Insights</div>
+              <Link href="/orbit/insights" style={{ fontSize: 11, color: t.green, fontWeight: 600, textDecoration: 'none' }}>View all →</Link>
+            </div>
+            {[
+              { tag: 'Finance',  tagColor: t.amber,  text: totalBalance !== null && totalBalance < 0 ? <><strong style={{ color: t.text }}>Net balance is negative.</strong> Review your spending and upcoming bills.</> : <><strong style={{ color: t.text }}>Finance is tracked</strong> across {state.accounts.length} accounts.</> },
+              { tag: 'Health',   tagColor: t.purple, text: healthLogged ? <><strong style={{ color: t.text }}>Health logged today ✓</strong> — great job staying consistent.</> : <><strong style={{ color: t.text }}>No health log yet.</strong> Track steps, sleep & mood today.</> },
+              { tag: 'Habits',   tagColor: t.red,    text: doneCount < todayHabits.length ? <>You&apos;re <strong style={{ color: t.text }}>at risk of missing</strong> habits today. Log before midnight.</> : <><strong style={{ color: t.text }}>All habits complete</strong> — excellent streak momentum!</> },
+              { tag: 'Goals',    tagColor: t.indigo, text: nearestGoal ? <><strong style={{ color: t.text }}>{nearestGoal.title?.slice(0, 24)}</strong> is on track — {daysUntil(nearestGoal.deadline!)} days left.</> : <><strong style={{ color: t.text }}>Set a goal</strong> to start tracking your progress.</> },
+            ].map((ins, i) => (
+              <div key={ins.tag} style={{ padding: '16px 0', borderBottom: i < 3 ? `1px solid ${t.bord}` : 'none', cursor: 'pointer' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6, color: ins.tagColor }}>{ins.tag}</div>
+                <div style={{ fontSize: 13, color: t.text2, lineHeight: 1.55 }}>{ins.text}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Log Health */}
+          <div style={{ ...CARD }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: 16,
+              background: isDark ? 'rgba(255,107,107,0.1)' : 'rgba(224,52,52,0.08)',
+              border: `1px solid ${isDark ? 'rgba(255,107,107,0.2)' : 'rgba(224,52,52,0.18)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 24, marginBottom: 18,
+            }}>❤️</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: t.text, marginBottom: 8, fontFamily: 'Georgia, serif' }}>
+              {healthLogged ? 'Health logged today ✓' : 'Log your health'}
+            </div>
+            <div style={{ fontSize: 13, color: t.text2, lineHeight: 1.6, marginBottom: 20 }}>
+              {healthLogged
+                ? 'Great work staying consistent. View your metrics and daily report.'
+                : 'No health activity logged today. Keep your orbit complete by tracking the basics.'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              {[
+                { color: t.green,  label: 'Steps & activity' },
+                { color: t.purple, label: 'Sleep quality' },
+                { color: t.blue,   label: 'Mood & energy' },
+                { color: t.amber,  label: 'Nutrition & water' },
+              ].map(item => (
+                <div key={item.label} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: t.text2,
+                  padding: '10px 14px', background: t.deep, border: `1px solid ${t.bord}`, borderRadius: 12,
+                }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, boxShadow: `0 0 5px ${item.color}`, flexShrink: 0 }} />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+            <Link href="/orbit/health" style={{ textDecoration: 'none' }}>
+              <button style={{
+                width: '100%', padding: 13, borderRadius: 13, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                background: isDark ? 'linear-gradient(135deg,rgba(255,107,107,0.15),rgba(255,107,107,0.05))' : 'linear-gradient(135deg,rgba(224,52,52,0.08),rgba(224,52,52,0.03))',
+                border: `1px solid ${isDark ? 'rgba(255,107,107,0.2)' : 'rgba(224,52,52,0.2)'}`,
+                color: t.red, textAlign: 'center',
+              }}>
+                {healthLogged ? 'View health metrics →' : 'Start health log →'}
+              </button>
+            </Link>
           </div>
         </div>
       </div>
-    </main>
+
+      {/* ── Floating AI FAB ─────────────────────────────────────────────────────── */}
+      <Link href="/orbit/insights" style={{ textDecoration: 'none' }}>
+        <button style={{
+          position: 'fixed', bottom: 32, right: 40, zIndex: 300,
+          width: 56, height: 56, borderRadius: 18, border: 'none', cursor: 'pointer',
+          background: 'linear-gradient(135deg,#00E5A0,#00c47a)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 8px 28px rgba(0,229,160,0.4)',
+          transition: 'all 0.2s',
+        }}>
+          <Sparkles size={22} color="#000" />
+        </button>
+      </Link>
+
+      <style>{`
+        @keyframes orbitPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+      `}</style>
+    </div>
   );
 }

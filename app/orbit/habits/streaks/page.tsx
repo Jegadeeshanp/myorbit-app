@@ -35,6 +35,12 @@ function getBestStreak(logs: { logDate: string }[]): number {
   return best;
 }
 
+const CARD: React.CSSProperties = { background: 'linear-gradient(145deg,#131c2e,#0e1420)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)', overflow: 'hidden' };
+const TXT   = '#e4eaf4';
+const MUTED = '#8fa3b8';
+const DIM   = '#3d5166';
+const AMBER = '#F9A44A';
+
 export default function HabitsStreaksPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,41 +52,47 @@ export default function HabitsStreaksPage() {
   }, []);
 
   const sorted = [...habits].sort((a, b) => getStreakCount(b.logs) - getStreakCount(a.logs));
+  const rankColor = (idx: number) => idx === 0 ? AMBER : idx === 1 ? '#C0C0C0' : idx === 2 ? '#CD7F32' : DIM;
 
   return (
     <div className="space-y-6">
       {loading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}</div>
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="animate-pulse" style={{ height: 64, borderRadius: 12, background: 'rgba(255,255,255,0.04)' }} />
+          ))}
+        </div>
       ) : sorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-center">
-          <Flame className="h-10 w-10 text-orange-200 mb-3" />
-          <p className="font-semibold text-gray-900">No habits yet</p>
-          <p className="text-sm text-gray-500 mt-1">Create habits to start building streaks</p>
+        <div style={{ ...CARD, padding: '56px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(249,164,74,0.1)', border: '1px solid rgba(249,164,74,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🔥</div>
+          <p style={{ fontSize: 14, fontWeight: 700, color: TXT }}>No habits yet</p>
+          <p style={{ fontSize: 12, color: DIM }}>Create habits to start building streaks</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div style={CARD}>
           {sorted.map((habit, idx) => {
             const current = getStreakCount(habit.logs);
-            const best = getBestStreak(habit.logs);
-            const total = habit.logs.length;
+            const best    = getBestStreak(habit.logs);
+            const total   = habit.logs.length;
             return (
-              <div key={habit.id} className="flex items-center gap-4 px-5 py-4 border-b border-gray-50 last:border-0">
-                <span className="text-lg text-gray-400 font-bold w-6 text-center">{idx + 1}</span>
-                <span className="text-2xl">{habit.iconEmoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{habit.name}</p>
-                  <p className="text-xs text-gray-400">{total} total logs</p>
+              <div key={habit.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: idx < sorted.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: rankColor(idx), width: 18, flexShrink: 0, textAlign: 'center' }}>{idx + 1}</span>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{habit.iconEmoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: TXT, marginBottom: 2 }}>{habit.name}</p>
+                  <p style={{ fontSize: 10, color: DIM }}>{total} total logs</p>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 justify-end">
-                    <Flame className="h-4 w-4 text-orange-400" />
-                    <span className="text-lg font-bold text-gray-900">{current}</span>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: AMBER, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Flame size={13} color={AMBER} />{current}
+                    </div>
+                    <div style={{ fontSize: 9, color: DIM, marginTop: 1 }}>current</div>
                   </div>
-                  <p className="text-xs text-gray-400">current</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-semibold text-gray-600">{best}</span>
-                  <p className="text-xs text-gray-400">best</p>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: MUTED }}>{best}</div>
+                    <div style={{ fontSize: 9, color: DIM, marginTop: 1 }}>best</div>
+                  </div>
                 </div>
               </div>
             );

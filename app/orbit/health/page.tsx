@@ -121,7 +121,7 @@ const WORKOUT_EMOJI: Record<string, string> = {
 // ── Tab config ─────────────────────────────────────────────────────────────────
 type Tab = 'dashboard' | 'workouts' | 'nutrition' | 'insights';
 const TABS: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
-  { key: 'dashboard',  label: 'Dashboard',  Icon: LayoutDashboard },
+  { key: 'dashboard',  label: 'Overview',   Icon: LayoutDashboard },
   { key: 'workouts',   label: 'Workouts',   Icon: Dumbbell },
   { key: 'nutrition',  label: 'Nutrition',  Icon: Utensils },
   { key: 'insights',   label: 'Insights',   Icon: BarChart2 },
@@ -255,57 +255,59 @@ export default function HealthPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* 3-column main grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.3fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.9fr 1fr 1fr', gap: 16 }}>
 
-          {/* Orbit Ring card — spans 2 rows */}
-          <div style={{ ...CARD, gridRow: 'span 2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 240, height: 240, borderRadius: '50%',
-              background: `radial-gradient(circle,${GREEN}0d 0%,transparent 70%)`, pointerEvents: 'none' }} />
+          {/* Orbit Ring card — horizontal layout */}
+          <div style={{ ...CARD }}>
             <p style={TAG}>Today&apos;s Orbit</p>
-            <div style={{ position: 'relative', width: 220, height: 220, marginBottom: 12 }}>
-              <OrbitRing values={orbValues} size={220} />
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-                <div style={{ fontSize: 40, fontWeight: 700, color: TXT, lineHeight: 1, fontFamily: 'Georgia,serif' }}>{orbitScore}</div>
-                <div style={{ fontSize: 11, color: BLUE, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>{scoreLabel}</div>
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 14 }}>
-              {SEGS.map(s => (
-                <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: 99, background: s.color, boxShadow: `0 0 5px ${s.color}88` }} />
-                  <span style={{ fontSize: 9, color: MUTED }}>{s.label}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              {/* Ring on left */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <OrbitRing values={orbValues} size={160} />
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif', lineHeight: 1 }}>{orbitScore}</div>
+                  <div style={{ fontSize: 8, color: GREEN, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 4 }}>{scoreLabel}</div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {/* Metrics strip */}
-            <div style={{ width: '100%', background: BG2, borderRadius: 12, padding: 12, border: `1px solid ${BORD}`, display: 'flex' }}>
-              {SEGS.map((s, i) => {
-                const val = orbValues[s.key as keyof typeof orbValues] ?? 0;
-                const disp = s.key === 'water' ? (val as number).toFixed(1) : Math.round(val as number);
-                return (
-                  <div key={s.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                    borderRight: i < SEGS.length - 1 ? `1px solid ${BORD}` : 'none', padding: '0 4px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: TXT }}>{disp}{s.unit}</div>
-                    <Bar pct={(val as number) / s.target} color={s.color} h={3} />
-                    <div style={{ fontSize: 8, color: DIM }}>{s.label}</div>
-                  </div>
-                );
-              })}
-            </div>
+              {/* Right side */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+                {/* Legend */}
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {SEGS.map(s => (
+                    <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 7, height: 7, borderRadius: 99, background: s.color, boxShadow: `0 0 5px ${s.color}88` }} />
+                      <span style={{ fontSize: 11, color: MUTED }}>{s.label}</span>
+                    </div>
+                  ))}
+                </div>
 
-            {/* Action buttons */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 14, width: '100%' }}>
-              <button onClick={() => setLogOpen(true)}
-                style={{ flex: 1, borderRadius: 10, padding: '10px 0', background: `linear-gradient(135deg,${GREEN},#00c47a)`, border: 'none', color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-                Log Today
-              </button>
-              <button onClick={() => setWorkoutOpen(true)}
-                style={{ flex: 1, borderRadius: 10, padding: '10px 0', background: BG2, border: `1px solid ${BORD}`, color: MUTED, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                + Workout
-              </button>
+                {/* Metrics grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: BG, borderRadius: 10, border: `1px solid ${BORD}`, overflow: 'hidden' }}>
+                  {SEGS.map((s, i) => {
+                    const val = orbValues[s.key as keyof typeof orbValues] ?? 0;
+                    const disp = s.key === 'water' ? (val as number).toFixed(1) : Math.round(val as number);
+                    return (
+                      <div key={s.key} style={{ padding: '10px 4px', textAlign: 'center', borderRight: i < SEGS.length - 1 ? `1px solid ${BORD}` : 'none' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: TXT }}>{disp}{s.unit}</div>
+                        <div style={{ fontSize: 9, color: DIM, marginTop: 3 }}>{s.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setLogOpen(true)}
+                    style={{ flex: 1, padding: 11, borderRadius: 10, background: `linear-gradient(135deg,${GREEN},#00c47a)`, border: 'none', color: '#000', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                    Log Today
+                  </button>
+                  <button onClick={() => setWorkoutOpen(true)}
+                    style={{ flex: 1, padding: 11, borderRadius: 10, background: BG, border: `1px solid ${BORD}`, color: MUTED, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    + Workout
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -363,8 +365,8 @@ export default function HealthPage() {
             ) : null}
           </div>
 
-          {/* Tasks + Habits — spans 2 cols */}
-          <div style={{ ...CARD, gridColumn: 'span 2', background: `linear-gradient(135deg,#0e1f2f,${BG2})`, borderColor: '#1a3040' }}>
+          {/* Tasks + Habits — spans all 3 cols */}
+          <div style={{ ...CARD, gridColumn: 'span 3', background: `linear-gradient(135deg,#0e1f2f,${BG2})`, borderColor: '#1a3040' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               {/* Health Tasks */}
               <div>

@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import HabitCalendar, { type HabitForCalendar } from '@/components/habits/HabitCalendar';
 import { toast } from '@/components/Toast';
 
+const CARD: React.CSSProperties = { background: 'linear-gradient(145deg,#131c2e,#0e1420)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' };
+const TXT  = '#e4eaf4';
+const MUTED = '#8fa3b8';
+const DIM  = '#3d5166';
+
 export default function HabitsCalendarPage() {
   const [habits, setHabits] = useState<HabitForCalendar[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,23 +25,23 @@ export default function HabitsCalendarPage() {
     <div className="space-y-5">
       {/* Legend */}
       {!loading && habits.length > 0 && (
-        <div className="flex flex-wrap gap-3 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-5 py-3 shadow-sm">
+        <div style={{ ...CARD, padding: '12px 18px', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           {habits.filter(h => h.isActive).map(h => (
-            <div key={h.id} className="flex items-center gap-1.5">
-              <span className="text-sm">{h.iconEmoji}</span>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{h.name}</span>
-              <div className="h-2.5 w-2.5 rounded-full flex-none" style={{ backgroundColor: h.color }} />
+            <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>{h.iconEmoji}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: MUTED }}>{h.name}</span>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, backgroundColor: h.color }} />
             </div>
           ))}
         </div>
       )}
 
       {loading ? (
-        <div className="h-64 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+        <div className="animate-pulse" style={{ height: 256, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />
       ) : habits.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-16 text-center">
-          <p className="text-base font-semibold text-gray-900 dark:text-white">No habits yet</p>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create habits on the Dashboard to see them here</p>
+        <div style={{ ...CARD, padding: '64px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: TXT }}>No habits yet</p>
+          <p style={{ fontSize: 12, color: DIM }}>Create habits on the Dashboard to see them here</p>
         </div>
       ) : (
         <HabitCalendar habits={habits} />

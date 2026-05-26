@@ -221,7 +221,7 @@ function GoalCard({ goal, onEdit, onDelete, onComplete, onPause, onToggleMilesto
         {total > 0 && (
           <div style={{ marginBottom: compact ? 0 : 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span style={{ fontSize: 11, color: MUTED }}>Progress · {done}/{total} milestones</span>
+              <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Progress · {done}/{total} milestones</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: catColor }}>{pct}%</span>
             </div>
             <Bar pct={pct / 100} color={catColor} h={5} />

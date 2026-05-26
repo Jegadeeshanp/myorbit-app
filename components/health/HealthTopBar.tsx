@@ -2,44 +2,38 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import OrbitIcon from '@/components/OrbitIcon';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/orbit/health':          'Dashboard',
-  '/orbit/health/log':      'Log Today',
-  '/orbit/health/workouts': 'Workouts',
+const SB   = '#0a0f1e';
+const BG   = '#0e1623';
+const BORD = '#1a2a3a';
+const TXT  = '#e2e8f0';
+const DIM  = '#3a5060';
+
+const PAGE_META: Record<string, { title: string; sub: string }> = {
+  '/orbit/health':           { title: 'Overview',   sub: 'Track your wellness metrics daily.' },
+  '/orbit/health/log':       { title: 'Log Today',  sub: 'Record today\'s health data.' },
+  '/orbit/health/workouts':  { title: 'Workouts',   sub: 'Log and review your exercise sessions.' },
+  '/orbit/health/nutrition': { title: 'Nutrition',  sub: 'Monitor what fuels your body.' },
+  '/orbit/health/sync':      { title: 'Sync',       sub: 'Connect your health devices and apps.' },
+  '/orbit/health/settings':  { title: 'Settings',   sub: 'Configure your health workspace.' },
 };
-
-const PAGE_SUBTITLES: Record<string, string> = {
-  '/orbit/health':          'Track your wellness metrics daily.',
-  '/orbit/health/log':      'Record today\'s health data — steps, sleep, mood and more.',
-  '/orbit/health/workouts': 'Your workout history and performance over time.',
-};
-
-const MyOrbitBadge = () => (
-  <Link
-    href="/orbit"
-    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition hover:bg-gray-100"
-  >
-    <OrbitIcon src="/icons/top-icon.svg" />
-    <span className="text-base font-semibold text-gray-800">MyOrbit</span>
-  </Link>
-);
 
 export default function HealthTopBar({ action }: { action?: React.ReactNode }) {
   const pathname = usePathname() ?? '';
-  const title    = PAGE_TITLES[pathname] ?? 'Health';
-  const subtitle = PAGE_SUBTITLES[pathname] ?? 'Your wellness and fitness overview.';
+  const meta = PAGE_META[pathname] ?? { title: 'Health', sub: '' };
 
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 sm:px-6 flex-none">
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-semibold text-gray-900">{title}</h1>
-        <p className="mt-0.5 hidden text-sm text-gray-400 sm:block">{subtitle}</p>
+    <div style={{ background: SB, borderBottom: `1px solid ${BORD}`, padding: '0 28px', display: 'flex', alignItems: 'center', height: 64, flexShrink: 0, position: 'sticky', top: 0, zIndex: 10 }}>
+      <div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 2 }}>{meta.title}</div>
+        {meta.sub && <div style={{ fontSize: 12, color: DIM }}>{meta.sub}</div>}
       </div>
-      <div className="flex flex-none items-center gap-2">
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
         {action}
-        <MyOrbitBadge />
+        <Link href="/orbit" style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 5px', borderRadius: 10, background: BG, border: `1px solid ${BORD}`, textDecoration: 'none', transition: 'all 0.18s' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#00E5A0,#5BE4FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#000' }}>M</div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: TXT }}>MyOrbit</span>
+        </Link>
       </div>
     </div>
   );

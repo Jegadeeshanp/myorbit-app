@@ -6,7 +6,9 @@ import { toast } from '@/components/Toast';
 
 type Countdown = { id: string; name: string; iconEmoji?: string; targetDate: string; direction: string };
 
-const inputCls = 'w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white';
+const CARD: React.CSSProperties = { background: 'linear-gradient(145deg,#131c2e,#0e1420)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' };
+const TXT = '#e4eaf4'; const MUTED = '#8fa3b8'; const DIM = '#3d5166';
+const inputStyle: React.CSSProperties = { width: '100%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: TXT, padding: '10px 14px', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
 
 function getDaysDiff(targetDate: string, direction: string): number {
   const now    = new Date();
@@ -44,44 +46,46 @@ function AddCountdownModal({ onClose, onCreated }: { onClose: () => void; onCrea
     }
   };
 
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <p className="font-semibold text-gray-900">New Countdown</p>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"><X className="h-4 w-4" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div style={{ background: '#0e1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, overflow: 'hidden', width: '100%', maxWidth: 420 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <p style={{ fontWeight: 600, fontSize: 14, color: TXT }}>New Countdown</p>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: 'none', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} />
+          </button>
         </div>
-        <div className="px-5 py-4 space-y-4">
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Name</label>
-            <input className={inputCls} placeholder="e.g. Birthday, Trip to Japan..." value={name} onChange={e => setName(e.target.value)} autoFocus />
+            <label style={labelStyle}>Name</label>
+            <input style={inputStyle} placeholder="e.g. Birthday, Trip to Japan..." value={name} onChange={e => setName(e.target.value)} autoFocus />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Icon</label>
-            <div className="flex flex-wrap gap-2">
+            <label style={labelStyle}>Icon</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {EMOJIS.map(e => (
-                <button key={e} onClick={() => setEmoji(e)}
-                  className={`text-xl p-2 rounded-xl transition ${emoji === e ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-gray-100 hover:bg-gray-200'}`}>{e}</button>
+                <button key={e} onClick={() => setEmoji(e)} style={{ fontSize: 20, padding: 8, borderRadius: 10, cursor: 'pointer', border: emoji === e ? '2px solid #5BE4FF' : '1px solid rgba(255,255,255,0.07)', background: emoji === e ? 'rgba(91,228,255,0.12)' : 'rgba(255,255,255,0.04)' }}>{e}</button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Target Date</label>
-            <input type="date" className={inputCls} value={targetDate} onChange={e => setTargetDate(e.target.value)} />
+            <label style={labelStyle}>Target Date</label>
+            <input type="date" style={inputStyle} value={targetDate} onChange={e => setTargetDate(e.target.value)} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Direction</label>
-            <div className="flex gap-2">
+            <label style={labelStyle}>Direction</label>
+            <div style={{ display: 'flex', gap: 8 }}>
               {[{ v: 'until', l: 'Counting down until' }, { v: 'since', l: 'Counting up since' }].map(({ v, l }) => (
-                <button key={v} onClick={() => setDirection(v)}
-                  className={`flex-1 rounded-xl px-3 py-2 text-xs font-medium transition ${direction === v ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
+                <button key={v} onClick={() => setDirection(v)} style={{ flex: 1, borderRadius: 12, padding: '8px', fontSize: 11, fontWeight: 500, cursor: 'pointer', border: direction === v ? '1px solid #5BE4FF' : '1px solid rgba(255,255,255,0.08)', background: direction === v ? 'rgba(91,228,255,0.12)' : 'rgba(255,255,255,0.04)', color: direction === v ? '#5BE4FF' : MUTED }}>{l}</button>
               ))}
             </div>
           </div>
         </div>
-        <div className="flex gap-3 px-5 pb-5">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition">
+        <div style={{ padding: '0 20px 20px', display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: '10px', fontSize: 13, fontWeight: 500, color: MUTED, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, borderRadius: 12, border: 'none', background: '#5BE4FF', padding: '10px', fontSize: 13, fontWeight: 600, color: '#000', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
             {saving ? 'Creating...' : 'Create'}
           </button>
         </div>
@@ -121,60 +125,55 @@ export default function CountdownCards() {
     }
   };
 
+  void now;
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Countdowns</h2>
-          <p className="text-sm text-gray-600 mt-0.5">Track important dates</p>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif' }}>Countdowns</h2>
+          <p style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>Track important dates</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">
-          <Plus className="h-4 w-4" /> Add
+        <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 10, background: '#5BE4FF', border: 'none', padding: '8px 16px', fontSize: 12, fontWeight: 600, color: '#000', cursor: 'pointer' }}>
+          <Plus size={13} /> Add
         </button>
       </div>
 
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {[1,2,3].map(i => <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse" />)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+          {[1,2,3].map(i => <div key={i} className="animate-pulse" style={{ height: 112, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />)}
         </div>
       ) : countdowns.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white py-12 text-center">
-          <p className="text-4xl mb-3">🗓️</p>
-          <p className="font-semibold text-gray-900">No countdowns</p>
-          <p className="text-sm text-gray-500 mt-1">Track events, deadlines, and milestones</p>
+        <div style={{ ...CARD, padding: '48px 20px', textAlign: 'center' }}>
+          <p style={{ fontSize: 36, marginBottom: 12 }}>🗓️</p>
+          <p style={{ fontWeight: 600, color: TXT, fontSize: 14 }}>No countdowns</p>
+          <p style={{ fontSize: 12, color: DIM, marginTop: 4 }}>Track events, deadlines, and milestones</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
           {countdowns.map(c => {
             const days = getDaysDiff(c.targetDate, c.direction);
             const isPast = days < 0;
-            const bgCls = isPast
-              ? 'from-gray-100 to-gray-50 border-gray-200'
-              : days <= 7
-                ? 'from-rose-50 to-pink-50 border-rose-100'
-                : 'from-blue-50 to-indigo-50 border-blue-100';
+            const accentColor = isPast ? MUTED : days <= 7 ? '#FF6B6B' : '#5BE4FF';
+            const borderColor = isPast ? 'rgba(255,255,255,0.07)' : days <= 7 ? 'rgba(255,107,107,0.25)' : 'rgba(91,228,255,0.2)';
+            const bgColor = isPast ? 'linear-gradient(145deg,#131c2e,#0e1420)' : days <= 7 ? 'linear-gradient(145deg,rgba(255,107,107,0.08),rgba(255,107,107,0.03))' : 'linear-gradient(145deg,rgba(91,228,255,0.07),rgba(91,228,255,0.02))';
 
             return (
-              <div key={c.id} className={`group relative rounded-2xl border bg-gradient-to-br ${bgCls} p-4`}>
-                <button
-                  onClick={() => deleteCountdown(c.id)}
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-gray-400 hover:text-rose-500"
-                >
-                  <X className="h-3.5 w-3.5" />
+              <div key={c.id} style={{ position: 'relative', borderRadius: 16, border: `1px solid ${borderColor}`, background: bgColor, padding: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' }}
+                className="group">
+                <button onClick={() => deleteCountdown(c.id)} style={{ position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, opacity: 0, transition: 'opacity 0.2s' }}
+                  className="group-hover:opacity-100">
+                  <X size={12} />
                 </button>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-2xl">{c.iconEmoji || '🎯'}</span>
-                  <p className="font-semibold text-gray-900 truncate">{c.name}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 22 }}>{c.iconEmoji || '🎯'}</span>
+                  <p style={{ fontWeight: 600, color: TXT, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</p>
                 </div>
-                <p className={`text-3xl font-bold tabular-nums ${isPast ? 'text-gray-500' : days <= 7 ? 'text-rose-600' : 'text-blue-600'}`}>
-                  {Math.abs(days)}
+                <p style={{ fontSize: 32, fontWeight: 700, color: accentColor, fontFamily: 'Georgia,serif', lineHeight: 1 }}>{Math.abs(days)}</p>
+                <p style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>
+                  {c.direction === 'until' ? (isPast ? 'days ago' : 'days until') : (isPast ? 'days since (future?)' : `days since ${c.targetDate}`)}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {c.direction === 'until'
-                    ? isPast ? 'days ago' : 'days until'
-                    : isPast ? 'days since (future?)' : `days since ${c.targetDate}`}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">{c.targetDate}</p>
+                <p style={{ fontSize: 10, color: DIM, marginTop: 2 }}>{c.targetDate}</p>
               </div>
             );
           })}

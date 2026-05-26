@@ -20,6 +20,12 @@ type Habit = {
   logs: { logDate: string; value: number }[];
 };
 
+const CARD: React.CSSProperties = { background: 'linear-gradient(145deg,#131c2e,#0e1420)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' };
+const TXT   = '#e4eaf4';
+const MUTED = '#8fa3b8';
+const DIM   = '#3d5166';
+const DARK_AMBER = '#F9A44A';
+
 const COLORS = ['#78716C', '#6B7280', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DB2777', '#4F46E5', '#EF4444', '#EC4899', '#F97316', '#14B8A6'];
 const EMOJIS = [
   '✅', '🔥', '💪', '📚', '🧘', '🏃', '💧', '🥗', '😴', '🎯', '✍️', '🎵',
@@ -148,7 +154,7 @@ function getDayStatus(date: string, habits: Habit[]): CalendarDayStatus {
 function getDayStatusColor(status: CalendarDayStatus): string {
   if (status === 'all') return 'bg-emerald-500';
   if (status === 'some') return 'bg-amber-400';
-  return 'bg-gray-200 dark:bg-gray-700';
+  return 'bg-gray-200 dark:bg-[#1a2a3a]';
 }
 
 // ── Add Habit Modal ─────────────────────────────────────────────────────────
@@ -241,134 +247,84 @@ function AddHabitModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     }
   };
 
+  const modalCard: React.CSSProperties = { background: '#0e1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, overflow: 'hidden', width: '100%', maxWidth: 400 };
+  const inputStyle: React.CSSProperties = { width: '100%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: TXT, padding: '10px 14px', fontSize: 13, outline: 'none' };
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <p className="font-semibold text-gray-900 dark:text-white">New Habit</p>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">
-            <X className="h-4 w-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div style={modalCard}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <p style={{ fontWeight: 600, fontSize: 14, color: TXT }}>New Habit</p>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: 'none', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} />
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-          {/* Habit Name */}
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 18, maxHeight: '65vh', overflowY: 'auto' }}>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Habit Name *</label>
-            <input
-              autoFocus
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
-              placeholder="e.g. Morning run, Read 30 min..."
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSave()}
-            />
+            <label style={labelStyle}>Habit Name *</label>
+            <input autoFocus style={inputStyle} placeholder="e.g. Morning run, Read 30 min..."
+              value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} />
           </div>
 
-          {/* Icon */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Icon</label>
-            <div className="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto pr-1">
+            <label style={labelStyle}>Icon</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: 6, maxHeight: 144, overflowY: 'auto' }}>
               {EMOJIS.map(e => (
-                <button key={e} onClick={() => setEmoji(e)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${emoji === e ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                <button key={e} onClick={() => setEmoji(e)} style={{ height: 36, width: 36, borderRadius: 10, fontSize: 16, cursor: 'pointer', border: emoji === e ? '2px solid #F9A44A' : '1px solid rgba(255,255,255,0.07)', background: emoji === e ? 'rgba(249,164,74,0.15)' : 'rgba(255,255,255,0.04)' }}>
                   {e}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Color */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Color</label>
-            <div className="flex gap-2 flex-wrap">
+            <label style={labelStyle}>Color</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {COLORS.map(c => (
-                <button key={c} onClick={() => setColor(c)}
-                  style={{ backgroundColor: c }}
-                  className={`h-8 w-8 rounded-full transition ${color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
-                />
+                <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: c, border: color === c ? '3px solid rgba(255,255,255,0.7)' : '2px solid transparent', cursor: 'pointer', transform: color === c ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.15s' }} />
               ))}
             </div>
           </div>
 
-          {/* Time of Day */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Time of Day</label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <label style={labelStyle}>Time of Day</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
               {TIME_OF_DAY_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setTimeOfDay(opt.value)}
-                  className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 text-xs font-medium transition border ${
-                    timeOfDay === opt.value
-                      ? 'bg-amber-50 border-amber-400 text-amber-700 dark:bg-amber-950 dark:border-amber-500 dark:text-amber-300'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
-                  }`}
-                >
+                <button key={opt.value} onClick={() => setTimeOfDay(opt.value)} style={{ borderRadius: 10, padding: '8px 6px', fontSize: 11, fontWeight: 500, cursor: 'pointer', border: timeOfDay === opt.value ? '1px solid #F9A44A' : '1px solid rgba(255,255,255,0.08)', background: timeOfDay === opt.value ? 'rgba(249,164,74,0.15)' : 'rgba(255,255,255,0.04)', color: timeOfDay === opt.value ? DARK_AMBER : MUTED, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                   <span>{opt.label}</span>
-                  {opt.time && <span className="text-[10px] mt-0.5 opacity-70">{opt.time}</span>}
+                  {opt.time && <span style={{ fontSize: 9, opacity: 0.7 }}>{opt.time}</span>}
                 </button>
               ))}
             </div>
             {timeOfDay === 'custom' && (
-              <div className="mt-2">
-                <input
-                  type="time"
-                  value={customTime}
-                  onChange={e => setCustomTime(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
-                />
+              <div style={{ marginTop: 8 }}>
+                <input type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} style={inputStyle} />
               </div>
             )}
           </div>
 
-          {/* Days of Week */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-              Days of Week
-              <span className="ml-2 font-normal normal-case text-gray-400">({selectedDays.length}×/week)</span>
-            </label>
-            <div className="flex gap-1.5">
+            <label style={labelStyle}>Days of Week <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: DIM }}>({selectedDays.length}×/week)</span></label>
+            <div style={{ display: 'flex', gap: 5 }}>
               {WEEK_DAYS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggleDay(value)}
-                  className={`flex-1 flex items-center justify-center h-9 rounded-xl text-xs font-bold transition border ${
-                    selectedDays.includes(value)
-                      ? 'bg-amber-500 border-amber-500 text-white'
-                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
+                <button key={value} type="button" onClick={() => toggleDay(value)} style={{ flex: 1, height: 34, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: selectedDays.includes(value) ? '1px solid #F9A44A' : '1px solid rgba(255,255,255,0.08)', background: selectedDays.includes(value) ? '#F9A44A' : 'rgba(255,255,255,0.04)', color: selectedDays.includes(value) ? '#000' : DIM }}>
                   {label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Add to Task */}
-          <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
-            <input
-              id="add-to-task"
-              type="checkbox"
-              checked={addToTask}
-              onChange={e => setAddToTask(e.target.checked)}
-              className="h-4 w-4 rounded accent-amber-500 cursor-pointer"
-            />
-            <label htmlFor="add-to-task" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-              Also add as a task for today
-            </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', padding: '12px 14px' }}>
+            <input id="add-to-task" type="checkbox" checked={addToTask} onChange={e => setAddToTask(e.target.checked)} style={{ accentColor: '#F9A44A', cursor: 'pointer', width: 15, height: 15 }} />
+            <label htmlFor="add-to-task" style={{ fontSize: 12, color: MUTED, cursor: 'pointer' }}>Also add as a task for today</label>
           </div>
         </div>
 
-        <div className="px-5 pb-5 flex gap-3">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
-            Cancel
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition disabled:opacity-50">
-            {saving ? 'Saving...' : 'Create Habit'}
-          </button>
+        <div style={{ padding: '0 20px 20px', display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: '10px', fontSize: 13, fontWeight: 500, color: MUTED, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, borderRadius: 12, border: 'none', background: '#F9A44A', padding: '10px', fontSize: 13, fontWeight: 600, color: '#000', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving...' : 'Create Habit'}</button>
         </div>
       </div>
     </div>
@@ -427,105 +383,69 @@ function EditHabitModal({ habit, onClose, onUpdated }: { habit: Habit; onClose: 
     }
   };
 
+  const modalCard: React.CSSProperties = { background: '#0e1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, overflow: 'hidden', width: '100%', maxWidth: 400 };
+  const inputStyle: React.CSSProperties = { width: '100%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: TXT, padding: '10px 14px', fontSize: 13, outline: 'none' };
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <p className="font-semibold text-gray-900 dark:text-white">Edit Habit</p>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">
-            <X className="h-4 w-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div style={modalCard}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <p style={{ fontWeight: 600, fontSize: 14, color: TXT }}>Edit Habit</p>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: 'none', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} />
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-          {/* Habit Name */}
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 18, maxHeight: '65vh', overflowY: 'auto' }}>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Habit Name *</label>
-            <input
-              autoFocus
-              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
-              placeholder="e.g. Morning run, Read 30 min..."
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSave()}
-            />
+            <label style={labelStyle}>Habit Name *</label>
+            <input autoFocus style={inputStyle} placeholder="e.g. Morning run, Read 30 min..."
+              value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} />
           </div>
 
-          {/* Icon */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Icon</label>
-            <div className="grid grid-cols-8 gap-1.5 max-h-36 overflow-y-auto pr-1">
+            <label style={labelStyle}>Icon</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: 6, maxHeight: 144, overflowY: 'auto' }}>
               {EMOJIS.map(e => (
-                <button key={e} onClick={() => setEmoji(e)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${emoji === e ? 'bg-amber-50 ring-2 ring-amber-400' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                <button key={e} onClick={() => setEmoji(e)} style={{ height: 36, width: 36, borderRadius: 10, fontSize: 16, cursor: 'pointer', border: emoji === e ? '2px solid #F9A44A' : '1px solid rgba(255,255,255,0.07)', background: emoji === e ? 'rgba(249,164,74,0.15)' : 'rgba(255,255,255,0.04)' }}>
                   {e}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Color */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Color</label>
-            <div className="flex gap-2 flex-wrap">
+            <label style={labelStyle}>Color</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {COLORS.map(c => (
-                <button key={c} onClick={() => setColor(c)}
-                  style={{ backgroundColor: c }}
-                  className={`h-8 w-8 rounded-full transition ${color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
-                />
+                <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: c, border: color === c ? '3px solid rgba(255,255,255,0.7)' : '2px solid transparent', cursor: 'pointer', transform: color === c ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.15s' }} />
               ))}
             </div>
           </div>
 
-          {/* Time of Day */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Time of Day</label>
-            <div className="grid grid-cols-3 gap-1.5">
+            <label style={labelStyle}>Time of Day</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
               {TIME_OF_DAY_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setTimeOfDay(opt.value)}
-                  className={`flex flex-col items-center justify-center rounded-xl px-2 py-2 text-xs font-medium transition border ${
-                    timeOfDay === opt.value
-                      ? 'bg-amber-50 border-amber-400 text-amber-700 dark:bg-amber-950 dark:border-amber-500 dark:text-amber-300'
-                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700'
-                  }`}
-                >
+                <button key={opt.value} onClick={() => setTimeOfDay(opt.value)} style={{ borderRadius: 10, padding: '8px 6px', fontSize: 11, fontWeight: 500, cursor: 'pointer', border: timeOfDay === opt.value ? '1px solid #F9A44A' : '1px solid rgba(255,255,255,0.08)', background: timeOfDay === opt.value ? 'rgba(249,164,74,0.15)' : 'rgba(255,255,255,0.04)', color: timeOfDay === opt.value ? DARK_AMBER : MUTED, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                   <span>{opt.label}</span>
-                  {opt.time && <span className="text-[10px] mt-0.5 opacity-70">{opt.time}</span>}
+                  {opt.time && <span style={{ fontSize: 9, opacity: 0.7 }}>{opt.time}</span>}
                 </button>
               ))}
             </div>
             {timeOfDay === 'custom' && (
-              <div className="mt-2">
-                <input
-                  type="time"
-                  value={customTime}
-                  onChange={e => setCustomTime(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
-                />
+              <div style={{ marginTop: 8 }}>
+                <input type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} style={inputStyle} />
               </div>
             )}
           </div>
 
-          {/* Days of Week */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-              Days of Week
-              <span className="ml-2 font-normal normal-case text-gray-400">({selectedDays.length}×/week)</span>
-            </label>
-            <div className="flex gap-1.5">
+            <label style={labelStyle}>Days of Week <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: DIM }}>({selectedDays.length}×/week)</span></label>
+            <div style={{ display: 'flex', gap: 5 }}>
               {WEEK_DAYS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggleDay(value)}
-                  className={`flex-1 flex items-center justify-center h-9 rounded-xl text-xs font-bold transition border ${
-                    selectedDays.includes(value)
-                      ? 'bg-amber-500 border-amber-500 text-white'
-                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
+                <button key={value} type="button" onClick={() => toggleDay(value)} style={{ flex: 1, height: 34, borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: selectedDays.includes(value) ? '1px solid #F9A44A' : '1px solid rgba(255,255,255,0.08)', background: selectedDays.includes(value) ? '#F9A44A' : 'rgba(255,255,255,0.04)', color: selectedDays.includes(value) ? '#000' : DIM }}>
                   {label}
                 </button>
               ))}
@@ -533,14 +453,9 @@ function EditHabitModal({ habit, onClose, onUpdated }: { habit: Habit; onClose: 
           </div>
         </div>
 
-        <div className="px-5 pb-5 flex gap-3">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
-            Cancel
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+        <div style={{ padding: '0 20px 20px', display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: '10px', fontSize: 13, fontWeight: 500, color: MUTED, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ flex: 1, borderRadius: 12, border: 'none', background: '#F9A44A', padding: '10px', fontSize: 13, fontWeight: 600, color: '#000', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>{saving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -555,29 +470,27 @@ function DayPopup({ date, habits, onClose }: { date: string; habits: Habit[]; on
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-xs rounded-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <p className="font-semibold text-gray-900 dark:text-white">{m} {d}, {y}</p>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">
-            <X className="h-4 w-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div style={{ background: '#0e1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, overflow: 'hidden', width: '100%', maxWidth: 320 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <p style={{ fontWeight: 600, fontSize: 13, color: TXT }}>{m} {d}, {y}</p>
+          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: 'none', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={13} />
           </button>
         </div>
-        <div className="px-5 py-4 space-y-2 max-h-72 overflow-y-auto">
+        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 288, overflowY: 'auto' }}>
           {habits.map(h => {
             const done = h.logs.some(l => l.logDate === date);
             return (
-              <div key={h.id} className="flex items-center gap-3">
-                <span className="text-base">{h.iconEmoji}</span>
-                <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">{h.name}</span>
-                <span className={`text-sm font-medium ${done ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
-                  {done ? '✅' : '⬜'}
-                </span>
+              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>{h.iconEmoji}</span>
+                <span style={{ flex: 1, fontSize: 12, color: MUTED }}>{h.name}</span>
+                <span style={{ fontSize: 13, color: done ? '#00E5A0' : DIM }}>{done ? '✅' : '⬜'}</span>
               </div>
             );
           })}
           {habits.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-2">No habits tracked yet</p>
+            <p style={{ fontSize: 12, color: DIM, textAlign: 'center', padding: '8px 0' }}>No habits tracked yet</p>
           )}
         </div>
       </div>
@@ -592,40 +505,36 @@ function WeekView({ habits }: { habits: Habit[] }) {
   const today = getTodayString();
   const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  const navBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: MUTED }}>
           {new Date(days[0] + 'T12:00:00').toLocaleDateString('default', { month: 'short', day: 'numeric' })} –{' '}
           {new Date(days[6] + 'T12:00:00').toLocaleDateString('default', { month: 'short', day: 'numeric' })}
         </span>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setWeekOffset(o => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => setWeekOffset(o => o - 1)} style={navBtn}><ChevronLeft size={14} /></button>
           {weekOffset !== 0 && (
-            <button onClick={() => setWeekOffset(0)} className="px-2 py-1 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">
-              Today
-            </button>
+            <button onClick={() => setWeekOffset(0)} style={{ padding: '3px 10px', fontSize: 10, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: MUTED, cursor: 'pointer' }}>Today</button>
           )}
-          <button onClick={() => setWeekOffset(o => o + 1)} disabled={weekOffset >= 0} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-30">
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          <button onClick={() => setWeekOffset(o => o + 1)} disabled={weekOffset >= 0} style={{ ...navBtn, opacity: weekOffset >= 0 ? 0.3 : 1 }}><ChevronRight size={14} /></button>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th className="text-left py-1 pr-3 text-gray-400 dark:text-gray-500 font-medium w-28">Habit</th>
+              <th style={{ textAlign: 'left', paddingBottom: 8, paddingRight: 12, color: DIM, fontWeight: 500, width: 112 }}>Habit</th>
               {days.map((d, i) => {
                 const isToday = d === today;
                 const dt = new Date(d + 'T12:00:00');
                 return (
-                  <th key={d} className={`text-center py-1 px-1 font-medium min-w-[36px] ${isToday ? 'text-amber-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                  <th key={d} style={{ textAlign: 'center', paddingBottom: 8, paddingLeft: 4, paddingRight: 4, fontWeight: 500, minWidth: 36, color: isToday ? DARK_AMBER : DIM }}>
                     <div>{DAY_LABELS[i]}</div>
-                    <div className={`text-[10px] ${isToday ? 'font-bold' : 'font-normal opacity-70'}`}>{dt.getDate()}</div>
+                    <div style={{ fontSize: 10, fontWeight: isToday ? 700 : 400, opacity: isToday ? 1 : 0.7 }}>{dt.getDate()}</div>
                   </th>
                 );
               })}
@@ -635,16 +544,16 @@ function WeekView({ habits }: { habits: Habit[] }) {
             {habits.map(h => {
               const logSet = new Set(h.logs.map(l => l.logDate));
               return (
-                <tr key={h.id} className="border-t border-gray-100 dark:border-gray-800">
-                  <td className="py-2 pr-3 truncate max-w-[112px]">
-                    <span className="mr-1">{h.iconEmoji}</span>
-                    <span className="text-gray-700 dark:text-gray-300">{h.name}</span>
+                <tr key={h.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '8px 12px 8px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 112 }}>
+                    <span style={{ marginRight: 4 }}>{h.iconEmoji}</span>
+                    <span style={{ color: MUTED }}>{h.name}</span>
                   </td>
                   {days.map(d => {
                     const done = logSet.has(d);
                     return (
-                      <td key={d} className="text-center py-2 px-1">
-                        <div className={`mx-auto h-5 w-5 rounded-full ${done ? 'bg-emerald-500' : 'bg-gray-100 dark:bg-gray-800'}`} style={done ? { backgroundColor: h.color } : {}} />
+                      <td key={d} style={{ textAlign: 'center', padding: '8px 4px' }}>
+                        <div style={{ margin: '0 auto', width: 20, height: 20, borderRadius: '50%', background: done ? h.color : 'rgba(255,255,255,0.05)' }} />
                       </td>
                     );
                   })}
@@ -654,7 +563,7 @@ function WeekView({ habits }: { habits: Habit[] }) {
           </tbody>
         </table>
         {habits.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-4">No habits to display</p>
+          <p style={{ fontSize: 12, color: DIM, textAlign: 'center', padding: '16px 0' }}>No habits to display</p>
         )}
       </div>
     </div>
@@ -679,28 +588,29 @@ function MonthView({ habits }: { habits: Habit[] }) {
     ...Array.from({ length: daysInMonth }, (_, i) => dateStr(year, month, i + 1)),
   ];
 
+  const navBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  const statusDot = (status: CalendarDayStatus) => {
+    if (status === 'all') return '#00E5A0';
+    if (status === 'some') return DARK_AMBER;
+    return 'rgba(255,255,255,0.08)';
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{monthLabel}</span>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setOffset(o => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: MUTED }}>{monthLabel}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => setOffset(o => o - 1)} style={navBtn}><ChevronLeft size={14} /></button>
           {offset !== 0 && (
-            <button onClick={() => setOffset(0)} className="px-2 py-1 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">
-              Today
-            </button>
+            <button onClick={() => setOffset(0)} style={{ padding: '3px 10px', fontSize: 10, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: MUTED, cursor: 'pointer' }}>Today</button>
           )}
-          <button onClick={() => setOffset(o => o + 1)} disabled={offset >= 0} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-30">
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          <button onClick={() => setOffset(o => o + 1)} disabled={offset >= 0} style={{ ...navBtn, opacity: offset >= 0 ? 0.3 : 1 }}><ChevronRight size={14} /></button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
         {DAY_LABELS.map(l => (
-          <div key={l} className="text-center text-[10px] font-medium text-gray-400 dark:text-gray-500 py-1">{l}</div>
+          <div key={l} style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, color: DIM, paddingBottom: 4 }}>{l}</div>
         ))}
         {cells.map((d, i) => {
           if (!d) return <div key={`empty-${i}`} />;
@@ -708,30 +618,21 @@ function MonthView({ habits }: { habits: Habit[] }) {
           const isToday = d === today;
           const isFuture = d > today;
           return (
-            <button
-              key={d}
-              onClick={() => !isFuture && setPopupDate(d)}
-              disabled={isFuture}
-              className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 transition text-xs font-medium
-                ${isToday ? 'ring-2 ring-amber-400' : ''}
-                ${isFuture ? 'opacity-30 cursor-default' : 'hover:opacity-80 cursor-pointer'}
-              `}
-            >
-              <span className={`text-[11px] ${isToday ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-gray-600 dark:text-gray-400'}`}>
+            <button key={d} onClick={() => !isFuture && setPopupDate(d)} disabled={isFuture}
+              style={{ aspectRatio: '1', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, cursor: isFuture ? 'default' : 'pointer', opacity: isFuture ? 0.3 : 1, border: isToday ? `2px solid ${DARK_AMBER}` : '2px solid transparent', background: 'transparent' }}>
+              <span style={{ fontSize: 11, color: isToday ? DARK_AMBER : MUTED, fontWeight: isToday ? 700 : 400 }}>
                 {new Date(d + 'T12:00:00').getDate()}
               </span>
-              {!isFuture && (
-                <div className={`h-2 w-2 rounded-full ${getDayStatusColor(status)}`} />
-              )}
+              {!isFuture && <div style={{ width: 6, height: 6, borderRadius: '50%', background: statusDot(status) }} />}
             </button>
           );
         })}
       </div>
 
-      <div className="flex items-center gap-4 mt-3">
-        <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-emerald-500" /><span className="text-xs text-gray-500 dark:text-gray-400">All done</span></div>
-        <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-amber-400" /><span className="text-xs text-gray-500 dark:text-gray-400">Some done</span></div>
-        <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-gray-200 dark:bg-gray-700" /><span className="text-xs text-gray-500 dark:text-gray-400">None</span></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00E5A0' }} /><span style={{ fontSize: 10, color: MUTED }}>All done</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: DARK_AMBER }} /><span style={{ fontSize: 10, color: MUTED }}>Some done</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} /><span style={{ fontSize: 10, color: MUTED }}>None</span></div>
       </div>
 
       {popupDate && <DayPopup date={popupDate} habits={habits} onClose={() => setPopupDate(null)} />}
@@ -780,62 +681,49 @@ function YearView({ habits }: { habits: Habit[] }) {
     return { label: MONTH_LABELS[mi], col };
   });
 
+  const navBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  const dotColor = (status: CalendarDayStatus) => status === 'all' ? '#00E5A0' : status === 'some' ? DARK_AMBER : 'rgba(255,255,255,0.08)';
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{currentYear}</span>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setYearOffset(o => o - 1)} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: MUTED }}>{currentYear}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button onClick={() => setYearOffset(o => o - 1)} style={navBtn}><ChevronLeft size={14} /></button>
           {yearOffset !== 0 && (
-            <button onClick={() => setYearOffset(0)} className="px-2 py-1 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700">
-              This Year
-            </button>
+            <button onClick={() => setYearOffset(0)} style={{ padding: '3px 10px', fontSize: 10, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: MUTED, cursor: 'pointer' }}>This Year</button>
           )}
-          <button onClick={() => setYearOffset(o => o + 1)} disabled={yearOffset >= 0} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-30">
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          <button onClick={() => setYearOffset(o => o + 1)} disabled={yearOffset >= 0} style={{ ...navBtn, opacity: yearOffset >= 0 ? 0.3 : 1 }}><ChevronRight size={14} /></button>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-max">
-          {/* Month labels row */}
-          <div className="flex mb-1" style={{ paddingLeft: '14px' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ minWidth: 'max-content' }}>
+          <div style={{ display: 'flex', marginBottom: 4, paddingLeft: 14 }}>
             {weeks.map((_, wi) => {
               const mp = monthPositions.find(m => m.col === wi);
               return (
-                <div key={wi} className="w-[13px] mr-[2px] text-[9px] text-gray-400 dark:text-gray-500 font-medium leading-none">
+                <div key={wi} style={{ width: 13, marginRight: 2, fontSize: 9, color: DIM, fontWeight: 500, lineHeight: 1 }}>
                   {mp ? mp.label : ''}
                 </div>
               );
             })}
           </div>
 
-          {/* Day rows (Mon-Sun) */}
           {Array.from({ length: 7 }, (_, row) => (
-            <div key={row} className="flex items-center mb-[2px]">
-              <div className="w-[12px] mr-[2px] text-[8px] text-gray-400 dark:text-gray-500 leading-none">
+            <div key={row} style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+              <div style={{ width: 12, marginRight: 2, fontSize: 8, color: DIM, lineHeight: 1 }}>
                 {row % 2 === 0 ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'][row] : ''}
               </div>
               {weeks.map((week, wi) => {
                 const d = week[row];
-                if (!d) return <div key={wi} className="w-[11px] h-[11px] mr-[2px]" />;
+                if (!d) return <div key={wi} style={{ width: 11, height: 11, marginRight: 2 }} />;
                 const isFuture = d > today;
-                const status = isFuture ? 'none' : getDayStatus(d, habits);
+                const status = isFuture ? 'none' as CalendarDayStatus : getDayStatus(d, habits);
                 const isToday = d === today;
                 return (
-                  <button
-                    key={wi}
-                    onClick={() => !isFuture && setPopupDate(d)}
-                    disabled={isFuture}
-                    title={d}
-                    className={`w-[11px] h-[11px] mr-[2px] rounded-sm transition
-                      ${getDayStatusColor(status)}
-                      ${isFuture ? 'opacity-30 cursor-default' : 'hover:opacity-70 cursor-pointer'}
-                      ${isToday ? 'ring-1 ring-amber-400' : ''}
-                    `}
+                  <button key={wi} onClick={() => !isFuture && setPopupDate(d)} disabled={isFuture} title={d}
+                    style={{ width: 11, height: 11, marginRight: 2, borderRadius: 2, background: dotColor(status), opacity: isFuture ? 0.3 : 1, cursor: isFuture ? 'default' : 'pointer', border: isToday ? `1px solid ${DARK_AMBER}` : '1px solid transparent' }}
                   />
                 );
               })}
@@ -844,10 +732,10 @@ function YearView({ habits }: { habits: Habit[] }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-3">
-        <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /><span className="text-xs text-gray-500 dark:text-gray-400">All done</span></div>
-        <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-sm bg-amber-400" /><span className="text-xs text-gray-500 dark:text-gray-400">Some done</span></div>
-        <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-sm bg-gray-200 dark:bg-gray-700" /><span className="text-xs text-gray-500 dark:text-gray-400">None</span></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: '#00E5A0' }} /><span style={{ fontSize: 10, color: MUTED }}>All done</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: DARK_AMBER }} /><span style={{ fontSize: 10, color: MUTED }}>Some done</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }} /><span style={{ fontSize: 10, color: MUTED }}>None</span></div>
       </div>
 
       {popupDate && <DayPopup date={popupDate} habits={habits} onClose={() => setPopupDate(null)} />}
@@ -860,17 +748,12 @@ function CalendarSection({ habits }: { habits: Habit[] }) {
   const [view, setView] = useState<'week' | 'month' | 'year'>('week');
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Habit Calendar</h2>
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+    <div style={{ ...CARD, padding: '18px 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 700, color: TXT }}>Habit Calendar</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: 3 }}>
           {(['week', 'month', 'year'] as const).map(v => (
-            <button key={v} onClick={() => setView(v)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                view === v
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}>
+            <button key={v} onClick={() => setView(v)} style={{ padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer', border: 'none', background: view === v ? 'rgba(255,255,255,0.1)' : 'transparent', color: view === v ? TXT : DIM }}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
@@ -925,44 +808,33 @@ function TodayHabitsSection({ habits, today, onLog }: {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-5">
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Today's Habits</h2>
-      <div className="space-y-4">
+    <div style={{ ...CARD, padding: '18px 20px' }}>
+      <h2 style={{ fontSize: 13, fontWeight: 700, color: TXT, marginBottom: 16 }}>Today's Habits</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {groups.map(({ key, habits: groupHabits }) => (
           <div key={key}>
-            <div className="flex items-center gap-2 mb-2">
-              {key !== 'all_day' && <Clock className="h-3.5 w-3.5 text-gray-400" />}
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              {key !== 'all_day' && <Clock size={12} color={DIM} />}
+              <span style={{ fontSize: 10, fontWeight: 700, color: DIM, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 {groupLabel(key)}
-                {key !== 'all_day' && (
-                  <span className="ml-1 font-normal normal-case">
-                    ({TIME_OF_DAY_OPTIONS.find(o => o.value === key)?.time})
-                  </span>
-                )}
+                {key !== 'all_day' && <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>({TIME_OF_DAY_OPTIONS.find(o => o.value === key)?.time})</span>}
               </span>
             </div>
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {groupHabits.map(h => {
                 const done = h.logs.some(l => l.logDate === today);
                 const displayTime = getDisplayTime(h);
                 return (
-                  <div key={h.id} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${done ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
-                    <span className="text-lg">{h.iconEmoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 12, padding: '10px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ fontSize: 18 }}>{h.iconEmoji}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: done ? 'line-through' : 'none', color: done ? DIM : TXT }}>
                         {h.name}
                       </p>
-                      {displayTime && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{displayTime}</p>
-                      )}
+                      {displayTime && <p style={{ fontSize: 10, color: DIM, marginTop: 2 }}>{displayTime}</p>}
                     </div>
-                    <button
-                      onClick={() => onLog(h.id, today)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full transition flex-shrink-0 ${
-                        done ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
+                    <button onClick={() => onLog(h.id, today)} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? h.color : 'rgba(255,255,255,0.07)', color: done ? '#fff' : MUTED, flexShrink: 0 }}>
+                      <CheckCircle2 size={18} />
                     </button>
                   </div>
                 );
@@ -1006,84 +878,61 @@ function HabitCard({ habit, dates, onLog, onDelete, onEdit }: {
   const weekDone = activeDates.filter(d => logSet.has(d)).length;
   const weekTotal = activeDates.length;
 
+  const dayCell = (done: boolean, isToday: boolean): React.CSSProperties => ({
+    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, borderRadius: 8, paddingTop: 6, paddingBottom: 6, cursor: 'pointer', border: isToday && !done ? '1px dashed rgba(255,255,255,0.2)' : '1px solid transparent', background: done ? habit.color : 'rgba(255,255,255,0.04)',
+  });
+
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden hover:shadow-md transition-all">
-      <div className="h-1 w-full" style={{ backgroundColor: habit.color }} />
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">{habit.iconEmoji}</span>
+    <div style={{ ...CARD, overflow: 'hidden' }}>
+      <div style={{ height: 3, width: '100%', backgroundColor: habit.color }} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>{habit.iconEmoji}</span>
             <div>
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">{habit.name}</p>
-              <div className="flex items-center gap-1 mt-0.5">
-                <Flame className="h-3 w-3 text-amber-400" />
-                <span className="text-xs text-gray-500 dark:text-gray-400">{streak} day streak</span>
+              <p style={{ fontWeight: 600, color: TXT, fontSize: 13 }}>{habit.name}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <Flame size={11} color={DARK_AMBER} />
+                <span style={{ fontSize: 10, color: MUTED }}>{streak} day streak</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onLog(habit.id, today)}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-                todayDone ? 'text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-              style={todayDone ? { backgroundColor: habit.color } : {}}
-            >
-              <CheckCircle2 className="h-5 w-5" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={() => onLog(habit.id, today)} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: todayDone ? habit.color : 'rgba(255,255,255,0.07)', color: todayDone ? '#fff' : MUTED }}>
+              <CheckCircle2 size={18} />
             </button>
-            <button onClick={() => onEdit(habit)} className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 dark:text-gray-600 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950 transition">
-              <Pencil className="h-4 w-4" />
+            <button onClick={() => onEdit(habit)} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', color: DIM }}>
+              <Pencil size={13} />
             </button>
-            <button onClick={() => onDelete(habit.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 dark:text-gray-600 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition">
-              <Trash2 className="h-4 w-4" />
+            <button onClick={() => onDelete(habit.id)} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.04)', color: DIM }}>
+              <Trash2 size={13} />
             </button>
           </div>
         </div>
 
-        {/* Day grid — only shows habit's active days */}
-        <div className="flex gap-1 items-center">
-          {activeDates.length > 0 ? activeDates.map((date) => {
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {(activeDates.length > 0 ? activeDates : dates).map((date, i) => {
             const done = logSet.has(date);
-            const isToday = date === today;
+            const isToday = activeDates.length > 0 ? date === today : i === dates.length - 1;
             const dayLabel = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'][new Date(date + 'T12:00:00').getDay()];
             return (
-              <button key={date} onClick={() => onLog(habit.id, date)}
-                className={`flex-1 flex flex-col items-center gap-1 rounded-lg py-1.5 transition ${
-                  done ? 'text-white' : isToday ? 'bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                style={done ? { backgroundColor: habit.color } : {}}>
-                <span className={`text-[10px] font-medium ${done ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{dayLabel}</span>
-                <div className={`h-3 w-3 rounded-full ${done ? 'bg-white/40' : 'bg-gray-200 dark:bg-gray-700'}`} />
-              </button>
-            );
-          }) : dates.map((date, i) => {
-            const done = logSet.has(date);
-            const isToday = i === dates.length - 1;
-            const dayLabel = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'][new Date(date + 'T12:00:00').getDay()];
-            return (
-              <button key={date} onClick={() => onLog(habit.id, date)}
-                className={`flex-1 flex flex-col items-center gap-1 rounded-lg py-1.5 transition ${
-                  done ? 'text-white' : isToday ? 'bg-gray-50 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600' : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                style={done ? { backgroundColor: habit.color } : {}}>
-                <span className={`text-[10px] font-medium ${done ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{dayLabel}</span>
-                <div className={`h-3 w-3 rounded-full ${done ? 'bg-white/40' : 'bg-gray-200 dark:bg-gray-700'}`} />
+              <button key={date} onClick={() => onLog(habit.id, date)} style={dayCell(done, isToday)}>
+                <span style={{ fontSize: 9, fontWeight: 600, color: done ? 'rgba(255,255,255,0.7)' : DIM }}>{dayLabel}</span>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.08)' }} />
               </button>
             );
           })}
         </div>
 
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-gray-400 dark:text-gray-500">
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: DIM }}>
             {weekDone}/{weekTotal} this week
-            {weekTotal < 7 && <span className="ml-1 opacity-60">({activeDays.length}×/wk)</span>}
+            {weekTotal < 7 && <span style={{ opacity: 0.6, marginLeft: 4 }}>({activeDays.length}×/wk)</span>}
           </span>
-          <div className="h-1.5 flex-1 mx-2 rounded-full bg-gray-100 dark:bg-gray-800">
-            <div className="h-1.5 rounded-full transition-all" style={{ width: `${weekTotal > 0 ? (weekDone / weekTotal) * 100 : 0}%`, backgroundColor: habit.color }} />
+          <div style={{ flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.06)' }}>
+            <div style={{ height: '100%', borderRadius: 99, backgroundColor: habit.color, width: `${weekTotal > 0 ? (weekDone / weekTotal) * 100 : 0}%`, transition: 'width 0.5s' }} />
           </div>
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-            {weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0}%
-          </span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: MUTED }}>{weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0}%</span>
         </div>
       </div>
     </div>
@@ -1188,89 +1037,74 @@ export default function HabitsPage() {
     <div className="space-y-6">
       {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
 
-      {/* ── Overview: Insight + Stats + New Habit button ── */}
-      {/* Insight message */}
       {insightMessage && !loading && (
-        <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-5 py-4">
-          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{insightMessage}</p>
+        <div style={{ borderRadius: 14, border: '1px solid rgba(249,164,74,0.25)', background: 'linear-gradient(145deg,rgba(249,164,74,0.08),rgba(249,164,74,0.03))', padding: '14px 18px' }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: DARK_AMBER }}>{insightMessage}</p>
         </div>
       )}
 
-      {/* Stats row with New Habit button in top-right */}
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Overview</h2>
-          <button onClick={() => setShowModal(true)}
-            className="hidden md:flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition">
-            <Plus className="h-3.5 w-3.5" />
-            New Habit
+      <div style={{ ...CARD, padding: '18px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 700, color: TXT }}>Overview</h2>
+          <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 10, background: DARK_AMBER, border: 'none', padding: '7px 14px', fontSize: 11, fontWeight: 600, color: '#000', cursor: 'pointer' }}>
+            <Plus size={13} /> New Habit
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
           {[
             { label: "Today's Done", value: `${totalLogged}/${habits.length}`, sub: 'habits completed' },
             { label: 'Total Streak XP', value: totalStreaks, sub: 'combined streak days' },
             { label: 'Longest Streak', value: longestStreak, sub: 'consecutive days' },
           ].map(({ label, value, sub }) => (
-            <div key={label} className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3">
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{value}</p>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-0.5">{label}</p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500">{sub}</p>
+            <div key={label} style={{ borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.05)', padding: 12 }}>
+              <p style={{ fontSize: 20, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif' }}>{value}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: MUTED, marginTop: 2 }}>{label}</p>
+              <p style={{ fontSize: 9, color: DIM }}>{sub}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Today's habits by time */}
       {!loading && habits.length > 0 && (
         <TodayHabitsSection habits={habits} today={today} onLog={handleLog} />
       )}
 
-      {/* Habit grid */}
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => <div key={i} className="h-44 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse" />)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
+          {[1, 2, 3, 4].map(i => <div key={i} className="animate-pulse" style={{ height: 176, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />)}
         </div>
       ) : habits.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8">
-          <div className="mb-6 flex flex-col items-center text-center">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950">
-              <Flame className="h-7 w-7 text-amber-500" />
+        <div style={{ ...CARD, padding: 32 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(249,164,74,0.1)', border: '1px solid rgba(249,164,74,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <Flame size={26} color={DARK_AMBER} />
             </div>
-            <p className="text-base font-semibold text-gray-900 dark:text-white">No habits yet</p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start small — pick one habit from below, or create your own.</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: TXT }}>No habits yet</p>
+            <p style={{ fontSize: 12, color: DIM, marginTop: 4 }}>Start small — pick one habit from below, or create your own.</p>
           </div>
-          <div className="mb-5 space-y-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             {HABIT_TEMPLATES.map((t) => (
-              <button
-                key={t.name}
-                onClick={() => setShowModal(true)}
-                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3 text-left transition hover:border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 group"
-              >
-                <span className="text-xl">{t.iconEmoji}</span>
-                <p className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200">{t.name}</p>
-                <ChevronRight className="h-4 w-4 flex-none text-gray-300 group-hover:text-amber-500 transition" />
+              <button key={t.name} onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 12, borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ fontSize: 20 }}>{t.iconEmoji}</span>
+                <p style={{ flex: 1, fontSize: 13, fontWeight: 500, color: MUTED }}>{t.name}</p>
+                <ChevronRight size={14} color={DIM} />
               </button>
             ))}
           </div>
-          <button onClick={() => setShowModal(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition">
-            <Plus className="h-4 w-4" />
-            Create your own habit
+          <button onClick={() => setShowModal(true)} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, background: DARK_AMBER, border: 'none', padding: '11px', fontSize: 13, fontWeight: 600, color: '#000', cursor: 'pointer' }}>
+            <Plus size={14} /> Create your own habit
           </button>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
           {habits.map(habit => (
             <HabitCard key={habit.id} habit={habit} dates={dates} onLog={handleLog} onDelete={handleDelete} onEdit={setEditingHabit} />
           ))}
         </div>
       )}
 
-      {/* Mobile FAB */}
-      <button onClick={() => setShowModal(true)}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-amber-600 text-white shadow-lg hover:bg-amber-700 transition md:hidden">
-        <Plus className="h-6 w-6" />
+      <button onClick={() => setShowModal(true)} className="md:hidden" style={{ position: 'fixed', bottom: 80, right: 16, zIndex: 40, width: 56, height: 56, borderRadius: '50%', background: DARK_AMBER, border: 'none', color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(249,164,74,0.4)' }}>
+        <Plus size={22} />
       </button>
 
       {showModal && (
@@ -1290,26 +1124,16 @@ export default function HabitsPage() {
         />
       )}
       {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xs rounded-2xl bg-white dark:bg-gray-900 shadow-2xl p-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 mx-auto mb-4">
-              <Trash2 className="h-6 w-6 text-rose-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div style={{ background: '#0e1420', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 18, padding: 24, maxWidth: 320, width: '100%', textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={22} color="#FF6B6B" />
             </div>
-            <p className="font-semibold text-gray-900 dark:text-white mb-1">Archive this habit?</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">This will permanently remove the habit and all its logs. This cannot be undone.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-semibold text-white hover:bg-rose-600 transition"
-              >
-                Archive
-              </button>
+            <p style={{ fontWeight: 600, color: TXT, fontSize: 14, marginBottom: 6 }}>Archive this habit?</p>
+            <p style={{ fontSize: 12, color: MUTED, marginBottom: 20 }}>This will permanently remove the habit and all its logs. This cannot be undone.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: '10px', fontSize: 13, fontWeight: 500, color: MUTED, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleConfirmDelete} style={{ flex: 1, borderRadius: 12, border: 'none', background: '#FF6B6B', padding: '10px', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Archive</button>
             </div>
           </div>
         </div>

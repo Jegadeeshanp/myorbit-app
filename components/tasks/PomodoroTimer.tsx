@@ -21,12 +21,19 @@ function CircleTimer({ progress, size = 200 }: { progress: number; size?: number
   const dash = circ * (1 - progress);
 
   return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E0E7FF" strokeWidth="8" />
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
       <circle
         cx={size/2} cy={size/2} r={r} fill="none"
-        stroke="#4F46E5" strokeWidth="8" strokeLinecap="round"
+        stroke="#A78BFA" strokeWidth="8" strokeLinecap="round"
         strokeDasharray={circ} strokeDashoffset={dash}
+        filter="url(#glow)"
         style={{ transition: 'stroke-dashoffset 0.5s ease' }}
       />
     </svg>
@@ -135,98 +142,83 @@ export default function PomodoroTimer() {
   const totalMins = todaySessions.reduce((sum, s) => sum + Math.floor((s.durationSecs || 0) / 60), 0);
   const completedPomos = todaySessions.filter(s => s.wasCompleted && s.mode === 'pomo').length;
 
+  const CARD: React.CSSProperties = { background: 'linear-gradient(145deg,#131c2e,#0e1420)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255,255,255,.05)' };
+  const TXT = '#e4eaf4'; const MUTED = '#8fa3b8'; const DIM = '#3d5166'; const PURPLE = '#A78BFA';
+
   return (
-    <div className="space-y-6 max-w-md mx-auto">
+    <div style={{ maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">Focus Timer</h2>
-        <p className="text-sm text-gray-600 mt-0.5">Deep work, one session at a time</p>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif' }}>Focus Timer</h2>
+        <p style={{ fontSize: 12, color: MUTED, marginTop: 3 }}>Deep work, one session at a time</p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex rounded-xl bg-gray-100 p-1">
-        {[
-          { key: 'pomo' as Mode, label: 'Pomodoro', Icon: Timer },
-          { key: 'stopwatch' as Mode, label: 'Stopwatch', Icon: Watch },
-        ].map(({ key, label, Icon }) => (
-          <button key={key} onClick={() => handleModeChange(key)}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition ${mode === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            <Icon className="h-4 w-4" />
+      <div style={{ display: 'flex', borderRadius: 12, background: 'rgba(255,255,255,0.05)', padding: 4 }}>
+        {([{ key: 'pomo' as Mode, label: 'Pomodoro', Icon: Timer }, { key: 'stopwatch' as Mode, label: 'Stopwatch', Icon: Watch }]).map(({ key, label, Icon }) => (
+          <button key={key} onClick={() => handleModeChange(key)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 9, padding: '8px', fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none', background: mode === key ? 'rgba(167,139,250,0.15)' : 'transparent', color: mode === key ? PURPLE : DIM, transition: 'all 0.15s' }}>
+            <Icon size={14} />
             {label}
           </button>
         ))}
       </div>
 
-      {/* Timer */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-8 text-center">
-        <div className="relative inline-block mb-6">
+      <div style={{ ...CARD, padding: 32, textAlign: 'center' }}>
+        <div style={{ position: 'relative', display: 'inline-block', marginBottom: 24 }}>
           <CircleTimer progress={progress} size={200} />
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-5xl font-bold text-gray-900 tabular-nums tracking-tight">{formatTime(secs)}</p>
-            <p className="text-xs text-gray-400 mt-1">{mode === 'pomo' ? 'Focus Session' : 'Stopwatch'}</p>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ fontSize: 48, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif', letterSpacing: '-0.02em', lineHeight: 1 }}>{formatTime(secs)}</p>
+            <p style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>{mode === 'pomo' ? 'Focus Session' : 'Stopwatch'}</p>
           </div>
         </div>
 
-        {/* Task input */}
-        <input
-          className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-center focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-gray-50 mb-5"
+        <input style={{ width: '100%', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: TXT, padding: '10px', fontSize: 13, textAlign: 'center', outline: 'none', marginBottom: 20, boxSizing: 'border-box' }}
           placeholder="What are you working on? (optional)"
-          value={taskTitle}
-          onChange={e => setTaskTitle(e.target.value)}
-          disabled={running}
+          value={taskTitle} onChange={e => setTaskTitle(e.target.value)} disabled={running}
         />
 
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-3">
-          <button onClick={handleReset}
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 transition">
-            <RotateCcw className="h-5 w-5" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <button onClick={handleReset} style={{ width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <RotateCcw size={18} />
           </button>
           {running ? (
-            <button onClick={handlePause}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition">
-              <Pause className="h-7 w-7" />
+            <button onClick={handlePause} style={{ width: 64, height: 64, borderRadius: '50%', border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 24px ${PURPLE}66` }}>
+              <Pause size={26} />
             </button>
           ) : (
-            <button onClick={handleStart}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition">
-              <Play className="h-7 w-7 ml-1" />
+            <button onClick={handleStart} style={{ width: 64, height: 64, borderRadius: '50%', border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 24px ${PURPLE}66` }}>
+              <Play size={26} style={{ marginLeft: 4 }} />
             </button>
           )}
-          <div className="flex h-12 w-12 flex-col items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-500">
-            <span className="text-base font-bold text-indigo-600">{completedPomos}</span>
-            <span>pomos</span>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: PURPLE }}>{completedPomos}</span>
+            <span style={{ fontSize: 9, color: DIM }}>pomos</span>
           </div>
         </div>
       </div>
 
-      {/* Today's stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-indigo-600">{completedPomos}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Pomos Today</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+        <div style={{ ...CARD, padding: 16, textAlign: 'center' }}>
+          <p style={{ fontSize: 26, fontWeight: 700, color: PURPLE, fontFamily: 'Georgia,serif' }}>{completedPomos}</p>
+          <p style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>Pomos Today</p>
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-indigo-600">{totalMins}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Minutes Focused</p>
+        <div style={{ ...CARD, padding: 16, textAlign: 'center' }}>
+          <p style={{ fontSize: 26, fontWeight: 700, color: PURPLE, fontFamily: 'Georgia,serif' }}>{totalMins}</p>
+          <p style={{ fontSize: 11, color: MUTED, marginTop: 3 }}>Minutes Focused</p>
         </div>
       </div>
 
-      {/* Recent sessions */}
       {!loadingSessions && sessions.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <p className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">Recent Sessions</p>
-          <div className="divide-y divide-gray-100 dark:divide-gray-700/30">
-            {sessions.slice(0, 8).map(s => (
-              <div key={s.id} className="flex items-center gap-3 px-4 py-2.5">
-                <span className={`text-lg ${s.wasCompleted ? '' : 'opacity-50'}`}>{s.mode === 'pomo' ? '🍅' : '⏱'}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-700 truncate">{s.taskTitle || 'Focus session'}</p>
-                  <p className="text-xs text-gray-400">{s.durationSecs ? `${Math.floor(s.durationSecs / 60)}m` : '—'}</p>
-                </div>
-                {s.wasCompleted && <span className="text-xs text-emerald-600 font-medium">Done</span>}
+        <div style={{ ...CARD, overflow: 'hidden' }}>
+          <p style={{ padding: '12px 16px', fontSize: 10, fontWeight: 700, color: DIM, textTransform: 'uppercase', letterSpacing: '0.12em', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Recent Sessions</p>
+          {sessions.slice(0, 8).map((s, i) => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none', opacity: s.wasCompleted ? 1 : 0.5 }}>
+              <span style={{ fontSize: 18 }}>{s.mode === 'pomo' ? '🍅' : '⏱'}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 12, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.taskTitle || 'Focus session'}</p>
+                <p style={{ fontSize: 10, color: DIM }}>{s.durationSecs ? `${Math.floor(s.durationSecs / 60)}m` : '—'}</p>
               </div>
-            ))}
-          </div>
+              {s.wasCompleted && <span style={{ fontSize: 10, color: '#00E5A0', fontWeight: 600 }}>Done</span>}
+            </div>
+          ))}
         </div>
       )}
     </div>
