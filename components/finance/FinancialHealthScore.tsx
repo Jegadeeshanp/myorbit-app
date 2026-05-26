@@ -59,17 +59,18 @@ function ScoreRing({ score }: { score: number }) {
   const r = 36, cx = 44, cy = 44;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
-  const color = score >= 75 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+  const color = score >= 75 ? '#00E5A0' : score >= 50 ? '#F9A44A' : '#FF6B6B';
   const label = score >= 75 ? 'Great' : score >= 50 ? 'Good' : 'Needs work';
   return (
     <div className="relative flex h-[88px] w-[88px] flex-none items-center justify-center">
       <svg width="88" height="88" className="-rotate-90">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f3f4f6" strokeWidth="8" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
         <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="8"
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 4px ${color}80)` }} />
       </svg>
       <div className="absolute text-center">
-        <p className="text-lg font-bold text-gray-900">{score}</p>
+        <p className="text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{score}</p>
         <p className="text-xs font-medium" style={{ color }}>{label}</p>
       </div>
     </div>
@@ -82,29 +83,34 @@ export default function FinancialHealthScore({ transactions }: { transactions: T
   const totalLiab   = useMemo(() => state.liabilities.reduce((s,l) => s + l.outstanding, 0), [state.liabilities]);
   const result = useMemo(() => getScore(transactions, totalAssets, totalLiab), [transactions, totalAssets, totalLiab]);
 
+  const barColor = (score: number, max: number) => {
+    const pct = (score / max) * 100;
+    return pct >= 75 ? '#00E5A0' : pct >= 50 ? '#F9A44A' : '#FF6B6B';
+  };
+
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-emerald-600" />
-        <h2 className="text-sm font-semibold text-gray-900 flex-1">Financial Health Score</h2>
+        <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-[#00E5A0]" />
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4] flex-1">Financial Health Score</h2>
         <Link href="/orbit/finance/vitals"
-          className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-gray-300 hover:bg-gray-100 hover:text-gray-500 transition">
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-gray-300 dark:text-[#3d5166] hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-500 dark:hover:text-[#8fa3b8] transition">
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
       {!result.hasData ? (
         <div className="flex flex-col items-center justify-center py-6 text-center">
-          <ShieldCheck className="h-10 w-10 text-gray-200 mb-3" />
-          <p className="text-sm font-medium text-gray-500">No data yet</p>
-          <p className="mt-1 text-xs text-gray-400">Add accounts, transactions, and assets to get your personalised financial health score.</p>
+          <ShieldCheck className="h-10 w-10 text-gray-200 dark:text-white/[0.1] mb-3" />
+          <p className="text-sm font-medium text-gray-500 dark:text-[#8fa3b8]">No data yet</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-[#3d5166]">Add accounts, transactions, and assets to get your personalised financial health score.</p>
           <div className="mt-4 w-full space-y-2">
             {result.factors.map(f => (
               <div key={f.label}>
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-gray-400">{f.label}</span>
-                  <span className="text-gray-300">—/{f.max}</span>
+                  <span className="text-gray-400 dark:text-[#3d5166]">{f.label}</span>
+                  <span className="text-gray-300 dark:text-[#3d5166]">—/{f.max}</span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100" />
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]" />
               </div>
             ))}
           </div>
@@ -117,17 +123,18 @@ export default function FinancialHealthScore({ transactions }: { transactions: T
               {result.factors.map(f => (
                 <div key={f.label}>
                   <div className="mb-1 flex justify-between text-xs">
-                    <span className="text-gray-500">{f.label}</span>
-                    <span className="font-semibold text-gray-700">{f.score}/{f.max}</span>
+                    <span className="text-gray-500 dark:text-[#8fa3b8]">{f.label}</span>
+                    <span className="font-semibold text-gray-700 dark:text-[#b8c9d9]">{f.score}/{f.max}</span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${(f.score/f.max)*100}%` }} />
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                    <div className="h-1.5 rounded-full transition-all"
+                      style={{ width: `${(f.score/f.max)*100}%`, backgroundColor: barColor(f.score, f.max) }} />
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          <p className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-xs leading-relaxed text-gray-600">{result.summary}</p>
+          <p className="mt-4 rounded-xl bg-gray-50 dark:bg-white/[0.04] px-4 py-3 text-xs leading-relaxed text-gray-600 dark:text-[#8fa3b8]">{result.summary}</p>
         </>
       )}
     </div>

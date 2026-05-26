@@ -78,16 +78,16 @@ export default function BudgetPage() {
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-3 gap-3">
         {cards.map(c => (
-          <div key={c.label} className={`flex items-center gap-3 rounded-2xl border ${c.border} bg-white p-4 shadow-sm`}>
+          <div key={c.label} className={`flex items-center gap-3 rounded-2xl border ${c.border} dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm`}>
             <div className={`hidden sm:flex h-9 w-9 flex-none items-center justify-center rounded-xl ${c.bg}`}>
               <c.icon className={`h-4 w-4 ${c.color}`} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs text-gray-400">{c.label}</p>
+              <p className="truncate text-xs text-gray-400 dark:text-[#3d5166]">{c.label}</p>
               <p className={`truncate text-sm font-bold ${c.color}`}>
                 {c.label === 'Net Balance' && c.value < 0 ? '-' : ''}₹{Math.abs(c.value).toLocaleString('en-IN')}
               </p>
-              <p className="text-[10px] text-gray-400">{c.sub}</p>
+              <p className="text-[10px] text-gray-400 dark:text-[#3d5166]">{c.sub}</p>
             </div>
           </div>
         ))}
@@ -101,11 +101,11 @@ export default function BudgetPage() {
             <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
               onBlur={() => { if (!search) setMobileSearch(false); }}
               placeholder="Search budgets…"
-              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
+              className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-4 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none" />
           </div>
         ) : (
           <button onClick={() => setMobileSearch(true)}
-            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm text-gray-500 hover:bg-gray-50">
+            className="flex sm:hidden h-9 w-9 items-center justify-center rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-transparent shadow-sm text-gray-500 dark:text-[#8fa3b8] hover:bg-gray-50 dark:hover:bg-white/[0.06]">
             <Search className="h-4 w-4" />
           </button>
         )}
@@ -115,14 +115,14 @@ export default function BudgetPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search budgets…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-4 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none"
           />
         </div>
         <div className="ml-auto">
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-800 dark:hover:bg-[#00c990]"
           >
             <PlusCircle className="h-4 w-4" /> Add Budget
           </button>

@@ -21,7 +21,6 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
 
   const insights: Insight[] = [];
 
-  // Category spending change
   const catThis: Record<string, number> = {};
   const catLast: Record<string, number> = {};
   thisMonth.filter(t => t.type === 'expense').forEach(t => { catThis[t.category] = (catThis[t.category] ?? 0) + Math.abs(t.amount); });
@@ -36,7 +35,6 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
     }
   });
 
-  // Savings
   const thisIncome  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
   const thisExpense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = thisIncome > 0 ? Math.round(((thisIncome - thisExpense) / thisIncome) * 100) : 0;
@@ -45,7 +43,6 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
   else if (savingsRate > 10) insights.push({ icon: Lightbulb, text: `Your savings rate is ${savingsRate}% this month. Try to push above 30%.`, type: 'neutral' });
   else if (thisIncome > 0)   insights.push({ icon: AlertCircle, text: `Your savings rate is only ${savingsRate}%. Consider cutting discretionary spending.`, type: 'warning' });
 
-  // Only show net worth insight when there is actual data
   if (totalAssets > 0 || totalLiab > 0) {
     const debtRatio = totalAssets > 0 ? Math.round((totalLiab / totalAssets) * 100) : 0;
     if (debtRatio < 30) insights.push({ icon: TrendingUp, text: `Your debt-to-asset ratio is ${debtRatio}% — a healthy financial position.`, type: 'positive' });
@@ -57,9 +54,24 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
 }
 
 const TYPE_STYLE = {
-  positive: { bg: 'bg-emerald-50', border: 'border-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-800' },
-  warning:  { bg: 'bg-amber-50',   border: 'border-amber-100',   icon: 'text-amber-600',   text: 'text-amber-800' },
-  neutral:  { bg: 'bg-blue-50',    border: 'border-blue-100',    icon: 'text-blue-600',    text: 'text-blue-800' },
+  positive: {
+    bg: 'bg-emerald-50 dark:bg-[#00e5a0]/[0.07]',
+    border: 'border-emerald-100 dark:border-[#00e5a0]/[0.15]',
+    icon: 'text-emerald-600 dark:text-[#00E5A0]',
+    text: 'text-emerald-800 dark:text-[#8fa3b8]',
+  },
+  warning: {
+    bg: 'bg-amber-50 dark:bg-[#F9A44A]/[0.07]',
+    border: 'border-amber-100 dark:border-[#F9A44A]/[0.18]',
+    icon: 'text-amber-600 dark:text-[#F9A44A]',
+    text: 'text-amber-800 dark:text-[#8fa3b8]',
+  },
+  neutral: {
+    bg: 'bg-blue-50 dark:bg-[#5BE4FF]/[0.07]',
+    border: 'border-blue-100 dark:border-[#5BE4FF]/[0.15]',
+    icon: 'text-blue-600 dark:text-[#5BE4FF]',
+    text: 'text-blue-800 dark:text-[#8fa3b8]',
+  },
 };
 
 export default function SmartInsights({ transactions }: { transactions: Transaction[] }) {
@@ -70,19 +82,19 @@ export default function SmartInsights({ transactions }: { transactions: Transact
   );
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
-        <Lightbulb className="h-4 w-4 text-amber-500" />
-        <h2 className="text-sm font-semibold text-gray-900">Smart Insights</h2>
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">AI</span>
+        <Lightbulb className="h-4 w-4 text-amber-500 dark:text-[#F9A44A]" />
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Smart Insights</h2>
+        <span className="rounded-full bg-amber-100 dark:bg-[#F9A44A]/[0.15] px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-[#F9A44A]">AI</span>
       </div>
       {insights.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-6 text-center">
-          <Lightbulb className="mb-2 h-8 w-8 text-gray-200" />
-          <p className="text-sm text-gray-400">Add transactions and assets to get personalised insights.</p>
+          <Lightbulb className="mb-2 h-8 w-8 text-gray-200 dark:text-white/[0.08]" />
+          <p className="text-sm text-gray-400 dark:text-[#3d5166]">Add transactions and assets to get personalised insights.</p>
         </div>
       ) : (
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="flex flex-col gap-2.5">
           {insights.map((ins, i) => {
             const s = TYPE_STYLE[ins.type];
             const Icon = ins.icon;

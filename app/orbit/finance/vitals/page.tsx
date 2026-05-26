@@ -34,10 +34,10 @@ function scoreHealth(cover: number, deps: number) {
 }
 
 function getStatus(score: number) {
-  if (score >= 8)  return { label: 'Excellent', color: 'text-emerald-700', bg: 'bg-emerald-50', ring: '#10b981' };
-  if (score >= 6)  return { label: 'Good',      color: 'text-blue-700',    bg: 'bg-blue-50',    ring: '#3b82f6' };
-  if (score >= 4)  return { label: 'Fair',      color: 'text-amber-700',   bg: 'bg-amber-50',   ring: '#f59e0b' };
-  return              { label: 'Needs Work', color: 'text-rose-700',    bg: 'bg-rose-50',    ring: '#ef4444' };
+  if (score >= 8)  return { label: 'Excellent', color: 'text-emerald-700 dark:text-[#00E5A0]', bg: 'bg-emerald-50 dark:bg-[#00e5a0]/[0.1]', ring: '#00E5A0' };
+  if (score >= 6)  return { label: 'Good',      color: 'text-blue-700 dark:text-[#5BE4FF]',    bg: 'bg-blue-50 dark:bg-[#5BE4FF]/[0.1]',    ring: '#5BE4FF' };
+  if (score >= 4)  return { label: 'Fair',      color: 'text-amber-700 dark:text-[#F9A44A]',   bg: 'bg-amber-50 dark:bg-[#F9A44A]/[0.1]',   ring: '#F9A44A' };
+  return              { label: 'Needs Work', color: 'text-rose-700 dark:text-[#FF6B6B]',    bg: 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1]',    ring: '#FF6B6B' };
 }
 
 function barColor(score2: number) {
@@ -53,9 +53,9 @@ function VProgress({
 }: { value: number; max?: number; color?: string; segments?: number[] }) {
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
   return (
-    <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-100">
+    <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
       {segments?.map(s => (
-        <div key={s} className="absolute top-0 bottom-0 w-px bg-white/80 z-10"
+        <div key={s} className="absolute top-0 bottom-0 w-px bg-white/80 dark:bg-white/30 z-10"
           style={{ left: `${Math.round((s / max) * 100)}%` }} />
       ))}
       <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
@@ -88,13 +88,13 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="relative flex h-32 w-32 flex-none items-center justify-center">
       <svg width="128" height="128" className="-rotate-90">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f3f4f6" strokeWidth={sw} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={sw} />
         <circle cx={cx} cy={cy} r={r} fill="none" stroke={ring} strokeWidth={sw}
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
       </svg>
       <div className="absolute text-center">
-        <p className="text-3xl font-bold text-gray-900">{score.toFixed(1)}</p>
-        <p className="text-[11px] font-medium text-gray-400 -mt-0.5">/10</p>
+        <p className="text-3xl font-bold text-gray-900 dark:text-[#e4eaf4]">{score.toFixed(1)}</p>
+        <p className="text-[11px] font-medium text-gray-400 dark:text-[#3d5166] -mt-0.5">/10</p>
         <p className="text-xs font-semibold mt-0.5" style={{ color: ring }}>{label}</p>
       </div>
     </div>
@@ -107,16 +107,16 @@ function VInput({
 }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; placeholder?: string }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-gray-500 dark:text-[#8fa3b8] mb-1">{label}</label>
       <div className="relative">
         <input
           type="number"
           value={value || ''}
           onChange={e => onChange(Number(e.target.value))}
           placeholder={placeholder}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 pr-10 text-sm focus:border-emerald-400 focus:bg-white focus:outline-none transition"
+          className="w-full rounded-xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-[#0b1019] px-3 py-2 pr-10 text-sm text-gray-900 dark:text-[#e4eaf4] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:bg-white dark:focus:bg-[#0b1019] focus:outline-none transition"
         />
-        {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 select-none">{suffix}</span>}
+        {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-[#3d5166] select-none">{suffix}</span>}
       </div>
     </div>
   );
@@ -135,16 +135,16 @@ function MetricCard({
   const color = barColor(score);
   const scoreLabel = score >= 1.5 ? 'Good' : score >= 1 ? 'Fair' : 'Low';
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+    <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-        <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-gray-50" style={{ color }}>
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-[#e4eaf4]">{title}</h3>
+        <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-gray-50 dark:bg-white/[0.06]" style={{ color }}>
           {score}/2 · {scoreLabel}
         </span>
       </div>
-      <div className="text-xs text-gray-500 space-y-0.5">{detail}</div>
+      <div className="text-xs text-gray-500 dark:text-[#8fa3b8] space-y-0.5">{detail}</div>
       <VProgress value={progress.value} max={progress.max} segments={progress.segments} color={color} />
-      {suggestion && <p className="text-[11px] text-gray-400 leading-relaxed">{suggestion}</p>}
+      {suggestion && <p className="text-[11px] text-gray-400 dark:text-[#3d5166] leading-relaxed">{suggestion}</p>}
     </div>
   );
 }
@@ -298,10 +298,10 @@ export default function VitalsPage() {
       <FinanceTopBar />
 
       {/* ── Hero Score Card ── */}
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-5">
           <VitalsIcon size={20} color={status.ring} />
-          <h2 className="text-sm font-semibold text-gray-900">Vital Score</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Vital Score</h2>
           <VBadge label={status.label} color={status.color} bg={status.bg} />
         </div>
 
@@ -311,8 +311,8 @@ export default function VitalsPage() {
             {metrics.map(m => (
               <div key={m.label}>
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-gray-500">{m.label}</span>
-                  <span className="font-semibold text-gray-700">{m.score}/2</span>
+                  <span className="text-gray-500 dark:text-[#8fa3b8]">{m.label}</span>
+                  <span className="font-semibold text-gray-700 dark:text-[#e4eaf4]">{m.score}/2</span>
                 </div>
                 <VProgress value={m.score} max={2} color={barColor(m.score)} />
               </div>
@@ -320,37 +320,37 @@ export default function VitalsPage() {
           </div>
         </div>
 
-        <p className="mt-5 rounded-xl bg-gray-50 px-4 py-3 text-xs leading-relaxed text-gray-600">{insightText}</p>
+        <p className="mt-5 rounded-xl bg-gray-50 dark:bg-white/[0.04] px-4 py-3 text-xs leading-relaxed text-gray-600 dark:text-[#8fa3b8]">{insightText}</p>
       </div>
 
       {/* ── Financial Profile ── */}
-      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
         <button type="button" onClick={() => setProfileOpen(v => !v)}
           className="flex w-full items-center gap-2 mb-3">
-          <Activity className="h-4 w-4 text-gray-400 flex-none" />
-          <h2 className="flex-1 text-sm font-semibold text-gray-900 text-left">Financial Profile</h2>
-          <span className="text-xs text-gray-400">{completeness}% complete</span>
+          <Activity className="h-4 w-4 text-gray-400 dark:text-[#3d5166] flex-none" />
+          <h2 className="flex-1 text-sm font-semibold text-gray-900 dark:text-[#e4eaf4] text-left">Financial Profile</h2>
+          <span className="text-xs text-gray-400 dark:text-[#3d5166]">{completeness}% complete</span>
           {profileOpen
-            ? <ChevronDown className="h-4 w-4 text-gray-400" />
-            : <ChevronRight className="h-4 w-4 text-gray-400" />}
+            ? <ChevronDown className="h-4 w-4 text-gray-400 dark:text-[#3d5166]" />
+            : <ChevronRight className="h-4 w-4 text-gray-400 dark:text-[#3d5166]" />}
         </button>
 
         <VProgress value={completeness} max={100}
-          color={completeness >= 80 ? '#10b981' : completeness >= 50 ? '#f59e0b' : '#ef4444'} />
+          color={completeness >= 80 ? '#00E5A0' : completeness >= 50 ? '#F9A44A' : '#FF6B6B'} />
 
         {profileOpen && (
           <div className="mt-4 space-y-4">
             {/* Auto-pulled tiles */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Monthly Income',  value: fmt(monthlyIncome),  color: 'text-emerald-700', sub: 'This month' },
-                { label: 'Monthly Expense', value: fmt(monthlyExpense), color: 'text-rose-600',    sub: 'This month' },
-                { label: 'Liquid Assets',   value: fmt(liquidAssets),   color: 'text-blue-700',    sub: 'Bank + Wallets' },
+                { label: 'Monthly Income',  value: fmt(monthlyIncome),  color: 'text-emerald-700 dark:text-[#00E5A0]', sub: 'This month' },
+                { label: 'Monthly Expense', value: fmt(monthlyExpense), color: 'text-rose-600 dark:text-[#FF6B6B]',    sub: 'This month' },
+                { label: 'Liquid Assets',   value: fmt(liquidAssets),   color: 'text-blue-700 dark:text-[#5BE4FF]',    sub: 'Bank + Wallets' },
               ].map(t => (
-                <div key={t.label} className="rounded-xl bg-gray-50 p-3">
-                  <p className="text-[11px] text-gray-400 mb-0.5">{t.label}</p>
+                <div key={t.label} className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3">
+                  <p className="text-[11px] text-gray-400 dark:text-[#3d5166] mb-0.5">{t.label}</p>
                   <p className={`text-sm font-semibold ${t.color}`}>{t.value}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{t.sub}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-[#3d5166] mt-0.5">{t.sub}</p>
                 </div>
               ))}
             </div>
@@ -363,7 +363,7 @@ export default function VitalsPage() {
               <VInput label="Health Cover" value={profile.healthCover} onChange={v => updateProfile('healthCover', v)} placeholder="15,00,000" suffix="₹" />
             </div>
 
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-gray-400 dark:text-[#3d5166]">
               {!profileLoaded ? 'Loading...' : saving ? 'Saving...' : 'All changes auto-saved to your account.'}
             </p>
           </div>
@@ -372,14 +372,14 @@ export default function VitalsPage() {
 
       {/* ── Core Vitals ── */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Core Vitals</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Core Vitals</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <MetricCard
             title="Emergency Fund"
             score={sEF}
             detail={
               <>
-                <p>Cash &amp; Savings: <span className="font-semibold text-gray-700">{fmt(emergencyFundBalance)}</span></p>
+                <p>Cash &amp; Savings: <span className="font-semibold text-gray-700 dark:text-[#e4eaf4]">{fmt(emergencyFundBalance)}</span></p>
                 <p>Monthly runway: <span className={`font-semibold ${runwayMonths >= 6 ? 'text-emerald-700' : runwayMonths >= 3 ? 'text-amber-600' : 'text-rose-600'}`}>{runwayMonths.toFixed(1)} months</span></p>
               </>
             }
@@ -409,26 +409,26 @@ export default function VitalsPage() {
 
       {/* ── Future Impact ── */}
       {monthlyIncome > 0 && monthlyExpense > 0 && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Future Impact</h2>
+            <TrendingUp className="h-4 w-4 text-blue-500 dark:text-[#5BE4FF]" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Future Impact</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-blue-50 p-4">
-              <p className="text-[11px] text-blue-500 mb-1">Current savings rate · {Math.round(savingsRate * 100)}%</p>
-              <p className="text-xl font-bold text-blue-800">{fiYears !== null ? `${fiYears} yrs to FI` : 'Not saving'}</p>
-              <p className="text-xs text-blue-400 mt-1">Time to Financial Independence</p>
+            <div className="rounded-xl bg-blue-50 dark:bg-[#5BE4FF]/[0.07] p-4">
+              <p className="text-[11px] text-blue-500 dark:text-[#5BE4FF]/80 mb-1">Current savings rate · {Math.round(savingsRate * 100)}%</p>
+              <p className="text-xl font-bold text-blue-800 dark:text-[#5BE4FF]">{fiYears !== null ? `${fiYears} yrs to FI` : 'Not saving'}</p>
+              <p className="text-xs text-blue-400 dark:text-[#5BE4FF]/60 mt-1">Time to Financial Independence</p>
             </div>
-            <div className="rounded-xl bg-emerald-50 p-4">
-              <p className="text-[11px] text-emerald-600 mb-1">If savings rate = 30%</p>
+            <div className="rounded-xl bg-emerald-50 dark:bg-[#00e5a0]/[0.07] p-4">
+              <p className="text-[11px] text-emerald-600 dark:text-[#00E5A0]/80 mb-1">If savings rate = 30%</p>
               {(() => {
                 const s30 = monthlyIncome * 0.30;
                 const fi30 = s30 > 0 ? Math.round((monthlyExpense * 12 * 25) / (s30 * 12)) : null;
                 return (
                   <>
-                    <p className="text-xl font-bold text-emerald-800">{fi30 !== null ? `${fi30} yrs to FI` : '—'}</p>
-                    <p className="text-xs text-emerald-500 mt-1">
+                    <p className="text-xl font-bold text-emerald-800 dark:text-[#00E5A0]">{fi30 !== null ? `${fi30} yrs to FI` : '—'}</p>
+                    <p className="text-xs text-emerald-500 dark:text-[#00E5A0]/60 mt-1">
                       {s30 > savings ? `Save ${fmt(s30 - savings)} more / month` : 'Already at target ✓'}
                     </p>
                   </>
@@ -441,7 +441,7 @@ export default function VitalsPage() {
 
       {/* ── Protection ── */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Protection</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Protection</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <MetricCard
             title="Term Insurance"
@@ -483,61 +483,61 @@ export default function VitalsPage() {
 
       {/* ── Debt Ratio ── */}
       {(totalAssets > 0 || totalLiabilities > 0) && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-gray-400" />
-              <h2 className="text-sm font-semibold text-gray-900">Debt Ratio</h2>
+              <Shield className="h-4 w-4 text-gray-400 dark:text-[#3d5166]" />
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Debt Ratio</h2>
             </div>
-            <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-gray-50" style={{ color: barColor(sDR) }}>
+            <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-gray-50 dark:bg-white/[0.06]" style={{ color: barColor(sDR) }}>
               {sDR}/2
             </span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
             <div>
-              <p className="text-4xl font-bold text-gray-900">{Math.round(debtRatio * 100)}%</p>
-              <p className="text-xs text-gray-400 mt-0.5">Liabilities ÷ Total Assets</p>
+              <p className="text-4xl font-bold text-gray-900 dark:text-[#e4eaf4]">{Math.round(debtRatio * 100)}%</p>
+              <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-0.5">Liabilities ÷ Total Assets</p>
             </div>
-            <div className="flex-1 w-full space-y-1.5 text-xs text-gray-500 sm:mt-1">
-              <div className="flex justify-between"><span>Total Assets</span><span className="font-semibold text-emerald-700">{fmt(totalAssets)}</span></div>
-              <div className="flex justify-between"><span>Total Liabilities</span><span className="font-semibold text-rose-600">{fmt(totalLiabilities)}</span></div>
-              <div className="flex justify-between border-t border-gray-100 pt-1.5">
-                <span className="font-medium text-gray-700">Net Worth</span>
-                <span className={`font-bold ${netWorth >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>{fmt(netWorth)}</span>
+            <div className="flex-1 w-full space-y-1.5 text-xs text-gray-500 dark:text-[#8fa3b8] sm:mt-1">
+              <div className="flex justify-between"><span>Total Assets</span><span className="font-semibold text-emerald-700 dark:text-[#00E5A0]">{fmt(totalAssets)}</span></div>
+              <div className="flex justify-between"><span>Total Liabilities</span><span className="font-semibold text-rose-600 dark:text-[#FF6B6B]">{fmt(totalLiabilities)}</span></div>
+              <div className="flex justify-between border-t border-gray-100 dark:border-white/[0.07] pt-1.5">
+                <span className="font-medium text-gray-700 dark:text-[#e4eaf4]">Net Worth</span>
+                <span className={`font-bold ${netWorth >= 0 ? 'text-emerald-700 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>{fmt(netWorth)}</span>
               </div>
             </div>
           </div>
 
           <VProgress value={Math.min(debtRatio * 100, 100)} max={100} segments={[20, 30, 50]} color={barColor(sDR)} />
-          <div className="mt-1.5 flex text-[10px] text-gray-400 gap-1">
+          <div className="mt-1.5 flex text-[10px] text-gray-400 dark:text-[#3d5166] gap-1">
             <span className="w-[20%]">0%</span>
             <span className="w-[10%]">20%</span>
             <span className="w-[20%]">30%</span>
             <span>50%</span>
           </div>
           <div className="mt-2.5 flex gap-3 text-[11px]">
-            <span className="text-emerald-600 font-medium">● &lt;20% Excellent</span>
-            <span className="text-amber-500 font-medium">● 20–30% Good</span>
-            <span className="text-rose-500 font-medium">● &gt;50% High risk</span>
+            <span className="text-emerald-600 dark:text-[#00E5A0] font-medium">● &lt;20% Excellent</span>
+            <span className="text-amber-500 dark:text-[#F9A44A] font-medium">● 20–30% Good</span>
+            <span className="text-rose-500 dark:text-[#FF6B6B] font-medium">● &gt;50% High risk</span>
           </div>
         </div>
       )}
 
       {/* ── Top Actions ── */}
       {actions.length > 0 && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Zap className="h-4 w-4 text-amber-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Top Actions</h2>
+            <Zap className="h-4 w-4 text-amber-500 dark:text-[#F9A44A]" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Top Actions</h2>
           </div>
           <div className="space-y-2">
             {actions.map((a, i) => (
-              <div key={i} className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-3">
-                <div className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-amber-100 text-[11px] font-bold text-amber-700">{i + 1}</div>
+              <div key={i} className="flex items-start gap-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] px-4 py-3">
+                <div className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-amber-100 dark:bg-[#F9A44A]/[0.15] text-[11px] font-bold text-amber-700 dark:text-[#F9A44A]">{i + 1}</div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">{a.label}</p>
-                  {a.detail && <p className="text-xs text-gray-500 mt-0.5">{a.detail}</p>}
+                  <p className="text-sm font-semibold text-gray-800 dark:text-[#e4eaf4]">{a.label}</p>
+                  {a.detail && <p className="text-xs text-gray-500 dark:text-[#8fa3b8] mt-0.5">{a.detail}</p>}
                 </div>
               </div>
             ))}

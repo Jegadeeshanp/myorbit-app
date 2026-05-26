@@ -137,36 +137,36 @@ export default function LiabilitiesPage() {
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-blue-50">
-            <CreditCard className="h-5 w-5 text-blue-600" />
+        <div className="flex items-center gap-3 rounded-2xl border border-blue-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-blue-50 dark:bg-[#5BE4FF]/[0.1]">
+            <CreditCard className="h-5 w-5 text-blue-600 dark:text-[#5BE4FF]" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-gray-400">Total Borrowed</p>
-            <p className="text-lg font-bold text-blue-600 truncate">{fmt(summary.borrowed)}</p>
-            <p className="text-xs text-gray-400">{liabilities.length} loan{liabilities.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Total Borrowed</p>
+            <p className="text-lg font-bold text-blue-600 dark:text-[#5BE4FF] truncate">{fmt(summary.borrowed)}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">{liabilities.length} loan{liabilities.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50 dark:bg-[#00e5a0]/[0.1]">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-[#00E5A0]" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-gray-400">Total Repaid</p>
-            <p className="text-lg font-bold text-emerald-600 truncate">{fmt(summary.repaid)}</p>
-            <p className="text-xs text-gray-400">{repaidPct}% of borrowed</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Total Repaid</p>
+            <p className="text-lg font-bold text-emerald-600 dark:text-[#00E5A0] truncate">{fmt(summary.repaid)}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">{repaidPct}% of borrowed</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-white p-4 shadow-sm">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-rose-50">
-            <AlertCircle className="h-5 w-5 text-rose-600" />
+        <div className="flex items-center gap-3 rounded-2xl border border-rose-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-rose-50 dark:bg-[#FF6B6B]/[0.1]">
+            <AlertCircle className="h-5 w-5 text-rose-600 dark:text-[#FF6B6B]" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-gray-400">Outstanding Balance</p>
-            <p className="text-lg font-bold text-rose-600 truncate">{fmt(summary.outstanding)}</p>
-            <p className="text-xs text-gray-400">{100 - repaidPct}% remaining</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Outstanding Balance</p>
+            <p className="text-lg font-bold text-rose-600 dark:text-[#FF6B6B] truncate">{fmt(summary.outstanding)}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">{100 - repaidPct}% remaining</p>
           </div>
         </div>
       </div>
@@ -174,46 +174,46 @@ export default function LiabilitiesPage() {
       {/* ── Add button ── */}
       <div className="flex justify-end">
         <button type="button" onClick={() => setAddOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-700 dark:hover:bg-[#00c990]">
           <PlusCircle className="h-4 w-4" /> Add liability
         </button>
       </div>
 
       {/* ── Overall repayment progress ── */}
       {liabilities.length > 0 && (
-        <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-5 py-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="font-medium text-gray-600">Overall repayment progress</span>
-            <span className="font-semibold text-emerald-600">{repaidPct}% paid</span>
+            <span className="font-medium text-gray-600 dark:text-[#8fa3b8]">Overall repayment progress</span>
+            <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{repaidPct}% paid</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-            <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${repaidPct}%` }} />
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+            <div className="h-2 rounded-full bg-emerald-500 dark:bg-[#00E5A0] transition-all" style={{ width: `${repaidPct}%` }} />
           </div>
         </div>
       )}
 
       {/* ── Table ── */}
       {liabilities.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-14 text-center">
-          <CreditCard className="mb-3 h-8 w-8 text-gray-300" />
-          <p className="text-sm text-gray-500">No liabilities added yet</p>
-          <button onClick={() => setAddOpen(true)} className="mt-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 dark:border-white/[0.1] bg-gray-50/50 dark:bg-white/[0.02] py-14 text-center">
+          <CreditCard className="mb-3 h-8 w-8 text-gray-300 dark:text-[#3d5166]" />
+          <p className="text-sm text-gray-500 dark:text-[#8fa3b8]">No liabilities added yet</p>
+          <button onClick={() => setAddOpen(true)} className="mt-3 text-xs font-medium text-emerald-600 dark:text-[#00E5A0] hover:text-emerald-700 dark:hover:text-[#00c990]">
             + Add your first loan
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] shadow-sm">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
+              <tr className="border-b border-gray-100 dark:border-white/[0.07] bg-gray-50/60 dark:bg-white/[0.02]">
                 {['Loan', 'Lender', 'Borrowed', 'Outstanding', 'Monthly EMI', 'EMIs Left', 'Next Due', 'Actions'].map(h => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap ${['Borrowed','Outstanding','Monthly EMI'].includes(h) ? 'text-right' : ''}`}>
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-[#3d5166] whitespace-nowrap ${['Borrowed','Outstanding','Monthly EMI'].includes(h) ? 'text-right' : ''}`}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-white/[0.04]">
               {liabilities.map(l => {
                 const days        = daysUntil(l.nextDueDate);
                 const dueSoon     = days !== null && days <= 7 && days >= 0;
@@ -221,24 +221,24 @@ export default function LiabilitiesPage() {
                 const paidPct     = l.borrowed > 0 ? Math.round((l.totalRepaid / l.borrowed) * 100) : 0;
 
                 return (
-                  <tr key={l.id} className="group transition hover:bg-gray-50/50">
+                  <tr key={l.id} className="group transition hover:bg-gray-50/50 dark:hover:bg-white/[0.03]">
                     {/* Loan name + mini progress */}
                     <td className="px-4 py-3.5">
-                      <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{l.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4] whitespace-nowrap">{l.name}</p>
                       <div className="mt-1.5 flex items-center gap-2">
-                        <div className="h-1 w-20 overflow-hidden rounded-full bg-gray-100">
-                          <div className="h-1 rounded-full bg-emerald-500" style={{ width: `${paidPct}%` }} />
+                        <div className="h-1 w-20 overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                          <div className="h-1 rounded-full bg-emerald-500 dark:bg-[#00E5A0]" style={{ width: `${paidPct}%` }} />
                         </div>
-                        <span className="text-xs text-gray-400">{paidPct}%</span>
+                        <span className="text-xs text-gray-400 dark:text-[#3d5166]">{paidPct}%</span>
                       </div>
                     </td>
 
-                    <td className="px-4 py-3.5 text-sm text-gray-500 whitespace-nowrap">{l.lender || '—'}</td>
-                    <td className="px-4 py-3.5 text-right text-sm text-gray-500 whitespace-nowrap">{fmt(l.borrowed)}</td>
-                    <td className="px-4 py-3.5 text-right text-sm font-bold text-rose-600 whitespace-nowrap">{fmt(l.outstanding)}</td>
-                    <td className="px-4 py-3.5 text-right text-sm text-gray-600 whitespace-nowrap">{fmt(l.monthlyEmi)}</td>
+                    <td className="px-4 py-3.5 text-sm text-gray-500 dark:text-[#8fa3b8] whitespace-nowrap">{l.lender || '—'}</td>
+                    <td className="px-4 py-3.5 text-right text-sm text-gray-500 dark:text-[#8fa3b8] whitespace-nowrap">{fmt(l.borrowed)}</td>
+                    <td className="px-4 py-3.5 text-right text-sm font-bold text-rose-600 dark:text-[#FF6B6B] whitespace-nowrap">{fmt(l.outstanding)}</td>
+                    <td className="px-4 py-3.5 text-right text-sm text-gray-600 dark:text-[#8fa3b8] whitespace-nowrap">{fmt(l.monthlyEmi)}</td>
                     <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${l.emisLeft <= 3 ? 'bg-rose-50 text-rose-600' : l.emisLeft <= 6 ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${l.emisLeft <= 3 ? 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1] text-rose-600 dark:text-[#FF6B6B]' : l.emisLeft <= 6 ? 'bg-amber-50 dark:bg-[#F9A44A]/[0.1] text-amber-600 dark:text-[#F9A44A]' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-[#8fa3b8]'}`}>
                         {l.emisLeft} left
                       </span>
                     </td>
@@ -287,11 +287,11 @@ export default function LiabilitiesPage() {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-100 bg-gray-50/60">
-                <td colSpan={2} className="px-4 py-3 text-xs font-semibold text-gray-500">{liabilities.length} loan{liabilities.length !== 1 ? 's' : ''}</td>
-                <td className="px-4 py-3 text-right text-xs font-semibold text-gray-500">{fmt(summary.borrowed)}</td>
-                <td className="px-4 py-3 text-right text-sm font-bold text-rose-600">{fmt(summary.outstanding)}</td>
-                <td className="px-4 py-3 text-right text-xs text-gray-400">{fmt(liabilities.reduce((s, l) => s + l.monthlyEmi, 0))}/mo</td>
+              <tr className="border-t border-gray-100 dark:border-white/[0.07] bg-gray-50/60 dark:bg-white/[0.02]">
+                <td colSpan={2} className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-[#8fa3b8]">{liabilities.length} loan{liabilities.length !== 1 ? 's' : ''}</td>
+                <td className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-[#8fa3b8]">{fmt(summary.borrowed)}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(summary.outstanding)}</td>
+                <td className="px-4 py-3 text-right text-xs text-gray-400 dark:text-[#3d5166]">{fmt(liabilities.reduce((s, l) => s + l.monthlyEmi, 0))}/mo</td>
                 <td colSpan={3} />
               </tr>
             </tfoot>
