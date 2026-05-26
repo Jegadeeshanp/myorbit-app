@@ -27,7 +27,7 @@ export default function SettingsPage() {
 
   return (
     <FinanceProvider>
-    <div className="min-h-screen bg-[#F7F7F5] dark:bg-[#0d1117]">
+    <div className="min-h-screen bg-[#f0f4f8] dark:bg-[#090d16]">
       <div className="mx-auto max-w-4xl px-6 py-8">
 
         {/* Header */}

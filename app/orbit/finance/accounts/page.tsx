@@ -17,8 +17,8 @@ function SectionHeader({ icon: Icon, title, count, color }: { icon: React.Elemen
   return (
     <div className="flex items-center gap-2 px-1">
       <Icon className={`h-4 w-4 ${color}`} />
-      <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
-      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{count}</span>
+      <h2 className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">{title}</h2>
+      <span className="rounded-full bg-gray-100 dark:bg-white/[0.07] px-2 py-0.5 text-xs text-gray-500 dark:text-[#8fa3b8]">{count}</span>
     </div>
   );
 }
@@ -101,23 +101,23 @@ export default function AccountsPage() {
       <FinanceTopBar />
 
       {/* Primary balance card */}
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 px-7 py-6 shadow-md">
-        <p className="text-xs font-semibold uppercase tracking-wider text-white">Total Balance</p>
-        <p className="mt-2 text-4xl font-bold text-white">{fmt(totalBalance)}</p>
-        <p className="mt-1 text-xs text-white/80">Liquid assets minus credit used</p>
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 dark:from-[#0a1f18] dark:to-[#0d2a20] border dark:border-[#00E5A0]/20 px-7 py-6 shadow-md">
+        <p className="text-xs font-semibold uppercase tracking-wider text-white/70 dark:text-[#3d5166]">Total Balance</p>
+        <p className="mt-2 text-4xl font-bold text-white dark:text-[#00E5A0]">{fmt(totalBalance)}</p>
+        <p className="mt-1 text-xs text-white/80 dark:text-[#8fa3b8]">Liquid assets minus credit used</p>
       </div>
 
       {/* 3 metric cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {metrics.map(m => (
-          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white px-4 py-3.5 shadow-sm`}>
+          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-4 py-3.5 shadow-sm`}>
             <div className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ${m.bg}`}>
               <m.icon className={`h-5 w-5 ${m.color}`} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-gray-400">{m.label}</p>
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">{m.label}</p>
               <p className={`text-base font-bold truncate ${m.color}`}>{m.value}</p>
-              <p className="text-xs text-gray-400">{m.sub}</p>
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">{m.sub}</p>
             </div>
           </div>
         ))}
@@ -126,28 +126,28 @@ export default function AccountsPage() {
       {/* Search + Add */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-[#3d5166]" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search accounts…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none" />
+            className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-4 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none" />
         </div>
         <button type="button" onClick={() => setModalOpen(true)}
-          className="inline-flex flex-none items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+          className="inline-flex flex-none items-center gap-2 rounded-full bg-emerald-600 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-700 dark:hover:bg-[#00c990]">
           <PlusCircle className="h-4 w-4" /> Add account
         </button>
       </div>
 
       {/* Empty state */}
       {!search && state.accounts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 bg-white py-16 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
-            <Landmark className="h-8 w-8 text-emerald-500" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 dark:border-white/[0.1] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] py-16 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-[#00e5a0]/[0.1]">
+            <Landmark className="h-8 w-8 text-emerald-500 dark:text-[#00E5A0]" />
           </div>
-          <p className="text-base font-semibold text-gray-900">No accounts yet</p>
-          <p className="mt-1 text-sm text-gray-500">See exactly where your money goes</p>
-          <p className="mt-0.5 text-xs text-gray-400">Add a bank account, wallet, or cash to get started</p>
+          <p className="text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">No accounts yet</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-[#8fa3b8]">See exactly where your money goes</p>
+          <p className="mt-0.5 text-xs text-gray-400 dark:text-[#3d5166]">Add a bank account, wallet, or cash to get started</p>
           <button
             onClick={() => setModalOpen(true)}
-            className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            className="mt-5 flex items-center gap-2 rounded-xl bg-emerald-600 dark:bg-[#00E5A0] px-5 py-2.5 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-700 dark:hover:bg-[#00c990]"
           >
             <PlusCircle className="h-4 w-4" />
             Connect your first account

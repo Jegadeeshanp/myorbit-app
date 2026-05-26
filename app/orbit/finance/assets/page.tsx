@@ -79,12 +79,12 @@ export default function AssetsPage() {
             bg:    pnlPositive ? 'bg-emerald-50'    : 'bg-rose-50',
             border:pnlPositive ? 'border-emerald-100' : 'border-rose-100' },
         ].map(m => (
-          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white p-4 shadow-sm`}>
+          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm`}>
             <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
               <m.icon className={`h-4 w-4 ${m.color}`} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs text-gray-400">{m.label}</p>
+              <p className="truncate text-xs text-gray-400 dark:text-[#3d5166]">{m.label}</p>
               <p className={`truncate text-sm font-bold ${m.color}`}>{m.value}</p>
             </div>
           </div>
@@ -96,10 +96,10 @@ export default function AssetsPage() {
         <div className="relative flex-1 sm:flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm focus:border-emerald-400 focus:outline-none sm:w-52" />
+            className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-3 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none sm:w-52" />
         </div>
         <button onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 whitespace-nowrap">
+          className="inline-flex items-center gap-2 rounded-full bg-emerald-600 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-700 dark:hover:bg-[#00c990] whitespace-nowrap">
           <PlusCircle className="h-4 w-4" /> Add Asset
         </button>
       </div>
@@ -116,14 +116,14 @@ export default function AssetsPage() {
               onClick={() => setActiveTab(tab)}
               className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
                 isActive
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
-                  : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  ? 'border-emerald-500 dark:border-[#00E5A0]/60 bg-emerald-50 dark:bg-[#00e5a0]/[0.1] text-emerald-700 dark:text-[#00E5A0] shadow-sm'
+                  : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-transparent text-gray-500 dark:text-[#8fa3b8] hover:border-gray-300 dark:hover:border-white/[0.15] hover:text-gray-700 dark:hover:text-[#e4eaf4]'
               }`}
             >
-              {Icon && <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />}
+              {Icon && <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-gray-400 dark:text-[#3d5166]'}`} />}
               {tab}
               {tab !== 'All' && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 dark:bg-[#00e5a0]/[0.2] text-emerald-700 dark:text-[#00E5A0]' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-400 dark:text-[#3d5166]'}`}>
                   {state.assets.filter(a => a.category === tab).length}
                 </span>
               )}
@@ -136,10 +136,10 @@ export default function AssetsPage() {
       {filteredAssets.length > 0
         ? <AssetTable assets={filteredAssets} totalPortfolioValue={allAssetsValue} onEdit={setEditTarget} />
         : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-12 text-center">
-            <TrendingUp className="h-8 w-8 text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500">No assets in this category</p>
-            <button onClick={() => setModalOpen(true)} className="mt-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 dark:border-white/[0.1] bg-gray-50/50 dark:bg-white/[0.02] py-12 text-center">
+            <TrendingUp className="h-8 w-8 text-gray-300 dark:text-[#3d5166] mb-3" />
+            <p className="text-sm text-gray-500 dark:text-[#8fa3b8]">No assets in this category</p>
+            <button onClick={() => setModalOpen(true)} className="mt-3 text-xs font-medium text-emerald-600 dark:text-[#00E5A0] hover:text-emerald-700 dark:hover:text-[#00c990]">
               + Add your first asset
             </button>
           </div>
@@ -149,22 +149,22 @@ export default function AssetsPage() {
       {/* Allocation breakdown — shown when All tab or more than 1 category */}
       {safeTab === 'All' && allocationData.length > 1 && (
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-1 text-sm font-semibold text-gray-900">Allocation</h2>
-            <p className="mb-4 text-xs text-gray-400">Distribution across asset classes</p>
+          <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
+            <h2 className="mb-1 text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Allocation</h2>
+            <p className="mb-4 text-xs text-gray-400 dark:text-[#3d5166]">Distribution across asset classes</p>
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={allocationData} dataKey="value" innerRadius={55} outerRadius={90} paddingAngle={3} strokeWidth={0}>
                     {allocationData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 12 }} />
+                  <Tooltip formatter={(v) => fmt(Number(v ?? 0))} contentStyle={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, background: '#0e1420', color: '#e4eaf4' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-gray-900">Breakdown</h2>
+          <div className="rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">Breakdown</h2>
             <div className="space-y-3">
               {allocationData.map((d, i) => {
                 const pct = allAssetsValue > 0 ? Math.round((d.value / allAssetsValue) * 100) : 0;
@@ -177,14 +177,14 @@ export default function AssetsPage() {
                         <div className="flex h-5 w-5 items-center justify-center rounded-md" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] + '20' }}>
                           <Icon className="h-3 w-3" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                         </div>
-                        <span className="font-medium text-gray-700">{d.name}</span>
+                        <span className="font-medium text-gray-700 dark:text-[#8fa3b8]">{d.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{fmt(d.value)}</span>
-                        <span className="w-8 text-right text-gray-400">{pct}%</span>
+                        <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmt(d.value)}</span>
+                        <span className="w-8 text-right text-gray-400 dark:text-[#3d5166]">{pct}%</span>
                       </div>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
                       <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                     </div>
                   </div>

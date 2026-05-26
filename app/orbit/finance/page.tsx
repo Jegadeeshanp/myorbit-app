@@ -72,42 +72,42 @@ export default function FinanceOverviewPage() {
       {/* 3 Metric cards — clickable */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Link href="/orbit/finance/assets"
-          className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50">
-            <Wallet className="h-5 w-5 text-emerald-600" />
+          className="flex items-center gap-3 rounded-2xl border border-emerald-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-5 py-4 shadow-sm transition hover:shadow-md hover:border-emerald-200 dark:hover:border-[#00E5A0]/30 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50 dark:bg-[#00e5a0]/[0.1]">
+            <Wallet className="h-5 w-5 text-emerald-600 dark:text-[#00E5A0]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-gray-400">Assets</p>
-            <p className="text-xl font-bold text-emerald-600 truncate">{formatINR(totalAssets)}</p>
-            <p className="text-xs text-gray-400">{state.assets.length} assets tracked</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Total Assets</p>
+            <p className="text-xl font-bold text-emerald-600 dark:text-[#00E5A0] truncate">{formatINR(totalAssets)}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">{state.assets.length} assets tracked</p>
           </div>
-          <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
+          <ChevronRight className="h-4 w-4 flex-none text-gray-300 dark:text-[#3d5166]" />
         </Link>
 
         <Link href="/orbit/finance/liabilities"
-          className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-rose-200 hover:-translate-y-0.5">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-rose-50">
-            <CreditCard className="h-5 w-5 text-rose-600" />
+          className="flex items-center gap-3 rounded-2xl border border-rose-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-5 py-4 shadow-sm transition hover:shadow-md hover:border-rose-200 dark:hover:border-[#FF6B6B]/30 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-rose-50 dark:bg-[#FF6B6B]/[0.1]">
+            <CreditCard className="h-5 w-5 text-rose-600 dark:text-[#FF6B6B]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-gray-400">Liabilities</p>
-            <p className="text-xl font-bold text-rose-600 truncate">{formatINR(totalLiabilities)}</p>
-            <p className="text-xs text-gray-400">{state.liabilities.length} active loans</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Total Liabilities</p>
+            <p className="text-xl font-bold text-rose-600 dark:text-[#FF6B6B] truncate">{formatINR(totalLiabilities)}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">{state.liabilities.length} active loans</p>
           </div>
-          <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
+          <ChevronRight className="h-4 w-4 flex-none text-gray-300 dark:text-[#3d5166]" />
         </Link>
 
         <Link href="/orbit/finance/accounts"
-          className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white px-5 py-4 shadow-sm transition hover:shadow-md hover:border-emerald-200 hover:-translate-y-0.5">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50">
-            <Landmark className="h-5 w-5 text-emerald-600" />
+          className="flex items-center gap-3 rounded-2xl border border-emerald-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-5 py-4 shadow-sm transition hover:shadow-md hover:border-emerald-200 dark:hover:border-[#00E5A0]/30 hover:-translate-y-0.5">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-50 dark:bg-[#00e5a0]/[0.1]">
+            <Landmark className="h-5 w-5 text-emerald-600 dark:text-[#00E5A0]" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-gray-400">Account Balance</p>
-            <p className="text-xl font-bold text-emerald-600 truncate">{formatINR(availableBalance)}</p>
-            <p className="text-xs text-gray-400">Bank, wallets &amp; cash</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Total Investment</p>
+            <p className="text-xl font-bold text-emerald-600 dark:text-[#00E5A0] truncate">{formatINR(availableBalance)}</p>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Bank, wallets &amp; cash</p>
           </div>
-          <ChevronRight className="h-4 w-4 flex-none text-gray-300" />
+          <ChevronRight className="h-4 w-4 flex-none text-gray-300 dark:text-[#3d5166]" />
         </Link>
       </div>
 

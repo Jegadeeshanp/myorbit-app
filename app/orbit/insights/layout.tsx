@@ -4,7 +4,7 @@ import ToastContainer from '@/components/Toast';
 
 export default function InsightsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen" style={{ background: '#060b14' }}>
+    <div className="flex min-h-screen bg-[#f0f4f8] dark:bg-[#090d16]">
       <InsightsSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <InsightsTopBar />

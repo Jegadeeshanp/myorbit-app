@@ -338,20 +338,20 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Income',   value: summary.income,   positive: true,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: ArrowUpRight },
-          { label: 'Expenses', value: summary.expense,  positive: false, color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    icon: ArrowDownLeft },
+          { label: 'Income',   value: summary.income,   positive: true,  color: 'text-emerald-600 dark:text-[#00E5A0]', bg: 'bg-emerald-50 dark:bg-[#00e5a0]/[0.1]', border: 'border-emerald-100 dark:border-white/[0.07]', icon: ArrowUpRight },
+          { label: 'Expenses', value: summary.expense,  positive: false, color: 'text-rose-600 dark:text-[#FF6B6B]',    bg: 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1]',    border: 'border-rose-100 dark:border-white/[0.07]',    icon: ArrowDownLeft },
           { label: 'Net Balance', value: summary.income - summary.expense, positive: summary.income >= summary.expense,
-            color: summary.income >= summary.expense ? 'text-emerald-600' : 'text-rose-600',
-            bg:    summary.income >= summary.expense ? 'bg-emerald-50'    : 'bg-rose-50',
-            border:summary.income >= summary.expense ? 'border-emerald-100' : 'border-rose-100',
+            color: summary.income >= summary.expense ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]',
+            bg:    summary.income >= summary.expense ? 'bg-emerald-50 dark:bg-[#00e5a0]/[0.1]'    : 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1]',
+            border:summary.income >= summary.expense ? 'border-emerald-100 dark:border-white/[0.07]' : 'border-rose-100 dark:border-white/[0.07]',
             icon: TrendingUp },
         ].map(m => (
-          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white p-4 shadow-sm`}>
+          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm`}>
             <div className={`hidden sm:flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
               <m.icon className={`h-4 w-4 ${m.color}`} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs text-gray-400">{m.label}</p>
+              <p className="truncate text-xs text-gray-400 dark:text-[#3d5166]">{m.label}</p>
               <p className={`truncate text-sm font-bold ${m.color}`}>
                 {m.label === 'Net Balance' && m.value < 0 ? '-' : ''}₹{Math.abs(m.value).toLocaleString('en-IN')}
               </p>
@@ -372,7 +372,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
               onBlur={() => { if (!search) setMobileSearch(false); }}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search transactions…"
-              className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-4 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none"
             />
           </div>
         ) : (
@@ -389,7 +389,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search transactions…"
-            className="w-full rounded-full border border-gray-200 bg-white py-2 pl-8 pr-4 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-4 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none"
           />
         </div>
 
@@ -399,7 +399,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
         {/* Add button */}
         {onAdd && (
           <button onClick={onAdd}
-            className="flex flex-none items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 active:scale-95">
+            className="flex flex-none items-center gap-1.5 rounded-full bg-emerald-700 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-800 dark:hover:bg-[#00c990] active:scale-95">
             <Plus className="h-4 w-4" />
             Add transaction
           </button>
@@ -445,11 +445,13 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           return (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex flex-none items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition whitespace-nowrap ${
-                isActive ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                isActive
+                  ? 'border-emerald-500 dark:border-[#00E5A0]/60 bg-emerald-50 dark:bg-[#00e5a0]/[0.1] text-emerald-700 dark:text-[#00E5A0] shadow-sm'
+                  : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-transparent text-gray-500 dark:text-[#8fa3b8] hover:border-gray-300 dark:hover:border-white/[0.15] hover:text-gray-700 dark:hover:text-[#e4eaf4]'
               }`}>
-              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
+              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-gray-400 dark:text-[#3d5166]'}`} />
               {tab}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-emerald-100 dark:bg-[#00e5a0]/[0.2] text-emerald-700 dark:text-[#00E5A0]' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-400 dark:text-[#3d5166]'}`}>{count}</span>
             </button>
           );
         })}
@@ -529,12 +531,12 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           subtitle="Try a different tab, period, or search term"
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] shadow-sm">
 
           {/* Column headers — desktop only */}
-          <div className="hidden sm:grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 border-b border-gray-100 bg-transparent px-5 py-2.5">
+          <div className="hidden sm:grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-center gap-x-3 border-b border-gray-100 dark:border-white/[0.07] bg-transparent px-5 py-2.5">
             {['Date', 'Description', 'Notes', 'Category', 'Account', 'Amount', ''].map((h, i) => (
-              <span key={i} className={`text-xs font-semibold uppercase tracking-wide text-gray-400 ${h === 'Amount' ? 'text-right' : ''}`}>{h}</span>
+              <span key={i} className={`text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-[#3d5166] ${h === 'Amount' ? 'text-right' : ''}`}>{h}</span>
             ))}
           </div>
 
@@ -578,7 +580,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
               </button>
 
               {!isCollapsed && (
-              <div className="divide-y divide-gray-50 dark:divide-gray-800/40">
+              <div className="divide-y divide-gray-50 dark:divide-white/[0.04]">
                 {group.transactions.map(tx => {
                   const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
                   const isExp    = tx.type === 'expense';
@@ -586,19 +588,19 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
                   const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
                   return (
-                    <div key={tx.id} className="group transition hover:bg-gray-50/50">
+                    <div key={tx.id} className="group transition hover:bg-gray-50/50 dark:hover:bg-white/[0.03]">
                       {/* Mobile layout */}
                       <div className="flex sm:hidden items-center gap-3 px-4 py-3">
                         <TxIcon tx={tx} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-gray-900">{tx.description}</p>
+                          <p className="truncate text-sm font-medium text-gray-900 dark:text-[#e4eaf4]">{tx.description}</p>
                           <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
                             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
-                            {account && <span className="text-[11px] text-gray-400">{accChip(account)}</span>}
-                            <span className="text-[11px] text-gray-400">{dateStr}</span>
+                            {account && <span className="text-[11px] text-gray-400 dark:text-[#3d5166]">{accChip(account)}</span>}
+                            <span className="text-[11px] text-gray-400 dark:text-[#3d5166]">{dateStr}</span>
                           </div>
                         </div>
-                        <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <p className={`flex-none text-sm font-bold ${isExp ? 'text-rose-600 dark:text-[#FF6B6B]' : 'text-emerald-600 dark:text-[#00E5A0]'}`}>
                           {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </p>
                         <TxDotsMenu onEdit={() => setEditTarget(tx)} onDelete={() => setConfirmTarget(tx.id)} />
@@ -606,14 +608,14 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
 
                       {/* Desktop layout */}
                       <div className="hidden sm:grid grid-cols-[90px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_110px_44px] items-start gap-x-3 px-5 py-3">
-                        <span className="text-xs text-gray-400 whitespace-nowrap">{dateStr}</span>
-                        <p className="truncate text-sm font-medium text-gray-900 min-w-0">{tx.description}</p>
-                        <p className="truncate text-xs text-gray-400 min-w-0">{tx.notes || '—'}</p>
+                        <span className="text-xs text-gray-400 dark:text-[#3d5166] whitespace-nowrap">{dateStr}</span>
+                        <p className="truncate text-sm font-medium text-gray-900 dark:text-[#e4eaf4] min-w-0">{tx.description}</p>
+                        <p className="truncate text-xs text-gray-400 dark:text-[#3d5166] min-w-0">{tx.notes || '—'}</p>
                         <span className="justify-self-start inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium truncate max-w-full">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${catColor.bg} ${catColor.text}`}>{tx.category}</span>
                         </span>
-                        <span className="truncate text-xs text-gray-400">{account ? accChip(account) : '—'}</span>
-                        <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <span className="truncate text-xs text-gray-400 dark:text-[#3d5166]">{account ? accChip(account) : '—'}</span>
+                        <span className={`text-right text-sm font-bold ${isExp ? 'text-rose-600 dark:text-[#FF6B6B]' : 'text-emerald-600 dark:text-[#00E5A0]'}`}>
                           {isExp ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString('en-IN')}
                         </span>
                         <div className="flex justify-end">

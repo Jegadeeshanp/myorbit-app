@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Wallet, Target, HeartPulse, Flame, CheckSquare, Sparkles,
   Search, Bell, Settings, ChevronRight, CheckCheck, BarChart2,
@@ -262,14 +263,10 @@ export default function OrbitDashboard() {
         borderBottom: `1px solid ${t.bord}`,
         display: 'flex', alignItems: 'center', padding: '0 48px', gap: 14,
       }}>
-        {/* Avatar */}
-        <div style={{
-          width: 36, height: 36, borderRadius: 11, flexShrink: 0,
-          background: 'linear-gradient(135deg,#00E5A0,#5BE4FF)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, fontWeight: 800, color: '#000',
-          boxShadow: '0 0 18px rgba(0,229,160,0.25)',
-        }}>{initials}</div>
+        {/* MyOrbit icon */}
+        <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 11, overflow: 'hidden', boxShadow: '0 0 18px rgba(0,229,160,0.25)' }}>
+          <Image src="/icons/top-icon.svg" alt="MyOrbit" width={36} height={36} priority />
+        </div>
 
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{greeting()}, {firstName}</div>
