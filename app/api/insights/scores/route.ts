@@ -17,10 +17,13 @@ export async function GET() {
       ? Math.min(100, Math.round((habits.reduce((s, h) => s + Math.min(h.logs.length, 7), 0) / (habits.length * 7)) * 100))
       : 0;
 
-    // Task score: completed tasks in last 7 days
-    const completedTasks = await prisma.task.count({ where: { userId, status: 'completed', updatedAt: { gte: new Date(d7ago) } } });
-    const totalTasks = await prisma.task.count({ where: { userId, isActive: true } });
-    const taskScore = totalTasks > 0 ? Math.min(100, Math.round((completedTasks / Math.max(totalTasks, 1)) * 100)) : 0;
+    // Task score: completed instances in last 7 days vs total scheduled instances
+    // Using TaskInstance rather than Task so recurring-task completions are counted correctly
+    const [completedInstances, totalInstances] = await Promise.all([
+      prisma.taskInstance.count({ where: { userId, status: 'completed', completedAt: { gte: new Date(d7ago) }, isDeleted: false } }),
+      prisma.taskInstance.count({ where: { userId, isDeleted: false, date: { gte: d7ago, lte: today } } }),
+    ]);
+    const taskScore = totalInstances > 0 ? Math.min(100, Math.round((completedInstances / totalInstances) * 100)) : 0;
 
     // Goal score: active goals with milestones completed
     const goals = await prisma.goal.findMany({ where: { userId, status: 'active' }, include: { milestones: true } });

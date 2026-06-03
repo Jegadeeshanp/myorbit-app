@@ -19,7 +19,6 @@ type Goal = {
   milestones: GoalMilestone[]; processes: GoalProcess[];
   createdAt: string;
 };
-type SubTab = 'overview' | 'active' | 'completed' | 'settings';
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const BG     = '#060b14';
@@ -494,25 +493,26 @@ function AddGoalModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   );
 }
 
-// ── Tab config ─────────────────────────────────────────────────────────────────
-const TABS = [
-  { key: 'overview'  as SubTab, label: 'Overview',   Icon: LayoutDashboard },
-  { key: 'active'    as SubTab, label: 'Active',      Icon: Play },
-  { key: 'completed' as SubTab, label: 'Completed',   Icon: Trophy },
-  { key: 'settings'  as SubTab, label: 'Settings',    Icon: Settings },
-];
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function GoalsPage() {
   const [goals, setGoals]               = useState<Goal[]>([]);
   const [loading, setLoading]           = useState(true);
-  const [activeTab, setActiveTab]       = useState<SubTab>('overview');
   const [showModal, setShowModal]       = useState(false);
   const [catFilter, setCatFilter]       = useState('All');
   const [postGoal, setPostGoal]         = useState<Goal | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [editGoal, setEditGoal]         = useState<Goal | null>(null);
   const wasEmptyRef                     = useRef(false);
+
+  // ── Delete cascade state ──────────────────────────────────────────────────
+  const [deleteTarget,       setDeleteTarget]       = useState<Goal | null>(null);
+  const [deleteLinkedHabits, setDeleteLinkedHabits] = useState(false);
+  const [deleteLinkedTasks,  setDeleteLinkedTasks]  = useState(false);
+  const [linkedHabits,       setLinkedHabits]       = useState<{ id: string; name: string }[]>([]);
+  const [linkedTasks,        setLinkedTasks]        = useState<{ id: string; title: string }[]>([]);
+  const [deleteSearching,    setDeleteSearching]    = useState(false);
+  const [deleteLoading,      setDeleteLoading]      = useState(false);
 
   useEffect(() => {
     fetch('/api/goals')
@@ -551,12 +551,51 @@ export default function GoalsPage() {
   const totalProcesses = useMemo(() => goals.reduce((s, g) => s + g.processes.length, 0), [goals]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this goal?')) return;
+    const goal = goals.find(g => g.id === id);
+    if (!goal) return;
+    setDeleteTarget(goal);
+    setDeleteLinkedHabits(false);
+    setDeleteLinkedTasks(false);
+    setLinkedHabits([]);
+    setLinkedTasks([]);
+    setDeleteSearching(true);
     try {
-      await fetch(`/api/goals/${id}`, { method: 'DELETE' });
-      setGoals(prev => prev.filter(g => g.id !== id));
+      const [habitsRes, tasksRes] = await Promise.all([
+        fetch('/api/habits'),
+        fetch('/api/tasks?smartList=all'),
+      ]);
+      const habits: { id: string; name: string }[] = habitsRes.ok ? await habitsRes.json() : [];
+      const tasks: { id: string; title: string; notes?: string }[] = tasksRes.ok ? await tasksRes.json() : [];
+      const processNames = new Set(goal.processes.map(p => p.title.trim().toLowerCase()));
+      setLinkedHabits(
+        processNames.size > 0
+          ? habits.filter(h => processNames.has(h.name.trim().toLowerCase()))
+          : [],
+      );
+      setLinkedTasks(
+        tasks.filter(t => t.notes?.includes(`Related to goal: ${goal.title}`)),
+      );
+    } finally {
+      setDeleteSearching(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await fetch(`/api/goals/${deleteTarget.id}`, { method: 'DELETE' });
+      if (deleteLinkedHabits && linkedHabits.length > 0) {
+        await Promise.all(linkedHabits.map(h => fetch(`/api/habits/${h.id}`, { method: 'DELETE' })));
+      }
+      if (deleteLinkedTasks && linkedTasks.length > 0) {
+        await Promise.all(linkedTasks.map(t => fetch(`/api/tasks/${t.id}`, { method: 'DELETE' })));
+      }
+      setGoals(prev => prev.filter(g => g.id !== deleteTarget.id));
+      setDeleteTarget(null);
       toast('Goal deleted');
     } catch { toast('Failed to delete goal', 'error'); }
+    finally { setDeleteLoading(false); }
   };
 
   const handleComplete = async (id: string) => {
@@ -664,7 +703,9 @@ export default function GoalsPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 48, color: MUTED }}>Loading…</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            {[1,2,3,4].map(i => <div key={i} className="animate-pulse" style={{ height: 180, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />)}
+          </div>
         ) : filteredGoals.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 48, background: CARD_BG, border: `1px solid ${CARD_BORD}`, borderRadius: 18 }}>
             <Target className="w-10 h-10 mx-auto mb-3" style={{ color: MUTED }} />
@@ -755,8 +796,11 @@ export default function GoalsPage() {
           </div>
         )}
 
-        {loading ? <div style={{ textAlign: 'center', padding: 48, color: MUTED }}>Loading…</div>
-          : activeGoals.length === 0
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            {[1,2,3,4].map(i => <div key={i} className="animate-pulse" style={{ height: 180, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />)}
+          </div>
+        ) : activeGoals.length === 0
             ? <div style={{ textAlign: 'center', padding: 48, background: CARD_BG, border: `1px solid ${CARD_BORD}`, borderRadius: 18 }}>
                 <Play className="w-10 h-10 mx-auto mb-3" style={{ color: MUTED }} />
                 <p style={{ color: TXT, fontWeight: 600 }}>No active goals</p>
@@ -923,28 +967,9 @@ export default function GoalsPage() {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, padding: '16px 24px 0', borderBottom: `1px solid ${CARD_BORD}` }}>
-        {TABS.map(({ key, label, Icon }) => {
-          const active = activeTab === key;
-          return (
-            <button key={key} onClick={() => setActiveTab(key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                borderRadius: '10px 10px 0 0', background: active ? `${ACCENT}12` : 'transparent',
-                border: 'none', borderBottom: active ? `2px solid ${ACCENT}` : '2px solid transparent',
-                color: active ? ACCENT : MUTED, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>
-              <Icon className="w-4 h-4" />{label}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Content */}
       <div style={{ padding: 24 }}>
-        {activeTab === 'overview'  && <OverviewTab />}
-        {activeTab === 'active'    && <ActiveTab />}
-        {activeTab === 'completed' && <CompletedTab />}
-        {activeTab === 'settings'  && <SettingsTab />}
+        <OverviewTab />
       </div>
 
       {showModal && (
@@ -957,6 +982,79 @@ export default function GoalsPage() {
         }} />
       )}
       {postGoal && <PostGoalWizard goal={postGoal} onDone={() => setPostGoal(null)} />}
+
+      {/* ── Delete Cascade Modal ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div style={{ background: BG3, border: `1px solid ${BORD}`, borderRadius: 20, width: '100%', maxWidth: 420, padding: 24 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,107,107,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Trash2 style={{ width: 18, height: 18, color: RED }} />
+              </div>
+              <div>
+                <p style={{ color: TXT, fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Delete this goal?</p>
+                <p style={{ color: MUTED, fontSize: 13, lineHeight: 1.5 }}>
+                  <span style={{ color: TXT, fontStyle: 'italic' }}>&ldquo;{deleteTarget.title}&rdquo;</span> will be permanently removed along with all its milestones and processes.
+                </p>
+              </div>
+            </div>
+
+            {/* Linked items */}
+            {deleteSearching ? (
+              <div style={{ color: MUTED, fontSize: 13, padding: '8px 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${MUTED}`, borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite' }} />
+                Checking for linked items…
+              </div>
+            ) : (linkedHabits.length > 0 || linkedTasks.length > 0) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                <p style={{ color: DIM, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>Also delete linked items</p>
+                {linkedHabits.length > 0 && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, borderRadius: 12, padding: '10px 14px' }}>
+                    <input type="checkbox" checked={deleteLinkedHabits} onChange={e => setDeleteLinkedHabits(e.target.checked)} style={{ width: 16, height: 16, accentColor: RED, flexShrink: 0, cursor: 'pointer' }} />
+                    <div>
+                      <p style={{ color: TXT, fontSize: 13, fontWeight: 600 }}>
+                        {linkedHabits.length} linked habit{linkedHabits.length > 1 ? 's' : ''}
+                      </p>
+                      <p style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{linkedHabits.map(h => h.name).join(', ')}</p>
+                    </div>
+                  </label>
+                )}
+                {linkedTasks.length > 0 && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORD}`, borderRadius: 12, padding: '10px 14px' }}>
+                    <input type="checkbox" checked={deleteLinkedTasks} onChange={e => setDeleteLinkedTasks(e.target.checked)} style={{ width: 16, height: 16, accentColor: RED, flexShrink: 0, cursor: 'pointer' }} />
+                    <div>
+                      <p style={{ color: TXT, fontSize: 13, fontWeight: 600 }}>
+                        {linkedTasks.length} linked task{linkedTasks.length > 1 ? 's' : ''}
+                      </p>
+                      <p style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>{linkedTasks.map(t => t.title).join(', ')}</p>
+                    </div>
+                  </label>
+                )}
+              </div>
+            ) : (
+              <div style={{ marginBottom: 20 }} />
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                style={{ flex: 1, borderRadius: 12, border: `1px solid ${BORD}`, background: 'transparent', color: TXT, padding: '10px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                style={{ flex: 1, borderRadius: 12, border: 'none', background: RED, color: 'white', padding: '10px 0', fontSize: 14, fontWeight: 700, cursor: deleteLoading ? 'wait' : 'pointer', opacity: deleteLoading ? 0.7 : 1 }}
+              >
+                {deleteLoading ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

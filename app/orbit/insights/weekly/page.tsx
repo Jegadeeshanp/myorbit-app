@@ -47,7 +47,7 @@ export default function WeeklyReviewPage() {
   const tips   = data?.insights.filter(i => i.severity === 'tip') ?? [];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="space-y-5">
       {/* Hero */}
       <div style={{ borderRadius: 18, padding: '26px 30px', position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#3b0764,#4c1d95,#2d1b69)' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at 90% 50%,rgba(167,139,250,.15) 0%,transparent 65%)', pointerEvents: 'none' }} />

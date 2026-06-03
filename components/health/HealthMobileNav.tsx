@@ -6,18 +6,19 @@ import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard, Dumbbell, UtensilsCrossed,
-  RefreshCw, Settings, MoreHorizontal, X,
+  RefreshCw, Settings, MoreHorizontal, X, BarChart2,
 } from 'lucide-react';
 
 const PRIMARY = [
-  { label: 'Dashboard', href: '/orbit/health',           Icon: LayoutDashboard },
-  { label: 'Workouts',  href: '/orbit/health/workouts',  Icon: Dumbbell },
-  { label: 'Nutrition', href: '/orbit/health/nutrition', Icon: UtensilsCrossed },
-  { label: 'Sync',      href: '/orbit/health/sync',      Icon: RefreshCw },
+  { label: 'Dashboard', href: '/orbit/health',            Icon: LayoutDashboard },
+  { label: 'Workouts',  href: '/orbit/health/workouts',   Icon: Dumbbell },
+  { label: 'Nutrition', href: '/orbit/health/nutrition',  Icon: UtensilsCrossed },
+  { label: 'Insights',  href: '/orbit/health/insights',   Icon: BarChart2 },
 ];
 
 const MORE = [
-  { label: 'Settings',  href: '/orbit/health/settings',  Icon: Settings },
+  { label: 'Sync',      href: '/orbit/health/sync',       Icon: RefreshCw },
+  { label: 'Settings',  href: '/orbit/health/settings',   Icon: Settings },
 ];
 
 export default function HealthMobileNav() {

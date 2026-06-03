@@ -142,7 +142,6 @@ export default function HealthPage() {
     return () => window.removeEventListener('health:refresh', handler);
   }, []);
 
-  const [tab, setTab]                       = useState<Tab>('dashboard');
   const [logOpen, setLogOpen]               = useState(false);
   const [workoutOpen, setWorkoutOpen]       = useState(false);
   const [completingTask, setCompletingTask] = useState<string | null>(null);
@@ -766,27 +765,7 @@ export default function HealthPage() {
     <div style={{ minHeight: '100vh' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: CARD_BG, border: `1px solid ${CARD_BORD}`, borderRadius: 12, padding: 4, width: 'fit-content' }}>
-        {TABS.map(t => {
-          const active = tab === t.key;
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, fontWeight: 600, fontSize: 13,
-                border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                background: active ? ACCENT : 'transparent',
-                color: active ? '#060b14' : MUTED }}>
-              <t.Icon size={15} />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {tab === 'dashboard' && <DashboardTab />}
-      {tab === 'workouts'  && <WorkoutsTab />}
-      {tab === 'nutrition' && <NutritionTab />}
-      {tab === 'insights'  && <InsightsTab />}
+      <DashboardTab />
 
       <LogHealthModal
         open={logOpen}

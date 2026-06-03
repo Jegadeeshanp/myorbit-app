@@ -40,8 +40,8 @@ export default function MobileGoalsNav() {
             const isActive = active === href;
             return (
               <Link key={href} href={href}
-                className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${isActive ? 'text-violet-600' : 'text-gray-400'}`}>
-                <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${isActive ? 'bg-violet-50' : ''}`}>
+                className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${isActive ? 'bg-emerald-50' : ''}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <span className="text-[10px] font-medium">{label}</span>
@@ -50,9 +50,9 @@ export default function MobileGoalsNav() {
           })}
           <button
             onClick={() => setOpen(true)}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${isMoreActive ? 'text-violet-600' : 'text-gray-400'}`}
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${isMoreActive ? 'text-emerald-600' : 'text-gray-400'}`}
           >
-            <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${isMoreActive ? 'bg-violet-50' : ''}`}>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${isMoreActive ? 'bg-emerald-50' : ''}`}>
               <MoreHorizontal className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-medium">More</span>
@@ -73,8 +73,8 @@ export default function MobileGoalsNav() {
             <div className="px-3 pb-2 space-y-0.5">
               {MORE.map(({ label, href, Icon }) => (
                 <Link key={href} href={href} onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active === href ? 'bg-violet-50 text-violet-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  <Icon className={`h-4 w-4 flex-none ${active === href ? 'text-violet-600' : 'text-gray-400'}`} />
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active === href ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <Icon className={`h-4 w-4 flex-none ${active === href ? 'text-emerald-600' : 'text-gray-400'}`} />
                   {label}
                 </Link>
               ))}
@@ -82,7 +82,7 @@ export default function MobileGoalsNav() {
             <div className="mx-4 border-t border-gray-100" />
             <div className="px-3 pt-3 pb-6 space-y-0.5">
               <div className="flex items-center gap-3 px-3 py-2.5">
-                <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white select-none">{initials}</div>
+                <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white select-none">{initials}</div>
                 <p className="text-sm font-medium text-gray-900">{userName}</p>
               </div>
               <Link href="/orbit/goals/settings" onClick={() => setOpen(false)}

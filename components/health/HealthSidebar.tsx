@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { LayoutDashboard, Dumbbell, UtensilsCrossed, RefreshCw, Settings, HeartPulse } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, UtensilsCrossed, RefreshCw, Settings, HeartPulse, BarChart2 } from 'lucide-react';
 
 const MODULE_ICON_BG    = 'linear-gradient(135deg,rgba(255,107,107,0.22),rgba(255,107,107,0.08))';
 const MODULE_ICON_BORD  = 'rgba(255,107,107,0.28)';
@@ -20,10 +20,11 @@ const MUTED = '#7a8ba0';
 const DIM   = '#3a5060';
 
 const menu = [
-  { label: 'Overview', href: '/orbit/health',           Icon: LayoutDashboard },
-  { label: 'Workouts',  href: '/orbit/health/workouts',  Icon: Dumbbell },
-  { label: 'Nutrition', href: '/orbit/health/nutrition', Icon: UtensilsCrossed },
-  { label: 'Sync',      href: '/orbit/health/sync',      Icon: RefreshCw },
+  { label: 'Overview',  href: '/orbit/health',            Icon: LayoutDashboard },
+  { label: 'Workouts',  href: '/orbit/health/workouts',   Icon: Dumbbell },
+  { label: 'Nutrition', href: '/orbit/health/nutrition',  Icon: UtensilsCrossed },
+  { label: 'Insights',  href: '/orbit/health/insights',   Icon: BarChart2 },
+  { label: 'Sync',      href: '/orbit/health/sync',       Icon: RefreshCw },
 ];
 
 export default function HealthSidebar() {

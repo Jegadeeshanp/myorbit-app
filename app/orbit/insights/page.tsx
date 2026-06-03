@@ -158,7 +158,7 @@ export default function InsightsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-5 max-w-4xl mx-auto">
+      <div className="space-y-5">
         <div className="animate-pulse" style={{ height: 220, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
           {[1,2,3,4,5].map(i => <div key={i} className="animate-pulse" style={{ height: 90, borderRadius: 13, background: 'rgba(255,255,255,0.04)' }} />)}
@@ -188,7 +188,7 @@ export default function InsightsPage() {
   const lifeScore = data?.lifeScore ?? 0;
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-5">
       {/* Refresh */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button onClick={() => fetchScores(true)} disabled={refreshing}
