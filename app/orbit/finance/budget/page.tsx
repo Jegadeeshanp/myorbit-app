@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp, ChevronDown } from 'lucide-react';
 import BudgetCard from '@/components/finance/BudgetCard';
 import AddBudgetModal from '@/components/finance/AddBudgetModal';
 import { useFinance } from '@/lib/financeStore';
@@ -124,41 +124,6 @@ export default function BudgetPage() {
     <div className="space-y-6">
       <FinanceTopBar />
 
-      {/* ── Month / Year selector ── */}
-      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-4 py-3 shadow-sm">
-        {/* Month dropdown */}
-        <select
-          value={selMon}
-          onChange={e => handleMonthChange(Number(e.target.value))}
-          className="flex-1 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] px-3 py-2 text-sm font-semibold text-gray-800 dark:text-[#e4eaf4] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none cursor-pointer"
-        >
-          {['January','February','March','April','May','June','July','August','September','October','November','December'].map((name, i) => {
-            const mon = i + 1;
-            const disabled = `${selYear}-${String(mon).padStart(2,'0')}` > currentMonth;
-            return (
-              <option key={mon} value={mon} disabled={disabled}>{name}</option>
-            );
-          })}
-        </select>
-
-        {/* Year dropdown */}
-        <select
-          value={selYear}
-          onChange={e => handleYearChange(Number(e.target.value))}
-          className="w-28 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] px-3 py-2 text-sm font-semibold text-gray-800 dark:text-[#e4eaf4] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none cursor-pointer"
-        >
-          {Array.from({ length: currentYear - 2022 }, (_, i) => currentYear - i).map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-
-        {isPast && (
-          <span className="hidden sm:inline-block shrink-0 rounded-full bg-gray-100 dark:bg-white/[0.06] px-2.5 py-1 text-[10px] font-medium text-gray-500 dark:text-[#3d5166]">
-            Read-only
-          </span>
-        )}
-      </div>
-
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-3 gap-3">
         {cards.map(c => (
@@ -177,8 +142,9 @@ export default function BudgetPage() {
         ))}
       </div>
 
-      {/* Search + Add Budget */}
+      {/* ── Search + Month/Year + Add Budget ── */}
       <div className="flex items-center gap-2">
+        {/* Search — mobile icon / desktop input */}
         {mobileSearch ? (
           <div className="flex sm:hidden flex-1 relative">
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
@@ -193,7 +159,7 @@ export default function BudgetPage() {
             <Search className="h-4 w-4" />
           </button>
         )}
-        <div className="relative hidden sm:flex w-64 flex-none">
+        <div className="relative hidden sm:flex w-56 flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
@@ -202,7 +168,45 @@ export default function BudgetPage() {
             className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-4 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none"
           />
         </div>
-        <div className="ml-auto">
+
+        {/* Compact month + year selects */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Month pill */}
+          <div className="relative flex items-center">
+            <select
+              value={selMon}
+              onChange={e => handleMonthChange(Number(e.target.value))}
+              className="appearance-none cursor-pointer rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#131c2e] pl-3 pr-7 py-2 text-xs font-semibold text-gray-700 dark:text-[#e4eaf4] focus:outline-none focus:border-emerald-400 dark:focus:border-[#00E5A0]"
+            >
+              {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((name, i) => {
+                const mon = i + 1;
+                const disabled = `${selYear}-${String(mon).padStart(2,'0')}` > currentMonth;
+                return <option key={mon} value={mon} disabled={disabled}>{name}</option>;
+              })}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-gray-400 dark:text-[#8fa3b8]" />
+          </div>
+
+          {/* Year pill */}
+          <div className="relative flex items-center">
+            <select
+              value={selYear}
+              onChange={e => handleYearChange(Number(e.target.value))}
+              className="appearance-none cursor-pointer rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#131c2e] pl-3 pr-7 py-2 text-xs font-semibold text-gray-700 dark:text-[#e4eaf4] focus:outline-none focus:border-emerald-400 dark:focus:border-[#00E5A0]"
+            >
+              {Array.from({ length: currentYear - 2022 }, (_, i) => currentYear - i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-gray-400 dark:text-[#8fa3b8]" />
+          </div>
+
+          {isPast && (
+            <span className="hidden sm:inline-block rounded-full bg-gray-100 dark:bg-white/[0.06] px-2.5 py-1 text-[10px] font-medium text-gray-500 dark:text-[#3d5166]">
+              Read-only
+            </span>
+          )}
+
           {!isPast && (
             <button
               type="button"
