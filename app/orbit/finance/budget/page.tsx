@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
 import BudgetCard from '@/components/finance/BudgetCard';
 import AddBudgetModal from '@/components/finance/AddBudgetModal';
 import { useFinance } from '@/lib/financeStore';
@@ -12,22 +12,30 @@ import { BudgetCategory } from '@/lib/financeData';
 function toYYYYMM(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
-function addMonths(yyyymm: string, delta: number) {
-  const [y, m] = yyyymm.split('-').map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return toYYYYMM(d);
-}
-function monthLabel(yyyymm: string) {
-  const [y, m] = yyyymm.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-}
 
 export default function BudgetPage() {
   const { state } = useFinance();
   const { transactions } = state;
 
   const currentMonth = toYYYYMM(new Date());
+  const currentYear  = new Date().getFullYear();
+
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+
+  // Derive selected month/year numbers for the dropdowns
+  const [selYear,  selMon] = selectedMonth.split('-').map(Number);
+
+  const handleMonthChange = (month: number) => {
+    const y = selYear;
+    const m = String(month).padStart(2, '0');
+    const next = `${y}-${m}`;
+    setSelectedMonth(next > currentMonth ? currentMonth : next);
+  };
+  const handleYearChange = (year: number) => {
+    const m = String(selMon).padStart(2, '0');
+    const next = `${year}-${m}`;
+    setSelectedMonth(next > currentMonth ? currentMonth : next);
+  };
   const [isModalOpen, setModalOpen] = useState(false);
   const [editTarget,  setEditTarget] = useState<BudgetCategory | null>(null);
   const [mobileSearch, setMobileSearch] = useState(false);
@@ -116,31 +124,39 @@ export default function BudgetPage() {
     <div className="space-y-6">
       <FinanceTopBar />
 
-      {/* ── Month selector ── */}
-      <div className="flex items-center justify-between rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-4 py-3 shadow-sm">
-        <button
-          onClick={() => setSelectedMonth(m => addMonths(m, -1))}
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-[#8fa3b8] hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+      {/* ── Month / Year selector ── */}
+      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-4 py-3 shadow-sm">
+        {/* Month dropdown */}
+        <select
+          value={selMon}
+          onChange={e => handleMonthChange(Number(e.target.value))}
+          className="flex-1 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] px-3 py-2 text-sm font-semibold text-gray-800 dark:text-[#e4eaf4] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none cursor-pointer"
         >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+          {['January','February','March','April','May','June','July','August','September','October','November','December'].map((name, i) => {
+            const mon = i + 1;
+            const disabled = `${selYear}-${String(mon).padStart(2,'0')}` > currentMonth;
+            return (
+              <option key={mon} value={mon} disabled={disabled}>{name}</option>
+            );
+          })}
+        </select>
 
-        <div className="text-center">
-          <p className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">
-            {monthLabel(selectedMonth)}
-          </p>
-          {isPast && (
-            <p className="text-[10px] text-gray-400 dark:text-[#3d5166]">Past month · read-only</p>
-          )}
-        </div>
-
-        <button
-          onClick={() => setSelectedMonth(m => addMonths(m, 1))}
-          disabled={selectedMonth >= currentMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-[#8fa3b8] hover:bg-gray-50 dark:hover:bg-white/[0.06] transition disabled:opacity-30 disabled:cursor-not-allowed"
+        {/* Year dropdown */}
+        <select
+          value={selYear}
+          onChange={e => handleYearChange(Number(e.target.value))}
+          className="w-28 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] px-3 py-2 text-sm font-semibold text-gray-800 dark:text-[#e4eaf4] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none cursor-pointer"
         >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+          {Array.from({ length: currentYear - 2022 }, (_, i) => currentYear - i).map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        {isPast && (
+          <span className="hidden sm:inline-block shrink-0 rounded-full bg-gray-100 dark:bg-white/[0.06] px-2.5 py-1 text-[10px] font-medium text-gray-500 dark:text-[#3d5166]">
+            Read-only
+          </span>
+        )}
       </div>
 
       {/* ── Summary cards ── */}
