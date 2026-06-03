@@ -29,7 +29,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // Update instance
+    const today = new Date().toISOString().split('T')[0];
+
+    // Complete all OTHER pending past instances for the same task so the user
+    // doesn't have to dismiss duplicate overdue entries one by one.
+    await prisma.taskInstance.updateMany({
+      where: {
+        taskId: instance.taskId,
+        userId,
+        status:    'pending',
+        isDeleted: false,
+        date:      { lt: today },
+        id:        { not: id },
+      },
+      data: { status: 'completed', completedAt: new Date() },
+    });
+
+    // Update the target instance
     const updated = await prisma.taskInstance.update({
       where: { id },
       data: {

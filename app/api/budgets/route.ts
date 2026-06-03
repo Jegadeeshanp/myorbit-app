@@ -7,20 +7,31 @@ import { decryptNumber } from '@/lib/encryption';
 export const runtime = 'nodejs';
 
 /**
- * Compute how much has actually been spent in the current calendar month
- * for a given budget. Only counts expense transactions dated <= today
- * (future-dated transactions are "upcoming", not "spent").
+ * Compute how much has actually been spent in the given calendar month
+ * (defaults to current month). For past months the full month range is used;
+ * for the current month only dates <= today are counted.
  */
-async function computeSpent(userId: string, budget: { name: string; category?: string | null }): Promise<number> {
-  const now = new Date();
-  const today = now.toLocaleDateString('en-CA'); // YYYY-MM-DD
-  const monthStart = today.slice(0, 7) + '-01'; // YYYY-MM-01
+async function computeSpent(
+  userId: string,
+  budget: { name: string; category?: string | null },
+  month?: string, // YYYY-MM, defaults to current month
+): Promise<number> {
+  const now        = new Date();
+  const today      = now.toLocaleDateString('en-CA');
+  const targetMonth = month ?? today.slice(0, 7);
+  const monthStart  = `${targetMonth}-01`;
+  // For past months include the full month; for current cap at today
+  const isCurrentMonth = targetMonth === today.slice(0, 7);
+  const monthEnd   = isCurrentMonth
+    ? today
+    : new Date(Number(targetMonth.slice(0, 4)), Number(targetMonth.slice(5, 7)), 0)
+        .toLocaleDateString('en-CA');
 
   const rows = await prisma.transaction.findMany({
     where: {
       userId,
       type: 'expense',
-      date: { gte: monthStart, lte: today },
+      date: { gte: monthStart, lte: monthEnd },
     },
     select: { amount: true, category: true },
   });
@@ -41,17 +52,18 @@ async function computeSpent(userId: string, budget: { name: string; category?: s
   return Math.round(total);
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const rows = await prisma.budget.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
+    const month  = new URL(req.url).searchParams.get('month') ?? undefined; // YYYY-MM or undefined
+    const rows   = await prisma.budget.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 
     // Always compute spent fresh from transactions (never use stored value)
     const result = await Promise.all(rows.map(async r => ({
-      id: r.id,
-      name: r.name,
-      budget: r.budget,
-      spent: await computeSpent(userId, { name: r.name, category: (r as any).category }),
+      id:       r.id,
+      name:     r.name,
+      budget:   r.budget,
+      spent:    await computeSpent(userId, { name: r.name, category: (r as any).category }, month),
       category: (r as any).category ?? '',
     })));
 

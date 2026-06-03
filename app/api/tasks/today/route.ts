@@ -55,9 +55,11 @@ export async function GET(_: NextRequest) {
       orderBy: [{ date: 'asc' }, { task: { dueTime: 'asc' } }],
     });
 
-    const overdue:   TaskInstanceWithTask[] = [];
+    // Use Maps so we keep only ONE instance per task in overdue/missed
+    // (latest date wins since instances are sorted date asc — last write wins).
+    const overdueMap = new Map<string, TaskInstanceWithTask>();
+    const missedMap  = new Map<string, TaskInstanceWithTask>();
     const todayList: TaskInstanceWithTask[] = [];
-    const missed:    TaskInstanceWithTask[] = [];
     const completed: TaskInstanceWithTask[] = [];
 
     for (const instance of instances) {
@@ -87,20 +89,19 @@ export async function GET(_: NextRequest) {
         // Skip pending instances whose task is completed or trashed
         if (!instance.task.isActive || (instance.task as any).status === 'completed') continue;
 
-        if (instance.date === yesterdayDate) {
-          overdue.push(mapped);
+        if (instance.date < today) {
+          // Overdue — keep latest instance per task (Map overwrites older entries)
+          overdueMap.set(instance.taskId, mapped);
         } else if (instance.date === today) {
           todayList.push(mapped);
-        } else if (instance.date >= sevenDaysAgo && instance.date < yesterdayDate) {
-          missed.push(mapped);
         }
       }
     }
 
     const response: TodayResponse = {
-      overdue,
+      overdue:   Array.from(overdueMap.values()),
       today:     todayList,
-      missed,
+      missed:    Array.from(missedMap.values()),
       completed,
     };
 

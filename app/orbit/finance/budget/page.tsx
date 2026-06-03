@@ -1,20 +1,64 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Search, PlusCircle, ArrowUpRight, ArrowDownLeft, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import BudgetCard from '@/components/finance/BudgetCard';
 import AddBudgetModal from '@/components/finance/AddBudgetModal';
 import { useFinance } from '@/lib/financeStore';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { BudgetCategory } from '@/lib/financeData';
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+function toYYYYMM(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function addMonths(yyyymm: string, delta: number) {
+  const [y, m] = yyyymm.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return toYYYYMM(d);
+}
+function monthLabel(yyyymm: string) {
+  const [y, m] = yyyymm.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 export default function BudgetPage() {
   const { state } = useFinance();
-  const { budgets, transactions } = state;
+  const { transactions } = state;
+
+  const currentMonth = toYYYYMM(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [isModalOpen, setModalOpen] = useState(false);
   const [editTarget,  setEditTarget] = useState<BudgetCategory | null>(null);
   const [mobileSearch, setMobileSearch] = useState(false);
   const [search, setSearch] = useState('');
+
+  // For past months we fetch spent values directly from the API
+  const [monthBudgets, setMonthBudgets] = useState<BudgetCategory[] | null>(null);
+  const [loadingMonth, setLoadingMonth] = useState(false);
+
+  const isPast = selectedMonth < currentMonth;
+
+  const fetchMonthData = useCallback(async (month: string) => {
+    setLoadingMonth(true);
+    try {
+      const res = await fetch(`/api/budgets?month=${month}`);
+      if (res.ok) setMonthBudgets(await res.json());
+    } finally {
+      setLoadingMonth(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedMonth === currentMonth) {
+      setMonthBudgets(null); // use store data for current month
+    } else {
+      fetchMonthData(selectedMonth);
+    }
+  }, [selectedMonth, currentMonth, fetchMonthData]);
+
+  // Use fetched data for past months, store data for current month
+  const budgets = monthBudgets ?? state.budgets;
 
   const filtered = search.trim()
     ? budgets.filter(b => b.category?.toLowerCase().includes(search.toLowerCase()))
@@ -22,29 +66,26 @@ export default function BudgetPage() {
 
   // ── Summary figures ──────────────────────────────────────────────────────
   const summary = useMemo(() => {
-    const now = new Date();
-    // Total income this month from transactions
+    const [y, m] = selectedMonth.split('-').map(Number);
     const moneyIn = transactions
       .filter(t => {
         const d = new Date(t.date);
         return t.type === 'income'
-          && d.getMonth() === now.getMonth()
-          && d.getFullYear() === now.getFullYear();
+          && d.getMonth() + 1 === m
+          && d.getFullYear() === y;
       })
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    // Total planned = sum of all budget limits
     const planned = budgets.reduce((sum, b) => sum + (b.budget ?? 0), 0);
-
     return { moneyIn, planned, net: moneyIn - planned };
-  }, [transactions, budgets]);
+  }, [transactions, budgets, selectedMonth]);
 
   const netPositive = summary.net >= 0;
 
   const cards = [
     {
       label: 'Money In',
-      sub: 'Total income this month',
+      sub: 'Total income',
       value: summary.moneyIn,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -74,6 +115,33 @@ export default function BudgetPage() {
   return (
     <div className="space-y-6">
       <FinanceTopBar />
+
+      {/* ── Month selector ── */}
+      <div className="flex items-center justify-between rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-4 py-3 shadow-sm">
+        <button
+          onClick={() => setSelectedMonth(m => addMonths(m, -1))}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-[#8fa3b8] hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">
+            {monthLabel(selectedMonth)}
+          </p>
+          {isPast && (
+            <p className="text-[10px] text-gray-400 dark:text-[#3d5166]">Past month · read-only</p>
+          )}
+        </div>
+
+        <button
+          onClick={() => setSelectedMonth(m => addMonths(m, 1))}
+          disabled={selectedMonth >= currentMonth}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-[#8fa3b8] hover:bg-gray-50 dark:hover:bg-white/[0.06] transition disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-3 gap-3">
@@ -119,28 +187,42 @@ export default function BudgetPage() {
           />
         </div>
         <div className="ml-auto">
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-700 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-800 dark:hover:bg-[#00c990]"
-          >
-            <PlusCircle className="h-4 w-4" /> Add Budget
-          </button>
+          {!isPast && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-700 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-800 dark:hover:bg-[#00c990]"
+            >
+              <PlusCircle className="h-4 w-4" /> Add Budget
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((budget) => (
-          <BudgetCard key={budget.id} budget={budget} onEdit={setEditTarget} />
-        ))}
-      </div>
+      {loadingMonth ? (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-gray-50 dark:bg-white/[0.03] animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((budget) => (
+            <BudgetCard key={budget.id} budget={budget} onEdit={isPast ? undefined : setEditTarget} />
+          ))}
+        </div>
+      )}
 
-      <AddBudgetModal open={isModalOpen} onClose={() => setModalOpen(false)} />
-      <AddBudgetModal
-        open={!!editTarget}
-        onClose={() => setEditTarget(null)}
-        initial={editTarget ?? undefined}
-      />
+      {!isPast && (
+        <>
+          <AddBudgetModal open={isModalOpen} onClose={() => setModalOpen(false)} />
+          <AddBudgetModal
+            open={!!editTarget}
+            onClose={() => setEditTarget(null)}
+            initial={editTarget ?? undefined}
+          />
+        </>
+      )}
     </div>
   );
 }
