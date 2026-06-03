@@ -1013,9 +1013,9 @@ export default function HabitsPage() {
     try {
       await fetch(`/api/habits/${id}`, { method: 'DELETE' });
       setHabits(prev => prev.filter(h => h.id !== id));
-      toast('Habit archived');
+      toast('Habit deleted');
     } catch {
-      toast('Failed to archive habit', 'error');
+      toast('Failed to delete habit', 'error');
     }
   };
 
@@ -1129,11 +1129,11 @@ export default function HabitsPage() {
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <Trash2 size={22} color="#FF6B6B" />
             </div>
-            <p style={{ fontWeight: 600, color: TXT, fontSize: 14, marginBottom: 6 }}>Archive this habit?</p>
+            <p style={{ fontWeight: 600, color: TXT, fontSize: 14, marginBottom: 6 }}>Delete this habit?</p>
             <p style={{ fontSize: 12, color: MUTED, marginBottom: 20 }}>This will permanently remove the habit and all its logs. This cannot be undone.</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'none', padding: '10px', fontSize: 13, fontWeight: 500, color: MUTED, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleConfirmDelete} style={{ flex: 1, borderRadius: 12, border: 'none', background: '#FF6B6B', padding: '10px', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Archive</button>
+              <button onClick={handleConfirmDelete} style={{ flex: 1, borderRadius: 12, border: 'none', background: '#FF6B6B', padding: '10px', fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Delete</button>
             </div>
           </div>
         </div>

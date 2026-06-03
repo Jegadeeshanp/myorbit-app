@@ -150,6 +150,20 @@ function fmtAmount(n: number): string {
   return n >= 1000 ? `₹${(n/1000).toFixed(1)}k` : `₹${Math.round(n)}`;
 }
 
+function detectMealType(description: string): string {
+  const lower = description.toLowerCase();
+  if (/breakfast|morning|सुबह/.test(lower))  return 'morning';
+  if (/lunch|noon|afternoon|दोपहर/.test(lower)) return 'noon';
+  if (/dinner|evening|रात का खाना/.test(lower))  return 'evening';
+  if (/night|supper|midnight|snack/.test(lower)) return 'night';
+  // Fall back to current time of day
+  const h = new Date().getHours();
+  if (h >= 6  && h < 11) return 'morning';
+  if (h >= 11 && h < 16) return 'noon';
+  if (h >= 16 && h < 21) return 'evening';
+  return 'night';
+}
+
 function repeatToDays(
   repeat: string, repeatOnDays: number[] | undefined, dueDate: string | undefined,
 ): { isRecurring: boolean; recurrenceDays: number[] | null } {
@@ -355,6 +369,7 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
       description: 'Log food / calorie intake. Use for "ate X", "had X for lunch", "2 dosa and sambar", "banana and coffee".',
       parameters: { type: 'object', properties: {
         description: { type: 'string', description: 'The raw food description from the user' },
+        meal_type:   { type: 'string', enum: ['morning','noon','evening','night'], description: 'Meal slot inferred from user message: morning=breakfast, noon=lunch, evening=dinner, night=late snack. Omit if unclear.' },
       }, required: ['description'] },
     },
   },
@@ -862,13 +877,15 @@ async function executeToolCall(
     const duration_min   = args.duration_min != null ? Math.round(Number(args.duration_min)) : null;
     const estimated_kcal = Math.round(Math.abs(Number(args.estimated_kcal)));
 
+    // Use undefined (not null) for optional fields so Prisma omits them from
+    // the INSERT when the column may not yet exist in the production DB.
     await prisma.workout.create({ data: {
       userId,
       name:           activity_type,
-      type:           'cardio',
+      type:           'other',
       durationMins:   duration_min ?? 30,
-      caloriesBurned: estimated_kcal || null,
-      distanceKm:     distance_km,
+      ...(estimated_kcal > 0 ? { caloriesBurned: estimated_kcal } : {}),
+      ...(distance_km   != null ? { distanceKm: distance_km }     : {}),
       date:           today,
     } });
 
@@ -909,11 +926,14 @@ async function executeToolCall(
       totals: { calories: number; protein: number; carbs: number; fat: number; fibre: number };
     };
 
+    // Determine meal slot: LLM-detected > description keywords > time of day
+    const mealType = (args.meal_type as string | undefined) ?? detectMealType(description);
+
     await Promise.all(nutrition.items.map(item =>
       prisma.foodEntry.create({ data: {
         userId, date: today,
         name:      `${item.name} (${item.quantity})`,
-        mealType:  'snack',
+        mealType,
         calories:  item.calories,
         proteinG:  item.protein,
         carbsG:    item.carbs,
@@ -1050,7 +1070,7 @@ Goals:  ${goals.map(g=>g.title).join(' | ') || 'none'}
 6. Correct obvious typos in titles before returning them.
 7. Water intake ("Xml water", "drank X glasses", "X litres") → log_water. 1 glass=250ml, 1 litre=1000ml.
 8. Physical activity ("Xkm walk", "ran Xkm", "Xmin cycling") → log_activity. MET kcal: walk=3.5×70×hrs, run=8×70×hrs, cycle=6×70×hrs.
-9. Food/meals ("ate X", "had X for lunch", "2 dosa and sambar") → log_food_by_description.
+9. Food/meals ("ate X", "had X for lunch", "2 dosa and sambar") → log_food_by_description. Set meal_type: morning/noon/evening/night based on user words or time of day.
 10. Fitness events ("want to run marathon", "training for 10k", "preparing for triathlon") → plan_fitness_goal.`;
 
     // Build messages with conversation history (last 6 turns max)

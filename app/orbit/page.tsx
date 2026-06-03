@@ -107,7 +107,7 @@ export default function OrbitDashboard() {
     return () => obs.disconnect();
   }, []);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(() => {
     if (auth.status !== 'authenticated') return;
     Promise.all([
       fetch('/api/tasks/today').then(r => r.json()).catch(() => ({ overdue: [], today: [] })),
@@ -127,6 +127,15 @@ export default function OrbitDashboard() {
       setDataLoading(false);
     });
   }, [auth.status, today]);
+
+  // Fetch on mount and re-fetch every time the user navigates back to this tab
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchDashboard(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchDashboard]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
   const todayDow    = new Date().getDay();

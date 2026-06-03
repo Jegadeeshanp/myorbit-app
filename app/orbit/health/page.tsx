@@ -15,9 +15,9 @@ import { toast } from '@/components/Toast';
 import ErrorState from '@/components/ErrorState';
 
 // ── Theme ──────────────────────────────────────────────────────────────────────
-const BG     = '#060b14';
-const BG2    = '#0a0f1e';
-const BG3    = '#0e1623';
+const BG     = '#090d16';
+const BG2    = '#0d1220';
+const BG3    = '#111826';
 const BORD   = '#1a2a3a';
 const GREEN  = '#00E5A0';
 const BLUE   = '#5BE4FF';
@@ -174,12 +174,10 @@ export default function HealthPage() {
 
   if (loadState === 'loading' || loadState === 'idle') {
     return (
-      <div style={{ background: BG, minHeight: '100vh', padding: 24 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ height: 96, borderRadius: 16, background: CARD_BG, border: `1px solid ${CARD_BORD}` }} />
-          ))}
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} style={{ height: 96, borderRadius: 16, background: CARD_BG, border: `1px solid ${CARD_BORD}` }} />
+        ))}
       </div>
     );
   }
@@ -765,7 +763,7 @@ export default function HealthPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: BG, minHeight: '100vh', padding: '24px 28px' }}>
+    <div style={{ minHeight: '100vh' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
       {/* Tab bar */}
