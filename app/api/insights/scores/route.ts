@@ -64,7 +64,7 @@ export async function GET() {
     if (goalScore > 50) insights.push({ type: 'goal', title: '🎯 Goals on track', body: `${goals.length} active goal${goals.length !== 1 ? 's' : ''} with strong milestone progress.`, severity: 'info' });
     if (healthEntries.length === 0) insights.push({ type: 'health', title: '💊 Track your health', body: 'Log your mood, sleep, and steps daily to unlock your Health Score.', severity: 'tip' });
     else if (avgMood >= 4) insights.push({ type: 'health', title: '😊 Great mood streak', body: `Average mood of ${avgMood.toFixed(1)}/5 this week — you're thriving!`, severity: 'info' });
-    if (completedTasks >= 5) insights.push({ type: 'task', title: '✅ Productive week', body: `You completed ${completedTasks} tasks in the last 7 days. Great momentum!`, severity: 'info' });
+    if (completedInstances >= 5) insights.push({ type: 'task', title: '✅ Productive week', body: `You completed ${completedInstances} tasks in the last 7 days. Great momentum!`, severity: 'info' });
 
     return NextResponse.json({
       lifeScore,
