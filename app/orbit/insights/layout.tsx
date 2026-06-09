@@ -1,5 +1,6 @@
 import InsightsSidebar from '@/components/insights/InsightsSidebar';
 import InsightsTopBar from '@/components/insights/InsightsTopBar';
+import InsightsMobileNav from '@/components/insights/InsightsMobileNav';
 import ToastContainer from '@/components/Toast';
 
 export default function InsightsLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export default function InsightsLayout({ children }: { children: React.ReactNode
           {children}
         </main>
       </div>
+      <InsightsMobileNav />
       <ToastContainer />
     </div>
   );

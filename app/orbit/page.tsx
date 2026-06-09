@@ -270,7 +270,7 @@ export default function OrbitDashboard() {
         background: isDark ? 'rgba(7,11,19,0.88)' : 'rgba(248,250,252,0.92)',
         backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
         borderBottom: `1px solid ${t.bord}`,
-        display: 'flex', alignItems: 'center', padding: '0 48px', gap: 14,
+        display: 'flex', alignItems: 'center', padding: '0 clamp(16px,4vw,48px)', gap: 14,
       }}>
         {/* MyOrbit icon */}
         <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 11, overflow: 'hidden', boxShadow: '0 0 18px rgba(0,229,160,0.25)' }}>
@@ -288,7 +288,7 @@ export default function OrbitDashboard() {
           {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '7px 16px', borderRadius: 10, minWidth: 180,
+            padding: '7px 16px', borderRadius: 10, minWidth: 120, maxWidth: 220,
             background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
             border: `1px solid ${t.bord}`, fontSize: 12, color: t.dim, cursor: 'pointer',
           }}>
@@ -318,9 +318,9 @@ export default function OrbitDashboard() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
       <div style={{ marginTop: 62 }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '40px 48px 0' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'clamp(20px,4vw,40px) clamp(16px,4vw,48px) 0' }}>
           <div style={{
-            borderRadius: 28, padding: '40px 44px', position: 'relative', overflow: 'hidden',
+            borderRadius: 28, padding: 'clamp(20px,4vw,40px) clamp(16px,4vw,44px)', position: 'relative', overflow: 'hidden',
             background: isDark
               ? 'linear-gradient(140deg,#071c12 0%,#08131e 40%,#090d16 100%)'
               : 'linear-gradient(140deg,#e8fdf4 0%,#eff6ff 55%,#f0f4f8 100%)',
@@ -450,7 +450,7 @@ export default function OrbitDashboard() {
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderBottom: `1px solid ${t.bord}`,
       }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 48px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'clamp(10px,2vw,14px) clamp(16px,4vw,48px)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12 }}>
             {MODS.map(m => {
               const isActive = activeKey === m.key;
@@ -508,7 +508,7 @@ export default function OrbitDashboard() {
       </div>
 
       {/* ── Content Rows ─────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 48px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'clamp(16px,2vw,24px) clamp(16px,4vw,48px) 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* ── Row 1: Focus + Finance ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>

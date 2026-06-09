@@ -44,7 +44,7 @@ export default function HabitsSidebar() {
   const initials = userName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <aside style={{ position: 'sticky', top: 0, height: '100vh', width: 240, flexShrink: 0, background: SB, borderRight: `1px solid ${BORD}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+    <aside className="hidden md:flex" style={{ position: 'sticky', top: 0, height: '100vh', width: 240, flexShrink: 0, background: SB, borderRight: `1px solid ${BORD}`, flexDirection: 'column', overflowY: 'auto' }}>
       {/* Logo */}
       <div style={{ padding: '20px 18px', borderBottom: `1px solid ${BORD}`, display: 'flex', alignItems: 'center', gap: 11 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: MODULE_ICON_BG, border: `1px solid ${MODULE_ICON_BORD}`, boxShadow: MODULE_ICON_GLOW, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
