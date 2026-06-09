@@ -3,8 +3,12 @@ name: Deploy
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+
+# Only one deployment per branch at a time — cancel the older run if a newer
+# one arrives for the same ref (eliminates duplicate Vercel builds).
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ── Web: Vercel ────────────────────────────────────────────────────────────
