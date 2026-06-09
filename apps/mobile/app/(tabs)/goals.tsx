@@ -435,6 +435,9 @@ function SubNav({ active, onSelect }: { active: SubTab; onSelect: (t: SubTab) =>
   );
 }
 
+// Stable empty array — prevents new [] reference on every render when query is loading
+const EMPTY_GOALS: any[] = [];
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function GoalsScreen() {
@@ -447,7 +450,7 @@ export default function GoalsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const qc = useQueryClient();
 
-  const { data: goals = [], isLoading, refetch } =
+  const { data: goals = EMPTY_GOALS, isLoading, refetch } =
     useQuery({ queryKey: ['goals'], queryFn: getGoals });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['goals'] });

@@ -47,6 +47,9 @@ type SubTab = 'overview' | 'accounts' | 'transactions' | 'assets' | 'liabilities
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const ACCENT = '#10B981';
+
+// Stable empty arrays — prevents new [] reference on every render when queries are loading
+const EMPTY_ARR: any[] = [];
 function useFinanceColors() {
   const T = useTheme();
   return {
@@ -2427,11 +2430,11 @@ export default function FinanceScreen() {
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
-  const { data: accounts     = [], refetch: refetchAccounts } = useQuery({ queryKey: ['accounts'],     queryFn: getAccounts });
-  const { data: transactions = [], isLoading: txLoading, refetch: refetchTx } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() });
-  const { data: assets       = [], isLoading: assetsLoading, refetch: refetchAssets } = useQuery({ queryKey: ['assets'],       queryFn: getAssets });
-  const { data: liabilities  = [], isLoading: liabLoading,   refetch: refetchLiab } = useQuery({ queryKey: ['liabilities'],  queryFn: getLiabilities });
-  const { data: budgets      = [] } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets });
+  const { data: accounts     = EMPTY_ARR, refetch: refetchAccounts } = useQuery({ queryKey: ['accounts'],     queryFn: getAccounts });
+  const { data: transactions = EMPTY_ARR, isLoading: txLoading, refetch: refetchTx } = useQuery({ queryKey: ['transactions'], queryFn: () => getTransactions() });
+  const { data: assets       = EMPTY_ARR, isLoading: assetsLoading, refetch: refetchAssets } = useQuery({ queryKey: ['assets'],       queryFn: getAssets });
+  const { data: liabilities  = EMPTY_ARR, isLoading: liabLoading,   refetch: refetchLiab } = useQuery({ queryKey: ['liabilities'],  queryFn: getLiabilities });
+  const { data: budgets      = EMPTY_ARR } = useQuery({ queryKey: ['budgets'], queryFn: getBudgets });
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['accounts'] });

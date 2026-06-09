@@ -53,6 +53,9 @@ const HEADER_TITLES: Record<SubTab, string> = {
 
 const EMOJIS = ['✅','🔥','💪','📚','🧘','🏃','💧','🥗','😴','🎯','✍️','🎵','🎨','🏋️','☕','🚶','🧠','💊','🌅','🛌'];
 const COLORS  = ['#10B981','#3B82F6','#8B5CF6','#F59E0B','#EF4444','#EC4899','#14B8A6','#F97316','#6366F1','#78716C'];
+
+// Stable empty array — prevents new [] reference on every render when query is loading
+const EMPTY_HABITS: any[] = [];
 const DAYS    = ['S','M','T','W','T','F','S'];
 
 function getLast7() {
@@ -458,7 +461,7 @@ export default function HabitsScreen() {
   const today = new Date().toLocaleDateString('en-CA');
   const last7 = getLast7();
 
-  const { data: habits = [], isLoading, refetch } =
+  const { data: habits = EMPTY_HABITS, isLoading, refetch } =
     useQuery({ queryKey: ['habits'], queryFn: getHabits });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['habits'] });

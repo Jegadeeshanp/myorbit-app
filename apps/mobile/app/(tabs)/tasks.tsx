@@ -42,6 +42,10 @@ type SortBy = 'custom' | 'date' | 'title' | 'priority';
 // ── Constants ─────────────────────────────────────────────────────────────────────
 const ACCENT   = '#10B981';
 
+// Stable empty arrays — prevent new [] reference on every render when query is loading
+const EMPTY_TASKS: any[] = [];
+const EMPTY_LISTS: any[] = [];
+
 function useColors() {
   const T = useTheme();
   return {
@@ -2128,10 +2132,10 @@ export default function TasksScreen() {
   const { data: todayData, isLoading: loadingToday, refetch: refetchToday } =
     useQuery({ queryKey: ['tasks', 'today'], queryFn: getTodayTasks });
 
-  const { data: allTasks = [], isLoading: loadingAll, refetch: refetchAll } =
+  const { data: allTasks = EMPTY_TASKS, isLoading: loadingAll, refetch: refetchAll } =
     useQuery({ queryKey: ['tasks', 'all'], queryFn: () => getAllTasks() });
 
-  const { data: next7Tasks = [], isLoading: loadingNext7, refetch: refetchNext7 } =
+  const { data: next7Tasks = EMPTY_TASKS, isLoading: loadingNext7, refetch: refetchNext7 } =
     useQuery({ queryKey: ['tasks', 'next7'], queryFn: getNext7Tasks });
 
   // Show task detail card when tapped from a notification
@@ -2145,10 +2149,10 @@ export default function TasksScreen() {
     }
   }, [pendingTaskId, allTasks]);
 
-  const { data: listTasks = [], isLoading: loadingList, refetch: refetchList } =
+  const { data: listTasks = EMPTY_TASKS, isLoading: loadingList, refetch: refetchList } =
     useQuery({ queryKey: ['tasks', 'list', activeList?.id], queryFn: () => getAllTasks(activeList!.id), enabled: !!activeList });
 
-  const { data: lists = [] } =
+  const { data: lists = EMPTY_LISTS } =
     useQuery({ queryKey: ['taskLists'], queryFn: getTaskLists });
 
   // ── Mutations ──────────────────────────────────────────────────────────────────

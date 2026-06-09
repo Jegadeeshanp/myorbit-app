@@ -56,6 +56,15 @@
     "@types/react": "~19.1.0",
     "typescript": "^5.3.0"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "react-native-health"
+        ]
+      }
+    }
+  },
   "overrides": {
     "@expo/fingerprint": "^0.15.5"
   }

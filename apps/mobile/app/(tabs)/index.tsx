@@ -69,6 +69,11 @@ function aiRecommendation(overdue: number, habitsDone: number, habitsTotal: numb
   return 'You\'re crushing it today. Review your goals and set tomorrow\'s priorities.';
 }
 
+// Stable empty-array sentinels — avoids new [] reference on every render
+// which would cause the doneHabitIds useEffect to loop infinitely.
+const EMPTY_HABITS: any[] = [];
+const EMPTY_GOALS:  any[] = [];
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const user           = useAuthStore((s) => s.user);
@@ -87,13 +92,13 @@ export default function HomeScreen() {
     staleTime: 0,
   });
 
-  const { data: habitsRaw = [], refetch: refetchHabits } = useQuery({
+  const { data: habitsRaw = EMPTY_HABITS, refetch: refetchHabits } = useQuery({
     queryKey: ['home-habits'],
     queryFn: getHabits,
     staleTime: 0,
   });
 
-  const { data: goals = [], refetch: refetchGoals } = useQuery({
+  const { data: goals = EMPTY_GOALS, refetch: refetchGoals } = useQuery({
     queryKey: ['home-goals'],
     queryFn: getGoals,
     staleTime: 0,

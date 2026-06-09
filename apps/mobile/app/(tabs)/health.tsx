@@ -32,6 +32,9 @@ type SubTab = 'dashboard' | 'workouts' | 'nutrition' | 'sync';
 
 const ACCENT = '#EF4444';
 
+// Stable empty array — prevents new [] reference on every render when query is loading
+const EMPTY_WORKOUTS: any[] = [];
+
 const SUB_TABS = [
   { key: 'dashboard' as SubTab, label: 'Dashboard', Icon: LayoutDashboard },
   { key: 'workouts'  as SubTab, label: 'Workouts',  Icon: Dumbbell },
@@ -415,7 +418,7 @@ export default function HealthScreen() {
 
   const { data: entry, isLoading: loadingEntry, refetch: refetchEntry } =
     useQuery({ queryKey: ['health', date], queryFn: () => getHealthEntry(date), staleTime: 0 });
-  const { data: workouts = [], isLoading: loadingWorkouts, refetch: refetchWorkouts } =
+  const { data: workouts = EMPTY_WORKOUTS, isLoading: loadingWorkouts, refetch: refetchWorkouts } =
     useQuery({ queryKey: ['workouts', date], queryFn: () => getWorkouts(date), staleTime: 0 });
 
   useFocusEffect(useCallback(() => {
