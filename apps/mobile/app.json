@@ -43,7 +43,8 @@
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK"
-      ]
+      ],
+      "newArchEnabled": false
     },
     "plugins": [
       [
@@ -106,7 +107,9 @@
       [
         "expo-task-manager",
         {}
-      ]
+      ],
+      "expo-font",
+      "expo-router"
     ],
     "extra": {
       "eas": {
