@@ -632,8 +632,16 @@ export default function GoalsPage() {
   function OverviewTab() {
     return (
       <div>
+        <style>{`
+          @media (max-width: 639px) {
+            .go-stats-grid { grid-template-columns: repeat(2,1fr) !important; gap: 10px !important; }
+            .go-progress-strip { flex-direction: column !important; gap: 16px !important; }
+            .go-progress-rings { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .go-goal-coach { max-width: 100% !important; }
+          }
+        `}</style>
         {/* 4-stat row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+        <div className="go-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
           {[
             { l: 'Total Goals', v: goals.length,         c: INDIGO, i: '◎' },
             { l: 'Active',      v: activeGoals.length,   c: GREEN,  i: '▶' },
@@ -653,7 +661,7 @@ export default function GoalsPage() {
 
         {/* Progress rings strip + Goal coach */}
         {activeGoals.length > 0 && (
-          <div style={{ ...CARD, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 32, padding: '20px 28px' }}>
+          <div className="go-progress-strip" style={{ ...CARD, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 32, padding: '20px 28px' }}>
             <div>
               <p style={TAG}>Progress at a Glance</p>
               <p style={{ fontSize: 12, color: DIM }}>Avg: <span style={{ color: ACCENT, fontWeight: 700 }}>{avgProgress}%</span></p>

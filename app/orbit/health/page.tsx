@@ -252,7 +252,7 @@ export default function HealthPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* 3-column main grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.9fr 1fr 1fr', gap: 16 }}>
+        <div className="hp-main-grid" style={{ display: 'grid', gridTemplateColumns: '1.9fr 1fr 1fr', gap: 16 }}>
 
           {/* Orbit Ring card — horizontal layout */}
           <div style={{ ...CARD }}>
@@ -280,7 +280,7 @@ export default function HealthPage() {
                 </div>
 
                 {/* Metrics grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', background: BG, borderRadius: 10, border: `1px solid ${BORD}`, overflow: 'hidden' }}>
+                <div className="hp-metrics-scroll"><div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', minWidth: 300, background: BG, borderRadius: 10, border: `1px solid ${BORD}`, overflow: 'hidden' }}>
                   {SEGS.map((s, i) => {
                     const val = orbValues[s.key as keyof typeof orbValues] ?? 0;
                     const disp = s.key === 'water' ? (val as number).toFixed(1) : Math.round(val as number);
@@ -291,7 +291,7 @@ export default function HealthPage() {
                       </div>
                     );
                   })}
-                </div>
+                </div></div>{/* /hp-metrics-scroll inner */}
 
                 {/* Buttons */}
                 <div style={{ display: 'flex', gap: 10 }}>
@@ -363,8 +363,8 @@ export default function HealthPage() {
           </div>
 
           {/* Tasks + Habits — spans all 3 cols */}
-          <div style={{ ...CARD, gridColumn: 'span 3', background: `linear-gradient(135deg,#0e1f2f,${BG2})`, borderColor: '#1a3040' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="hp-span-all" style={{ ...CARD, gridColumn: 'span 3', background: `linear-gradient(135deg,#0e1f2f,${BG2})`, borderColor: '#1a3040' }}>
+            <div className="hp-tasks-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
               {/* Health Tasks */}
               <div>
                 <p style={{ ...TAG, marginBottom: 12 }}>Health Tasks</p>
@@ -431,7 +431,7 @@ export default function HealthPage() {
 
         {/* Weekly Stats */}
         {d && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div className="hp-weekly-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {[
               { label: 'Habits this week',   value: d.weeklyStats.habitsCompletedThisWeek, color: ACCENT },
               { label: 'Workouts this week',  value: d.weeklyStats.workoutsThisWeek,        color: BLUE },
@@ -763,7 +763,16 @@ export default function HealthPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @media (max-width: 767px) {
+          .hp-main-grid  { grid-template-columns: 1fr !important; }
+          .hp-span-all   { grid-column: span 1 !important; }
+          .hp-tasks-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+          .hp-metrics-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .hp-weekly-stats { grid-template-columns: repeat(3,1fr) !important; }
+        }
+      `}</style>
 
       <DashboardTab />
 

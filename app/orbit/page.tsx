@@ -263,6 +263,16 @@ export default function OrbitDashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: t.bg, color: t.text, fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
+      <style>{`
+        @media (max-width: 767px) {
+          .db-hero-grid  { grid-template-columns: 1fr !important; gap: 20px !important; }
+          .db-score-ring { display: none !important; }
+          .db-mod-grid   { grid-template-columns: repeat(3,1fr) !important; gap: 6px !important; }
+          .db-mod-card   { padding: 10px 10px 10px !important; }
+          .db-mod-icon   { width: 38px !important; height: 38px !important; border-radius: 12px !important; }
+          .db-row1, .db-row2, .db-row3 { grid-template-columns: 1fr !important; gap: 14px !important; }
+        }
+      `}</style>
 
       {/* ── Fixed Topbar ─────────────────────────────────────────────────────── */}
       <header style={{
@@ -334,7 +344,7 @@ export default function OrbitDashboard() {
                 : 'radial-gradient(ellipse 55% 80% at 100% 50%, rgba(0,184,122,0.08) 0%,transparent 65%), radial-gradient(ellipse 30% 40% at 0% 0%, rgba(14,165,233,0.05) 0%,transparent 60%)',
             }} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 40, alignItems: 'center', position: 'relative' }}>
+            <div className="db-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 40, alignItems: 'center', position: 'relative' }}>
               {/* Left: text content */}
               <div>
                 {/* Tag */}
@@ -399,7 +409,7 @@ export default function OrbitDashboard() {
               </div>
 
               {/* Right: Orbit Score Ring */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+              <div className="db-score-ring" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
                 <div style={{ position: 'relative' }}>
                   <svg width="180" height="180" viewBox="0 0 180 180">
                     <defs>
@@ -451,14 +461,14 @@ export default function OrbitDashboard() {
         borderBottom: `1px solid ${t.bord}`,
       }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'clamp(10px,2vw,14px) clamp(16px,4vw,48px)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12 }}>
+          <div className="db-mod-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12 }}>
             {MODS.map(m => {
               const isActive = activeKey === m.key;
               const pd = modPillData(m.key);
               const d = isDark;
               return (
                 <Link key={m.key} href={m.href} onClick={() => setActiveKey(m.key)} style={{ textDecoration: 'none' }}>
-                  <div style={{
+                  <div className="db-mod-card" style={{
                     display: 'flex', flexDirection: 'column', padding: '16px 18px 15px',
                     borderRadius: 18, cursor: 'pointer', position: 'relative', overflow: 'hidden',
                     transition: 'all 0.2s',
@@ -511,7 +521,7 @@ export default function OrbitDashboard() {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'clamp(16px,2vw,24px) clamp(16px,4vw,48px) 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* ── Row 1: Focus + Finance ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
+        <div className="db-row1" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
 
           {/* Today's Focus */}
           <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
@@ -644,7 +654,7 @@ export default function OrbitDashboard() {
         </div>
 
         {/* ── Row 2: Health + Goals + Habits ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 20 }}>
+        <div className="db-row2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 20 }}>
 
           {/* Health */}
           <div style={CARD}>
@@ -777,7 +787,7 @@ export default function OrbitDashboard() {
         </div>
 
         {/* ── Row 3: Insights + Log Health ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="db-row3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
           {/* Orbit Insights */}
           <div style={CARD}>

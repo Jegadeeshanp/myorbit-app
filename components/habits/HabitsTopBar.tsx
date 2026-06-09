@@ -26,7 +26,7 @@ export default function HabitsTopBar({ action }: { action?: React.ReactNode }) {
     <div style={{ background: SB, borderBottom: `1px solid ${BORD}`, padding: '0 28px', display: 'flex', alignItems: 'center', height: 64, flexShrink: 0, position: 'sticky', top: 0, zIndex: 10 }}>
       <div>
         <div style={{ fontSize: 17, fontWeight: 700, color: TXT, fontFamily: 'Georgia,serif', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 2 }}>{meta.title}</div>
-        {meta.sub && <div style={{ fontSize: 12, color: DIM }}>{meta.sub}</div>}
+        {meta.sub && <div className="hidden sm:block" style={{ fontSize: 12, color: DIM }}>{meta.sub}</div>}
       </div>
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
         {action}
