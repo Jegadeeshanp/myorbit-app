@@ -160,7 +160,7 @@ export default function InsightsPage() {
     return (
       <div className="space-y-5">
         <div className="animate-pulse" style={{ height: 220, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
+        <div className="ins-scores-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
           {[1,2,3,4,5].map(i => <div key={i} className="animate-pulse" style={{ height: 90, borderRadius: 13, background: 'rgba(255,255,255,0.04)' }} />)}
         </div>
       </div>
@@ -189,6 +189,16 @@ export default function InsightsPage() {
 
   return (
     <div className="space-y-5">
+      <style>{`
+        @media (max-width: 639px) {
+          .ins-scores-grid   { grid-template-columns: repeat(3,1fr) !important; }
+          .ins-insights-grid { grid-template-columns: 1fr !important; }
+          .ins-improve-grid  { grid-template-columns: repeat(2,1fr) !important; }
+        }
+        @media (max-width: 359px) {
+          .ins-scores-grid { grid-template-columns: repeat(2,1fr) !important; }
+        }
+      `}</style>
       {/* Refresh */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button onClick={() => fetchScores(true)} disabled={refreshing}
@@ -203,7 +213,7 @@ export default function InsightsPage() {
       </div>
 
       {/* Module Scores Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 11 }}>
+      <div className="ins-scores-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 11 }}>
         {MODULES.map(({ key, label, icon, color }) => {
           const score = scores[key as keyof typeof scores];
           return (
@@ -226,7 +236,7 @@ export default function InsightsPage() {
       {insights.length > 0 && (
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: TXT, marginBottom: 11 }}>Insights</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+          <div className="ins-insights-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
             {insights.map((ins, i) => {
               const isWarn = ins.severity === 'warning' || ins.severity === 'critical';
               const c = isWarn ? AMBER : GREEN;
@@ -253,7 +263,7 @@ export default function InsightsPage() {
       {/* Improve Your Scores */}
       <div style={{ ...CARD, padding: '18px 20px' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: TXT, marginBottom: 11 }}>Improve Your Scores</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 9 }}>
+        <div className="ins-improve-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 9 }}>
           {IMPROVE.map(({ label, href, bg, color, border }) => (
             <Link key={href} href={href}
               style={{ padding: 11, borderRadius: 10, fontSize: 11, fontWeight: 600, textAlign: 'center', background: bg, color, border: `1px solid ${border}`, textDecoration: 'none', transition: 'all 0.18s' }}>

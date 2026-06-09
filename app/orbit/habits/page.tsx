@@ -1035,6 +1035,12 @@ export default function HabitsPage() {
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @media (max-width: 479px) {
+          .hb-stats-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+          .hb-cards-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+        }
+      `}</style>
       {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
 
       {insightMessage && !loading && (
@@ -1050,7 +1056,7 @@ export default function HabitsPage() {
             <Plus size={13} /> New Habit
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        <div className="hb-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
           {[
             { label: "Today's Done", value: `${totalLogged}/${habits.length}`, sub: 'habits completed' },
             { label: 'Total Streak XP', value: totalStreaks, sub: 'combined streak days' },
@@ -1096,7 +1102,7 @@ export default function HabitsPage() {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
+        <div className="hb-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
           {habits.map(habit => (
             <HabitCard key={habit.id} habit={habit} dates={dates} onLog={handleLog} onDelete={handleDelete} onEdit={setEditingHabit} />
           ))}
