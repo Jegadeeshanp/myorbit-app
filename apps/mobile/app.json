@@ -44,8 +44,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK"
       ],
-      "newArchEnabled": false,
-      "minSdkVersion": 26
+      "newArchEnabled": false
     },
     "plugins": [
       [
@@ -110,7 +109,15 @@
         {}
       ],
       "expo-font",
-      "expo-router"
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
