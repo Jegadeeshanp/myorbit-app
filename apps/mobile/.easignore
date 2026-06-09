@@ -1,3 +1,8 @@
 node_modules
 .expo
 dist
+# Let EAS run expo prebuild (CNG) so native folders are always
+# generated fresh from the current package versions + config plugins.
+# Without this, EAS uses the stale local android/ folder.
+/android
+/ios
