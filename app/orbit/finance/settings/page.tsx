@@ -8,8 +8,13 @@ import { useFinance } from '@/lib/financeStore';
 import dynamic from 'next/dynamic';
 import {
   getAllExpenseCategories,
+  getAllIncomeCategories,
   getExcludedExpenseCategories,
   setExcludedExpenseCategories,
+  getExcludedIncomeCategories,
+  setExcludedIncomeCategories,
+  getExcludedTransferCategories,
+  setExcludedTransferCategories,
   addCustomExpenseCategory,
   addCustomIncomeCategory,
   removeCustomExpenseCategory,
@@ -70,31 +75,70 @@ export default function FinanceSettingsPage() {
   useEffect(() => { localStorage.setItem('finance_numFormat', numFormat); }, [numFormat]);
   useEffect(() => { localStorage.setItem('finance_defaultView', defaultView); }, [defaultView]);
 
-  // Expense category exclusions
-  // Combine stored categories + categories used in actual transactions
+  // Category exclusion tracking tab
+  const [trackingTab, setTrackingTab] = useState<'expense' | 'income' | 'transfer'>('expense');
+
+  // Build unique category lists per type from stored defaults + actual transactions
+  const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
+
   const allExpenseCats = useMemo(() => {
     const stored = getAllExpenseCategories();
-    const SYSTEM = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
     const fromTxns = state.transactions
-      .filter(t => t.type === 'expense' && !SYSTEM.includes(t.category))
+      .filter(t => t.type === 'expense' && !SYSTEM_CATS.includes(t.category))
       .map(t => t.category);
     const merged = [...stored, ...fromTxns];
     const seen = new Set<string>();
     return merged.filter(c => seen.has(c) ? false : (seen.add(c), true));
   }, [state.transactions]);
 
+  const allIncomeCats = useMemo(() => {
+    const stored = getAllIncomeCategories();
+    const fromTxns = state.transactions
+      .filter(t => t.type === 'income')
+      .map(t => t.category);
+    const merged = [...stored, ...fromTxns];
+    const seen = new Set<string>();
+    return merged.filter(c => seen.has(c) ? false : (seen.add(c), true));
+  }, [state.transactions]);
+
+  const allTransferCats = useMemo(() => {
+    const fromTxns = state.transactions
+      .filter(t => t.type === 'transfer' && !SYSTEM_CATS.includes(t.category))
+      .map(t => t.category);
+    const seen = new Set<string>();
+    return fromTxns.filter(c => seen.has(c) ? false : (seen.add(c), true));
+  }, [state.transactions]);
+
   const [excludedExpenseCats, setExcludedExpenseCatsState] = useState<string[]>([]);
+  const [excludedIncomeCats, setExcludedIncomeCatsState] = useState<string[]>([]);
+  const [excludedTransferCats, setExcludedTransferCatsState] = useState<string[]>([]);
 
   useEffect(() => {
     setExcludedExpenseCatsState(getExcludedExpenseCategories());
+    setExcludedIncomeCatsState(getExcludedIncomeCategories());
+    setExcludedTransferCatsState(getExcludedTransferCategories());
   }, []);
 
   function toggleExcludedCat(cat: string) {
-    setExcludedExpenseCatsState(prev => {
-      const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
-      setExcludedExpenseCategories(next);
-      return next;
-    });
+    if (trackingTab === 'expense') {
+      setExcludedExpenseCatsState(prev => {
+        const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+        setExcludedExpenseCategories(next);
+        return next;
+      });
+    } else if (trackingTab === 'income') {
+      setExcludedIncomeCatsState(prev => {
+        const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+        setExcludedIncomeCategories(next);
+        return next;
+      });
+    } else {
+      setExcludedTransferCatsState(prev => {
+        const next = prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+        setExcludedTransferCategories(next);
+        return next;
+      });
+    }
   }
 
   // Categories state
@@ -281,49 +325,85 @@ export default function FinanceSettingsPage() {
             </div>
           </div>
 
-          {/* Expense Category Exclusions */}
+          {/* Category Tracking — Expense / Income / Transfer */}
           <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-900">Expense Tracking</h3>
+              <h3 className="text-sm font-semibold text-gray-900">Category Tracking</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Check a category to exempt it from expense totals and vitals (e.g. Investment, SIP)
+                Check a category to exempt it from totals and vitals (e.g. Investment, SIP)
               </p>
             </div>
-            <div className="space-y-1.5">
-              {allExpenseCats.map(cat => {
-                const exempted = excludedExpenseCats.includes(cat);
-                return (
-                  <label
-                    key={cat}
-                    onClick={() => toggleExcludedCat(cat)}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 cursor-pointer transition ${
-                      exempted
-                        ? 'border-amber-200 bg-amber-50/60 dark:border-amber-800/40 dark:bg-amber-900/20'
-                        : 'border-gray-100 bg-white hover:border-gray-200 dark:border-gray-700 dark:bg-gray-800/40'
-                    }`}
-                  >
-                    <div className={`h-4 w-4 flex-none rounded border-2 flex items-center justify-center transition ${
-                      exempted ? 'border-amber-500 bg-amber-500' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-700'
-                    }`}>
-                      {exempted && (
-                        <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 12 12">
-                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </div>
-                    <span className={`flex-1 text-sm font-medium ${exempted ? 'text-amber-700 dark:text-amber-400' : 'text-gray-800 dark:text-gray-200'}`}>{cat}</span>
-                    {exempted && (
-                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">exempt</span>
-                    )}
-                  </label>
-                );
-              })}
+
+            {/* 3-tab inner selector */}
+            <div className="flex rounded-xl border border-gray-100 bg-gray-50 p-0.5 gap-0.5">
+              {(['expense', 'income', 'transfer'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTrackingTab(t)}
+                  className={`flex-1 rounded-lg py-1.5 text-xs font-semibold capitalize transition ${
+                    trackingTab === t
+                      ? t === 'expense'
+                        ? 'bg-rose-500 text-white shadow-sm'
+                        : t === 'income'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-blue-500 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
-            {excludedExpenseCats.length > 0 && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                {excludedExpenseCats.length} {excludedExpenseCats.length === 1 ? 'category' : 'categories'} exempt from expense calculations
-              </p>
-            )}
+
+            {/* Category list for the active tab */}
+            {(() => {
+              const cats = trackingTab === 'expense' ? allExpenseCats : trackingTab === 'income' ? allIncomeCats : allTransferCats;
+              const excluded = trackingTab === 'expense' ? excludedExpenseCats : trackingTab === 'income' ? excludedIncomeCats : excludedTransferCats;
+              if (cats.length === 0) {
+                return <p className="text-xs text-gray-400 text-center py-3">No {trackingTab} categories found</p>;
+              }
+              return (
+                <div className="space-y-1.5">
+                  {cats.map(cat => {
+                    const exempted = excluded.includes(cat);
+                    return (
+                      <label
+                        key={cat}
+                        onClick={() => toggleExcludedCat(cat)}
+                        className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 cursor-pointer transition ${
+                          exempted
+                            ? 'border-amber-200 bg-amber-50/60 dark:border-amber-800/40 dark:bg-amber-900/20'
+                            : 'border-gray-100 bg-white hover:border-gray-200 dark:border-gray-700 dark:bg-gray-800/40'
+                        }`}
+                      >
+                        <div className={`h-4 w-4 flex-none rounded border-2 flex items-center justify-center transition ${
+                          exempted ? 'border-amber-500 bg-amber-500' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-700'
+                        }`}>
+                          {exempted && (
+                            <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 12 12">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className={`flex-1 text-sm font-medium ${exempted ? 'text-amber-700 dark:text-amber-400' : 'text-gray-800 dark:text-gray-200'}`}>{cat}</span>
+                        {exempted && (
+                          <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">exempt</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const count = trackingTab === 'expense' ? excludedExpenseCats.length : trackingTab === 'income' ? excludedIncomeCats.length : excludedTransferCats.length;
+              return count > 0 ? (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  {count} {count === 1 ? 'category' : 'categories'} exempt from {trackingTab} calculations
+                </p>
+              ) : null;
+            })()}
           </div>
         </div>
       )}

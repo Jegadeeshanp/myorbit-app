@@ -159,3 +159,33 @@ export function setExcludedExpenseCategories(cats: string[]): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(EXCLUDED_EXPENSE_KEY, JSON.stringify(cats));
 }
+
+// ── Excluded Income Categories ──────────────────────────────────────────────
+
+const EXCLUDED_INCOME_KEY = 'myorbit:excluded_income_categories';
+
+export function getExcludedIncomeCategories(): string[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(EXCLUDED_INCOME_KEY) ?? '[]'); }
+  catch { return []; }
+}
+
+export function setExcludedIncomeCategories(cats: string[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(EXCLUDED_INCOME_KEY, JSON.stringify(cats));
+}
+
+// ── Excluded Transfer Categories ────────────────────────────────────────────
+
+const EXCLUDED_TRANSFER_KEY = 'myorbit:excluded_transfer_categories';
+
+export function getExcludedTransferCategories(): string[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(EXCLUDED_TRANSFER_KEY) ?? '[]'); }
+  catch { return []; }
+}
+
+export function setExcludedTransferCategories(cats: string[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(EXCLUDED_TRANSFER_KEY, JSON.stringify(cats));
+}
