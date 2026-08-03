@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useFinance } from '@/lib/financeStore';
 import { Transaction } from '@/lib/financeData';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { getExcludedExpenseCategories, getExcludedIncomeCategories } from '@/lib/customCategoryStore';
 
 function getScore(transactions: Transaction[], totalAssets: number, totalLiab: number): { score: number; factors: { label: string; score: number; max: number }[]; summary: string; hasData: boolean } {
   const hasData = transactions.length > 0 || totalAssets > 0 || totalLiab > 0;
@@ -27,8 +28,10 @@ function getScore(transactions: Transaction[], totalAssets: number, totalLiab: n
     const d = new Date(t.date);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
-  const income  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-  const expense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
+  const excludedIncome  = getExcludedIncomeCategories();
+  const excludedExpense = getExcludedExpenseCategories();
+  const income  = thisMonth.filter(t => t.type === 'income'  && !excludedIncome.includes(t.category)).reduce((s,t) => s + t.amount, 0);
+  const expense = thisMonth.filter(t => t.type === 'expense' && !excludedExpense.includes(t.category)).reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
 
   const savingsScore     = Math.max(0, Math.min(25, Math.round(savingsRate * 0.8)));

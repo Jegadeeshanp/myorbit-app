@@ -18,6 +18,7 @@ import AddExpenseModal from '@/components/finance/AddExpenseModal';
 import AddIncomeModal  from '@/components/finance/AddIncomeModal';
 import ConfirmDialog   from '@/components/ConfirmDialog';
 import { Transaction } from '@/lib/financeData';
+import { getExcludedExpenseCategories, getExcludedIncomeCategories } from '@/lib/customCategoryStore';
 
 // ── Category icon + color maps (expense categories) ───────────────────────
 const EXPENSE_ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -327,8 +328,10 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
   // Summary uses past transactions only (excludes upcoming)
   const SYSTEM_CATEGORIES = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
   const summary = useMemo(() => {
-    const income  = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATEGORIES.includes(t.category)).reduce((s, t) => s + t.amount, 0);
-    const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATEGORIES.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const excludedIncome  = getExcludedIncomeCategories();
+    const excludedExpense = getExcludedExpenseCategories();
+    const income  = filtered.filter(t => t.type === 'income'  && !SYSTEM_CATEGORIES.includes(t.category) && !excludedIncome.includes(t.category)).reduce((s, t) => s + t.amount, 0);
+    const expense = filtered.filter(t => t.type === 'expense' && !SYSTEM_CATEGORIES.includes(t.category) && !excludedExpense.includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);
     return { income, expense, count: filtered.length };
   }, [filtered]);
 

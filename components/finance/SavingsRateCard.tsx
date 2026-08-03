@@ -2,6 +2,7 @@
 
 import { Transaction } from '@/lib/financeData';
 import { useMemo } from 'react';
+import { getExcludedExpenseCategories, getExcludedIncomeCategories } from '@/lib/customCategoryStore';
 
 export default function SavingsRateCard({ transactions }: { transactions: Transaction[] }) {
   const { income, expense, rate } = useMemo(() => {
@@ -11,8 +12,10 @@ export default function SavingsRateCard({ transactions }: { transactions: Transa
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
     const SYSTEM = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
-    const income  = thisMonth.filter(t => t.type === 'income'  && !SYSTEM.includes(t.category)).reduce((s,t) => s + t.amount, 0);
-    const expense = thisMonth.filter(t => t.type === 'expense' && !SYSTEM.includes(t.category)).reduce((s,t) => s + Math.abs(t.amount), 0);
+    const excludedIncome  = getExcludedIncomeCategories();
+    const excludedExpense = getExcludedExpenseCategories();
+    const income  = thisMonth.filter(t => t.type === 'income'  && !SYSTEM.includes(t.category) && !excludedIncome.includes(t.category)).reduce((s,t) => s + t.amount, 0);
+    const expense = thisMonth.filter(t => t.type === 'expense' && !SYSTEM.includes(t.category) && !excludedExpense.includes(t.category)).reduce((s,t) => s + Math.abs(t.amount), 0);
     const rate    = income > 0 ? Math.max(0, Math.round(((income - expense) / income) * 100)) : 0;
     return { income, expense, rate };
   }, [transactions]);

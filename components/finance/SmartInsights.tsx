@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Lightbulb, TrendingUp, TrendingDown, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { getExcludedExpenseCategories, getExcludedIncomeCategories } from '@/lib/customCategoryStore';
 import { Transaction } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
 
@@ -35,8 +36,10 @@ function getInsights(transactions: Transaction[], totalAssets: number, totalLiab
     }
   });
 
-  const thisIncome  = thisMonth.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-  const thisExpense = thisMonth.filter(t => t.type === 'expense').reduce((s,t) => s + Math.abs(t.amount), 0);
+  const excludedIncome  = getExcludedIncomeCategories();
+  const excludedExpense = getExcludedExpenseCategories();
+  const thisIncome  = thisMonth.filter(t => t.type === 'income'  && !excludedIncome.includes(t.category)).reduce((s,t) => s + t.amount, 0);
+  const thisExpense = thisMonth.filter(t => t.type === 'expense' && !excludedExpense.includes(t.category)).reduce((s,t) => s + Math.abs(t.amount), 0);
   const savingsRate = thisIncome > 0 ? Math.round(((thisIncome - thisExpense) / thisIncome) * 100) : 0;
 
   if (savingsRate > 30)  insights.push({ icon: CheckCircle2, text: `You are saving ${savingsRate}% of your income this month. Excellent!`, type: 'positive' });

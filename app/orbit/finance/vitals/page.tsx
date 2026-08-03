@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
-import { getExcludedExpenseCategories } from '@/lib/customCategoryStore';
+import { getExcludedExpenseCategories, getExcludedIncomeCategories } from '@/lib/customCategoryStore';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function fmt(v: number) {
@@ -205,7 +205,8 @@ export default function VitalsPage() {
   const SYSTEM_CATS = ['Opening Balance', 'Balance Adjustment', 'Adjustment', 'Credit Card Payment', 'Transfer'];
 
   const { monthlyIncome, monthlyExpense } = useMemo(() => {
-    const excluded = getExcludedExpenseCategories();
+    const excludedExpense = getExcludedExpenseCategories();
+    const excludedIncome  = getExcludedIncomeCategories();
     const curYear  = today.getFullYear();
     const curMonth = today.getMonth();
 
@@ -219,9 +220,9 @@ export default function VitalsPage() {
       const d = new Date(t.date);
       if (d.getFullYear() !== curYear || d.getMonth() !== curMonth) continue;
 
-      if (t.type === 'income') {
+      if (t.type === 'income' && !excludedIncome.includes(t.category)) {
         income += t.amount;
-      } else if (t.type === 'expense' && !excluded.includes(t.category)) {
+      } else if (t.type === 'expense' && !excludedExpense.includes(t.category)) {
         expense += Math.abs(t.amount);
       }
     }

@@ -6,6 +6,7 @@ import { useFinance } from '@/lib/financeStore';
 import { formatINR } from '@/lib/currency';
 import Link from 'next/link';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
+import { getExcludedExpenseCategories, getExcludedIncomeCategories } from '@/lib/customCategoryStore';
 
 import NetWorthCard        from '@/components/finance/NetWorthCard';
 import CashFlowChart       from '@/components/finance/CashFlowChart';
@@ -49,12 +50,14 @@ export default function FinanceOverviewPage() {
   const monthData = useMemo(() => {
     const months = getLastMonths(6);
     const map = new Map(months.map(m => [`${m.year}-${m.month}`, { month: m.label, income: 0, expense: 0 }]));
+    const excludedIncome  = getExcludedIncomeCategories();
+    const excludedExpense = getExcludedExpenseCategories();
     transactions.forEach(tx => {
       const d = new Date(tx.date);
       const row = map.get(`${d.getFullYear()}-${d.getMonth()}`);
       if (!row) return;
-      if (tx.type === 'income')  row.income  += tx.amount;
-      if (tx.type === 'expense') row.expense += Math.abs(tx.amount);
+      if (tx.type === 'income'  && !excludedIncome.includes(tx.category))  row.income  += tx.amount;
+      if (tx.type === 'expense' && !excludedExpense.includes(tx.category)) row.expense += Math.abs(tx.amount);
     });
     return Array.from(map.values());
   }, [transactions]);
