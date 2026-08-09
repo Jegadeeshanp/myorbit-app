@@ -320,8 +320,11 @@ export default function OrbitDashboard() {
           .db-hero-grid  { grid-template-columns: 1fr !important; gap: 20px !important; }
           .db-score-ring { display: none !important; }
           .db-mod-grid   { grid-template-columns: repeat(3,1fr) !important; gap: 6px !important; }
-          .db-mod-card   { padding: 10px 10px 10px !important; }
-          .db-mod-icon   { width: 38px !important; height: 38px !important; border-radius: 12px !important; }
+          .db-mod-card   { padding: 10px 8px 10px !important; }
+          .db-mod-icon   { width: 36px !important; height: 36px !important; border-radius: 10px !important; margin-bottom: 6px !important; }
+          .db-mod-value  { font-size: 15px !important; }
+          .db-mod-sub    { font-size: 9px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+          .db-mod-label  { font-size: 11px !important; margin-top: 6px !important; }
           .db-row1, .db-row2, .db-row3 { grid-template-columns: 1fr !important; gap: 14px !important; }
           .db-topbar-search { display: none !important; }
         }
@@ -543,7 +546,7 @@ export default function OrbitDashboard() {
                     )}
                     {/* Icon + name */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: 12 }}>
-                      <div style={{
+                      <div className="db-mod-icon" style={{
                         width: 52, height: 52, borderRadius: 18, marginBottom: 2,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: d ? m.iconBg.d : m.iconBg.l,
@@ -552,16 +555,16 @@ export default function OrbitDashboard() {
                       }}>
                         <m.Icon size={22} color={d ? m.iconColor.d : m.iconColor.l} strokeWidth={1.75} />
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: isActive ? (d ? m.accent.d : m.accent.l) : t.text, marginTop: 10 }}>
+                      <div className="db-mod-label" style={{ fontSize: 12, fontWeight: 700, color: isActive ? (d ? m.accent.d : m.accent.l) : t.text, marginTop: 10 }}>
                         {m.label}
                       </div>
                     </div>
                     {/* Value */}
-                    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Georgia, serif', color: pd.valueColor, marginBottom: 3 }}>
+                    <div className="db-mod-value" style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Georgia, serif', color: pd.valueColor, marginBottom: 3 }}>
                       {pd.value}
                     </div>
                     {/* Sub */}
-                    <div style={{ fontSize: 10, color: t.dim }}>{pd.sub}</div>
+                    <div className="db-mod-sub" style={{ fontSize: 10, color: t.dim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pd.sub}</div>
                   </div>
                 </Link>
               );
