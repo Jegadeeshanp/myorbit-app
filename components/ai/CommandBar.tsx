@@ -462,7 +462,7 @@ export default function CommandBar() {
   const scrollRef  = useRef<HTMLDivElement>(null);
 
   const { pos, dragging, hasMoved, pointerHandlers } = useDraggableFab(
-    'ai-commandbar-position', { right: 24, bottom: 24 },
+    'ai-commandbar-position', { right: 24, bottom: 84 },
   );
 
   // Cycle placeholder when idle

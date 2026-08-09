@@ -61,7 +61,7 @@ function smartDateLabel(dueDate?: string, dueTime?: string): { label: string; is
   const diffDays = Math.round((date.getTime() - today.getTime()) / 86400000);
   if (diffDays === 0) return dueTime ? { label: dueTime, isTime: true } : { label: 'Today', isTime: false };
   if (diffDays === 1) return { label: 'Tomorrow', isTime: false };
-  if (diffDays === -1) return { label: 'Yesterday', isTime: false };
+  if (diffDays < 0) return { label: 'Overdue', isTime: false };
   if (diffDays > 1 && diffDays <= 6) return { label: date.toLocaleDateString('en-IN', { weekday: 'short' }), isTime: false };
   const thisYear = today.getFullYear();
   if (date.getFullYear() === thisYear) return { label: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), isTime: false };

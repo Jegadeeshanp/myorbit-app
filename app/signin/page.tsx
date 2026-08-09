@@ -118,7 +118,7 @@ export default function SignInPage() {
             <input
               id="email" type="email" value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="you@gmail.com" required
+              placeholder="you@gmail.com" required autoComplete="email"
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
             />
           </div>
@@ -136,7 +136,7 @@ export default function SignInPage() {
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required
+                placeholder="••••••••" required autoComplete="current-password"
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
               />
               <button

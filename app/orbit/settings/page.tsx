@@ -49,7 +49,8 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab bar */}
-        <div className="mb-8 flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1.5 shadow-sm">
+        <div className="relative mb-8">
+          <div className="flex gap-1 overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1.5 shadow-sm scrollbar-none" style={{ scrollbarWidth: 'none' }}>
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -68,6 +69,9 @@ export default function SettingsPage() {
               </button>
             );
           })}
+          </div>
+          {/* Right-edge fade to hint scrollability on mobile */}
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-12 rounded-r-2xl bg-gradient-to-l from-white dark:from-gray-800 to-transparent md:hidden" />
         </div>
 
         {/* Tab content */}
