@@ -97,8 +97,8 @@ function parseCSVText(csv: string): ParsedItem[] {
   };
 
   // Zerodha: Stock Name, Qty, Avg. cost, LTP, Closing Value, Invested Value, Unrealised P&L, Net chg.
-  const nameCol   = col('stock name', 'instrument name', 'name', 'scrip', 'company', 'instrument');
-  const symbolCol = col('symbol', 'ticker', 'scrip code', 'bse code', 'nse code');
+  const nameCol   = col('stock name', 'instrument name', 'name', 'scrip', 'company', 'instrument', 'stock symbol');
+  const symbolCol = col('ticker', 'scrip code', 'bse code', 'nse code', 'symbol');
   const qtyCol    = col('qty', 'quantity', 'units', 'shares', 'no of');
   const avgCol    = col('avg cost', 'avg price', 'average price', 'average cost', 'buy price', 'cost price');
   const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp', 'close price');
