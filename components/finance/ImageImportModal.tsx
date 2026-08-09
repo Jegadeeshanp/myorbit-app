@@ -630,43 +630,49 @@ export default function ImageImportModal({ onClose }: Props) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-white/[0.04]">
-                    {items.map(item => {
-                      const pnl = item.returns ?? (item.currentValue - item.investedValue);
-                      const pct = item.returnsPercent ?? (item.investedValue > 0 ? ((item.currentValue - item.investedValue) / item.investedValue) * 100 : 0);
-                      const positive = pnl >= 0;
-                      return (
-                        <tr key={item.id} className={`transition ${item.selected ? '' : 'opacity-40'}`}>
-                          <td className="px-3 py-2.5 text-center">
-                            <input type="checkbox" checked={item.selected} onChange={e => updateItem(item.id, 'selected', e.target.checked)} className="h-4 w-4 rounded accent-emerald-600" />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <input
-                              value={item.name}
-                              onChange={e => updateItem(item.id, 'name', e.target.value)}
-                              className="w-32 bg-transparent text-gray-800 dark:text-[#e4eaf4] font-medium focus:outline-none focus:bg-gray-50 dark:focus:bg-white/[0.05] rounded px-1 -mx-1"
-                            />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <input
-                              value={item.symbol ?? ''}
-                              onChange={e => updateItem(item.id, 'symbol', e.target.value.toUpperCase() || undefined)}
-                              placeholder="e.g. LT.NS"
-                              className="w-24 bg-transparent text-gray-600 dark:text-[#8fa3b8] text-xs font-mono focus:outline-none focus:bg-gray-50 dark:focus:bg-white/[0.05] rounded px-1 -mx-1 placeholder:text-gray-300 dark:placeholder:text-[#3d5166]/60"
-                            />
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-gray-600 dark:text-[#8fa3b8]">{fmtNum(item.units)}</td>
-                          <td className="px-3 py-2.5 text-right text-gray-600 dark:text-[#8fa3b8]">{fmt(item.avgPrice)}</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-gray-800 dark:text-[#e4eaf4]">{fmt(item.currentValue)}</td>
-                          <td className="px-3 py-2.5 text-right text-gray-500 dark:text-[#8fa3b8]">{fmt(item.investedValue)}</td>
-                          <td className="px-3 py-2.5 text-right">
-                            <span className={`flex flex-col items-end ${positive ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>
-                              <span className="font-semibold">{positive ? '+' : ''}{fmt(pnl)}</span>
-                              <span className="text-[10px]">{positive ? '+' : ''}{pct.toFixed(1)}%</span>
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {(() => {
+                      const multiplier = currency === 'USD' && usdInr ? usdInr : 1;
+                      return items.map(item => {
+                        const cv  = item.currentValue  * multiplier;
+                        const iv  = item.investedValue * multiplier;
+                        const ap  = item.avgPrice != null ? item.avgPrice * multiplier : null;
+                        const pnl = cv - iv;
+                        const pct = iv > 0 ? ((cv - iv) / iv) * 100 : 0;
+                        const positive = pnl >= 0;
+                        return (
+                          <tr key={item.id} className={`transition ${item.selected ? '' : 'opacity-40'}`}>
+                            <td className="px-3 py-2.5 text-center">
+                              <input type="checkbox" checked={item.selected} onChange={e => updateItem(item.id, 'selected', e.target.checked)} className="h-4 w-4 rounded accent-emerald-600" />
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <input
+                                value={item.name}
+                                onChange={e => updateItem(item.id, 'name', e.target.value)}
+                                className="w-32 bg-transparent text-gray-800 dark:text-[#e4eaf4] font-medium focus:outline-none focus:bg-gray-50 dark:focus:bg-white/[0.05] rounded px-1 -mx-1"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <input
+                                value={item.symbol ?? ''}
+                                onChange={e => updateItem(item.id, 'symbol', e.target.value.toUpperCase() || undefined)}
+                                placeholder="e.g. LT.NS"
+                                className="w-24 bg-transparent text-gray-600 dark:text-[#8fa3b8] text-xs font-mono focus:outline-none focus:bg-gray-50 dark:focus:bg-white/[0.05] rounded px-1 -mx-1 placeholder:text-gray-300 dark:placeholder:text-[#3d5166]/60"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-gray-600 dark:text-[#8fa3b8]">{fmtNum(item.units)}</td>
+                            <td className="px-3 py-2.5 text-right text-gray-600 dark:text-[#8fa3b8]">{fmt(ap)}</td>
+                            <td className="px-3 py-2.5 text-right font-semibold text-gray-800 dark:text-[#e4eaf4]">{fmt(cv)}</td>
+                            <td className="px-3 py-2.5 text-right text-gray-500 dark:text-[#8fa3b8]">{fmt(iv)}</td>
+                            <td className="px-3 py-2.5 text-right">
+                              <span className={`flex flex-col items-end ${positive ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>
+                                <span className="font-semibold">{positive ? '+' : ''}{fmt(pnl)}</span>
+                                <span className="text-[10px]">{positive ? '+' : ''}{pct.toFixed(1)}%</span>
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>
