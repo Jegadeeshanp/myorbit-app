@@ -257,10 +257,10 @@ export default function OrbitDashboard() {
   function modPillData(key: string): { value: string; sub: string; valueColor: string } {
     switch (key) {
       case 'finance':
-        if (totalBalance === null) return { value: '—', sub: 'Net position', valueColor: t.text2 };
+        if (totalBalance === null) return { value: '—', sub: 'Total balance', valueColor: t.text2 };
         return {
           value: `${totalBalance < 0 ? '–' : ''}₹${fmtBal(totalBalance)}`,
-          sub: 'Net position',
+          sub: monthlyNet !== null ? `${monthlyNet >= 0 ? '↑' : '↓'} ₹${fmtBal(Math.abs(monthlyNet))} this month` : 'Total balance',
           valueColor: totalBalance < 0 ? t.red : t.green,
         };
       case 'health':
