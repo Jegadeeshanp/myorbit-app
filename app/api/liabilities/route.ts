@@ -11,6 +11,7 @@ async function decryptLiability(row: any) {
     id: row.id, name: row.name, lender: row.lender ?? undefined,
     nextDueDate: row.nextDueDate ?? undefined, emisLeft: row.emisLeft,
     repaymentAccountId: row.repaymentAccountId ?? undefined,
+    interestRate: row.interestRate ?? undefined,
     borrowed: await decryptNumber(row.borrowed),
     outstanding: await decryptNumber(row.outstanding),
     monthlyEmi: await decryptNumber(row.monthlyEmi),
@@ -41,11 +42,12 @@ export async function POST(req: NextRequest) {
     const parsed = liabilitySchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { name, lender, borrowed, outstanding, monthlyEmi, emisLeft, totalRepaid, nextDueDate, repaymentAccountId } = parsed.data;
+    const { name, lender, borrowed, outstanding, monthlyEmi, emisLeft, totalRepaid, interestRate, nextDueDate, repaymentAccountId } = parsed.data;
     // Create without repaymentAccountId (old Prisma client doesn't know this field yet)
     const row = await prisma.liability.create({
       data: {
         userId, name, lender, nextDueDate, emisLeft,
+        interestRate: interestRate ?? null,
         borrowed: await encryptNumber(borrowed),
         outstanding: await encryptNumber(outstanding),
         monthlyEmi: await encryptNumber(monthlyEmi),

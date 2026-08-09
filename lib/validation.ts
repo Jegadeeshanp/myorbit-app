@@ -84,6 +84,7 @@ export const liabilitySchema = z.object({
   monthlyEmi: z.number().nonnegative(),
   emisLeft: z.number().int().nonnegative(),
   totalRepaid: z.number().nonnegative(),
+  interestRate: z.number().min(0).max(100).optional(),
   nextDueDate: z.string().optional(),
   repaymentAccountId: z.string().optional(),
 });

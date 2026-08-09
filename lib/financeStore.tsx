@@ -324,6 +324,14 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       const liability = state.liabilities.find(l => l.id === id);
       if (!liability) return;
 
+      // Reducing-balance: split payment into interest + principal
+      let principalPaid = amount;
+      if (liability.interestRate && liability.interestRate > 0) {
+        const monthlyRate = liability.interestRate / 100 / 12;
+        const interestDue = liability.outstanding * monthlyRate;
+        principalPaid = Math.max(0, amount - interestDue);
+      }
+
       // Advance next due date by 1 month
       let nextDueDate = liability.nextDueDate;
       if (nextDueDate) {
@@ -335,7 +343,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       const updated = await api<Liability>(`/api/liabilities/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          outstanding: Math.max(0, liability.outstanding - amount),
+          outstanding: Math.max(0, liability.outstanding - principalPaid),
           totalRepaid: liability.totalRepaid + amount,
           emisLeft: Math.max(0, liability.emisLeft - 1),
           nextDueDate,

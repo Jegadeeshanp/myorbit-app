@@ -11,6 +11,7 @@ async function decryptLiability(row: any) {
     id: row.id, name: row.name, lender: row.lender ?? undefined,
     nextDueDate: row.nextDueDate ?? undefined, emisLeft: row.emisLeft,
     repaymentAccountId: row.repaymentAccountId ?? undefined,
+    interestRate: row.interestRate ?? undefined,
     borrowed: await decryptNumber(row.borrowed),
     outstanding: await decryptNumber(row.outstanding),
     monthlyEmi: await decryptNumber(row.monthlyEmi),

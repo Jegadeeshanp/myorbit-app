@@ -43,12 +43,19 @@ function RecordPaymentModal({
 
   const suggested = liability?.monthlyEmi ?? 0;
   const max       = liability?.outstanding ?? 0;
-  const canSave   = Number(amount) > 0 && Number(amount) <= max;
+  const paid      = Number(amount) || 0;
+  const canSave   = paid > 0 && paid <= max;
+
+  // Reducing-balance breakdown for display
+  const interestDue = liability?.interestRate && liability.interestRate > 0
+    ? Math.round(max * liability.interestRate / 100 / 12)
+    : 0;
+  const principalPaid = paid > 0 ? Math.max(0, paid - interestDue) : 0;
 
   const handleSave = () => {
     if (!liability || !canSave) return;
-    recordLiabilityPayment(liability.id, Number(amount));
-    toast(`Payment of ${fmt(Number(amount))} recorded`);
+    recordLiabilityPayment(liability.id, paid);
+    toast(`Payment of ${fmt(paid)} recorded`);
     setAmount('');
     onClose();
   };
@@ -92,7 +99,13 @@ function RecordPaymentModal({
 
         <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500 space-y-1">
           <div className="flex justify-between"><span>Outstanding before</span><span className="font-semibold text-rose-600">{fmt(max)}</span></div>
-          <div className="flex justify-between"><span>After payment</span><span className="font-semibold text-emerald-600">{fmt(Math.max(0, max - Number(amount || 0)))}</span></div>
+          {interestDue > 0 && paid > 0 && (
+            <>
+              <div className="flex justify-between"><span>Interest (this month)</span><span className="text-orange-500">{fmt(interestDue)}</span></div>
+              <div className="flex justify-between"><span>Principal reduction</span><span className="text-emerald-600">{fmt(principalPaid)}</span></div>
+            </>
+          )}
+          <div className="flex justify-between"><span>Outstanding after</span><span className="font-semibold text-emerald-600">{fmt(Math.max(0, max - principalPaid))}</span></div>
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">

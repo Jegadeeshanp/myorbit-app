@@ -42,6 +42,7 @@ export type Liability = {
   nextDueDate?: string;
   emisLeft: number;
   totalRepaid: number;
+  interestRate?: number;
   repaymentAccountId?: string;
 };
 

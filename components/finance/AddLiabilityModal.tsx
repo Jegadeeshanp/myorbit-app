@@ -19,6 +19,12 @@ function shortAccLabel(a: { name: string; type?: string }) {
   return short ? a.name + ' – ' + short : a.name;
 }
 
+function calcEmi(principal: number, annualRatePct: number, months: number): number {
+  if (!principal || !months || !annualRatePct) return 0;
+  const r = annualRatePct / 100 / 12;
+  return Math.round(principal * r * Math.pow(1 + r, months) / (Math.pow(1 + r, months) - 1));
+}
+
 export default function AddLiabilityModal({ open, onClose, onSave, initial, accounts = [] }: AddLiabilityProps) {
   const isEdit = !!initial;
 
@@ -29,6 +35,7 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
   const [totalRepaid,        setTotalRepaid]        = useState('');
   const [emi,                setEmi]                = useState('');
   const [emisLeft,           setEmisLeft]           = useState('');
+  const [interestRate,       setInterestRate]       = useState('');
   const [nextDue,            setNextDue]            = useState('');
   const [repaymentAccountId, setRepaymentAccountId] = useState('');
 
@@ -42,21 +49,32 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
       setTotalRepaid(String(initial.totalRepaid ?? 0));
       setEmi(String(initial.monthlyEmi));
       setEmisLeft(String(initial.emisLeft ?? ''));
+      setInterestRate(String(initial.interestRate ?? ''));
       setNextDue(initial.nextDueDate ?? '');
       setRepaymentAccountId(initial.repaymentAccountId ?? '');
     } else {
       setName(''); setLender(''); setBorrowed(''); setOutstanding('');
-      setTotalRepaid('0'); setEmi(''); setEmisLeft(''); setNextDue('');
-      setRepaymentAccountId('');
+      setTotalRepaid('0'); setEmi(''); setEmisLeft(''); setInterestRate('');
+      setNextDue(''); setRepaymentAccountId('');
     }
   }, [initial, open]);
+
+  // Auto-calculate EMI from outstanding (or borrowed) + interest rate + tenure
+  const autoEmi = useMemo(() => {
+    const P = Number(outstanding) || Number(borrowed);
+    const n = Number(emisLeft);
+    const r = Number(interestRate);
+    return calcEmi(P, r, n);
+  }, [outstanding, borrowed, emisLeft, interestRate]);
+
+  const effectiveEmi = autoEmi > 0 ? autoEmi : Number(emi);
 
   const canSubmit = useMemo(() =>
     !!name.trim() &&
     Number(borrowed) > 0 &&
     Number(outstanding) >= 0 &&
-    Number(emi) > 0,
-  [name, borrowed, outstanding, emi]);
+    effectiveEmi > 0,
+  [name, borrowed, outstanding, effectiveEmi]);
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -66,8 +84,9 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
       borrowed:           Number(borrowed),
       outstanding:        Number(outstanding),
       totalRepaid:        Number(totalRepaid) || 0,
-      monthlyEmi:         Number(emi),
+      monthlyEmi:         effectiveEmi,
       emisLeft:           Number(emisLeft) || 0,
+      interestRate:       Number(interestRate) || undefined,
       nextDueDate:        nextDue || undefined,
       repaymentAccountId: repaymentAccountId || undefined,
     });
@@ -120,16 +139,30 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
           <SectionLabel>EMI details</SectionLabel>
           <div className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                EMI <span className="ml-1 text-xs font-normal text-gray-400">(Monthly EMI)</span> (₹)
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                Interest rate <OptionalBadge />
+                <span className="ml-1 text-xs font-normal text-gray-400">(% per annum)</span>
               </label>
-              <input value={emi} onChange={e => setEmi(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="18500" type="number" min="1" className={inputCls} />
+              <input value={interestRate} onChange={e => setInterestRate(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="8.5" type="number" min="0" max="100" step="0.01" className={inputCls} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Left <span className="ml-1 text-xs font-normal text-gray-400">(EMIs Left)</span>
               </label>
               <input value={emisLeft} onChange={e => setEmisLeft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="12" type="number" min="0" className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                EMI <span className="ml-1 text-xs font-normal text-gray-400">(Monthly EMI)</span> (₹)
+              </label>
+              {autoEmi > 0 ? (
+                <div className={`${inputCls} flex items-center justify-between`}>
+                  <span className="font-semibold text-emerald-700">₹{autoEmi.toLocaleString('en-IN')}</span>
+                  <span className="text-xs text-gray-400">auto-calculated</span>
+                </div>
+              ) : (
+                <input value={emi} onChange={e => setEmi(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="18500" type="number" min="1" className={inputCls} />
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Next due date</label>
