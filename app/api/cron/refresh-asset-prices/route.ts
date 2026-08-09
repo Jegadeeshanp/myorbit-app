@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { encryptNumber, decryptNumber } from '@/lib/encryption';
+import { encryptNumber } from '@/lib/encryption';
 
 export const runtime = 'nodejs';
 
@@ -10,19 +10,23 @@ function verifyCron(req: NextRequest): boolean {
   return req.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-// Yahoo Finance — NSE/BSE stocks and ETFs (e.g. RELIANCE.NS, GOLDBEES.NS)
+const YAHOO_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; MyOrbit/1.0)' };
+
+// Yahoo Finance — returns the regularMarketPrice for any symbol
 async function fetchYahooPrice(symbol: string): Promise<number | null> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d&region=IN`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MyOrbit/1.0)' },
-      signal: AbortSignal.timeout(8000),
-    });
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+    const res = await fetch(url, { headers: YAHOO_HEADERS, signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const data = await res.json();
     const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
     return typeof price === 'number' && price > 0 ? price : null;
   } catch { return null; }
+}
+
+// Fetch USD → INR rate via Yahoo Finance (USDINR=X)
+async function fetchUsdInr(): Promise<number | null> {
+  return fetchYahooPrice('USDINR=X');
 }
 
 // MFAPI.in — Indian mutual fund NAV by AMFI scheme code (e.g. 119551)
@@ -38,12 +42,27 @@ async function fetchMfNav(schemeCode: string): Promise<number | null> {
   } catch { return null; }
 }
 
-// Route symbol to the right data source
-async function fetchPrice(symbol: string): Promise<number | null> {
-  // All-digit → AMFI scheme code → MFAPI
+// Symbols with these suffixes are INR-denominated on Indian exchanges
+const INR_SUFFIXES = ['.NS', '.BO', '.BSE'];
+
+function isIndianSymbol(symbol: string): boolean {
+  return INR_SUFFIXES.some(s => symbol.toUpperCase().endsWith(s));
+}
+
+// Returns price in INR. USD-denominated symbols are converted using live USDINR rate.
+async function fetchPriceInr(symbol: string, usdInr: number | null): Promise<number | null> {
+  // All-digit → AMFI MF scheme code
   if (/^\d+$/.test(symbol)) return fetchMfNav(symbol);
-  // Otherwise Yahoo Finance (NSE .NS, BSE .BO, ETFs, etc.)
-  return fetchYahooPrice(symbol);
+
+  const priceRaw = await fetchYahooPrice(symbol);
+  if (priceRaw === null) return null;
+
+  // Indian exchange → already INR
+  if (isIndianSymbol(symbol)) return priceRaw;
+
+  // US / international stock → convert USD to INR
+  if (!usdInr) return null;
+  return Math.round(priceRaw * usdInr * 100) / 100;
 }
 
 export async function GET(req: NextRequest) {
@@ -80,6 +99,12 @@ export async function GET(req: NextRequest) {
       bySymbol.set(r.symbol, bucket);
     }
 
+    // Fetch USD→INR rate once if any symbol is USD-denominated
+    const hasUsdSymbols = [...bySymbol.keys()].some(
+      s => !/^\d+$/.test(s) && !isIndianSymbol(s),
+    );
+    const usdInr = hasUsdSymbols ? await fetchUsdInr() : null;
+
     let updated = 0;
     const failed: string[] = [];
 
@@ -87,7 +112,7 @@ export async function GET(req: NextRequest) {
       // Small delay between symbols to be polite to upstream APIs
       await new Promise(r => setTimeout(r, 200));
 
-      const price = await fetchPrice(symbol);
+      const price = await fetchPriceInr(symbol, usdInr);
       if (price === null) {
         failed.push(symbol);
         continue;
