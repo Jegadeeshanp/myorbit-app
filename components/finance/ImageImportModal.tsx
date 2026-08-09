@@ -66,7 +66,19 @@ function parseCSVText(csv: string): ParsedItem[] {
   // Normalize: lowercase, strip quotes and periods so "Avg. cost" → "avg cost"
   const norm = (s: string) => s.toLowerCase().replace(/['"\.]/g, '').replace(/\s+/g, ' ').trim();
 
-  const rawHeaders = splitLine(lines[0]);
+  // Auto-detect the real header row — skip metadata rows at the top
+  const NAME_HINTS = ['instrument', 'symbol', 'stock', 'scrip', 'name', 'company'];
+  const NUM_HINTS  = ['qty', 'quantity', 'ltp', 'price', 'value', 'units'];
+  let headerRowIdx = -1;
+  for (let i = 0; i < Math.min(lines.length, 30); i++) {
+    const cells = splitLine(lines[i]).map(norm);
+    const hasName = cells.some(c => NAME_HINTS.some(h => c.includes(h)));
+    const hasNum  = cells.some(c => NUM_HINTS.some(h => c.includes(h)));
+    if (hasName && hasNum) { headerRowIdx = i; break; }
+  }
+  if (headerRowIdx === -1) return [];
+
+  const rawHeaders = splitLine(lines[headerRowIdx]);
   const headers = rawHeaders.map(norm);
 
   const col = (...names: string[]) => {
@@ -78,20 +90,21 @@ function parseCSVText(csv: string): ParsedItem[] {
     return -1;
   };
 
-  const nameCol   = col('instrument', 'symbol', 'name', 'stock', 'scrip');
+  // Zerodha: Stock Name, Qty, Avg. cost, LTP, Closing Value, Invested Value, Unrealised P&L, Net chg.
+  const nameCol   = col('stock name', 'instrument', 'symbol', 'name', 'scrip', 'company');
   const qtyCol    = col('qty', 'quantity', 'units', 'shares', 'no of');
   const avgCol    = col('avg cost', 'avg price', 'average price', 'average cost', 'buy price', 'cost price');
-  const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp', 'close');
-  const curValCol = col('cur val', 'current value', 'market value', 'present value', 'mkt val');
-  const invValCol = col('invested', 'invest val', 'buy value', 'cost value', 'amount invested', 'investment');
-  const pnlCol    = col('p&l', 'pnl', 'unrealised', 'profit & loss', 'profit/loss', 'gain/loss', 'gain', 'returns');
+  const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp', 'close price');
+  const curValCol = col('closing value', 'cur val', 'current value', 'market value', 'present value', 'mkt val');
+  const invValCol = col('invested value', 'invested', 'invest val', 'buy value', 'cost value', 'amount invested');
+  const pnlCol    = col('unrealised p&l', 'unrealised', 'p&l', 'pnl', 'profit & loss', 'gain/loss', 'returns');
   const pnlPctCol = col('net chg', 'net change', 'returns (%)', 'return %', 'gain %', 'p&l %', '% return', 'returns%');
 
   if (nameCol === -1) return [];
 
   const items: ParsedItem[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = headerRowIdx + 1; i < lines.length; i++) {
     const cells = splitLine(lines[i]);
     const name = nameCol < cells.length ? cells[nameCol].replace(/['"]/g, '').trim() : '';
     if (!name || name.toLowerCase() === 'total' || name.toLowerCase() === 'grand total') continue;
