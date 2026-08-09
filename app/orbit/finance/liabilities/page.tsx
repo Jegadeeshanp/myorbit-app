@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays, ChevronUp, ChevronDown, ChevronsUpDown, X } from 'lucide-react';
 import Modal, { SectionLabel, inputCls } from '@/components/finance/Modal';
 import AddLiabilityModal from '@/components/finance/AddLiabilityModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
@@ -122,6 +122,136 @@ function RecordPaymentModal({
   );
 }
 
+// ── Liability detail sheet ─────────────────────────────────────────────────
+function LiabilityDetailSheet({
+  liability, onClose, onPay, onEdit, onDelete,
+}: {
+  liability: Liability;
+  onClose: () => void;
+  onPay: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const paidPct = liability.borrowed > 0
+    ? Math.round((liability.totalRepaid / liability.borrowed) * 100)
+    : 0;
+  const days    = daysUntil(liability.nextDueDate);
+  const dueSoon = days !== null && days <= 7 && days >= 0;
+  const overdue = days !== null && days < 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-white dark:bg-[#0e1420] shadow-2xl max-h-[88vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* drag handle */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-gray-200 dark:bg-white/[0.1]" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-100 dark:border-white/[0.07] px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">{liability.name}</h2>
+            {liability.lender && (
+              <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-0.5">{liability.lender}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-3 flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gray-100 dark:bg-white/[0.06] text-gray-500 hover:bg-gray-200 dark:hover:bg-white/[0.1] transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          {/* Outstanding + Borrowed */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-rose-50 dark:bg-[#FF6B6B]/[0.07] border border-rose-100 dark:border-[#FF6B6B]/20 p-3.5">
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Outstanding</p>
+              <p className="mt-1 text-lg font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(liability.outstanding)}</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Borrowed</p>
+              <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(liability.borrowed)}</p>
+            </div>
+          </div>
+
+          {/* Repayment progress */}
+          <div className="rounded-xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] px-4 py-3.5 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-gray-600 dark:text-[#8fa3b8]">Repayment progress</span>
+              <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{paidPct}% paid</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+              <div className="h-2 rounded-full bg-emerald-500 dark:bg-[#00E5A0] transition-all" style={{ width: `${paidPct}%` }} />
+            </div>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Repaid {fmt(liability.totalRepaid)} of {fmt(liability.borrowed)}</p>
+          </div>
+
+          {/* Details */}
+          <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
+            <div className="flex justify-between px-4 py-3 text-sm">
+              <span className="text-gray-400 dark:text-[#3d5166]">Monthly EMI</span>
+              <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmt(liability.monthlyEmi)}</span>
+            </div>
+            <div className="flex justify-between px-4 py-3 text-sm">
+              <span className="text-gray-400 dark:text-[#3d5166]">EMIs Left</span>
+              <span className={`font-semibold rounded-full px-2 py-0.5 text-xs ${
+                liability.emisLeft <= 3 ? 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1] text-rose-600 dark:text-[#FF6B6B]'
+                : liability.emisLeft <= 6 ? 'bg-amber-50 dark:bg-[#F9A44A]/[0.1] text-amber-600 dark:text-[#F9A44A]'
+                : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-[#8fa3b8]'
+              }`}>{liability.emisLeft} left</span>
+            </div>
+            <div className="flex justify-between px-4 py-3 text-sm">
+              <span className="text-gray-400 dark:text-[#3d5166]">Next Due</span>
+              <span className={`font-semibold ${overdue ? 'text-rose-600 dark:text-[#FF6B6B]' : dueSoon ? 'text-amber-600 dark:text-[#F9A44A]' : 'text-gray-900 dark:text-[#e4eaf4]'}`}>
+                {fmtDate(liability.nextDueDate)}
+                {overdue  && ' · Overdue'}
+                {dueSoon && !overdue && ' · Due soon'}
+              </span>
+            </div>
+            {liability.interestRate != null && liability.interestRate > 0 && (
+              <div className="flex justify-between px-4 py-3 text-sm">
+                <span className="text-gray-400 dark:text-[#3d5166]">Interest Rate</span>
+                <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{liability.interestRate}% p.a.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 border-t border-gray-100 dark:border-white/[0.07] px-5 py-4 flex-none">
+          <button
+            onClick={() => { onPay(); onClose(); }}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-[#00E5A0] py-2.5 text-sm font-semibold text-white dark:text-black hover:bg-emerald-700 dark:hover:bg-[#00c990] transition"
+          >
+            <CheckCircle2 className="h-4 w-4" /> Record Payment
+          </button>
+          <button
+            onClick={() => { onEdit(); onClose(); }}
+            className="rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4] hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => { onDelete(); onClose(); }}
+            className="rounded-xl border border-rose-200 dark:border-[#FF6B6B]/30 bg-rose-50 dark:bg-[#FF6B6B]/[0.07] px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-[#FF6B6B] hover:bg-rose-100 dark:hover:bg-[#FF6B6B]/[0.15] transition"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type LiabSortKey = 'name' | 'lender' | 'borrowed' | 'outstanding' | 'monthlyEmi' | 'emisLeft' | 'nextDueDate';
 const LIAB_COL_SORT: Record<string, LiabSortKey | undefined> = {
   Loan: 'name', Lender: 'lender', Borrowed: 'borrowed', Outstanding: 'outstanding',
@@ -137,6 +267,7 @@ export default function LiabilitiesPage() {
   const [addOpen,     setAddOpen]     = useState(false);
   const [editTarget,  setEditTarget]  = useState<Liability | null>(null);
   const [payTarget,   setPayTarget]   = useState<Liability | null>(null);
+  const [detailLiab,  setDetailLiab]  = useState<Liability | null>(null);
   const [sortKey,     setSortKey]     = useState<LiabSortKey | null>(null);
   const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('asc');
 
@@ -249,7 +380,93 @@ export default function LiabilitiesPage() {
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] shadow-sm">
+        <>
+          {/* ── Mobile cards ─────────────────────────────────────────── */}
+          <div className="sm:hidden rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] shadow-sm overflow-hidden divide-y divide-gray-100 dark:divide-white/[0.04]">
+            {sortedLiabilities.map(l => {
+              const paidPct = l.borrowed > 0 ? Math.round((l.totalRepaid / l.borrowed) * 100) : 0;
+              const days    = daysUntil(l.nextDueDate);
+              const dueSoon = days !== null && days <= 7 && days >= 0;
+              const overdue = days !== null && days < 0;
+
+              return (
+                <div
+                  key={l.id}
+                  className="px-4 py-4 hover:bg-gray-50/70 dark:hover:bg-white/[0.03] active:bg-gray-100/80 dark:active:bg-white/[0.05] cursor-pointer transition"
+                  onClick={() => setDetailLiab(l)}
+                >
+                  {/* Name + outstanding */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">{l.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-0.5">{l.lender || 'No lender'}</p>
+                    </div>
+                    <div className="text-right flex-none">
+                      <p className="text-sm font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(l.outstanding)}</p>
+                      <p className="text-xs text-gray-400 dark:text-[#3d5166]">outstanding</p>
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mt-3">
+                    <div className="flex justify-between text-[11px] text-gray-400 dark:text-[#3d5166] mb-1.5">
+                      <span>{paidPct}% repaid · {fmt(l.monthlyEmi)}/mo</span>
+                      <span className={`font-medium ${
+                        l.emisLeft <= 3 ? 'text-rose-500 dark:text-[#FF6B6B]'
+                        : l.emisLeft <= 6 ? 'text-amber-500 dark:text-[#F9A44A]'
+                        : ''
+                      }`}>{l.emisLeft} EMIs left</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                      <div className="h-1.5 rounded-full bg-emerald-500 dark:bg-[#00E5A0]" style={{ width: `${paidPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Next due + actions */}
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className={`flex items-center gap-1 text-xs font-medium ${overdue ? 'text-rose-600 dark:text-[#FF6B6B]' : dueSoon ? 'text-amber-600 dark:text-[#F9A44A]' : 'text-gray-400 dark:text-[#3d5166]'}`}>
+                      <CalendarDays className="h-3 w-3" />
+                      {fmtDate(l.nextDueDate)}
+                      {overdue  && <span className="ml-1 rounded-full bg-rose-100 dark:bg-[#FF6B6B]/20 px-1.5 py-0.5 text-rose-600 dark:text-[#FF6B6B]">Overdue</span>}
+                      {dueSoon && !overdue && <span className="ml-1 rounded-full bg-amber-100 dark:bg-[#F9A44A]/20 px-1.5 py-0.5 text-amber-600 dark:text-[#F9A44A]">Soon</span>}
+                    </div>
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => setPayTarget(l)}
+                        className="flex h-7 items-center gap-1 rounded-lg bg-emerald-50 dark:bg-[#00E5A0]/[0.1] px-2 text-xs font-medium text-emerald-600 dark:text-[#00E5A0] transition hover:bg-emerald-100 dark:hover:bg-[#00E5A0]/[0.2]"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Pay
+                      </button>
+                      <button
+                        onClick={() => setEditTarget(l)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 dark:text-[#3d5166] hover:bg-gray-100 dark:hover:bg-white/[0.06] transition"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => { deleteLiability(l.id); toast('Liability removed'); }}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 dark:text-[#3d5166] hover:bg-rose-50 dark:hover:bg-[#FF6B6B]/[0.1] hover:text-rose-400 dark:hover:text-[#FF6B6B] transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Mobile footer totals */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50/60 dark:bg-white/[0.02]">
+              <p className="text-xs font-semibold text-gray-500 dark:text-[#8fa3b8]">{liabilities.length} loan{liabilities.length !== 1 ? 's' : ''}</p>
+              <div className="text-right">
+                <p className="text-sm font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(summary.outstanding)}</p>
+                <p className="text-xs text-gray-400 dark:text-[#3d5166]">outstanding</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Desktop table ─────────────────────────────────────────── */}
+          <div className="hidden sm:block overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] shadow-sm">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/[0.07] bg-gray-50/60 dark:bg-white/[0.02]">
@@ -280,7 +497,7 @@ export default function LiabilitiesPage() {
                 const paidPct     = l.borrowed > 0 ? Math.round((l.totalRepaid / l.borrowed) * 100) : 0;
 
                 return (
-                  <tr key={l.id} className="group transition hover:bg-gray-50/50 dark:hover:bg-white/[0.03]">
+                  <tr key={l.id} className="group transition hover:bg-gray-50/50 dark:hover:bg-white/[0.03] cursor-pointer" onClick={() => setDetailLiab(l)}>
                     {/* Loan name + mini progress */}
                     <td className="px-4 py-3.5">
                       <p className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4] whitespace-nowrap">{l.name}</p>
@@ -313,29 +530,26 @@ export default function LiabilitiesPage() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        {/* Record payment */}
                         <button
                           onClick={() => { setPayTarget(l); }}
                           title="Record payment"
-                          className="flex h-7 items-center gap-1 rounded-lg bg-emerald-50 px-2 text-xs font-medium text-emerald-600 transition hover:bg-emerald-100"
+                          className="flex h-7 items-center gap-1 rounded-lg bg-emerald-50 dark:bg-[#00E5A0]/[0.1] px-2 text-xs font-medium text-emerald-600 dark:text-[#00E5A0] transition hover:bg-emerald-100 dark:hover:bg-[#00E5A0]/[0.2]"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" /> Pay
                         </button>
-                        {/* Edit */}
                         <button
                           onClick={() => setEditTarget(l)}
                           title="Edit"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 dark:text-[#3d5166] transition hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-600 dark:hover:text-[#8fa3b8]"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
-                        {/* Delete */}
                         <button
                           onClick={() => { deleteLiability(l.id); toast('Liability removed'); }}
                           title="Delete"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-rose-50 hover:text-rose-400"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 dark:text-[#3d5166] transition hover:bg-rose-50 dark:hover:bg-[#FF6B6B]/[0.1] hover:text-rose-400 dark:hover:text-[#FF6B6B]"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -355,7 +569,8 @@ export default function LiabilitiesPage() {
               </tr>
             </tfoot>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       {/* ── Modals ── */}
@@ -380,6 +595,16 @@ export default function LiabilitiesPage() {
         open={!!payTarget}
         onClose={() => setPayTarget(null)}
       />
+
+      {detailLiab && (
+        <LiabilityDetailSheet
+          liability={detailLiab}
+          onClose={() => setDetailLiab(null)}
+          onPay={() => setPayTarget(detailLiab)}
+          onEdit={() => setEditTarget(detailLiab)}
+          onDelete={() => { deleteLiability(detailLiab.id); toast('Liability removed'); }}
+        />
+      )}
     </div>
   );
 }

@@ -118,6 +118,7 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
 
 type FinanceContextValue = {
   state: FinanceState;
+  refreshData:            () => Promise<void>;
   addAccount:             (a: Omit<Account, 'id'>)        => Promise<void>;
   updateAccount:          (a: Account)                     => Promise<void>;
   deleteAccount:          (id: string)                     => Promise<void>;
@@ -149,6 +150,27 @@ export function FinanceProvider({ children }: PropsWithChildren) {
   // Reset state on logout so stale data never bleeds into next session
   useEffect(() => {
     if (status === 'unauthenticated') dispatch({ type: 'reset' });
+  }, [status]);
+
+  // Re-fetch balance-sensitive data whenever the tab becomes visible again
+  // (handles changes made from another device / tab while this one was in background)
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    async function handleVisibility() {
+      if (document.hidden) return;
+      try {
+        const [accs, assts, liabs] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<Asset[]>('/api/assets'),
+          api<Liability[]>('/api/liabilities'),
+        ]);
+        accs.forEach(a  => dispatch({ type: 'updateAccount',   payload: a }));
+        assts.forEach(a => dispatch({ type: 'updateAsset',     payload: a }));
+        liabs.forEach(l => dispatch({ type: 'updateLiability', payload: l }));
+      } catch { /* silent — non-critical background refresh */ }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [status]);
 
   // Pick up transactions added via AiTransactionButton (which bypasses the store)
@@ -189,6 +211,19 @@ export function FinanceProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<FinanceContextValue>(() => ({
     state,
+
+    refreshData: async () => {
+      try {
+        const [accs, assts, liabs] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<Asset[]>('/api/assets'),
+          api<Liability[]>('/api/liabilities'),
+        ]);
+        accs.forEach(a  => dispatch({ type: 'updateAccount',   payload: a }));
+        assts.forEach(a => dispatch({ type: 'updateAsset',     payload: a }));
+        liabs.forEach(l => dispatch({ type: 'updateLiability', payload: l }));
+      } catch { /* silent */ }
+    },
 
     addAccount: async (a) => {
       const created = await api<Account>('/api/accounts', { method: 'POST', body: JSON.stringify(a) });

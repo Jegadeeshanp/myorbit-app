@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useFinance } from '@/lib/financeStore';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, RefreshCw } from 'lucide-react';
 
 function fmt(v: number) {
   if (Math.abs(v) >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`;
@@ -11,7 +11,14 @@ function fmt(v: number) {
 }
 
 export default function NetWorthCard() {
-  const { state } = useFinance();
+  const { state, refreshData } = useFinance();
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await refreshData();
+    setRefreshing(false);
+  }
   const investedAssets   = useMemo(() => state.assets.reduce((s, a) => s + a.value, 0), [state.assets]);
   const accountBalance   = useMemo(() => state.accounts.reduce((s, a) => s + a.balance, 0), [state.accounts]);
   const totalAssets      = investedAssets + accountBalance;
@@ -23,7 +30,16 @@ export default function NetWorthCard() {
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-white/[0.07] bg-gradient-to-br from-emerald-50/60 via-white to-white dark:from-[#131c2e] dark:via-[#0e1420] dark:to-[#0e1420] p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-[#3d5166]">Net Worth</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-[#3d5166]">Net Worth</p>
+        <button
+          onClick={handleRefresh}
+          title="Refresh balances"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-gray-300 dark:text-[#3d5166] hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-500 dark:hover:text-[#8fa3b8] transition"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
       <div className="mt-1 flex items-end justify-between gap-3">
         <p className={`text-4xl font-bold tracking-tight leading-none ${isPositive ? 'text-gray-900 dark:text-[#e4eaf4]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>

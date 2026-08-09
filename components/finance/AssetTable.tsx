@@ -4,10 +4,18 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Asset } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig } from '@/lib/assetCategories';
-import { Trash2, Pencil, MoreVertical, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Trash2, Pencil, MoreVertical, ChevronUp, ChevronDown, ChevronsUpDown, X } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
+  return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+}
+
+function fmtShort(v: number) {
+  const abs = Math.abs(v);
+  if (abs >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`;
+  if (abs >= 100000)   return `₹${(v / 100000).toFixed(1)}L`;
+  if (abs >= 1000)     return `₹${(v / 1000).toFixed(0)}K`;
   return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
@@ -69,9 +77,165 @@ function CardMenu({ onEdit, onDelete }: { onEdit?: () => void; onDelete: () => v
   );
 }
 
+function AssetDetailSheet({
+  asset, onClose, onEdit, onDelete,
+}: {
+  asset: Asset;
+  onClose: () => void;
+  onEdit?: () => void;
+  onDelete: () => void;
+}) {
+  const cfg    = getCategoryConfig(asset.category);
+  const Icon   = cfg.icon;
+  const pnl    = asset.value - asset.invested;
+  const pnlPct = asset.invested > 0 ? ((pnl / asset.invested) * 100).toFixed(1) : '0';
+  const a      = asset as any;
+
+  let sipData: { amount?: number; frequency?: string; nextDate?: string } | null = null;
+  try {
+    if (a.sipConfig) sipData = typeof a.sipConfig === 'string' ? JSON.parse(a.sipConfig) : a.sipConfig;
+  } catch { /* ignore */ }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-white dark:bg-[#0e1420] shadow-2xl max-h-[88vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* drag handle – mobile only */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-gray-200 dark:bg-white/[0.1]" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-gray-100 dark:border-white/[0.07] px-5 py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ${cfg.tagBg}`}>
+              <Icon className={`h-5 w-5 ${cfg.tagText}`} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.name}</h2>
+              <span className={`text-xs font-medium ${cfg.tagText}`}>{asset.category}</span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-3 flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gray-100 dark:bg-white/[0.06] text-gray-500 hover:bg-gray-200 dark:hover:bg-white/[0.1] transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+          {/* Value + Invested */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Current Value</p>
+              <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(asset.value)}</p>
+            </div>
+            <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Invested</p>
+              <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(asset.invested)}</p>
+            </div>
+          </div>
+
+          {/* P&L */}
+          <div className={`rounded-xl border p-3.5 ${pnl >= 0 ? 'border-emerald-100 dark:border-[#00E5A0]/20 bg-emerald-50 dark:bg-[#00e5a0]/[0.07]' : 'border-rose-100 dark:border-[#FF6B6B]/20 bg-rose-50 dark:bg-[#FF6B6B]/[0.07]'}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500 dark:text-[#8fa3b8]">Profit / Loss</span>
+              <div className="text-right">
+                <p className={`text-base font-bold ${pnl >= 0 ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>
+                  {pnl >= 0 ? '+' : ''}{fmt(pnl)}
+                </p>
+                <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-500 dark:text-[#00E5A0]/80' : 'text-rose-400 dark:text-[#FF6B6B]/80'}`}>
+                  {pnl >= 0 ? '+' : ''}{pnlPct}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Units / Symbol */}
+          {(asset.units != null || asset.symbol) && (
+            <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
+              {asset.units != null && (
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Units</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.units}</span>
+                </div>
+              )}
+              {asset.symbol && (
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Symbol</span>
+                  <span className="font-mono font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.symbol}</span>
+                </div>
+              )}
+              {a.investmentType && (
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Type</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4] capitalize">{a.investmentType}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SIP details */}
+          {sipData && (
+            <div className="rounded-xl border border-violet-100 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/[0.07] px-4 py-3.5 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">SIP Details</p>
+              {sipData.amount != null && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Monthly SIP</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmt(sipData.amount)}</span>
+                </div>
+              )}
+              {sipData.frequency && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Frequency</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4] capitalize">{sipData.frequency}</span>
+                </div>
+              )}
+              {sipData.nextDate && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Next SIP</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">
+                    {new Date(sipData.nextDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex gap-3 border-t border-gray-100 dark:border-white/[0.07] px-5 py-4 flex-none">
+          {onEdit && (
+            <button
+              onClick={() => { onEdit(); onClose(); }}
+              className="flex-1 rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] py-2.5 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4] hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
+            >
+              Edit Asset
+            </button>
+          )}
+          <button
+            onClick={() => { onDelete(); onClose(); }}
+            className="rounded-xl border border-rose-200 dark:border-[#FF6B6B]/30 bg-rose-50 dark:bg-[#FF6B6B]/[0.07] px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-[#FF6B6B] hover:bg-rose-100 dark:hover:bg-[#FF6B6B]/[0.15] transition"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Props) {
   const { deleteAsset } = useFinance();
   const [confirmTarget, setConfirmTarget] = useState<Asset | null>(null);
+  const [detailAsset,   setDetailAsset]   = useState<Asset | null>(null);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -141,7 +305,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
               const allocPct = allocBase > 0 ? Math.round((asset.value / allocBase) * 100) : 0;
 
               return (
-                <tr key={asset.id} className="group transition hover:bg-gray-50/50 dark:hover:bg-white/[0.03]">
+                <tr key={asset.id} className="group transition hover:bg-gray-50/50 dark:hover:bg-white/[0.03] cursor-pointer" onClick={() => setDetailAsset(asset)}>
                   <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.name}</td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.tagBg} ${cfg.tagText}`}>
@@ -170,7 +334,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
                       <span className="w-8 text-right text-xs text-gray-500 dark:text-[#8fa3b8]">{allocPct}%</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3.5">
+                  <td className="px-3 py-3.5" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
                       {onEdit && (
                         <button
@@ -227,27 +391,45 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
           const pnlPct = asset.invested > 0 ? Math.round((pnl / asset.invested) * 100) : 0;
 
           return (
-            <div key={asset.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.name}</p>
-                <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.tagBg} ${cfg.tagText}`}>
-                  <Icon className="h-2.5 w-2.5" />
-                  {asset.category}
-                </span>
+            <div
+              key={asset.id}
+              className="relative px-4 py-3.5 hover:bg-gray-50/70 dark:hover:bg-white/[0.03] active:bg-gray-100/80 dark:active:bg-white/[0.05] cursor-pointer transition"
+              onClick={() => setDetailAsset(asset)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.name}</p>
+                  <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.tagBg} ${cfg.tagText}`}>
+                      <Icon className="h-2.5 w-2.5" />
+                      {asset.category}
+                    </span>
+                    {asset.units != null && (
+                      <span className="text-[11px] text-gray-400 dark:text-[#3d5166]">{asset.units} units</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-right flex-none">
+                  <p className="text-sm font-bold text-gray-900 dark:text-[#e4eaf4]">{fmtShort(asset.value)}</p>
+                  <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>
+                    {pnl >= 0 ? '+' : ''}{fmtShort(pnl)}&nbsp;({pnl >= 0 ? '+' : ''}{pnlPct}%)
+                  </p>
+                </div>
+
+                {/* CardMenu stops propagation so it doesn't open the detail sheet */}
+                <div onClick={e => e.stopPropagation()}>
+                  <CardMenu
+                    onEdit={onEdit ? () => onEdit(asset) : undefined}
+                    onDelete={() => setConfirmTarget(asset)}
+                  />
+                </div>
               </div>
 
-              <div className="text-right flex-none">
-                <p className="text-sm font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmt(asset.value)}</p>
-                <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-rose-600 dark:text-[#FF6B6B]'}`}>
-                  {pnl >= 0 ? '+' : ''}{fmt(pnl)}&nbsp;
-                  <span className="text-[10px]">({pnl >= 0 ? '+' : ''}{pnlPct}%)</span>
-                </p>
-              </div>
-
-              <CardMenu
-                onEdit={onEdit ? () => onEdit(asset) : undefined}
-                onDelete={() => setConfirmTarget(asset)}
-              />
+              {/* Invested row */}
+              <p className="mt-1.5 text-xs text-gray-400 dark:text-[#3d5166]">
+                Invested {fmtShort(asset.invested)}
+              </p>
             </div>
           );
         })}
@@ -276,6 +458,15 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
         onConfirm={() => { if (confirmTarget) deleteAsset(confirmTarget.id); setConfirmTarget(null); }}
         onCancel={() => setConfirmTarget(null)}
       />
+
+      {detailAsset && (
+        <AssetDetailSheet
+          asset={detailAsset}
+          onClose={() => setDetailAsset(null)}
+          onEdit={onEdit ? () => { onEdit(detailAsset); } : undefined}
+          onDelete={() => { setConfirmTarget(detailAsset); setDetailAsset(null); }}
+        />
+      )}
     </>
   );
 }

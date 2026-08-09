@@ -89,20 +89,22 @@ export default function AssetsPage() {
       <FinanceTopBar />
 
       {/* Summary metrics */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         {[
-          { label: 'Invested',             value: fmt(totalInvested), icon: DollarSign,  color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100' },
-          { label: 'Current Value',        value: fmt(totalValue),    icon: TrendingUp,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-          { label: `P&L (${pnlPositive ? '+' : ''}${pnlPct}%)`, value: fmt(Math.abs(totalPnl)), icon: pnlPositive ? TrendingUp : TrendingDown,
+          { label: 'Invested',      value: fmt(totalInvested),        icon: DollarSign,                              color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100' },
+          { label: 'Current Value', value: fmt(totalValue),           icon: TrendingUp,                              color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+          { label: `P&L (${pnlPositive ? '+' : ''}${pnlPct}%)`,
+            value: fmt(Math.abs(totalPnl)),
+            icon:  pnlPositive ? TrendingUp : TrendingDown,
             color: pnlPositive ? 'text-emerald-600' : 'text-rose-600',
             bg:    pnlPositive ? 'bg-emerald-50'    : 'bg-rose-50',
             border:pnlPositive ? 'border-emerald-100' : 'border-rose-100' },
         ].map(m => (
-          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] p-4 shadow-sm`}>
-            <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
+          <div key={m.label} className={`flex items-center gap-3 rounded-2xl border ${m.border} dark:border-white/[0.07] bg-white dark:bg-gradient-to-br dark:from-[#131c2e] dark:to-[#0e1420] px-4 py-3 sm:p-4 shadow-sm`}>
+            <div className={`hidden sm:flex h-9 w-9 flex-none items-center justify-center rounded-xl ${m.bg}`}>
               <m.icon className={`h-4 w-4 ${m.color}`} />
             </div>
-            <div className="min-w-0">
+            <div className="flex flex-1 items-center justify-between sm:block min-w-0">
               <p className="truncate text-xs text-gray-400 dark:text-[#3d5166]">{m.label}</p>
               <p className={`truncate text-sm font-bold ${m.color}`}>{m.value}</p>
             </div>
