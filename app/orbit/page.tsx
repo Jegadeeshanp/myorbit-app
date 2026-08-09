@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -83,6 +83,18 @@ export default function OrbitDashboard() {
   const { auth }  = useAuth();
   const user      = auth.status === 'authenticated' ? auth.user : null;
   const { state, refreshData } = useFinance();
+
+  // Keep a stable ref so the mount effect always calls the latest refreshData
+  // without adding it to the dependency array (which would cause a loop because
+  // refreshData identity changes on every state update)
+  const refreshDataRef = useRef(refreshData);
+  useEffect(() => { refreshDataRef.current = refreshData; });
+
+  // Refresh finance data every time the dashboard is mounted (SPA navigation
+  // does not trigger visibilitychange, so we need an explicit refresh here)
+  useEffect(() => {
+    if (auth.status === 'authenticated') refreshDataRef.current();
+  }, [auth.status]);
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
   const initials  = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) ?? 'M';
