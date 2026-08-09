@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   Wallet, Target, HeartPulse, Flame, CheckSquare, Sparkles,
-  Search, Bell, Settings, ChevronRight, CheckCheck, BarChart2,
+  Search, Bell, Settings, ChevronRight, CheckCheck, BarChart2, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/lib/authStore';
 import { useFinance } from '@/lib/financeStore';
@@ -82,21 +82,23 @@ const MODS = [
 export default function OrbitDashboard() {
   const { auth }  = useAuth();
   const user      = auth.status === 'authenticated' ? auth.user : null;
-  const { state } = useFinance();
+  const { state, refreshData } = useFinance();
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
   const initials  = user?.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) ?? 'M';
   const today     = new Date().toISOString().split('T')[0];
   const weekday   = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-  const [tasks,        setTasks]        = useState<{ overdue: TaskInst[]; today: TaskInst[] } | null>(null);
-  const [habits,       setHabits]       = useState<Habit[]>([]);
-  const [goals,        setGoals]        = useState<Goal[]>([]);
-  const [healthLogged, setHealthLogged] = useState<boolean | null>(null);
-  const [doneHabitIds, setDoneHabitIds] = useState<Set<string>>(new Set());
-  const [dataLoading,  setDataLoading]  = useState(true);
-  const [isDark,       setIsDark]       = useState(true);
-  const [activeKey,    setActiveKey]    = useState('finance');
+  const [tasks,             setTasks]             = useState<{ overdue: TaskInst[]; today: TaskInst[] } | null>(null);
+  const [habits,            setHabits]            = useState<Habit[]>([]);
+  const [goals,             setGoals]             = useState<Goal[]>([]);
+  const [healthLogged,      setHealthLogged]      = useState<boolean | null>(null);
+  const [healthEntry,       setHealthEntry]       = useState<{ steps: number | null; sleepHours: number | null; waterMl: number | null; mood: number | null } | null>(null);
+  const [doneHabitIds,      setDoneHabitIds]      = useState<Set<string>>(new Set());
+  const [dataLoading,       setDataLoading]       = useState(true);
+  const [isDark,            setIsDark]            = useState(true);
+  const [activeKey,         setActiveKey]         = useState('finance');
+  const [financeRefreshing, setFinanceRefreshing] = useState(false);
 
   // Detect live dark-mode state (for inline-style gradients)
   useEffect(() => {
@@ -119,6 +121,7 @@ export default function OrbitDashboard() {
       setHabits(Array.isArray(h) ? h : []);
       setGoals(Array.isArray(g) ? g : []);
       setHealthLogged(!!he && !!he.id);
+      setHealthEntry(he?.id ? { steps: he.steps ?? null, sleepHours: he.sleepHours ?? null, waterMl: he.waterMl ?? null, mood: he.mood ?? null } : null);
       setDoneHabitIds(new Set(
         (Array.isArray(h) ? h : [])
           .filter((hb: Habit) => hb.logs?.some(l => l.logDate === today))
@@ -158,6 +161,36 @@ export default function OrbitDashboard() {
   const totalBalance = state.loadState === 'ready'
     ? state.accounts.reduce((s, a) => s + (a.balance ?? 0), 0)
     : null;
+
+  const monthlyNet = useMemo(() => {
+    if (state.loadState !== 'ready') return null;
+    const now = new Date();
+    return state.transactions
+      .filter(t => {
+        const d = new Date(t.date);
+        return d.getMonth() === now.getMonth()
+          && d.getFullYear() === now.getFullYear()
+          && t.type !== 'opening_balance'
+          && t.type !== 'adjustment';
+      })
+      .reduce((s, t) => s + t.amount, 0);
+  }, [state.loadState, state.transactions]);
+
+  async function handleFinanceRefresh() {
+    setFinanceRefreshing(true);
+    await refreshData();
+    setFinanceRefreshing(false);
+  }
+
+  // Health metrics
+  const STEPS_GOAL = 10000;
+  const SLEEP_GOAL = 8;
+  const WATER_GOAL = 2500;
+  const stepsPct  = healthEntry?.steps      ? Math.min(100, Math.round((healthEntry.steps      / STEPS_GOAL) * 100)) : 0;
+  const sleepPct  = healthEntry?.sleepHours ? Math.min(100, Math.round((healthEntry.sleepHours / SLEEP_GOAL) * 100)) : 0;
+  const waterPct  = healthEntry?.waterMl    ? Math.min(100, Math.round((healthEntry.waterMl    / WATER_GOAL) * 100)) : 0;
+  const moodPct   = healthEntry?.mood       ? Math.min(100, Math.round((healthEntry.mood        / 5)          * 100)) : 0;
+  const healthScore = healthEntry ? Math.round((stepsPct + sleepPct + waterPct + moodPct) / 4) : null;
 
   const orbitScore = Math.min(100, Math.round(
     (habitProgress * 0.4) +
@@ -607,7 +640,16 @@ export default function OrbitDashboard() {
 
           {/* Finance */}
           <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: 11, color: t.dim, letterSpacing: '0.04em', fontWeight: 600, marginBottom: 6 }}>Finance</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: t.dim, letterSpacing: '0.04em', fontWeight: 600 }}>Finance</div>
+              <button onClick={handleFinanceRefresh} title="Refresh balances" style={{
+                width: 28, height: 28, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: t.dim, transition: 'all 0.2s',
+              }}>
+                <RefreshCw size={13} style={{ animation: financeRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+              </button>
+            </div>
             <div style={{
               fontSize: 44, fontWeight: 700, lineHeight: 1, fontFamily: 'Georgia, serif',
               color: totalBalance !== null ? (totalBalance < 0 ? t.red : t.text) : t.dim,
@@ -615,7 +657,7 @@ export default function OrbitDashboard() {
             }}>
               {totalBalance !== null ? `${totalBalance < 0 ? '–' : ''}₹${fmtBal(totalBalance)}` : '—'}
             </div>
-            <div style={{ fontSize: 13, color: t.text2, marginBottom: 16 }}>Net position this month</div>
+            <div style={{ fontSize: 13, color: t.text2, marginBottom: 16 }}>Total account balance</div>
 
             {totalBalance !== null && totalBalance < 0 && (
               <div style={{
@@ -625,16 +667,16 @@ export default function OrbitDashboard() {
               }}>↓ Net negative — review spending</div>
             )}
 
-            {/* Sparkline placeholder */}
-            <svg style={{ width: '100%', height: 44 }} viewBox="0 0 240 44" fill="none">
-              <polyline points="0,34 40,28 80,32 120,20 160,24 200,14 240,18" stroke={`${t.red}4d`} strokeWidth="1.5" />
-              <polyline points="0,34 40,28 80,32 120,20 160,24 200,14 240,18" stroke={t.red} strokeWidth="2" strokeDasharray="4 2" />
-            </svg>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '14px 0 20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '0 0 20px' }}>
               {[
                 { label: 'Accounts tracked', val: state.loadState === 'ready' ? `${state.accounts.length}` : '—', valColor: t.text },
-                { label: 'Net worth trend',  val: '↑ 3%', valColor: t.green },
+                {
+                  label: 'This month',
+                  val: monthlyNet !== null
+                    ? `${monthlyNet >= 0 ? '↑' : '↓'} ₹${fmtBal(Math.abs(monthlyNet))}`
+                    : '—',
+                  valColor: monthlyNet !== null ? (monthlyNet >= 0 ? t.green : t.red) : t.text2,
+                },
               ].map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                   <span style={{ color: t.text2 }}>{r.label}</span>
@@ -672,23 +714,25 @@ export default function OrbitDashboard() {
                   <path d="M55,136 A62,62 0 0,1 21,102"  fill="none" stroke="#5BE4FF" strokeWidth="8" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(91,228,255,0.5))' }}/>
                 </svg>
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 30, fontWeight: 700, fontFamily: 'Georgia, serif', color: t.text, lineHeight: 1 }}>
-                    {healthLogged ? '✓' : '—'}
+                  <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'Georgia, serif', color: t.text, lineHeight: 1 }}>
+                    {healthScore !== null ? `${healthScore}` : healthLogged ? '✓' : '—'}
                   </div>
-                  <div style={{ fontSize: 8, color: t.green, letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 3 }}>Health</div>
+                  <div style={{ fontSize: 8, color: t.green, letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 3 }}>
+                    {healthScore !== null ? 'score' : 'Health'}
+                  </div>
                 </div>
               </div>
-              {/* Metrics chips */}
+              {/* Metrics chips — real data */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: '100%' }}>
                 {[
-                  { label: 'Steps',   color: t.green,  pct: 72 },
-                  { label: 'Sleep',   color: t.purple, pct: 81 },
-                  { label: 'Protein', color: t.amber,  pct: 40 },
-                  { label: 'Mood',    color: t.blue,   pct: 60 },
+                  { label: 'Steps',  color: t.green,  pct: stepsPct,  val: healthEntry?.steps      ? `${(healthEntry.steps / 1000).toFixed(1)}k` : '—' },
+                  { label: 'Sleep',  color: t.purple, pct: sleepPct,  val: healthEntry?.sleepHours ? `${healthEntry.sleepHours}h`                : '—' },
+                  { label: 'Water',  color: t.blue,   pct: waterPct,  val: healthEntry?.waterMl    ? `${(healthEntry.waterMl / 1000).toFixed(1)}L` : '—' },
+                  { label: 'Mood',   color: t.amber,  pct: moodPct,   val: healthEntry?.mood        ? `${healthEntry.mood}/5`                    : '—' },
                 ].map(m => (
                   <div key={m.label} style={{ background: t.deep, border: `1px solid ${t.bord}`, borderRadius: 12, padding: '10px 12px' }}>
                     <div style={{ fontSize: 9, color: t.dim, letterSpacing: '0.06em', marginBottom: 4 }}>{m.label}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: m.color, marginBottom: 4 }}>{m.pct}%</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: m.pct > 0 ? m.color : t.dim, marginBottom: 4 }}>{m.val}</div>
                     <div style={{ height: 3, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderRadius: 99 }}>
                       <div style={{ height: '100%', width: `${m.pct}%`, background: m.color, borderRadius: 99, boxShadow: `0 0 5px ${m.color}80` }} />
                     </div>
@@ -873,6 +917,7 @@ export default function OrbitDashboard() {
       <style>{`
         @keyframes orbitPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
       `}</style>
     </div>
   );
