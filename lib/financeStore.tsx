@@ -199,7 +199,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       if (created.balance !== 0) {
         try {
           const today = new Date().toISOString().slice(0, 10);
-          const tx = await api<Transaction>('/api/transactions', {
+          const res = await api<{ transaction: Transaction }>('/api/transactions', {
             method: 'POST',
             body: JSON.stringify({
               date: today,
@@ -210,7 +210,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               accountId: created.id,
             }),
           });
-          dispatch({ type: 'addTransaction', payload: tx });
+          dispatch({ type: 'addTransaction', payload: res.transaction });
         } catch { /* non-critical */ }
       }
     },
@@ -225,7 +225,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         try {
           const diff = updated.balance - existing.balance;
           const today = new Date().toISOString().slice(0, 10);
-          const tx = await api<Transaction>('/api/transactions', {
+          const res = await api<{ transaction: Transaction }>('/api/transactions', {
             method: 'POST',
             body: JSON.stringify({
               date: today,
@@ -236,7 +236,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               accountId: a.id,
             }),
           });
-          dispatch({ type: 'addTransaction', payload: tx });
+          dispatch({ type: 'addTransaction', payload: res.transaction });
         } catch { /* non-critical */ }
       }
     },
@@ -380,7 +380,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
         const account = state.accounts.find(a => a.id === accId);
         const today = new Date().toISOString().slice(0, 10);
         try {
-          const tx = await api<Transaction>('/api/transactions', {
+          const res = await api<{ transaction: Transaction }>('/api/transactions', {
             method: 'POST',
             body: JSON.stringify({
               date: today,
@@ -391,7 +391,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
               accountId: accId,
             }),
           });
-          dispatch({ type: 'addTransaction', payload: tx });
+          dispatch({ type: 'addTransaction', payload: res.transaction });
           // Update account balance
           if (account) {
             const updatedAcc = await api<Account>(`/api/accounts/${accId}`, {
