@@ -354,12 +354,17 @@ export default function HealthPage() {
                 </div>
               ))}
             </div>
-            {/* Mood label */}
+            {/* Mood label / empty-state log prompt */}
             {todayEntry?.mood ? (
               <div style={{ marginTop: 10, fontSize: 12, color: MUTED, textAlign: 'center' }}>
                 Feeling <span style={{ color: PURPLE, fontWeight: 600 }}>{MOOD_TEXT[todayEntry.mood]}</span> today
               </div>
-            ) : null}
+            ) : (
+              <button onClick={() => setLogOpen(true)}
+                style={{ marginTop: 10, width: '100%', padding: '8px 0', borderRadius: 8, background: 'rgba(0,229,160,0.08)', border: `1px solid ${GREEN}33`, color: GREEN, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                Log Today →
+              </button>
+            )}
           </div>
 
           {/* Tasks + Habits — spans all 3 cols */}

@@ -638,6 +638,7 @@ export default function GoalsPage() {
             .go-progress-strip { flex-direction: column !important; gap: 16px !important; }
             .go-progress-rings { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             .go-goal-coach { max-width: 100% !important; }
+            .go-goals-grid { grid-template-columns: 1fr !important; }
           }
         `}</style>
         {/* 4-stat row */}
@@ -711,7 +712,7 @@ export default function GoalsPage() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="go-goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {[1,2,3,4].map(i => <div key={i} className="animate-pulse" style={{ height: 180, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />)}
           </div>
         ) : filteredGoals.length === 0 ? (
@@ -721,7 +722,7 @@ export default function GoalsPage() {
             <p style={{ color: MUTED, fontSize: 13 }}>Tap New Goal to get started</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="go-goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {filteredGoals.map(g => <GoalCard key={g.id} goal={g} {...sharedProps} />)}
           </div>
         )}
@@ -805,7 +806,7 @@ export default function GoalsPage() {
         )}
 
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="go-goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {[1,2,3,4].map(i => <div key={i} className="animate-pulse" style={{ height: 180, borderRadius: 16, background: 'rgba(255,255,255,0.04)' }} />)}
           </div>
         ) : activeGoals.length === 0
@@ -814,7 +815,7 @@ export default function GoalsPage() {
                 <p style={{ color: TXT, fontWeight: 600 }}>No active goals</p>
                 <p style={{ color: MUTED, fontSize: 13 }}>Tap New Goal to start working towards something</p>
               </div>
-            : <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            : <div className="go-goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {activeGoals.map(g => {
                   const daysLeft = g.deadline
                     ? Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86_400_000)
@@ -857,7 +858,7 @@ export default function GoalsPage() {
               <div style={{ fontSize: 22, fontWeight: 700, color: GREEN, fontFamily: 'Georgia,serif' }}>{completedGoals.length} Goal{completedGoals.length !== 1 ? 's' : ''} Achieved</div>
               <div style={{ fontSize: 13, color: MUTED, marginTop: 6 }}>Every completed goal is a victory worth celebrating.</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="go-goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               {completedGoals.map(g => <GoalCard key={g.id} goal={g} {...sharedProps} compact />)}
             </div>
           </>

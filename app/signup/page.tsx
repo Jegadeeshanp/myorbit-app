@@ -207,7 +207,7 @@ export default function SignUpPage() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="name">Full name</label>
             <input id="name" type="text" value={name} onChange={e => setName(e.target.value)}
-              placeholder="Aarav Shah" required
+              placeholder="Aarav Shah" required autoComplete="name"
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200" />
           </div>
 
@@ -217,7 +217,7 @@ export default function SignUpPage() {
               <span className="ml-2 text-xs font-normal text-gray-400">Gmail only</span>
             </label>
             <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="you@gmail.com" required
+              placeholder="you@gmail.com" required autoComplete="email"
               className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 ${
                 !emailIsGmail
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
@@ -235,7 +235,7 @@ export default function SignUpPage() {
             <div className="relative">
               <input id="password" type={showPw ? 'text' : 'password'} value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="At least 8 characters" required
+                placeholder="At least 8 characters" required autoComplete="new-password"
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm text-gray-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200" />
               <button type="button" onClick={() => setShowPw(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
@@ -263,7 +263,7 @@ export default function SignUpPage() {
             <div className="relative">
               <input id="confirm" type={showCf ? 'text' : 'password'} value={confirm}
                 onChange={e => setConfirm(e.target.value)}
-                placeholder="••••••••" required
+                placeholder="••••••••" required autoComplete="new-password"
                 className={`w-full rounded-xl border bg-white px-4 py-3 pr-11 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 ${
                   confirm.length > 0
                     ? confirm === password ? 'border-emerald-400' : 'border-red-300'

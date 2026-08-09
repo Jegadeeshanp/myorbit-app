@@ -548,10 +548,12 @@ export default function LandingPage() {
 
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-white pb-24 pt-20">
         <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-emerald-50 to-transparent" />
-        <div className="mx-auto flex flex-col gap-12 px-5 pt-10 lg:flex-row lg:items-center lg:justify-between">
-          <HeroText />
+        <div className="mx-auto flex flex-col gap-10 px-5 pt-10 lg:flex-row lg:items-center lg:justify-between">
+          <div className="order-2 lg:order-1">
+            <HeroText />
+          </div>
 
-          <div className="relative hidden w-full max-w-xl lg:block">
+          <div className="relative order-1 w-full max-w-xl lg:order-2">
             <HeroPreviewCard />
           </div>
         </div>

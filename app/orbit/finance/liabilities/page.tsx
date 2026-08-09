@@ -124,20 +124,50 @@ function RecordPaymentModal({
 
 // ── Liability detail sheet ─────────────────────────────────────────────────
 function LiabilityDetailSheet({
-  liability, onClose, onPay, onEdit, onDelete,
+  liability, onClose, onEdit, onDelete,
 }: {
   liability: Liability;
   onClose: () => void;
-  onPay: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { recordLiabilityPayment } = useFinance();
+  const [payOpen,   setPayOpen]   = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+
   const paidPct = liability.borrowed > 0
     ? Math.round((liability.totalRepaid / liability.borrowed) * 100)
     : 0;
   const days    = daysUntil(liability.nextDueDate);
   const dueSoon = days !== null && days <= 7 && days >= 0;
   const overdue = days !== null && days < 0;
+
+  const max       = liability.outstanding;
+  const suggested = liability.monthlyEmi;
+  const paid      = Number(payAmount) || 0;
+  const canSave   = paid > 0 && paid <= max;
+
+  const interestDue   = liability.interestRate && liability.interestRate > 0
+    ? Math.round(max * liability.interestRate / 100 / 12)
+    : 0;
+  const principalPaid = paid > 0 ? Math.max(0, paid - interestDue) : 0;
+
+  function handlePay() {
+    if (!canSave) return;
+    recordLiabilityPayment(liability.id, paid);
+    toast(`Payment of ${fmt(paid)} recorded`);
+    setPayAmount('');
+    setPayOpen(false);
+  }
+
+  // EMI breakdown numbers (reused in both views)
+  const monthlyInterest   = liability.interestRate && liability.interestRate > 0
+    ? Math.round(liability.outstanding * liability.interestRate / 100 / 12) : 0;
+  const monthlyPrincipal  = Math.max(0, liability.monthlyEmi - monthlyInterest);
+  const interestPct       = liability.monthlyEmi > 0
+    ? Math.round((monthlyInterest / liability.monthlyEmi) * 100) : 0;
+  const interestRemaining = Math.max(0, liability.monthlyEmi * liability.emisLeft - liability.outstanding);
+  const showEmiBreakdown  = (liability.interestRate ?? 0) > 0 && liability.monthlyEmi > 0;
 
   return (
     <div
@@ -153,16 +183,18 @@ function LiabilityDetailSheet({
           <div className="h-1 w-10 rounded-full bg-gray-200 dark:bg-white/[0.1]" />
         </div>
 
-        {/* Header */}
+        {/* Header — title switches between detail and payment views */}
         <div className="flex items-start justify-between border-b border-gray-100 dark:border-white/[0.07] px-5 py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">{liability.name}</h2>
-            {liability.lender && (
-              <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-0.5">{liability.lender}</p>
-            )}
+            <h2 className="truncate text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">
+              {payOpen ? 'Record Payment' : liability.name}
+            </h2>
+            <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-0.5">
+              {payOpen ? liability.name : (liability.lender || '')}
+            </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={payOpen ? () => { setPayOpen(false); setPayAmount(''); } : onClose}
             className="ml-3 flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gray-100 dark:bg-white/[0.06] text-gray-500 hover:bg-gray-200 dark:hover:bg-white/[0.1] transition"
           >
             <X className="h-4 w-4" />
@@ -171,113 +203,223 @@ function LiabilityDetailSheet({
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-          {/* Outstanding + Borrowed */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-rose-50 dark:bg-[#FF6B6B]/[0.07] border border-rose-100 dark:border-[#FF6B6B]/20 p-3.5">
-              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Outstanding</p>
-              <p className="mt-1 text-lg font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(liability.outstanding)}</p>
-            </div>
-            <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
-              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Borrowed</p>
-              <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(liability.borrowed)}</p>
-            </div>
-          </div>
-
-          {/* Repayment progress */}
-          <div className="rounded-xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] px-4 py-3.5 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-gray-600 dark:text-[#8fa3b8]">Repayment progress</span>
-              <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{paidPct}% paid</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
-              <div className="h-2 rounded-full bg-emerald-500 dark:bg-[#00E5A0] transition-all" style={{ width: `${paidPct}%` }} />
-            </div>
-            <p className="text-xs text-gray-400 dark:text-[#3d5166]">Repaid {fmt(liability.totalRepaid)} of {fmt(liability.borrowed)}</p>
-          </div>
-
-          {/* Details */}
-          <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
-            <div className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-gray-400 dark:text-[#3d5166]">Monthly EMI</span>
-              <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmt(liability.monthlyEmi)}</span>
-            </div>
-            <div className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-gray-400 dark:text-[#3d5166]">EMIs Left</span>
-              <span className={`font-semibold rounded-full px-2 py-0.5 text-xs ${
-                liability.emisLeft <= 3 ? 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1] text-rose-600 dark:text-[#FF6B6B]'
-                : liability.emisLeft <= 6 ? 'bg-amber-50 dark:bg-[#F9A44A]/[0.1] text-amber-600 dark:text-[#F9A44A]'
-                : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-[#8fa3b8]'
-              }`}>{liability.emisLeft} left</span>
-            </div>
-            <div className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-gray-400 dark:text-[#3d5166]">Next Due</span>
-              <span className={`font-semibold ${overdue ? 'text-rose-600 dark:text-[#FF6B6B]' : dueSoon ? 'text-amber-600 dark:text-[#F9A44A]' : 'text-gray-900 dark:text-[#e4eaf4]'}`}>
-                {fmtDate(liability.nextDueDate)}
-                {overdue  && ' · Overdue'}
-                {dueSoon && !overdue && ' · Due soon'}
-              </span>
-            </div>
-            {liability.interestRate != null && liability.interestRate > 0 && (
-              <div className="flex justify-between px-4 py-3 text-sm">
-                <span className="text-gray-400 dark:text-[#3d5166]">Interest Rate</span>
-                <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{liability.interestRate}% p.a.</span>
-              </div>
-            )}
-          </div>
-
-          {/* EMI breakdown — shown only when interest rate is set */}
-          {liability.interestRate != null && liability.interestRate > 0 && liability.monthlyEmi > 0 && (() => {
-            const monthlyInterest  = Math.round(liability.outstanding * liability.interestRate / 100 / 12);
-            const monthlyPrincipal = Math.max(0, liability.monthlyEmi - monthlyInterest);
-            const interestPct      = liability.monthlyEmi > 0 ? Math.round((monthlyInterest / liability.monthlyEmi) * 100) : 0;
-            const totalRemaining   = liability.monthlyEmi * liability.emisLeft;
-            const interestRemaining = Math.max(0, totalRemaining - liability.outstanding);
-            return (
-              <div className="rounded-xl border border-amber-100 dark:border-[#F9A44A]/20 bg-amber-50 dark:bg-[#F9A44A]/[0.05] px-4 py-3.5 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-[#F9A44A]">Next EMI breakdown</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-[#8fa3b8]">Interest portion</span>
-                    <span className="font-semibold text-rose-600 dark:text-[#FF6B6B]">{fmt(monthlyInterest)} <span className="text-xs font-normal text-gray-400 dark:text-[#3d5166]">({interestPct}%)</span></span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500 dark:text-[#8fa3b8]">Principal reduction</span>
-                    <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{fmt(monthlyPrincipal)} <span className="text-xs font-normal text-gray-400 dark:text-[#3d5166]">({100 - interestPct}%)</span></span>
-                  </div>
-                  {/* Split bar */}
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-[#00E5A0]/10">
-                    <div className="h-1.5 rounded-full bg-rose-400 dark:bg-[#FF6B6B] transition-all" style={{ width: `${interestPct}%` }} />
-                  </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-amber-100 dark:border-[#F9A44A]/15 text-sm">
-                    <span className="text-gray-400 dark:text-[#3d5166]">Est. interest remaining</span>
-                    <span className="font-semibold text-gray-700 dark:text-[#e4eaf4]">{fmt(interestRemaining)}</span>
-                  </div>
+          {payOpen ? (
+            /* ── Payment form ──────────────────────────────────────── */
+            <>
+              {/* Context: outstanding + EMI */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-rose-50 dark:bg-[#FF6B6B]/[0.07] border border-rose-100 dark:border-[#FF6B6B]/20 p-3.5">
+                  <p className="text-xs text-gray-400 dark:text-[#3d5166]">Outstanding</p>
+                  <p className="mt-1 text-lg font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(max)}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
+                  <p className="text-xs text-gray-400 dark:text-[#3d5166]">Monthly EMI</p>
+                  <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(suggested)}</p>
                 </div>
               </div>
-            );
-          })()}
+
+              {/* Amount input */}
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-[#3d5166]">
+                  Payment amount
+                </p>
+                <input
+                  value={payAmount}
+                  onChange={e => setPayAmount(e.target.value)}
+                  type="number"
+                  min="1"
+                  max={max}
+                  placeholder={String(suggested)}
+                  className={inputCls}
+                  autoFocus
+                />
+                <div className="flex gap-2 mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setPayAmount(String(suggested))}
+                    className="rounded-full border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-[#8fa3b8] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition"
+                  >
+                    EMI {fmt(suggested)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayAmount(String(max))}
+                    className="rounded-full border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-[#8fa3b8] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition"
+                  >
+                    Full {fmt(max)}
+                  </button>
+                </div>
+              </div>
+
+              {/* Live breakdown preview */}
+              <div className="rounded-xl border border-gray-100 dark:border-white/[0.07] bg-gray-50 dark:bg-white/[0.04] p-3.5 text-xs space-y-2">
+                <div className="flex justify-between text-gray-500 dark:text-[#8fa3b8]">
+                  <span>Outstanding before</span>
+                  <span className="font-semibold text-rose-600 dark:text-[#FF6B6B]">{fmt(max)}</span>
+                </div>
+                {interestDue > 0 && paid > 0 && (
+                  <>
+                    <div className="flex justify-between text-gray-500 dark:text-[#8fa3b8]">
+                      <span>Interest (this month)</span>
+                      <span className="font-medium text-amber-600 dark:text-[#F9A44A]">{fmt(interestDue)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500 dark:text-[#8fa3b8]">
+                      <span>Principal reduction</span>
+                      <span className="font-medium text-emerald-600 dark:text-[#00E5A0]">{fmt(principalPaid)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between border-t border-gray-100 dark:border-white/[0.06] pt-2 text-gray-500 dark:text-[#8fa3b8]">
+                  <span>Outstanding after</span>
+                  <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{fmt(Math.max(0, max - principalPaid))}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ── Detail view ───────────────────────────────────────── */
+            <>
+              {/* Outstanding + Borrowed */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-rose-50 dark:bg-[#FF6B6B]/[0.07] border border-rose-100 dark:border-[#FF6B6B]/20 p-3.5">
+                  <p className="text-xs text-gray-400 dark:text-[#3d5166]">Outstanding</p>
+                  <p className="mt-1 text-lg font-bold text-rose-600 dark:text-[#FF6B6B]">{fmt(liability.outstanding)}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
+                  <p className="text-xs text-gray-400 dark:text-[#3d5166]">Borrowed</p>
+                  <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(liability.borrowed)}</p>
+                </div>
+              </div>
+
+              {/* Repayment progress */}
+              <div className="rounded-xl border border-gray-100 dark:border-white/[0.07] bg-white dark:bg-white/[0.04] px-4 py-3.5 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-gray-600 dark:text-[#8fa3b8]">Repayment progress</span>
+                  <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{paidPct}% paid</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                  <div className="h-2 rounded-full bg-emerald-500 dark:bg-[#00E5A0] transition-all" style={{ width: `${paidPct}%` }} />
+                </div>
+                <p className="text-xs text-gray-400 dark:text-[#3d5166]">
+                  Repaid {fmt(liability.totalRepaid)} of {fmt(liability.borrowed)}
+                </p>
+              </div>
+
+              {/* Details */}
+              <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Monthly EMI</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmt(liability.monthlyEmi)}</span>
+                </div>
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">EMIs Left</span>
+                  <span className={`font-semibold rounded-full px-2 py-0.5 text-xs ${
+                    liability.emisLeft <= 3
+                      ? 'bg-rose-50 dark:bg-[#FF6B6B]/[0.1] text-rose-600 dark:text-[#FF6B6B]'
+                      : liability.emisLeft <= 6
+                      ? 'bg-amber-50 dark:bg-[#F9A44A]/[0.1] text-amber-600 dark:text-[#F9A44A]'
+                      : 'bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-[#8fa3b8]'
+                  }`}>{liability.emisLeft} left</span>
+                </div>
+                <div className="flex justify-between px-4 py-3 text-sm">
+                  <span className="text-gray-400 dark:text-[#3d5166]">Next Due</span>
+                  <span className={`font-semibold ${
+                    overdue  ? 'text-rose-600 dark:text-[#FF6B6B]'
+                    : dueSoon ? 'text-amber-600 dark:text-[#F9A44A]'
+                    : 'text-gray-900 dark:text-[#e4eaf4]'
+                  }`}>
+                    {fmtDate(liability.nextDueDate)}
+                    {overdue && ' · Overdue'}
+                    {dueSoon && !overdue && ' · Due soon'}
+                  </span>
+                </div>
+                {(liability.interestRate ?? 0) > 0 && (
+                  <div className="flex justify-between px-4 py-3 text-sm">
+                    <span className="text-gray-400 dark:text-[#3d5166]">Interest Rate</span>
+                    <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{liability.interestRate}% p.a.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* EMI breakdown */}
+              {showEmiBreakdown && (
+                <div className="rounded-xl border border-amber-100 dark:border-[#F9A44A]/20 bg-amber-50 dark:bg-[#F9A44A]/[0.05] px-4 py-3.5 space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-[#F9A44A]">
+                    Next EMI breakdown
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500 dark:text-[#8fa3b8]">Interest portion</span>
+                      <span className="font-semibold text-rose-600 dark:text-[#FF6B6B]">
+                        {fmt(monthlyInterest)}{' '}
+                        <span className="text-xs font-normal text-gray-400 dark:text-[#3d5166]">({interestPct}%)</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500 dark:text-[#8fa3b8]">Principal reduction</span>
+                      <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">
+                        {fmt(monthlyPrincipal)}{' '}
+                        <span className="text-xs font-normal text-gray-400 dark:text-[#3d5166]">({100 - interestPct}%)</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-[#00E5A0]/10">
+                      <div
+                        className="h-1.5 rounded-full bg-rose-400 dark:bg-[#FF6B6B] transition-all"
+                        style={{ width: `${interestPct}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-amber-100 dark:border-[#F9A44A]/15 text-sm">
+                      <span className="text-gray-400 dark:text-[#3d5166]">Est. interest remaining</span>
+                      <span className="font-semibold text-gray-700 dark:text-[#e4eaf4]">{fmt(interestRemaining)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        {/* Actions */}
+        {/* Footer — switches between detail actions and payment confirm */}
         <div className="flex gap-2 border-t border-gray-100 dark:border-white/[0.07] px-5 py-4 flex-none">
-          <button
-            onClick={() => { onPay(); onClose(); }}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-[#00E5A0] py-2.5 text-sm font-semibold text-white dark:text-black hover:bg-emerald-700 dark:hover:bg-[#00c990] transition"
-          >
-            <CheckCircle2 className="h-4 w-4" /> Record Payment
-          </button>
-          <button
-            onClick={() => { onEdit(); onClose(); }}
-            className="rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4] hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => { onDelete(); onClose(); }}
-            className="rounded-xl border border-rose-200 dark:border-[#FF6B6B]/30 bg-rose-50 dark:bg-[#FF6B6B]/[0.07] px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-[#FF6B6B] hover:bg-rose-100 dark:hover:bg-[#FF6B6B]/[0.15] transition"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {payOpen ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setPayOpen(false); setPayAmount(''); }}
+                className="flex-1 rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] py-2.5 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4] hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePay}
+                disabled={!canSave}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-[#00E5A0] py-2.5 text-sm font-semibold text-white dark:text-black hover:bg-emerald-700 dark:hover:bg-[#00c990] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Confirm Payment
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setPayOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 dark:bg-[#00E5A0] py-2.5 text-sm font-semibold text-white dark:text-black hover:bg-emerald-700 dark:hover:bg-[#00c990] transition"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Record Payment
+              </button>
+              <button
+                onClick={() => { onEdit(); onClose(); }}
+                className="rounded-xl border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-[#e4eaf4] hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => { onDelete(); onClose(); }}
+                className="rounded-xl border border-rose-200 dark:border-[#FF6B6B]/30 bg-rose-50 dark:bg-[#FF6B6B]/[0.07] px-4 py-2.5 text-sm font-semibold text-rose-600 dark:text-[#FF6B6B] hover:bg-rose-100 dark:hover:bg-[#FF6B6B]/[0.15] transition"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -632,7 +774,6 @@ export default function LiabilitiesPage() {
         <LiabilityDetailSheet
           liability={detailLiab}
           onClose={() => setDetailLiab(null)}
-          onPay={() => setPayTarget(detailLiab)}
           onEdit={() => setEditTarget(detailLiab)}
           onDelete={() => { deleteLiability(detailLiab.id); toast('Liability removed'); }}
         />

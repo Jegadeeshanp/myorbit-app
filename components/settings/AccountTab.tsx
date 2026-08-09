@@ -29,6 +29,7 @@ export default function AccountTab({ onSignOut }: { onSignOut: () => void }) {
   const user = auth.status === 'authenticated' ? auth.user : null;
 
   const [name,        setName]        = useState(user?.name ?? '');
+  useEffect(() => { if (user?.name) setName(user.name); }, [user?.name]);
   const [showPass,    setShowPass]    = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [newPass,     setNewPass]     = useState('');

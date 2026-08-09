@@ -1109,7 +1109,7 @@ export default function HabitsPage() {
         </div>
       )}
 
-      <button onClick={() => setShowModal(true)} className="md:hidden" style={{ position: 'fixed', bottom: 80, right: 16, zIndex: 40, width: 56, height: 56, borderRadius: '50%', background: DARK_AMBER, border: 'none', color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(249,164,74,0.4)' }}>
+      <button onClick={() => setShowModal(true)} className="md:hidden" style={{ position: 'fixed', bottom: 152, right: 16, zIndex: 40, width: 56, height: 56, borderRadius: '50%', background: DARK_AMBER, border: 'none', color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(249,164,74,0.4)' }}>
         <Plus size={22} />
       </button>
 
