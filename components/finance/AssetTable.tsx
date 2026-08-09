@@ -77,6 +77,14 @@ function CardMenu({ onEdit, onDelete }: { onEdit?: () => void; onDelete: () => v
   );
 }
 
+function fmtUnitPrice(v: number) {
+  return v.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatInvestmentType(raw: string) {
+  return raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function AssetDetailSheet({
   asset, onClose, onEdit, onDelete,
 }: {
@@ -90,6 +98,13 @@ function AssetDetailSheet({
   const pnl    = asset.value - asset.invested;
   const pnlPct = asset.invested > 0 ? ((pnl / asset.invested) * 100).toFixed(1) : '0';
   const a      = asset as any;
+
+  const units: number | null = a.units != null && a.units > 0 ? a.units : null;
+  const avgBuyPrice     = units ? asset.invested / units : null;
+  const currentPrice    = units ? asset.value    / units : null;
+  const priceChangePct  = avgBuyPrice && currentPrice
+    ? (((currentPrice - avgBuyPrice) / avgBuyPrice) * 100).toFixed(1)
+    : null;
 
   let sipData: { amount?: number; frequency?: string; nextDate?: string } | null = null;
   try {
@@ -138,7 +153,7 @@ function AssetDetailSheet({
               <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(asset.value)}</p>
             </div>
             <div className="rounded-xl bg-gray-50 dark:bg-white/[0.04] p-3.5">
-              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Invested</p>
+              <p className="text-xs text-gray-400 dark:text-[#3d5166]">Total Invested</p>
               <p className="mt-1 text-lg font-bold text-gray-900 dark:text-[#e4eaf4]">{fmt(asset.invested)}</p>
             </div>
           </div>
@@ -158,13 +173,34 @@ function AssetDetailSheet({
             </div>
           </div>
 
-          {/* Units / Symbol */}
-          {(asset.units != null || asset.symbol) && (
+          {/* Unit prices — only shown when units are tracked */}
+          {avgBuyPrice !== null && currentPrice !== null && (
             <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
-              {asset.units != null && (
+              <div className="flex items-center justify-between px-4 py-3 text-sm">
+                <span className="text-gray-400 dark:text-[#3d5166]">Avg Buy Price</span>
+                <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmtUnitPrice(avgBuyPrice)}</span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3 text-sm">
+                <span className="text-gray-400 dark:text-[#3d5166]">Current Price</span>
+                <div className="text-right">
+                  <p className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{fmtUnitPrice(currentPrice)}</p>
+                  {priceChangePct !== null && (
+                    <p className={`text-xs font-medium ${pnl >= 0 ? 'text-emerald-500 dark:text-[#00E5A0]/80' : 'text-rose-400 dark:text-[#FF6B6B]/80'}`}>
+                      {pnl >= 0 ? '+' : ''}{priceChangePct}% vs buy
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Units / Symbol / Type */}
+          {(units != null || asset.symbol || a.investmentType) && (
+            <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
+              {units != null && (
                 <div className="flex justify-between px-4 py-3 text-sm">
-                  <span className="text-gray-400 dark:text-[#3d5166]">Units</span>
-                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{asset.units}</span>
+                  <span className="text-gray-400 dark:text-[#3d5166]">Units held</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{units}</span>
                 </div>
               )}
               {asset.symbol && (
@@ -176,7 +212,7 @@ function AssetDetailSheet({
               {a.investmentType && (
                 <div className="flex justify-between px-4 py-3 text-sm">
                   <span className="text-gray-400 dark:text-[#3d5166]">Type</span>
-                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4] capitalize">{a.investmentType}</span>
+                  <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{formatInvestmentType(a.investmentType)}</span>
                 </div>
               )}
             </div>

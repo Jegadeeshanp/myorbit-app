@@ -224,6 +224,38 @@ function LiabilityDetailSheet({
               </div>
             )}
           </div>
+
+          {/* EMI breakdown — shown only when interest rate is set */}
+          {liability.interestRate != null && liability.interestRate > 0 && liability.monthlyEmi > 0 && (() => {
+            const monthlyInterest  = Math.round(liability.outstanding * liability.interestRate / 100 / 12);
+            const monthlyPrincipal = Math.max(0, liability.monthlyEmi - monthlyInterest);
+            const interestPct      = liability.monthlyEmi > 0 ? Math.round((monthlyInterest / liability.monthlyEmi) * 100) : 0;
+            const totalRemaining   = liability.monthlyEmi * liability.emisLeft;
+            const interestRemaining = Math.max(0, totalRemaining - liability.outstanding);
+            return (
+              <div className="rounded-xl border border-amber-100 dark:border-[#F9A44A]/20 bg-amber-50 dark:bg-[#F9A44A]/[0.05] px-4 py-3.5 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-[#F9A44A]">Next EMI breakdown</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 dark:text-[#8fa3b8]">Interest portion</span>
+                    <span className="font-semibold text-rose-600 dark:text-[#FF6B6B]">{fmt(monthlyInterest)} <span className="text-xs font-normal text-gray-400 dark:text-[#3d5166]">({interestPct}%)</span></span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500 dark:text-[#8fa3b8]">Principal reduction</span>
+                    <span className="font-semibold text-emerald-600 dark:text-[#00E5A0]">{fmt(monthlyPrincipal)} <span className="text-xs font-normal text-gray-400 dark:text-[#3d5166]">({100 - interestPct}%)</span></span>
+                  </div>
+                  {/* Split bar */}
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-[#00E5A0]/10">
+                    <div className="h-1.5 rounded-full bg-rose-400 dark:bg-[#FF6B6B] transition-all" style={{ width: `${interestPct}%` }} />
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-amber-100 dark:border-[#F9A44A]/15 text-sm">
+                    <span className="text-gray-400 dark:text-[#3d5166]">Est. interest remaining</span>
+                    <span className="font-semibold text-gray-700 dark:text-[#e4eaf4]">{fmt(interestRemaining)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Actions */}
