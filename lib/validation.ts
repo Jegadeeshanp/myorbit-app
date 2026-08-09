@@ -72,7 +72,8 @@ export const assetSchema = z.object({
   invested: z.number().nonnegative('Invested amount cannot be negative').finite(),
   accountId: z.string().optional(),
   investmentType: z.enum(['lump_sum', 'sip']).optional(),
-  sipConfig: z.union([z.string(), z.record(z.unknown())]).optional(), // string from web, object from mobile
+  sipConfig: z.union([z.string(), z.record(z.unknown())]).optional(),
+  symbol: z.string().max(50).optional().nullable(),
 });
 
 // ── Liability ─────────────────────────────────────────────────────────────────

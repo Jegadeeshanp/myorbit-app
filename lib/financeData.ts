@@ -27,6 +27,7 @@ export type Asset = {
   value: number;
   invested: number;
   units?: number | null;
+  symbol?: string | null;
   accountId?: string;
   investmentType?: string;
   sipConfig?: SipConfig | null;

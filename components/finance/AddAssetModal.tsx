@@ -42,6 +42,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
   const [perUnit,       setPerUnit]       = useState('');
   const [accountId,     setAccountId]     = useState('');
   const [invType,       setInvType]       = useState<InvestmentType>('lump_sum');
+  const [symbol,        setSymbol]        = useState('');
 
   // SIP-specific
   const [sipFreq,       setSipFreq]       = useState<SipFrequency>('monthly');
@@ -61,6 +62,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
       setInvested(String(initial.invested));
       setUnits(initial.units != null ? String(initial.units) : '');
       setPerUnit(initial.units && initial.units > 0 && initial.value > 0 ? String(Math.round((initial.value / initial.units) * 100) / 100) : '');
+      setSymbol(initial.symbol ?? '');
       setAccountId(initial.accountId ?? '');
       setInvType((initial.investmentType ?? 'lump_sum') as InvestmentType);
       if (initial.sipConfig) {
@@ -80,7 +82,7 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
       }
     } else {
       setName(''); setCategory('Stocks & Equity'); setValue(''); setInvested('');
-      setUnits(''); setPerUnit('');
+      setUnits(''); setPerUnit(''); setSymbol('');
       setAccountId(''); setInvType('lump_sum');
       setSipFreq('monthly'); setSipStart(new Date().toISOString().slice(0, 10));
       setSipEndType('forever'); setSipEndAfter(''); setSipEndDate(''); setSipAmount('');
@@ -113,10 +115,11 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
         value: computedValue,
         invested: Number(invested),
         units: numUnits ?? null,
+        symbol: symbol.trim() || null,
         accountId: accountId || undefined,
         investmentType: invType,
         sipConfig: sipCfg,
-      });
+      } as any);
       toast(initial ? 'Asset updated' : 'Asset added');
       onClose();
     } finally {
@@ -234,6 +237,30 @@ export default function AddAssetModal({ open, onClose, onSave, initial, accounts
               </label>
               <input value={value} onChange={e => { setValue(e.target.value); if (Number(units) > 0 && Number(e.target.value) > 0) setPerUnit(String(Math.round((Number(e.target.value) / Number(units)) * 100) / 100)); }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Auto-computed from units × per unit, or enter directly" type="number" min="0" className={inputCls} />
             </div>
+            {(['Stocks & Equity', 'Mutual Funds', 'Gold & Silver'] as AssetCategory[]).includes(category) && (
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                  Market ticker / Scheme code <OptionalBadge />
+                </label>
+                <input
+                  value={symbol}
+                  onChange={e => setSymbol(e.target.value)}
+                  placeholder={
+                    category === 'Mutual Funds'
+                      ? '119551  (AMFI scheme code)'
+                      : category === 'Gold & Silver'
+                      ? 'GOLDBEES.NS'
+                      : 'RELIANCE.NS'
+                  }
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  {category === 'Stocks & Equity' && 'NSE: RELIANCE.NS · BSE: 500325.BO — value auto-updates daily at 10 AM & 4 PM'}
+                  {category === 'Mutual Funds' && 'Find your code at mfapi.in — NAV auto-updates daily — requires Units to be set'}
+                  {category === 'Gold & Silver' && 'NSE ETF ticker e.g. GOLDBEES.NS — value auto-updates daily — requires Units to be set'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

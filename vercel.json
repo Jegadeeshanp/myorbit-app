@@ -18,6 +18,14 @@
     {
       "path": "/api/cron/cleanup-task-instances",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-asset-prices",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-asset-prices",
+      "schedule": "30 10 * * *"
     }
   ]
 }

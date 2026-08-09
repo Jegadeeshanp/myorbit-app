@@ -15,12 +15,13 @@ async function computeInvested(assetId: string): Promise<number> {
   return (await Promise.all(rows.map(r => decryptNumber(r.amount)))).reduce((s, v) => s + v, 0);
 }
 
-async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null }) {
+async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null; symbol?: string | null }) {
   const computedInvested = await computeInvested(row.id);
   const storedInvested   = await decryptNumber(row.invested);
   return {
     id: row.id, name: row.name, category: row.category,
     units: row.units ?? null,
+    symbol: extra?.symbol ?? null,
     value: await decryptNumber(row.value),
     invested: computedInvested > 0 ? computedInvested : storedInvested,
     accountId: extra?.accountId ?? undefined,
@@ -36,7 +37,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     const row = await prisma.asset.findFirst({ where: { id, userId } });
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const [extra] = await prisma.$queryRaw<any[]>`
-      SELECT id, "accountId", "investmentType", "sipConfig", "units" FROM "Asset" WHERE id = ${id}
+      SELECT id, "accountId", "investmentType", "sipConfig", "units", "symbol" FROM "Asset" WHERE id = ${id}
     `;
     return NextResponse.json(await decryptAsset(row, extra));
   } catch (e: any) {
@@ -55,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const parsed = assetSchema.partial().safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { accountId, investmentType, sipConfig, ...coreData } = parsed.data as any;
+    const { accountId, investmentType, sipConfig, symbol, ...coreData } = parsed.data as any;
 
     const data: any = { ...coreData };
     if (data.value != null) data.value = await encryptNumber(data.value);
@@ -64,18 +65,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const row = await prisma.asset.update({ where: { id }, data });
 
-    if ('accountId' in parsed.data || 'investmentType' in parsed.data || 'sipConfig' in parsed.data) {
+    if ('accountId' in parsed.data || 'investmentType' in parsed.data || 'sipConfig' in parsed.data || 'symbol' in parsed.data) {
       const accVal  = accountId ?? null;
       const invType = investmentType ?? 'lump_sum';
       const sipVal  = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
+      const symVal  = symbol ?? null;
       await prisma.$executeRaw`
-        UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
+        UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}, "symbol" = ${symVal}
         WHERE id = ${id}
       `;
     }
 
-    const [extra] = await prisma.$queryRaw<{ accountId: string | null; investmentType: string; sipConfig: string | null }[]>`
-      SELECT "accountId", "investmentType", "sipConfig" FROM "Asset" WHERE id = ${id}
+    const [extra] = await prisma.$queryRaw<{ accountId: string | null; investmentType: string; sipConfig: string | null; symbol: string | null }[]>`
+      SELECT "accountId", "investmentType", "sipConfig", "symbol" FROM "Asset" WHERE id = ${id}
     `;
 
     // ── SIP: create any new past installments not yet recorded ────────────────

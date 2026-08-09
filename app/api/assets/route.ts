@@ -16,7 +16,7 @@ async function computeInvested(assetId: string): Promise<number> {
   return (await Promise.all(rows.map(r => decryptNumber(r.amount)))).reduce((s, v) => s + v, 0);
 }
 
-async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null; units?: number | null }) {
+async function decryptAsset(row: any, extra?: { accountId?: string | null; investmentType?: string; sipConfig?: string | null; units?: number | null; symbol?: string | null }) {
   // Prefer computed invested from InvestmentTransaction; fall back to stored field
   const computedInvested = await computeInvested(row.id);
   const storedInvested   = await decryptNumber(row.invested);
@@ -26,6 +26,7 @@ async function decryptAsset(row: any, extra?: { accountId?: string | null; inves
     name:           row.name,
     category:       row.category,
     units:          extra?.units ?? (row as any).units ?? null,
+    symbol:         extra?.symbol ?? null,
     value:          await decryptNumber(row.value),
     invested:       computedInvested > 0 ? computedInvested : storedInvested,
     accountId:      extra?.accountId ?? undefined,
@@ -39,10 +40,10 @@ export async function GET() {
     const userId = await requireUserId();
     const rows = await prisma.asset.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 
-    let extras: { id: string; accountId: string | null; investmentType: string; sipConfig: string | null; units?: number | null }[] = [];
+    let extras: { id: string; accountId: string | null; investmentType: string; sipConfig: string | null; units?: number | null; symbol?: string | null }[] = [];
     try {
       extras = await prisma.$queryRaw`
-        SELECT id, "accountId", "investmentType", "sipConfig", "units" FROM "Asset" WHERE "userId" = ${userId}
+        SELECT id, "accountId", "investmentType", "sipConfig", "units", "symbol" FROM "Asset" WHERE "userId" = ${userId}
       `;
     } catch {
       extras = await prisma.$queryRaw`
@@ -65,19 +66,20 @@ export async function POST(req: NextRequest) {
     const parsed = assetSchema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const { name, category, value, invested, accountId, investmentType, sipConfig } = parsed.data;
+    const { name, category, value, invested, accountId, investmentType, sipConfig, symbol } = parsed.data as any;
     const { units } = parsed.data as any;
 
     const row = await prisma.asset.create({
       data: { userId, name, category, value: await encryptNumber(value), invested: await encryptNumber(invested), units: units ?? null },
     });
 
-    const invType = investmentType ?? 'lump_sum';
-    const sipVal  = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
-    const accVal  = accountId ?? null;
+    const invType  = investmentType ?? 'lump_sum';
+    const sipVal   = sipConfig == null ? null : typeof sipConfig === 'string' ? sipConfig : JSON.stringify(sipConfig);
+    const accVal   = accountId ?? null;
+    const symVal   = symbol ?? null;
 
     await prisma.$executeRaw`
-      UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}
+      UPDATE "Asset" SET "accountId" = ${accVal}, "investmentType" = ${invType}, "sipConfig" = ${sipVal}, "symbol" = ${symVal}
       WHERE id = ${row.id}
     `;
 
@@ -205,7 +207,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const asset = await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units });
+    const asset = await decryptAsset(row, { accountId: accVal, investmentType: invType, sipConfig: sipVal, units, symbol: symVal });
     return NextResponse.json({ asset, fundingTransaction, updatedAccount, sipTransactions, sipUpdatedAccount }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

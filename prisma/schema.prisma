@@ -96,6 +96,7 @@ model Asset {
   accountId      String?
   investmentType String   @default("lump_sum")
   sipConfig      String?  // JSON: { frequency, startDate, endType, endAfterTimes?, endDate? }
+  symbol         String?  // market ticker or MF scheme code for auto price refresh
   // isExternallyOwned is derived client-side: !accountId — no DB column to avoid migration requirement
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
