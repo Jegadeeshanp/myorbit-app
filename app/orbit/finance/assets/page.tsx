@@ -28,9 +28,7 @@ export default function AssetsPage() {
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');
 
-  if (state.loadState === 'loading') return <AssetsSkeleton />;
-
-  // Derive tabs dynamically from assets present in the store
+  // All hooks must run before any early return (Rules of Hooks)
   const availableTabs = useMemo(() => {
     const presentCategories = new Set(state.assets.map(a => a.category));
     return ['All', ...ASSET_CATEGORIES
@@ -39,7 +37,6 @@ export default function AssetsPage() {
     ];
   }, [state.assets]);
 
-  // If active tab was removed (e.g. last asset of that type deleted), fall back to All
   const safeTab = availableTabs.includes(activeTab) ? activeTab : 'All';
 
   const filteredAssets = useMemo(() => {
@@ -67,6 +64,8 @@ export default function AssetsPage() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
   }, [state.assets]);
+
+  if (state.loadState === 'loading') return <AssetsSkeleton />;
 
   return (
     <div className="space-y-5">
