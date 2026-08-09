@@ -128,6 +128,7 @@ type FinanceContextValue = {
   addAsset:               (a: Omit<Asset, 'id'>)           => Promise<void>;
   updateAsset:            (a: Asset)                       => Promise<void>;
   deleteAsset:            (id: string)                     => Promise<void>;
+  refreshAssetPrices:     () => Promise<{ updated: number; failed?: string[]; usdInr?: number }>;
   addLiability:           (l: Omit<Liability, 'id'>)       => Promise<void>;
   updateLiability:        (l: Liability)                   => Promise<void>;
   deleteLiability:        (id: string)                     => Promise<void>;
@@ -312,6 +313,15 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     deleteAsset: async (id) => {
       await api(`/api/assets/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteAsset', payload: id });
+    },
+    refreshAssetPrices: async () => {
+      const result = await api<{ updated: number; failed?: string[]; usdInr?: number; assets?: Asset[] }>(
+        '/api/assets/refresh-prices', { method: 'POST' },
+      );
+      if (result.assets) {
+        result.assets.forEach(asset => dispatch({ type: 'updateAsset', payload: asset }));
+      }
+      return { updated: result.updated, failed: result.failed, usdInr: result.usdInr };
     },
 
     addLiability: async (l) => {

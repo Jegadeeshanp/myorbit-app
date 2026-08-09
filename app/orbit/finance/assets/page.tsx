@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PlusCircle, Search, TrendingUp, TrendingDown, DollarSign, Camera } from 'lucide-react';
+import { PlusCircle, Search, TrendingUp, TrendingDown, DollarSign, Camera, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import AssetTable from '@/components/finance/AssetTable';
 import AddAssetModal from '@/components/finance/AddAssetModal';
@@ -20,9 +20,11 @@ function fmt(v: number) {
 }
 
 export default function AssetsPage() {
-  const { state, addAsset, updateAsset } = useFinance();
+  const { state, addAsset, updateAsset, refreshAssetPrices } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
   const [isScanOpen, setScanOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null);
 
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
@@ -65,6 +67,21 @@ export default function AssetsPage() {
       .sort((a, b) => b.value - a.value);
   }, [state.assets]);
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    setRefreshMsg(null);
+    try {
+      const res = await refreshAssetPrices();
+      const rate = res.usdInr ? ` · $1 = ₹${Math.round(res.usdInr)}` : '';
+      const failNote = res.failed?.length ? ` (${res.failed.join(', ')} not found)` : '';
+      setRefreshMsg(`Updated ${res.updated} asset${res.updated !== 1 ? 's' : ''}${rate}${failNote}`);
+    } catch {
+      setRefreshMsg('Refresh failed — check your internet connection');
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   if (state.loadState === 'loading') return <AssetsSkeleton />;
 
   return (
@@ -94,12 +111,20 @@ export default function AssetsPage() {
       </div>
 
       {/* Search + Add controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 sm:flex-none">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
             className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-3 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none sm:w-52" />
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] px-4 py-2 text-sm font-semibold text-gray-600 dark:text-[#8fa3b8] shadow-sm transition hover:bg-gray-50 dark:hover:bg-white/[0.06] disabled:opacity-50 whitespace-nowrap"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing…' : 'Refresh Prices'}
+        </button>
         <button
           onClick={() => setScanOpen(true)}
           className="inline-flex items-center gap-2 rounded-full border border-emerald-200 dark:border-[#00E5A0]/30 bg-white dark:bg-[#0b1019] px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-[#00E5A0] shadow-sm transition hover:bg-emerald-50 dark:hover:bg-[#00e5a0]/[0.07] whitespace-nowrap"
@@ -111,6 +136,9 @@ export default function AssetsPage() {
           <PlusCircle className="h-4 w-4" /> Add Asset
         </button>
       </div>
+      {refreshMsg && (
+        <p className="text-xs text-gray-500 dark:text-[#8fa3b8]">{refreshMsg}</p>
+      )}
 
       {/* Dynamic category tabs */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5">
