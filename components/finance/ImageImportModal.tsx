@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import {
   Upload, Camera, X, Loader2, CheckCircle2, AlertCircle,
-  ChevronRight, TrendingUp, TrendingDown,
+  ChevronRight, Images,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import { ASSET_CATEGORIES } from '@/lib/assetCategories';
@@ -24,6 +24,13 @@ type ParsedItem = {
   saveStatus: 'idle' | 'saving' | 'done' | 'error';
 };
 
+type FileStatus = {
+  name: string;
+  status: 'pending' | 'analyzing' | 'done' | 'error';
+  error?: string;
+  count?: number;
+};
+
 type Step = 'upload' | 'analyzing' | 'review' | 'saving' | 'done';
 
 const CATEGORY_LABELS = ASSET_CATEGORIES.map(c => c.label);
@@ -36,9 +43,7 @@ const fmtNum = (v: number | null) =>
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-interface Props {
-  onClose: () => void;
-}
+interface Props { onClose: () => void }
 
 export default function ImageImportModal({ onClose }: Props) {
   const { addAsset } = useFinance();
@@ -46,13 +51,12 @@ export default function ImageImportModal({ onClose }: Props) {
   const [step, setStep] = useState<Step>('upload');
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState('');
   const [category, setCategory] = useState('Stocks & Equity');
   const [items, setItems] = useState<ParsedItem[]>([]);
+  const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
   const [savedCount, setSavedCount] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // ── Image → base64 ────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const toBase64 = (file: File): Promise<string> =>
     new Promise((res, rej) => {
@@ -62,12 +66,13 @@ export default function ImageImportModal({ onClose }: Props) {
       r.readAsDataURL(file);
     });
 
-  // ── Parse ─────────────────────────────────────────────────────────────────
+  const updateFileStatus = (idx: number, patch: Partial<FileStatus>) =>
+    setFileStatuses(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
 
-  const parseImage = useCallback(async (file: File) => {
-    setStep('analyzing');
-    setError(null);
-    setPreviewUrl(URL.createObjectURL(file));
+  // ── Parse one image ───────────────────────────────────────────────────────
+
+  const parseOne = async (file: File, idx: number): Promise<ParsedItem[]> => {
+    updateFileStatus(idx, { status: 'analyzing' });
     try {
       const imageBase64 = await toBase64(file);
       const res = await fetch('/api/finance/parse-image', {
@@ -75,45 +80,73 @@ export default function ImageImportModal({ onClose }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64, mimeType: file.type || 'image/jpeg' }),
       });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({ error: 'Failed' }));
-        throw new Error(e.error ?? 'Failed to analyze image');
-      }
       const data = await res.json();
-      setSource(data.source ?? '');
-      if (data.category && CATEGORY_LABELS.includes(data.category)) setCategory(data.category);
-      setItems(
-        (data.items ?? []).map((item: any, i: number) => ({
-          id: String(i),
-          name: item.name ?? '',
-          units: item.units ?? null,
-          avgPrice: item.avgPrice ?? null,
-          currentPrice: item.currentPrice ?? null,
-          currentValue: Number(item.currentValue) || 0,
-          investedValue: Number(item.investedValue) || 0,
-          returns: item.returns ?? null,
-          returnsPercent: item.returnsPercent ?? null,
-          selected: true,
-          saveStatus: 'idle',
-        }))
-      );
-      setStep('review');
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+
+      if (data.category && CATEGORY_LABELS.includes(data.category)) {
+        setCategory(data.category);
+      }
+
+      const newItems: ParsedItem[] = (data.items ?? []).map((item: any, i: number) => ({
+        id: `${idx}-${i}`,
+        name: item.name ?? '',
+        units: item.units ?? null,
+        avgPrice: item.avgPrice ?? null,
+        currentPrice: item.currentPrice ?? null,
+        currentValue: Number(item.currentValue) || 0,
+        investedValue: Number(item.investedValue) || 0,
+        returns: item.returns ?? null,
+        returnsPercent: item.returnsPercent ?? null,
+        selected: true,
+        saveStatus: 'idle',
+      }));
+
+      updateFileStatus(idx, { status: 'done', count: newItems.length });
+      return newItems;
     } catch (e: any) {
-      setError(e.message ?? 'Could not analyze image');
-      setStep('upload');
+      updateFileStatus(idx, { status: 'error', error: e.message });
+      return [];
     }
+  };
+
+  // ── Parse all images ──────────────────────────────────────────────────────
+
+  const parseFiles = useCallback(async (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) { setError('Please upload image files (JPG, PNG, WEBP)'); return; }
+
+    setStep('analyzing');
+    setError(null);
+    setFileStatuses(imageFiles.map(f => ({ name: f.name, status: 'pending' })));
+    setItems([]);
+
+    // Process all files (sequentially to avoid rate limits)
+    const allItems: ParsedItem[] = [];
+    for (let i = 0; i < imageFiles.length; i++) {
+      const parsed = await parseOne(imageFiles[i], i);
+      allItems.push(...parsed);
+    }
+
+    if (allItems.length === 0) {
+      setError('Could not extract any data from the uploaded images');
+      setStep('upload');
+      return;
+    }
+
+    setItems(allItems);
+    setStep('review');
   }, []);
 
   // ── File input handlers ───────────────────────────────────────────────────
 
-  const handleFile = (file: File) => {
-    if (!file.type.startsWith('image/')) { setError('Please upload a JPG, PNG, or WEBP image'); return; }
-    parseImage(file);
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    parseFiles(Array.from(files));
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
-    const f = e.dataTransfer.files[0]; if (f) handleFile(f);
+    handleFiles(e.dataTransfer.files);
   };
 
   // ── Item editing ──────────────────────────────────────────────────────────
@@ -165,11 +198,11 @@ export default function ImageImportModal({ onClose }: Props) {
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">Scan & Import</h2>
               <p className="text-xs text-gray-400 dark:text-[#3d5166]">
-                {step === 'upload'   && 'Upload a portfolio screenshot to auto-import'}
-                {step === 'analyzing' && 'Analyzing your screenshot…'}
-                {step === 'review'   && `${items.length} items detected${source ? ` · ${source}` : ''}`}
-                {step === 'saving'   && `Importing ${selectedCount} assets…`}
-                {step === 'done'     && `${savedCount} assets imported successfully`}
+                {step === 'upload'    && 'Upload one or more portfolio screenshots'}
+                {step === 'analyzing' && `Analyzing ${fileStatuses.length} screenshot${fileStatuses.length !== 1 ? 's' : ''}…`}
+                {step === 'review'    && `${items.length} holdings detected across ${fileStatuses.length} screenshot${fileStatuses.length !== 1 ? 's' : ''}`}
+                {step === 'saving'    && `Importing ${selectedCount} assets…`}
+                {step === 'done'      && `${savedCount} assets imported successfully`}
               </p>
             </div>
           </div>
@@ -182,46 +215,37 @@ export default function ImageImportModal({ onClose }: Props) {
         <div className="flex-1 overflow-y-auto">
 
           {/* ── UPLOAD ── */}
-          {(step === 'upload' || step === 'analyzing') && (
+          {step === 'upload' && (
             <div className="p-6 flex flex-col items-center gap-5">
-              {/* Preview (if re-trying) */}
-              {previewUrl && step === 'upload' && (
-                <img src={previewUrl} alt="Preview" className="max-h-40 rounded-2xl object-contain border border-gray-100 dark:border-white/[0.07]" />
-              )}
-
-              {/* Drop zone */}
               <div
                 onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={() => fileRef.current?.click()}
                 className={`w-full cursor-pointer rounded-2xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition ${
-                  step === 'analyzing'
-                    ? 'border-emerald-300 dark:border-[#00E5A0]/40 bg-emerald-50/50 dark:bg-[#00e5a0]/[0.05]'
-                    : dragOver
+                  dragOver
                     ? 'border-emerald-400 dark:border-[#00E5A0]/60 bg-emerald-50 dark:bg-[#00e5a0]/[0.08]'
                     : 'border-gray-200 dark:border-white/[0.1] hover:border-emerald-300 dark:hover:border-[#00E5A0]/40 hover:bg-gray-50 dark:hover:bg-white/[0.02]'
                 }`}
               >
-                {step === 'analyzing' ? (
-                  <>
-                    <Loader2 className="h-10 w-10 text-emerald-500 dark:text-[#00E5A0] animate-spin" />
-                    <p className="text-sm font-medium text-emerald-700 dark:text-[#00E5A0]">Analyzing your screenshot…</p>
-                    <p className="text-xs text-gray-400 dark:text-[#3d5166]">This usually takes 5–10 seconds</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.07]">
-                      <Upload className="h-7 w-7 text-gray-400 dark:text-[#3d5166]" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Drop screenshot here or click to upload</p>
-                      <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">Works with Zerodha, Groww, Kuvera, Coin, and more · JPG / PNG / WEBP</p>
-                    </div>
-                  </>
-                )}
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.07]">
+                  <Images className="h-7 w-7 text-gray-400 dark:text-[#3d5166]" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Drop screenshots here or click to upload</p>
+                  <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">
+                    Select multiple files at once · Zerodha, Groww, Kuvera, Coin · JPG / PNG / WEBP
+                  </p>
+                </div>
               </div>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={e => handleFiles(e.target.files)}
+              />
 
               {error && (
                 <div className="w-full flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm text-rose-600 dark:text-rose-400">
@@ -230,15 +254,52 @@ export default function ImageImportModal({ onClose }: Props) {
               )}
 
               <p className="text-xs text-gray-400 dark:text-[#3d5166] text-center max-w-sm">
-                Supported: stock portfolios, mutual fund holdings, ETF statements.<br />
-                Data is extracted locally — your screenshot is never stored.
+                Supports stock portfolios, mutual fund holdings, ETF statements.<br />
+                Upload all pages of your portfolio at once.
               </p>
+            </div>
+          )}
+
+          {/* ── ANALYZING ── */}
+          {step === 'analyzing' && (
+            <div className="p-6 space-y-3">
+              {fileStatuses.map((fs, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-white/[0.07] px-4 py-3">
+                  {fs.status === 'pending'   && <div className="h-4 w-4 flex-none rounded-full border-2 border-gray-300 dark:border-gray-600" />}
+                  {fs.status === 'analyzing' && <Loader2 className="h-4 w-4 flex-none text-emerald-500 dark:text-[#00E5A0] animate-spin" />}
+                  {fs.status === 'done'      && <CheckCircle2 className="h-4 w-4 flex-none text-emerald-500 dark:text-[#00E5A0]" />}
+                  {fs.status === 'error'     && <AlertCircle className="h-4 w-4 flex-none text-rose-500" />}
+                  <span className="flex-1 text-sm text-gray-700 dark:text-[#e4eaf4] truncate">{fs.name}</span>
+                  <span className="text-xs text-gray-400 dark:text-[#3d5166]">
+                    {fs.status === 'pending'   && 'Waiting…'}
+                    {fs.status === 'analyzing' && 'Analyzing…'}
+                    {fs.status === 'done'      && `${fs.count} holding${fs.count !== 1 ? 's' : ''} found`}
+                    {fs.status === 'error'     && (fs.error ?? 'Failed')}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
           {/* ── REVIEW ── */}
           {step === 'review' && (
             <div className="p-4 space-y-4">
+              {/* File summary chips */}
+              {fileStatuses.length > 1 && (
+                <div className="flex flex-wrap gap-2 px-1">
+                  {fileStatuses.map((fs, i) => (
+                    <span key={i} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                      fs.status === 'done'
+                        ? 'bg-emerald-50 dark:bg-[#00e5a0]/[0.1] text-emerald-700 dark:text-[#00E5A0]'
+                        : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {fs.status === 'done' ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                      {fs.name} · {fs.count ?? 0} items
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Category selector */}
               <div className="flex items-center gap-3 px-1">
                 <span className="text-xs font-semibold text-gray-500 dark:text-[#8fa3b8] whitespace-nowrap">Asset type</span>
@@ -293,7 +354,7 @@ export default function ImageImportModal({ onClose }: Props) {
                       const pct = item.returnsPercent ?? (item.investedValue > 0 ? ((item.currentValue - item.investedValue) / item.investedValue) * 100 : 0);
                       const positive = pnl >= 0;
                       return (
-                        <tr key={item.id} className={`transition ${item.selected ? 'bg-white dark:bg-transparent' : 'opacity-40'}`}>
+                        <tr key={item.id} className={`transition ${item.selected ? '' : 'opacity-40'}`}>
                           <td className="px-3 py-2.5 text-center">
                             <input type="checkbox" checked={item.selected} onChange={e => updateItem(item.id, 'selected', e.target.checked)} className="h-4 w-4 rounded accent-emerald-600" />
                           </td>
@@ -361,7 +422,7 @@ export default function ImageImportModal({ onClose }: Props) {
           {step === 'review' && (
             <>
               <button
-                onClick={() => { setStep('upload'); setItems([]); setPreviewUrl(null); }}
+                onClick={() => { setStep('upload'); setItems([]); setFileStatuses([]); setError(null); }}
                 className="text-sm text-gray-500 dark:text-[#8fa3b8] hover:text-gray-700 dark:hover:text-[#e4eaf4] transition"
               >
                 ← Re-upload
@@ -378,16 +439,13 @@ export default function ImageImportModal({ onClose }: Props) {
           )}
           {step === 'done' && (
             <div className="w-full flex justify-center">
-              <button
-                onClick={onClose}
-                className="rounded-xl bg-emerald-600 px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
-              >
+              <button onClick={onClose} className="rounded-xl bg-emerald-600 px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
                 Done
               </button>
             </div>
           )}
           {(step === 'upload' || step === 'analyzing') && (
-            <button onClick={onClose} className="text-sm text-gray-500 dark:text-[#8fa3b8] hover:text-gray-700 dark:hover:text-[#e4eaf4] transition">
+            <button onClick={onClose} className="text-sm text-gray-500 dark:text-[#8fa3b8] hover:text-gray-700 dark:hover:text-[#e4eaf4] transition ml-auto">
               Cancel
             </button>
           )}

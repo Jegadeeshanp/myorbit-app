@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const runtime = 'nodejs';
 
-const client = new Anthropic();
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const PROMPT = `Analyze this financial screenshot and extract all visible data.
 
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-5',
+      model: 'claude-opus-4-5',
       max_tokens: 4096,
       messages: [
         {
@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
     if (e.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('[parse-image]', e);
-    return NextResponse.json({ error: 'Failed to analyze image' }, { status: 500 });
+    const detail = e?.message ?? String(e);
+    console.error('[parse-image]', detail);
+    return NextResponse.json({ error: detail }, { status: 500 });
   }
 }
