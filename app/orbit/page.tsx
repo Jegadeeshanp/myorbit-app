@@ -170,9 +170,16 @@ export default function OrbitDashboard() {
     .filter(g => g.deadline)
     .sort((a, b) => (a.deadline < b.deadline ? -1 : 1))[0];
 
-  const totalBalance = state.loadState === 'ready'
-    ? state.accounts.reduce((s, a) => s + (a.balance ?? 0), 0)
-    : null;
+  // Mirror Accounts page: liquid (bank+wallet+cash+debit) minus credit used
+  const totalBalance = useMemo(() => {
+    if (state.loadState !== 'ready') return null;
+    let liquid = 0, creditUsed = 0;
+    state.accounts.forEach(a => {
+      if (a.type === 'Credit Card') creditUsed += Math.abs(a.balance ?? 0);
+      else                          liquid     += (a.balance ?? 0);
+    });
+    return liquid - creditUsed;
+  }, [state.accounts, state.loadState]);
 
   const monthlyNet = useMemo(() => {
     if (state.loadState !== 'ready') return null;
@@ -269,10 +276,10 @@ export default function OrbitDashboard() {
   function modPillData(key: string): { value: string; sub: string; valueColor: string } {
     switch (key) {
       case 'finance':
-        if (totalBalance === null) return { value: '—', sub: 'Total balance', valueColor: t.text2 };
+        if (totalBalance === null) return { value: '—', sub: 'Net balance', valueColor: t.text2 };
         return {
           value: `${totalBalance < 0 ? '–' : ''}₹${fmtBal(totalBalance)}`,
-          sub: monthlyNet !== null ? `${monthlyNet >= 0 ? '↑' : '↓'} ₹${fmtBal(Math.abs(monthlyNet))} this month` : 'Total balance',
+          sub: monthlyNet !== null ? `${monthlyNet >= 0 ? '↑' : '↓'} ₹${fmtBal(Math.abs(monthlyNet))} this month` : 'Net balance',
           valueColor: totalBalance < 0 ? t.red : t.green,
         };
       case 'health':

@@ -63,6 +63,7 @@ type FinanceAction =
   | { type: 'hydrate'; payload: Omit<FinanceState, 'loadState'> }
   | { type: 'setLoadState'; payload: LoadState }
   | { type: 'reset' }
+  | { type: 'refreshBalances'; payload: { accounts: Account[]; assets: Asset[]; liabilities: Liability[] } }
   | { type: 'addAccount'; payload: Account }
   | { type: 'updateAccount'; payload: Account }
   | { type: 'deleteAccount'; payload: string }
@@ -86,9 +87,10 @@ const defaultState: FinanceState = {
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
-    case 'hydrate':      return { ...state, ...action.payload, loadState: 'ready' };
-    case 'setLoadState': return { ...state, loadState: action.payload };
-    case 'reset':        return { ...defaultState };
+    case 'hydrate':         return { ...state, ...action.payload, loadState: 'ready' };
+    case 'setLoadState':    return { ...state, loadState: action.payload };
+    case 'reset':           return { ...defaultState };
+    case 'refreshBalances': return { ...state, accounts: action.payload.accounts, assets: action.payload.assets, liabilities: action.payload.liabilities };
 
     case 'addAccount':    return { ...state, accounts: [...state.accounts, action.payload] };
     case 'updateAccount': return { ...state, accounts: state.accounts.map(a => a.id === action.payload.id ? action.payload : a) };
@@ -164,9 +166,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
           api<Asset[]>('/api/assets'),
           api<Liability[]>('/api/liabilities'),
         ]);
-        accs.forEach(a  => dispatch({ type: 'updateAccount',   payload: a }));
-        assts.forEach(a => dispatch({ type: 'updateAsset',     payload: a }));
-        liabs.forEach(l => dispatch({ type: 'updateLiability', payload: l }));
+        dispatch({ type: 'refreshBalances', payload: { accounts: accs, assets: assts, liabilities: liabs } });
       } catch { /* silent — non-critical background refresh */ }
     }
     document.addEventListener('visibilitychange', handleVisibility);
@@ -219,9 +219,7 @@ export function FinanceProvider({ children }: PropsWithChildren) {
           api<Asset[]>('/api/assets'),
           api<Liability[]>('/api/liabilities'),
         ]);
-        accs.forEach(a  => dispatch({ type: 'updateAccount',   payload: a }));
-        assts.forEach(a => dispatch({ type: 'updateAsset',     payload: a }));
-        liabs.forEach(l => dispatch({ type: 'updateLiability', payload: l }));
+        dispatch({ type: 'refreshBalances', payload: { accounts: accs, assets: assts, liabilities: liabs } });
       } catch { /* silent */ }
     },
 
