@@ -229,7 +229,7 @@ function TxDotsMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
 export default function TransactionList({ transactions, onAdd }: { transactions: Transaction[]; onAdd?: () => void }) {
   const { state, deleteTransaction, updateTransaction } = useFinance();
   const [activeTab, setActiveTab]   = useState('All');
-  const [period, setPeriod]         = useState<PeriodValue>('3m');
+  const [period, setPeriod]         = useState<PeriodValue>('month');
   const [search, setSearch]         = useState('');
   const [mobileSearch, setMobileSearch] = useState(false);
   const [dropdownOpen, setDropdown]     = useState(false);
