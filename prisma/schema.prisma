@@ -68,19 +68,21 @@ model Account {
 }
 
 model Transaction {
-  id          String   @id @default(cuid())
-  userId      String
-  accountId   String?
-  date        String
-  category    String
-  description String
-  notes       String?
-  amount      String
-  type        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account     Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  id                String   @id @default(cuid())
+  userId            String
+  accountId         String?
+  date              String
+  category          String
+  description       String
+  notes             String?
+  amount            String
+  type              String
+  linkedAssetId     String?  // set when this tx is an SIP installment for an asset
+  linkedLiabilityId String?  // set when this tx is an EMI payment for a liability
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account           Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
   @@index([userId])
 }
