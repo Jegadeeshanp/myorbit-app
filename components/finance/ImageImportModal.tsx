@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import {
   Upload, Camera, X, Loader2, CheckCircle2, AlertCircle,
-  ChevronRight, Images,
+  ChevronRight, Images, FileSpreadsheet,
 } from 'lucide-react';
 import { useFinance } from '@/lib/financeStore';
 import { ASSET_CATEGORIES } from '@/lib/assetCategories';
@@ -32,6 +32,7 @@ type FileStatus = {
 };
 
 type Step = 'upload' | 'analyzing' | 'review' | 'saving' | 'done';
+type ImportTab = 'screenshot' | 'csv';
 
 const CATEGORY_LABELS = ASSET_CATEGORIES.map(c => c.label);
 
@@ -41,20 +42,105 @@ const fmt = (v: number | null) =>
 const fmtNum = (v: number | null) =>
   v == null ? '—' : v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
+// ── CSV parser ────────────────────────────────────────────────────────────────
+
+function parseCSVText(csv: string): ParsedItem[] {
+  const lines = csv.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  // Split a CSV line respecting quoted fields
+  const splitLine = (line: string): string[] => {
+    const result: string[] = [];
+    let cur = '';
+    let inQuote = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuote = !inQuote; continue; }
+      if (ch === ',' && !inQuote) { result.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    result.push(cur.trim());
+    return result;
+  };
+
+  const headers = splitLine(lines[0]).map(h => h.toLowerCase().replace(/['"]/g, '').trim());
+
+  const col = (...names: string[]) => {
+    for (const n of names) {
+      const idx = headers.findIndex(h => h.includes(n.toLowerCase()));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+
+  const nameCol   = col('instrument', 'symbol', 'name', 'stock', 'scrip');
+  const qtyCol    = col('qty', 'quantity', 'units', 'shares', 'no. of');
+  const avgCol    = col('avg cost', 'average price', 'avg price', 'avg. price', 'buy price', 'cost price');
+  const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp');
+  const curValCol = col('cur val', 'current value', 'market value', 'present value');
+  const invValCol = col('invested', 'invest val', 'buy value', 'cost value', 'amount invested');
+  const pnlCol    = col('p&l', 'pnl', 'unrealised', 'profit', 'gain/loss', 'gain', 'returns\n');
+  const pnlPctCol = col('net chg', 'returns (%)', 'return %', 'gain %', 'p&l %', '% return', 'returns%', 'day chg');
+
+  if (nameCol === -1) return [];
+
+  const items: ParsedItem[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cells = splitLine(lines[i]);
+    const name = nameCol < cells.length ? cells[nameCol].replace(/['"]/g, '').trim() : '';
+    if (!name || name.toLowerCase() === 'total') continue;
+
+    const n = (idx: number): number | null => {
+      if (idx < 0 || idx >= cells.length) return null;
+      const raw = cells[idx].replace(/[₹,\s"']/g, '');
+      if (raw === '' || raw === '-' || raw === 'N/A') return null;
+      const v = parseFloat(raw);
+      return isNaN(v) ? null : v;
+    };
+
+    const qty      = n(qtyCol);
+    const avgPrice = n(avgCol);
+    const ltp      = n(ltpCol);
+    const curVal   = n(curValCol) ?? (qty != null && ltp != null ? qty * ltp : 0);
+    const invVal   = n(invValCol) ?? (qty != null && avgPrice != null ? qty * avgPrice : 0);
+    const pnl      = n(pnlCol)    ?? (curVal - invVal);
+    const pnlPct   = n(pnlPctCol) ?? (invVal > 0 ? (pnl / invVal) * 100 : 0);
+
+    items.push({
+      id: `csv-${i}`,
+      name,
+      units: qty,
+      avgPrice,
+      currentPrice: ltp,
+      currentValue: curVal,
+      investedValue: invVal,
+      returns: pnl,
+      returnsPercent: pnlPct,
+      selected: true,
+      saveStatus: 'idle',
+    });
+  }
+
+  return items;
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 interface Props { onClose: () => void }
 
 export default function ImageImportModal({ onClose }: Props) {
   const { addAsset } = useFinance();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState<Step>('upload');
-  const [dragOver, setDragOver] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [category, setCategory] = useState('Stocks & Equity');
-  const [items, setItems] = useState<ParsedItem[]>([]);
+  const imageRef = useRef<HTMLInputElement>(null);
+  const csvRef   = useRef<HTMLInputElement>(null);
+
+  const [step, setStep]           = useState<Step>('upload');
+  const [importTab, setImportTab] = useState<ImportTab>('csv');
+  const [dragOver, setDragOver]   = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [category, setCategory]   = useState('Stocks & Equity');
+  const [items, setItems]         = useState<ParsedItem[]>([]);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
-  const [savedCount, setSavedCount] = useState(0);
+  const [savedCount, setSavedCount]     = useState(0);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -66,10 +152,48 @@ export default function ImageImportModal({ onClose }: Props) {
       r.readAsDataURL(file);
     });
 
+  const readText = (file: File): Promise<string> =>
+    new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as string);
+      r.onerror = rej;
+      r.readAsText(file);
+    });
+
   const updateFileStatus = (idx: number, patch: Partial<FileStatus>) =>
     setFileStatuses(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
 
-  // ── Parse one image ───────────────────────────────────────────────────────
+  // ── CSV import ────────────────────────────────────────────────────────────
+
+  const handleCSVFiles = useCallback(async (files: File[]) => {
+    const csvFiles = files.filter(f =>
+      f.name.endsWith('.csv') || f.type === 'text/csv' || f.type === 'application/vnd.ms-excel'
+    );
+    if (csvFiles.length === 0) { setError('Please upload a CSV file exported from Zerodha, Groww, or any broker'); return; }
+
+    setError(null);
+    const allItems: ParsedItem[] = [];
+
+    for (const file of csvFiles) {
+      try {
+        const text = await readText(file);
+        const parsed = parseCSVText(text);
+        allItems.push(...parsed);
+      } catch {
+        setError(`Could not read ${file.name}`);
+      }
+    }
+
+    if (allItems.length === 0) {
+      setError('No holdings found in the CSV. Make sure it is a holdings export (not a transaction report).');
+      return;
+    }
+
+    setItems(allItems);
+    setStep('review');
+  }, []);
+
+  // ── Screenshot import (Gemini) ────────────────────────────────────────────
 
   const parseOne = async (file: File, idx: number): Promise<{ items: ParsedItem[]; error?: string }> => {
     updateFileStatus(idx, { status: 'analyzing' });
@@ -83,9 +207,7 @@ export default function ImageImportModal({ onClose }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
 
-      if (data.category && CATEGORY_LABELS.includes(data.category)) {
-        setCategory(data.category);
-      }
+      if (data.category && CATEGORY_LABELS.includes(data.category)) setCategory(data.category);
 
       const newItems: ParsedItem[] = (data.items ?? []).map((item: any, i: number) => ({
         id: `${idx}-${i}`,
@@ -110,9 +232,7 @@ export default function ImageImportModal({ onClose }: Props) {
     }
   };
 
-  // ── Parse all images ──────────────────────────────────────────────────────
-
-  const parseFiles = useCallback(async (files: File[]) => {
+  const parseImageFiles = useCallback(async (files: File[]) => {
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     if (imageFiles.length === 0) { setError('Please upload image files (JPG, PNG, WEBP)'); return; }
 
@@ -121,12 +241,11 @@ export default function ImageImportModal({ onClose }: Props) {
     setFileStatuses(imageFiles.map(f => ({ name: f.name, status: 'pending' })));
     setItems([]);
 
-    // Process all files sequentially to avoid rate limits; collect errors
     const allItems: ParsedItem[] = [];
     let firstError: string | null = null;
     for (let i = 0; i < imageFiles.length; i++) {
-      const { items, error } = await parseOne(imageFiles[i], i);
-      allItems.push(...items);
+      const { items: parsed, error } = await parseOne(imageFiles[i], i);
+      allItems.push(...parsed);
       if (error && !firstError) firstError = error;
     }
 
@@ -142,14 +261,11 @@ export default function ImageImportModal({ onClose }: Props) {
 
   // ── File input handlers ───────────────────────────────────────────────────
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    parseFiles(Array.from(files));
-  };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
-    handleFiles(e.dataTransfer.files);
+    const files = Array.from(e.dataTransfer.files);
+    if (importTab === 'csv') handleCSVFiles(files);
+    else parseImageFiles(files);
   };
 
   // ── Item editing ──────────────────────────────────────────────────────────
@@ -199,11 +315,11 @@ export default function ImageImportModal({ onClose }: Props) {
               <Camera className="h-5 w-5 text-emerald-600 dark:text-[#00E5A0]" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">Scan & Import</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-[#e4eaf4]">Import Holdings</h2>
               <p className="text-xs text-gray-400 dark:text-[#3d5166]">
-                {step === 'upload'    && 'Upload one or more portfolio screenshots'}
+                {step === 'upload'    && 'Import from CSV export or screenshot'}
                 {step === 'analyzing' && `Analyzing ${fileStatuses.length} screenshot${fileStatuses.length !== 1 ? 's' : ''}…`}
-                {step === 'review'    && `${items.length} holdings detected across ${fileStatuses.length} screenshot${fileStatuses.length !== 1 ? 's' : ''}`}
+                {step === 'review'    && `${items.length} holdings detected — review before saving`}
                 {step === 'saving'    && `Importing ${selectedCount} assets…`}
                 {step === 'done'      && `${savedCount} assets imported successfully`}
               </p>
@@ -219,47 +335,107 @@ export default function ImageImportModal({ onClose }: Props) {
 
           {/* ── UPLOAD ── */}
           {step === 'upload' && (
-            <div className="p-6 flex flex-col items-center gap-5">
-              <div
-                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current?.click()}
-                className={`w-full cursor-pointer rounded-2xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition ${
-                  dragOver
-                    ? 'border-emerald-400 dark:border-[#00E5A0]/60 bg-emerald-50 dark:bg-[#00e5a0]/[0.08]'
-                    : 'border-gray-200 dark:border-white/[0.1] hover:border-emerald-300 dark:hover:border-[#00E5A0]/40 hover:bg-gray-50 dark:hover:bg-white/[0.02]'
-                }`}
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.07]">
-                  <Images className="h-7 w-7 text-gray-400 dark:text-[#3d5166]" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Drop screenshots here or click to upload</p>
-                  <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">
-                    Select multiple files at once · Zerodha, Groww, Kuvera, Coin · JPG / PNG / WEBP
-                  </p>
-                </div>
-              </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={e => handleFiles(e.target.files)}
-              />
+            <div className="p-6 flex flex-col gap-4">
 
-              {error && (
-                <div className="w-full flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm text-rose-600 dark:text-rose-400">
-                  <AlertCircle className="h-4 w-4 flex-none" /> {error}
-                </div>
+              {/* Import method tabs */}
+              <div className="flex rounded-xl border border-gray-100 dark:border-white/[0.07] bg-gray-50 dark:bg-white/[0.03] p-1 gap-1">
+                <button
+                  onClick={() => { setImportTab('csv'); setError(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition ${
+                    importTab === 'csv'
+                      ? 'bg-white dark:bg-[#131c2e] text-emerald-700 dark:text-[#00E5A0] shadow-sm'
+                      : 'text-gray-500 dark:text-[#8fa3b8] hover:text-gray-700 dark:hover:text-[#e4eaf4]'
+                  }`}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  CSV Export
+                  <span className="ml-1 rounded-full bg-emerald-100 dark:bg-[#00e5a0]/[0.15] px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-[#00E5A0]">FREE</span>
+                </button>
+                <button
+                  onClick={() => { setImportTab('screenshot'); setError(null); }}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition ${
+                    importTab === 'screenshot'
+                      ? 'bg-white dark:bg-[#131c2e] text-emerald-700 dark:text-[#00E5A0] shadow-sm'
+                      : 'text-gray-500 dark:text-[#8fa3b8] hover:text-gray-700 dark:hover:text-[#e4eaf4]'
+                  }`}
+                >
+                  <Images className="h-4 w-4" />
+                  Screenshot
+                </button>
+              </div>
+
+              {/* CSV tab content */}
+              {importTab === 'csv' && (
+                <>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => csvRef.current?.click()}
+                    className={`w-full cursor-pointer rounded-2xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition ${
+                      dragOver
+                        ? 'border-emerald-400 dark:border-[#00E5A0]/60 bg-emerald-50 dark:bg-[#00e5a0]/[0.08]'
+                        : 'border-gray-200 dark:border-white/[0.1] hover:border-emerald-300 dark:hover:border-[#00E5A0]/40 hover:bg-gray-50 dark:hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-[#00e5a0]/[0.1]">
+                      <FileSpreadsheet className="h-7 w-7 text-emerald-600 dark:text-[#00E5A0]" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Drop your CSV file here or click to upload</p>
+                      <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">Zerodha · Groww · Kuvera · Angel One · Upstox</p>
+                    </div>
+                  </div>
+                  <input ref={csvRef} type="file" accept=".csv,text/csv" multiple className="hidden"
+                    onChange={e => handleCSVFiles(Array.from(e.target.files ?? []))} />
+
+                  {/* How to export instructions */}
+                  <div className="rounded-xl border border-gray-100 dark:border-white/[0.07] bg-gray-50 dark:bg-white/[0.02] p-4 space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-[#8fa3b8]">How to export from Zerodha</p>
+                    <ol className="text-xs text-gray-400 dark:text-[#3d5166] space-y-1 list-decimal list-inside">
+                      <li>Open Console → Portfolio → Holdings</li>
+                      <li>Click the download icon (↓) at the top right</li>
+                      <li>Upload the downloaded CSV here</li>
+                    </ol>
+                  </div>
+                </>
               )}
 
-              <p className="text-xs text-gray-400 dark:text-[#3d5166] text-center max-w-sm">
-                Supports stock portfolios, mutual fund holdings, ETF statements.<br />
-                Upload all pages of your portfolio at once.
-              </p>
+              {/* Screenshot tab content */}
+              {importTab === 'screenshot' && (
+                <>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => imageRef.current?.click()}
+                    className={`w-full cursor-pointer rounded-2xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition ${
+                      dragOver
+                        ? 'border-emerald-400 dark:border-[#00E5A0]/60 bg-emerald-50 dark:bg-[#00e5a0]/[0.08]'
+                        : 'border-gray-200 dark:border-white/[0.1] hover:border-emerald-300 dark:hover:border-[#00E5A0]/40 hover:bg-gray-50 dark:hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.07]">
+                      <Images className="h-7 w-7 text-gray-400 dark:text-[#3d5166]" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Drop screenshots here or click to upload</p>
+                      <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">Select multiple files at once · JPG / PNG / WEBP</p>
+                    </div>
+                  </div>
+                  <input ref={imageRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => parseImageFiles(Array.from(e.target.files ?? []))} />
+                  <p className="text-xs text-gray-400 dark:text-[#3d5166] text-center">
+                    Uses Google Gemini AI to read your screenshots. Requires <code className="font-mono">GOOGLE_AI_API_KEY</code> in environment variables.
+                  </p>
+                </>
+              )}
+
+              {error && (
+                <div className="flex items-start gap-2 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm text-rose-600 dark:text-rose-400">
+                  <AlertCircle className="h-4 w-4 flex-none mt-0.5" /> {error}
+                </div>
+              )}
             </div>
           )}
 
@@ -287,7 +463,7 @@ export default function ImageImportModal({ onClose }: Props) {
           {/* ── REVIEW ── */}
           {step === 'review' && (
             <div className="p-4 space-y-4">
-              {/* File summary chips */}
+              {/* File summary chips (screenshot mode only) */}
               {fileStatuses.length > 1 && (
                 <div className="flex flex-wrap gap-2 px-1">
                   {fileStatuses.map((fs, i) => (

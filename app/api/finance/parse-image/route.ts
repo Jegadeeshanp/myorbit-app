@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUserId } from '@/lib/auth';
-import Anthropic from '@anthropic-ai/sdk';
 
 export const runtime = 'nodejs';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const PROMPT = `Analyze this financial screenshot and extract all visible data.
+const PROMPT = `Analyze this financial screenshot and extract all visible holding/position data.
 
 Return ONLY a valid JSON object — no markdown, no explanation — with this exact structure:
 {
@@ -45,30 +42,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No image provided' }, { status: 400 });
     }
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-5',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: (mimeType || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-                data: imageBase64,
-              },
-            },
-            { type: 'text', text: PROMPT },
-          ],
-        },
-      ],
-    });
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Google AI API key not configured (add GOOGLE_AI_API_KEY to environment variables)' }, { status: 500 });
+    }
 
-    const text = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
+              { text: PROMPT },
+            ],
+          }],
+          generationConfig: { maxOutputTokens: 4096, temperature: 0 },
+        }),
+      }
+    );
 
-    // Strip markdown code fences if present
+    const geminiData = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      throw new Error(geminiData.error?.message ?? `Gemini API error ${geminiRes.status}`);
+    }
+
+    const text: string = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
