@@ -114,8 +114,6 @@ export default function LiabilitiesPage() {
   const { state, addLiability, updateLiability, deleteLiability } = useFinance();
   const liabilities = state.liabilities;
 
-  if (state.loadState === 'loading') return <LiabilitiesSkeleton />;
-
   const [addOpen,     setAddOpen]     = useState(false);
   const [editTarget,  setEditTarget]  = useState<Liability | null>(null);
   const [payTarget,   setPayTarget]   = useState<Liability | null>(null);
@@ -130,6 +128,8 @@ export default function LiabilitiesPage() {
   const repaidPct = summary.borrowed > 0
     ? Math.round((summary.repaid / summary.borrowed) * 100)
     : 0;
+
+  if (state.loadState === 'loading') return <LiabilitiesSkeleton />;
 
   return (
     <div className="space-y-6">

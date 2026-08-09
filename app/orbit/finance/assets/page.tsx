@@ -24,10 +24,11 @@ export default function AssetsPage() {
   const [isModalOpen, setModalOpen] = useState(false);
   const [isScanOpen, setScanOpen] = useState(false);
 
-  if (state.loadState === 'loading') return <AssetsSkeleton />;
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
   const [activeTab, setActiveTab]   = useState('All');
   const [search, setSearch]         = useState('');
+
+  if (state.loadState === 'loading') return <AssetsSkeleton />;
 
   // Derive tabs dynamically from assets present in the store
   const availableTabs = useMemo(() => {

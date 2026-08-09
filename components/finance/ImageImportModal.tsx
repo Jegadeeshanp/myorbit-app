@@ -71,7 +71,7 @@ export default function ImageImportModal({ onClose }: Props) {
 
   // ── Parse one image ───────────────────────────────────────────────────────
 
-  const parseOne = async (file: File, idx: number): Promise<ParsedItem[]> => {
+  const parseOne = async (file: File, idx: number): Promise<{ items: ParsedItem[]; error?: string }> => {
     updateFileStatus(idx, { status: 'analyzing' });
     try {
       const imageBase64 = await toBase64(file);
@@ -81,7 +81,7 @@ export default function ImageImportModal({ onClose }: Props) {
         body: JSON.stringify({ imageBase64, mimeType: file.type || 'image/jpeg' }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
 
       if (data.category && CATEGORY_LABELS.includes(data.category)) {
         setCategory(data.category);
@@ -102,10 +102,11 @@ export default function ImageImportModal({ onClose }: Props) {
       }));
 
       updateFileStatus(idx, { status: 'done', count: newItems.length });
-      return newItems;
+      return { items: newItems };
     } catch (e: any) {
-      updateFileStatus(idx, { status: 'error', error: e.message });
-      return [];
+      const msg = e?.message ?? 'Unknown error';
+      updateFileStatus(idx, { status: 'error', error: msg });
+      return { items: [], error: msg };
     }
   };
 
@@ -120,15 +121,17 @@ export default function ImageImportModal({ onClose }: Props) {
     setFileStatuses(imageFiles.map(f => ({ name: f.name, status: 'pending' })));
     setItems([]);
 
-    // Process all files (sequentially to avoid rate limits)
+    // Process all files sequentially to avoid rate limits; collect errors
     const allItems: ParsedItem[] = [];
+    let firstError: string | null = null;
     for (let i = 0; i < imageFiles.length; i++) {
-      const parsed = await parseOne(imageFiles[i], i);
-      allItems.push(...parsed);
+      const { items, error } = await parseOne(imageFiles[i], i);
+      allItems.push(...items);
+      if (error && !firstError) firstError = error;
     }
 
     if (allItems.length === 0) {
-      setError('Could not extract any data from the uploaded images');
+      setError(firstError ?? 'Could not extract any data from the uploaded images');
       setStep('upload');
       return;
     }
