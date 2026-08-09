@@ -251,14 +251,13 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     addTransaction: async (t) => {
       const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
       dispatch({ type: 'addTransaction', payload: created });
-      // Account balance and budget spent are updated server-side by the API.
-      // Reload both here so the UI reflects the new state without a full page refresh.
+      // Refresh accounts and budgets independently — a budget failure must not block the balance update.
       try {
-        const [accounts, budgets] = await Promise.all([
-          api<Account[]>('/api/accounts'),
-          api<BudgetCategory[]>('/api/budgets'),
-        ]);
+        const accounts = await api<Account[]>('/api/accounts');
         accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
+      } catch { /* non-critical */ }
+      try {
+        const budgets = await api<BudgetCategory[]>('/api/budgets');
         budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
       } catch { /* non-critical */ }
     },
@@ -266,11 +265,11 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       const updated = await api<Transaction>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });
       dispatch({ type: 'updateTransaction', payload: updated });
       try {
-        const [accounts, budgets] = await Promise.all([
-          api<Account[]>('/api/accounts'),
-          api<BudgetCategory[]>('/api/budgets'),
-        ]);
+        const accounts = await api<Account[]>('/api/accounts');
         accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
+      } catch { /* non-critical */ }
+      try {
+        const budgets = await api<BudgetCategory[]>('/api/budgets');
         budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
       } catch { /* non-critical */ }
     },
@@ -278,11 +277,11 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       await api(`/api/transactions/${id}`, { method: 'DELETE' });
       dispatch({ type: 'deleteTransaction', payload: id });
       try {
-        const [accounts, budgets] = await Promise.all([
-          api<Account[]>('/api/accounts'),
-          api<BudgetCategory[]>('/api/budgets'),
-        ]);
+        const accounts = await api<Account[]>('/api/accounts');
         accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
+      } catch { /* non-critical */ }
+      try {
+        const budgets = await api<BudgetCategory[]>('/api/budgets');
         budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
       } catch { /* non-critical */ }
     },
