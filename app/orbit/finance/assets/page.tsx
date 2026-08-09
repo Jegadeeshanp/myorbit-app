@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PlusCircle, Search, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { PlusCircle, Search, TrendingUp, TrendingDown, DollarSign, Camera } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import AssetTable from '@/components/finance/AssetTable';
 import AddAssetModal from '@/components/finance/AddAssetModal';
+import ImageImportModal from '@/components/finance/ImageImportModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig, ASSET_CATEGORIES } from '@/lib/assetCategories';
@@ -21,6 +22,7 @@ function fmt(v: number) {
 export default function AssetsPage() {
   const { state, addAsset, updateAsset } = useFinance();
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isScanOpen, setScanOpen] = useState(false);
 
   if (state.loadState === 'loading') return <AssetsSkeleton />;
   const [editTarget,  setEditTarget] = useState<import('@/lib/financeData').Asset | null>(null);
@@ -98,6 +100,12 @@ export default function AssetsPage() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search assets…"
             className="w-full rounded-full border border-gray-200 dark:border-white/[0.1] bg-white dark:bg-[#0b1019] py-2 pl-8 pr-3 text-sm text-gray-900 dark:text-[#e4eaf4] placeholder:text-gray-400 dark:placeholder:text-[#3d5166] focus:border-emerald-400 dark:focus:border-[#00E5A0] focus:outline-none sm:w-52" />
         </div>
+        <button
+          onClick={() => setScanOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full border border-emerald-200 dark:border-[#00E5A0]/30 bg-white dark:bg-[#0b1019] px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-[#00E5A0] shadow-sm transition hover:bg-emerald-50 dark:hover:bg-[#00e5a0]/[0.07] whitespace-nowrap"
+        >
+          <Camera className="h-4 w-4" /> Scan Screenshot
+        </button>
         <button onClick={() => setModalOpen(true)}
           className="inline-flex items-center gap-2 rounded-full bg-emerald-600 dark:bg-[#00E5A0] px-4 py-2 text-sm font-semibold text-white dark:text-black shadow-sm transition hover:bg-emerald-700 dark:hover:bg-[#00c990] whitespace-nowrap">
           <PlusCircle className="h-4 w-4" /> Add Asset
@@ -195,6 +203,7 @@ export default function AssetsPage() {
         </div>
       )}
 
+      {isScanOpen && <ImageImportModal onClose={() => setScanOpen(false)} />}
       <AddAssetModal open={isModalOpen} onClose={() => setModalOpen(false)} onSave={addAsset} accounts={state.accounts} />
       <AddAssetModal
         open={!!editTarget}
