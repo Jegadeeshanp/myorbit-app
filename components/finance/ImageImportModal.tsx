@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Upload, Camera, X, Loader2, CheckCircle2, AlertCircle,
   ChevronRight, Images, FileSpreadsheet,
@@ -160,24 +161,43 @@ export default function ImageImportModal({ onClose }: Props) {
       r.readAsText(file);
     });
 
+  const readArrayBuffer = (file: File): Promise<ArrayBuffer> =>
+    new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result as ArrayBuffer);
+      r.onerror = rej;
+      r.readAsArrayBuffer(file);
+    });
+
   const updateFileStatus = (idx: number, patch: Partial<FileStatus>) =>
     setFileStatuses(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
 
   // ── CSV import ────────────────────────────────────────────────────────────
 
   const handleCSVFiles = useCallback(async (files: File[]) => {
-    const csvFiles = files.filter(f =>
-      f.name.endsWith('.csv') || f.type === 'text/csv' || f.type === 'application/vnd.ms-excel'
+    const supported = files.filter(f =>
+      f.name.endsWith('.csv') || f.name.endsWith('.xlsx') || f.name.endsWith('.xls') ||
+      f.type === 'text/csv' ||
+      f.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      f.type === 'application/vnd.ms-excel'
     );
-    if (csvFiles.length === 0) { setError('Please upload a CSV file exported from Zerodha, Groww, or any broker'); return; }
+    if (supported.length === 0) { setError('Please upload a CSV or Excel (.xlsx) file exported from your broker'); return; }
 
     setError(null);
     const allItems: ParsedItem[] = [];
 
-    for (const file of csvFiles) {
+    for (const file of supported) {
       try {
-        const text = await readText(file);
-        const parsed = parseCSVText(text);
+        let csvText: string;
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+          const buffer = await readArrayBuffer(file);
+          const wb = XLSX.read(buffer, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          csvText = XLSX.utils.sheet_to_csv(ws);
+        } else {
+          csvText = await readText(file);
+        }
+        const parsed = parseCSVText(csvText);
         allItems.push(...parsed);
       } catch {
         setError(`Could not read ${file.name}`);
@@ -185,7 +205,7 @@ export default function ImageImportModal({ onClose }: Props) {
     }
 
     if (allItems.length === 0) {
-      setError('No holdings found in the CSV. Make sure it is a holdings export (not a transaction report).');
+      setError('No holdings found. Make sure it is a holdings export (not a transaction report).');
       return;
     }
 
@@ -383,10 +403,10 @@ export default function ImageImportModal({ onClose }: Props) {
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-semibold text-gray-700 dark:text-[#e4eaf4]">Drop your CSV file here or click to upload</p>
-                      <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">Zerodha · Groww · Kuvera · Angel One · Upstox</p>
+                      <p className="text-xs text-gray-400 dark:text-[#3d5166] mt-1">Zerodha · Groww · Kuvera · Angel One · Upstox · CSV or Excel (.xlsx)</p>
                     </div>
                   </div>
-                  <input ref={csvRef} type="file" accept=".csv,text/csv" multiple className="hidden"
+                  <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple className="hidden"
                     onChange={e => handleCSVFiles(Array.from(e.target.files ?? []))} />
 
                   {/* How to export instructions */}
