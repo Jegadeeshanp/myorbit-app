@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   X, Plus, Check, Package, ChevronRight, RotateCcw,
-  Minus, TrendingUp, ArrowLeftRight, RepeatIcon,
+  Minus, TrendingUp, ArrowLeftRight, RepeatIcon, Link2,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 import { Transaction, RecurringConfig } from '@/lib/financeData';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ICON_OPTIONS, type CategoryDef } from './CategoryPicker';
 import { addCustomExpenseCategory, addCustomIncomeCategory, getCustomExpenseCategoryDefs, getCustomIncomeCategoryDefs } from '@/lib/customCategoryStore';
+import { useFinance } from '@/lib/financeStore';
 
 type TabType = 'expense' | 'income' | 'transfer';
 
@@ -409,6 +410,7 @@ export default function AddTransactionSheet({
   onSaveExpense, onSaveIncome, onSaveTransfer,
 }: Props) {
   const today = new Date().toISOString().slice(0, 10);
+  const { state: finState } = useFinance();
 
   const [tab,          setTab]          = useState<TabType>('expense');
 
@@ -435,6 +437,12 @@ export default function AddTransactionSheet({
   const [trDate,   setTrDate]   = useState(today);
   const [trNote,   setTrNote]   = useState('');
 
+  // Link to asset (SIP) or liability (EMI)
+  type LinkMode = 'none' | 'sip' | 'emi';
+  const [linkMode,        setLinkMode]        = useState<LinkMode>('none');
+  const [linkedAssetId,   setLinkedAssetId]   = useState('');
+  const [linkedLiabilityId, setLinkedLiabilityId] = useState('');
+
   // Recurring (shared across tabs, resets on tab change)
   const defaultRecurring = (): RecurringState => ({
     on: false, frequency: 'monthly', customInterval: '',
@@ -457,6 +465,7 @@ export default function AddTransactionSheet({
       setTrToId(accounts[1]?.id ?? accounts[0]?.id ?? '');
       setTrAmt(''); setTrDate(t); setTrNote('');
       setRecurringRaw(defaultRecurring());
+      setLinkMode('none'); setLinkedAssetId(''); setLinkedLiabilityId('');
     }
   }, [open]);
 
@@ -482,7 +491,13 @@ export default function AddTransactionSheet({
   function handleSave() {
     const rec = buildRecurring();
     if (tab === 'expense' && canExpense) {
-      onSaveExpense({ date: expDate, category: expCat, description: expDesc.trim(), notes: expNote.trim() || undefined, amount: -Math.abs(Number(expAmt)), type: 'expense', accountId: expAcc, recurring: rec });
+      onSaveExpense({
+        date: expDate, category: expCat, description: expDesc.trim(),
+        notes: expNote.trim() || undefined, amount: -Math.abs(Number(expAmt)),
+        type: 'expense', accountId: expAcc, recurring: rec,
+        linkedAssetId:     linkMode === 'sip' && linkedAssetId     ? linkedAssetId     : undefined,
+        linkedLiabilityId: linkMode === 'emi' && linkedLiabilityId ? linkedLiabilityId : undefined,
+      });
       toast('Expense recorded');
     } else if (tab === 'income' && canIncome) {
       onSaveIncome({ date: incDate, category: incCat, description: incDesc.trim(), notes: incNote.trim() || undefined, amount: Math.abs(Number(incAmt)), type: 'income', accountId: incAcc, recurring: rec });
@@ -661,6 +676,66 @@ export default function AddTransactionSheet({
                   <input value={trNote} onChange={e => setTrNote(e.target.value)} placeholder="e.g. Monthly savings transfer" className={inp} />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── LINK TO ASSET / LIABILITY (expense tab only) ── */}
+          {tab === 'expense' && (
+            <div className="rounded-2xl border border-gray-200 bg-gray-50/60 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
+                    <Link2 className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-800">Link to</span>
+                  <span className="text-xs text-gray-400">SIP or EMI payment</span>
+                </div>
+                <div className="flex gap-1">
+                  {(['none', 'sip', 'emi'] as const).map(m => (
+                    <button key={m} type="button"
+                      onClick={() => { setLinkMode(m); setLinkedAssetId(''); setLinkedLiabilityId(''); }}
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+                        linkMode === m
+                          ? m === 'sip' ? 'bg-emerald-500 text-white' : m === 'emi' ? 'bg-rose-500 text-white' : 'bg-gray-300 text-gray-700'
+                          : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}>
+                      {m === 'none' ? 'None' : m === 'sip' ? 'SIP' : 'EMI'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {linkMode === 'sip' && (
+                <div className="border-t border-gray-200 px-4 py-3">
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">Asset (investment)</label>
+                  <select value={linkedAssetId} onChange={e => setLinkedAssetId(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-emerald-400 focus:outline-none">
+                    <option value="">Select asset…</option>
+                    {finState.assets.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} ({a.category})</option>
+                    ))}
+                  </select>
+                  {linkedAssetId && (
+                    <p className="mt-1.5 text-xs text-emerald-600">This amount will be added to the asset&apos;s invested total.</p>
+                  )}
+                </div>
+              )}
+
+              {linkMode === 'emi' && (
+                <div className="border-t border-gray-200 px-4 py-3">
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-500">Liability (loan)</label>
+                  <select value={linkedLiabilityId} onChange={e => setLinkedLiabilityId(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-rose-400 focus:outline-none">
+                    <option value="">Select liability…</option>
+                    {finState.liabilities.map(l => (
+                      <option key={l.id} value={l.id}>{l.name}{l.lender ? ` – ${l.lender}` : ''}</option>
+                    ))}
+                  </select>
+                  {linkedLiabilityId && (
+                    <p className="mt-1.5 text-xs text-rose-600">Outstanding balance will decrease and EMIs left will decrement.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

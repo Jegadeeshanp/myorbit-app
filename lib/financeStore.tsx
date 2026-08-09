@@ -257,9 +257,12 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     },
 
     addTransaction: async (t) => {
-      const created = await api<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(t) });
-      dispatch({ type: 'addTransaction', payload: created });
-      // Refresh accounts and budgets independently — a budget failure must not block the balance update.
+      const res = await api<{ transaction: Transaction; updatedAsset?: Asset; updatedLiability?: Liability }>(
+        '/api/transactions', { method: 'POST', body: JSON.stringify(t) }
+      );
+      dispatch({ type: 'addTransaction', payload: res.transaction });
+      if (res.updatedAsset)     dispatch({ type: 'updateAsset',     payload: res.updatedAsset });
+      if (res.updatedLiability) dispatch({ type: 'updateLiability', payload: res.updatedLiability });
       try {
         const accounts = await api<Account[]>('/api/accounts');
         accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
@@ -282,8 +285,12 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       } catch { /* non-critical */ }
     },
     deleteTransaction: async (id) => {
-      await api(`/api/transactions/${id}`, { method: 'DELETE' });
+      const res = await api<{ ok: boolean; updatedAsset?: Asset; updatedLiability?: Liability }>(
+        `/api/transactions/${id}`, { method: 'DELETE' }
+      );
       dispatch({ type: 'deleteTransaction', payload: id });
+      if (res.updatedAsset)     dispatch({ type: 'updateAsset',     payload: res.updatedAsset });
+      if (res.updatedLiability) dispatch({ type: 'updateLiability', payload: res.updatedLiability });
       try {
         const accounts = await api<Account[]>('/api/accounts');
         accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));

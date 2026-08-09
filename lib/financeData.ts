@@ -18,6 +18,8 @@ export type Transaction = {
   type: 'expense' | 'income' | 'transfer' | 'opening_balance' | 'adjustment';
   accountId?: string;
   recurring?: RecurringConfig;
+  linkedAssetId?: string;
+  linkedLiabilityId?: string;
 };
 
 export type Asset = {

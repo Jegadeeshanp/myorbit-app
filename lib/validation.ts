@@ -62,6 +62,8 @@ export const transactionSchema = z.object({
   amount: z.number().finite().refine(v => v !== 0, { message: 'Amount must not be zero' }),
   type: z.enum(['expense', 'income', 'transfer', 'opening_balance', 'adjustment']),
   recurring: recurringSchema,
+  linkedAssetId: z.string().optional().nullable(),
+  linkedLiabilityId: z.string().optional().nullable(),
 });
 
 // ── Asset ─────────────────────────────────────────────────────────────────────
