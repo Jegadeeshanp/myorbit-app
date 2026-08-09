@@ -74,6 +74,7 @@ export const assetSchema = z.object({
   investmentType: z.enum(['lump_sum', 'sip']).optional(),
   sipConfig: z.union([z.string(), z.record(z.unknown())]).optional(),
   symbol: z.string().max(50).optional().nullable(),
+  units: z.number().optional().nullable(),
 });
 
 // ── Liability ─────────────────────────────────────────────────────────────────

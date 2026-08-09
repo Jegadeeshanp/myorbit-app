@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import {
   Upload, Camera, X, Loader2, CheckCircle2, AlertCircle,
@@ -14,6 +14,7 @@ import { ASSET_CATEGORIES } from '@/lib/assetCategories';
 type ParsedItem = {
   id: string;
   name: string;
+  symbol?: string;
   units: number | null;
   avgPrice: number | null;
   currentPrice: number | null;
@@ -44,6 +45,11 @@ const fmtNum = (v: number | null) =>
   v == null ? '—' : v.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
 // ── CSV parser ────────────────────────────────────────────────────────────────
+
+function detectCsvUsd(csv: string): boolean {
+  const header = csv.split(/\r?\n/).slice(0, 10).join(' ').toLowerCase();
+  return header.includes('($)') || header.includes('usd') || header.includes('$ ');
+}
 
 function parseCSVText(csv: string): ParsedItem[] {
   const lines = csv.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -91,11 +97,12 @@ function parseCSVText(csv: string): ParsedItem[] {
   };
 
   // Zerodha: Stock Name, Qty, Avg. cost, LTP, Closing Value, Invested Value, Unrealised P&L, Net chg.
-  const nameCol   = col('stock name', 'instrument', 'symbol', 'name', 'scrip', 'company');
+  const nameCol   = col('stock name', 'instrument name', 'name', 'scrip', 'company', 'instrument');
+  const symbolCol = col('symbol', 'ticker', 'scrip code', 'bse code', 'nse code');
   const qtyCol    = col('qty', 'quantity', 'units', 'shares', 'no of');
   const avgCol    = col('avg cost', 'avg price', 'average price', 'average cost', 'buy price', 'cost price');
   const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp', 'close price');
-  const curValCol = col('closing value', 'cur val', 'current value', 'market value', 'present value', 'mkt val');
+  const curValCol = col('closing value', 'cur val', 'current value', 'market value', 'present value', 'mkt val', 'total value', 'total val', 'mkt value');
   const invValCol = col('invested value', 'invested', 'invest val', 'buy value', 'cost value', 'amount invested');
   const pnlCol    = col('unrealised p&l', 'unrealised', 'p&l', 'pnl', 'profit & loss', 'gain/loss', 'returns');
   const pnlPctCol = col('net chg', 'net change', 'returns (%)', 'return %', 'gain %', 'p&l %', '% return', 'returns%');
@@ -106,7 +113,8 @@ function parseCSVText(csv: string): ParsedItem[] {
 
   for (let i = headerRowIdx + 1; i < lines.length; i++) {
     const cells = splitLine(lines[i]);
-    const name = nameCol < cells.length ? cells[nameCol].replace(/['"]/g, '').trim() : '';
+    const name = nameCol >= 0 && nameCol < cells.length ? cells[nameCol].replace(/['"]/g, '').trim() : '';
+    const rawSymbol = symbolCol >= 0 && symbolCol < cells.length ? cells[symbolCol].replace(/['"]/g, '').trim() : '';
     if (!name) continue;
     // Stop at footer/disclaimer rows
     const nameLower = name.toLowerCase();
@@ -122,7 +130,7 @@ function parseCSVText(csv: string): ParsedItem[] {
     // Parse numeric cell: strip currency symbols, commas, spaces, percent signs
     const n = (idx: number): number | null => {
       if (idx < 0 || idx >= cells.length) return null;
-      const raw = cells[idx].replace(/[₹,\s"'%]/g, '');
+      const raw = cells[idx].replace(/[₹$,\s"'%]/g, '');
       if (raw === '' || raw === '-' || raw === 'N/A' || raw === '--') return null;
       const v = parseFloat(raw);
       return isNaN(v) ? null : v;
@@ -139,6 +147,7 @@ function parseCSVText(csv: string): ParsedItem[] {
     items.push({
       id: `csv-${i}`,
       name,
+      symbol: rawSymbol || undefined,
       units: qty,
       avgPrice,
       currentPrice: ltp,
@@ -171,6 +180,20 @@ export default function ImageImportModal({ onClose }: Props) {
   const [items, setItems]         = useState<ParsedItem[]>([]);
   const [fileStatuses, setFileStatuses] = useState<FileStatus[]>([]);
   const [savedCount, setSavedCount]     = useState(0);
+  const [currency, setCurrency]         = useState<'INR' | 'USD'>('INR');
+  const [usdInr, setUsdInr]             = useState<number | null>(null);
+  const [fetchingRate, setFetchingRate] = useState(false);
+
+  // Fetch live USDINR rate when currency is switched to USD
+  useEffect(() => {
+    if (currency !== 'USD') return;
+    setFetchingRate(true);
+    fetch('/api/assets/usd-rate')
+      .then(r => r.json())
+      .then(d => setUsdInr(d.rate ?? null))
+      .catch(() => setUsdInr(null))
+      .finally(() => setFetchingRate(false));
+  }, [currency]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -226,6 +249,7 @@ export default function ImageImportModal({ onClose }: Props) {
         } else {
           csvText = await readText(file);
         }
+        if (detectCsvUsd(csvText)) setCurrency('USD');
         const parsed = parseCSVText(csvText);
         allItems.push(...parsed);
       } catch {
@@ -328,15 +352,17 @@ export default function ImageImportModal({ onClose }: Props) {
     const selected = items.filter(i => i.selected);
     setStep('saving');
     let saved = 0;
+    const multiplier = currency === 'USD' && usdInr ? usdInr : 1;
     for (const item of selected) {
       updateItem(item.id, 'saveStatus', 'saving');
       try {
         await addAsset({
           name: item.name,
           category,
-          value: item.currentValue,
-          invested: item.investedValue,
+          value: Math.round(item.currentValue * multiplier * 100) / 100,
+          invested: Math.round(item.investedValue * multiplier * 100) / 100,
           units: item.units ?? undefined,
+          symbol: item.symbol ?? undefined,
           investmentType: 'lump_sum',
         } as any);
         updateItem(item.id, 'saveStatus', 'done');
@@ -528,6 +554,29 @@ export default function ImageImportModal({ onClose }: Props) {
                 </div>
               )}
 
+              {/* Currency source selector */}
+              <div className="flex flex-wrap items-center gap-3 px-1 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40">
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 whitespace-nowrap">Values in:</span>
+                {(['INR', 'USD'] as const).map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setCurrency(c)}
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                      currency === c
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-white dark:bg-white/[0.07] text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+                {currency === 'USD' && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
+                    {fetchingRate ? 'Fetching rate…' : usdInr ? `1 USD = ₹${Math.round(usdInr)}` : 'Rate unavailable — enter values manually'}
+                  </span>
+                )}
+              </div>
+
               {/* Category selector */}
               <div className="flex items-center gap-3 px-1">
                 <span className="text-xs font-semibold text-gray-500 dark:text-[#8fa3b8] whitespace-nowrap">Asset type</span>
@@ -569,6 +618,10 @@ export default function ImageImportModal({ onClose }: Props) {
                     <tr className="bg-gray-50 dark:bg-white/[0.04] border-b border-gray-100 dark:border-white/[0.07]">
                       <th className="w-8 px-3 py-2.5" />
                       <th className="text-left px-3 py-2.5 font-semibold text-gray-500 dark:text-[#3d5166]">Name</th>
+                      <th className="text-left px-3 py-2.5 font-semibold text-gray-500 dark:text-[#3d5166]">
+                        Symbol
+                        <span className="ml-1 text-[10px] font-normal text-gray-400 dark:text-[#3d5166]">(for auto-refresh)</span>
+                      </th>
                       <th className="text-right px-3 py-2.5 font-semibold text-gray-500 dark:text-[#3d5166]">Units</th>
                       <th className="text-right px-3 py-2.5 font-semibold text-gray-500 dark:text-[#3d5166]">Avg Price</th>
                       <th className="text-right px-3 py-2.5 font-semibold text-gray-500 dark:text-[#3d5166]">Cur. Value</th>
@@ -591,6 +644,14 @@ export default function ImageImportModal({ onClose }: Props) {
                               value={item.name}
                               onChange={e => updateItem(item.id, 'name', e.target.value)}
                               className="w-32 bg-transparent text-gray-800 dark:text-[#e4eaf4] font-medium focus:outline-none focus:bg-gray-50 dark:focus:bg-white/[0.05] rounded px-1 -mx-1"
+                            />
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <input
+                              value={item.symbol ?? ''}
+                              onChange={e => updateItem(item.id, 'symbol', e.target.value.toUpperCase() || undefined)}
+                              placeholder="e.g. LT.NS"
+                              className="w-24 bg-transparent text-gray-600 dark:text-[#8fa3b8] text-xs font-mono focus:outline-none focus:bg-gray-50 dark:focus:bg-white/[0.05] rounded px-1 -mx-1 placeholder:text-gray-300 dark:placeholder:text-[#3d5166]/60"
                             />
                           </td>
                           <td className="px-3 py-2.5 text-right text-gray-600 dark:text-[#8fa3b8]">{fmtNum(item.units)}</td>
