@@ -546,9 +546,11 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
           {groups.map((group, gi) => {
             const isCollapsed = collapsedGroups.has(group.label);
             const isNow       = group.label === currentMonthLabel;
-            const groupNet    = group.transactions.reduce(
-              (s, tx) => tx.type === 'expense' ? s - Math.abs(tx.amount) : s + tx.amount, 0
-            );
+            const groupNet    = group.transactions.reduce((s, tx) => {
+              if (tx.type === 'income'  && !SYSTEM_CATEGORIES.includes(tx.category)) return s + tx.amount;
+              if (tx.type === 'expense' && !SYSTEM_CATEGORIES.includes(tx.category)) return s - Math.abs(tx.amount);
+              return s;
+            }, 0);
 
             return (
             <div key={group.label}>
