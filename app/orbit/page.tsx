@@ -271,6 +271,7 @@ export default function OrbitDashboard() {
           .db-mod-card   { padding: 10px 10px 10px !important; }
           .db-mod-icon   { width: 38px !important; height: 38px !important; border-radius: 12px !important; }
           .db-row1, .db-row2, .db-row3 { grid-template-columns: 1fr !important; gap: 14px !important; }
+          .db-topbar-search { display: none !important; }
         }
       `}</style>
 
@@ -287,16 +288,16 @@ export default function OrbitDashboard() {
           <Image src="/icons/top-icon.svg" alt="MyOrbit" width={36} height={36} priority />
         </div>
 
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{greeting()}, {firstName}</div>
-          <div style={{ fontSize: 11, color: t.green, marginTop: 1, fontWeight: 500 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{greeting()}, {firstName}</div>
+          <div style={{ fontSize: 11, color: t.green, marginTop: 1, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {weekday} · {overdueTasks.length > 0 ? `${overdueTasks.length} thing${overdueTasks.length > 1 ? 's' : ''} need attention` : 'Everything on track'}
           </div>
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {/* Search */}
-          <div style={{
+          <div className="db-topbar-search" style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '7px 16px', borderRadius: 10, minWidth: 120, maxWidth: 220,
             background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
