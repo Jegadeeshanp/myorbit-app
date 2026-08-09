@@ -9,7 +9,7 @@ export type AddLiabilityProps = {
   open: boolean;
   onClose: () => void;
   onSave: (payload: Omit<Liability, 'id'>) => void;
-  initial?: Liability; // when set → edit mode
+  initial?: Liability;
   accounts?: { id: string; name: string; type?: string }[];
 };
 
@@ -19,73 +19,107 @@ function shortAccLabel(a: { name: string; type?: string }) {
   return short ? a.name + ' – ' + short : a.name;
 }
 
-function calcEmi(principal: number, annualRatePct: number, months: number): number {
-  if (!principal || !months || !annualRatePct) return 0;
+// EMI = P × r × (1+r)^n / ((1+r)^n − 1)
+function calcEmi(principal: number, annualRatePct: number, totalMonths: number): number {
+  if (!principal || !totalMonths) return 0;
+  if (!annualRatePct) return Math.round(principal / totalMonths);
   const r = annualRatePct / 100 / 12;
-  return Math.round(principal * r * Math.pow(1 + r, months) / (Math.pow(1 + r, months) - 1));
+  return Math.round(principal * r * Math.pow(1 + r, totalMonths) / (Math.pow(1 + r, totalMonths) - 1));
 }
+
+// Outstanding = EMI × (1 − (1+r)^(−n)) / r
+function calcOutstanding(emi: number, annualRatePct: number, remainingMonths: number): number {
+  if (!emi || !remainingMonths) return 0;
+  if (!annualRatePct) return Math.round(emi * remainingMonths);
+  const r = annualRatePct / 100 / 12;
+  return Math.round(emi * (1 - Math.pow(1 + r, -remainingMonths)) / r);
+}
+
+const fmtInr = (n: number) => '₹' + n.toLocaleString('en-IN');
 
 export default function AddLiabilityModal({ open, onClose, onSave, initial, accounts = [] }: AddLiabilityProps) {
   const isEdit = !!initial;
 
+  // Core inputs — always visible
   const [name,               setName]               = useState('');
   const [lender,             setLender]             = useState('');
   const [borrowed,           setBorrowed]           = useState('');
-  const [outstanding,        setOutstanding]        = useState('');
-  const [totalRepaid,        setTotalRepaid]        = useState('');
-  const [emi,                setEmi]                = useState('');
-  const [emisLeft,           setEmisLeft]           = useState('');
   const [interestRate,       setInterestRate]       = useState('');
+
+  // Timeline inputs — drive auto-calculation when both are filled
+  const [totalTenure,  setTotalTenure]  = useState(''); // original loan tenure, months
+  const [monthsPaid,   setMonthsPaid]   = useState(''); // months already paid
+
+  // Manual-override fields — shown only when auto-calc is not active
+  const [manualOutstanding,  setManualOutstanding]  = useState('');
+  const [manualEmi,          setManualEmi]          = useState('');
+  const [manualEmisLeft,     setManualEmisLeft]     = useState('');
+  const [manualTotalRepaid,  setManualTotalRepaid]  = useState('');
+
   const [nextDue,            setNextDue]            = useState('');
   const [repaymentAccountId, setRepaymentAccountId] = useState('');
 
-  // Populate fields when editing
   useEffect(() => {
     if (initial) {
       setName(initial.name);
       setLender(initial.lender ?? '');
       setBorrowed(String(initial.borrowed));
-      setOutstanding(String(initial.outstanding));
-      setTotalRepaid(String(initial.totalRepaid ?? 0));
-      setEmi(String(initial.monthlyEmi));
-      setEmisLeft(String(initial.emisLeft ?? ''));
       setInterestRate(String(initial.interestRate ?? ''));
+      // totalTenure / monthsPaid are not stored — user re-enters for auto-calc
+      setTotalTenure('');
+      setMonthsPaid('');
+      setManualOutstanding(String(initial.outstanding));
+      setManualEmi(String(initial.monthlyEmi));
+      setManualEmisLeft(String(initial.emisLeft ?? ''));
+      setManualTotalRepaid(String(initial.totalRepaid ?? 0));
       setNextDue(initial.nextDueDate ?? '');
       setRepaymentAccountId(initial.repaymentAccountId ?? '');
     } else {
-      setName(''); setLender(''); setBorrowed(''); setOutstanding('');
-      setTotalRepaid('0'); setEmi(''); setEmisLeft(''); setInterestRate('');
+      setName(''); setLender(''); setBorrowed(''); setInterestRate('');
+      setTotalTenure(''); setMonthsPaid('');
+      setManualOutstanding(''); setManualEmi(''); setManualEmisLeft('');
+      setManualTotalRepaid('0');
       setNextDue(''); setRepaymentAccountId('');
     }
   }, [initial, open]);
 
-  // Auto-calculate EMI from outstanding (or borrowed) + interest rate + tenure
-  const autoEmi = useMemo(() => {
-    const P = Number(outstanding) || Number(borrowed);
-    const n = Number(emisLeft);
+  // Auto-calc activates when original tenure + months paid are both given
+  const autoCalc = useMemo(() => {
+    const P = Number(borrowed);
+    const N = Number(totalTenure);
+    const K = Number(monthsPaid);
+    if (!P || !N || K < 0 || K >= N) return null;
     const r = Number(interestRate);
-    return calcEmi(P, r, n);
-  }, [outstanding, borrowed, emisLeft, interestRate]);
+    const remaining = N - K;
+    const emi = calcEmi(P, r, N);
+    const outstanding = calcOutstanding(emi, r, remaining);
+    const principalRepaid = Math.max(0, P - outstanding);
+    return { emi, outstanding, remaining, principalRepaid };
+  }, [borrowed, interestRate, totalTenure, monthsPaid]);
 
-  const effectiveEmi = autoEmi > 0 ? autoEmi : Number(emi);
+  const effective = {
+    emi:          autoCalc?.emi          ?? Number(manualEmi)          ?? 0,
+    outstanding:  autoCalc?.outstanding  ?? Number(manualOutstanding)  ?? 0,
+    emisLeft:     autoCalc?.remaining    ?? Number(manualEmisLeft)     ?? 0,
+    totalRepaid:  autoCalc?.principalRepaid ?? Number(manualTotalRepaid) ?? 0,
+  };
 
-  const canSubmit = useMemo(() =>
+  const canSubmit =
     !!name.trim() &&
     Number(borrowed) > 0 &&
-    Number(outstanding) >= 0 &&
-    effectiveEmi > 0,
-  [name, borrowed, outstanding, effectiveEmi]);
+    effective.outstanding >= 0 &&
+    effective.emi > 0;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({
       name:               name.trim(),
-      lender:             lender.trim(),
+      lender:             lender.trim() || undefined,
       borrowed:           Number(borrowed),
-      outstanding:        Number(outstanding),
-      totalRepaid:        Number(totalRepaid) || 0,
-      monthlyEmi:         effectiveEmi,
-      emisLeft:           Number(emisLeft) || 0,
+      outstanding:        effective.outstanding,
+      totalRepaid:        effective.totalRepaid,
+      monthlyEmi:         effective.emi,
+      emisLeft:           effective.emisLeft,
       interestRate:       Number(interestRate) || undefined,
       nextDueDate:        nextDue || undefined,
       repaymentAccountId: repaymentAccountId || undefined,
@@ -103,71 +137,130 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
     >
       <div className="max-h-[70vh] overflow-y-auto space-y-5 pr-0.5">
 
+        {/* ── Loan identity ── */}
         <div>
           <SectionLabel>Loan details</SectionLabel>
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Loan name</label>
-              <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="Home Loan" className={inputCls} />
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Home Loan" className={inputCls} />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Lender / Bank</label>
-              <input value={lender} onChange={e => setLender(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="SBI Bank" className={inputCls} />
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                Lender / Bank <OptionalBadge />
+              </label>
+              <input value={lender} onChange={e => setLender(e.target.value)} placeholder="SBI Bank" className={inputCls} />
             </div>
           </div>
         </div>
 
+        {/* ── Loan parameters ── */}
         <div>
-          <SectionLabel>Amounts</SectionLabel>
+          <SectionLabel>Loan parameters</SectionLabel>
           <div className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Total borrowed (₹)</label>
-              <input value={borrowed} onChange={e => setBorrowed(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="2500000" type="number" min="1" className={inputCls} />
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Original loan amount (₹)</label>
+              <input value={borrowed} onChange={e => setBorrowed(e.target.value)} placeholder="3000000" type="number" min="1" className={inputCls} />
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Outstanding balance (₹)</label>
-              <input value={outstanding} onChange={e => setOutstanding(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="210000" type="number" min="0" className={inputCls} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Total repaid (₹)</label>
-              <input value={totalRepaid} onChange={e => setTotalRepaid(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="0" type="number" min="0" className={inputCls} />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <SectionLabel>EMI details</SectionLabel>
-          <div className="space-y-3">
             <div>
               <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
                 Interest rate <OptionalBadge />
-                <span className="ml-1 text-xs font-normal text-gray-400">(% per annum)</span>
+                <span className="ml-1 text-xs font-normal text-gray-400">% per annum</span>
               </label>
-              <input value={interestRate} onChange={e => setInterestRate(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="8.5" type="number" min="0" max="100" step="0.01" className={inputCls} />
+              <input value={interestRate} onChange={e => setInterestRate(e.target.value)} placeholder="8.5" type="number" min="0" max="100" step="0.01" className={inputCls} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Timeline (drives auto-calc) ── */}
+        <div>
+          <SectionLabel>Repayment timeline</SectionLabel>
+          <p className="mb-2 text-xs text-gray-400">
+            Fill both fields and everything else is auto-calculated. Leave blank to enter manually.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Original tenure
+                <span className="ml-1 text-xs font-normal text-gray-400">(months)</span>
+              </label>
+              <input
+                value={totalTenure}
+                onChange={e => setTotalTenure(e.target.value)}
+                placeholder="240 = 20 yrs"
+                type="number" min="1"
+                className={inputCls}
+              />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                Left <span className="ml-1 text-xs font-normal text-gray-400">(EMIs Left)</span>
+                Months paid so far
               </label>
-              <input value={emisLeft} onChange={e => setEmisLeft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="12" type="number" min="0" className={inputCls} />
+              <input
+                value={monthsPaid}
+                onChange={e => setMonthsPaid(e.target.value)}
+                placeholder="96 = 8 yrs"
+                type="number" min="0"
+                className={inputCls}
+              />
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                EMI <span className="ml-1 text-xs font-normal text-gray-400">(Monthly EMI)</span> (₹)
-              </label>
-              {autoEmi > 0 ? (
-                <div className={`${inputCls} flex items-center justify-between`}>
-                  <span className="font-semibold text-emerald-700">₹{autoEmi.toLocaleString('en-IN')}</span>
-                  <span className="text-xs text-gray-400">auto-calculated</span>
+          </div>
+        </div>
+
+        {/* ── Auto-calculated preview ── */}
+        {autoCalc && (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 space-y-2">
+            <p className="text-xs font-semibold text-emerald-700">Auto-calculated from your inputs</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+              <span className="text-gray-600">Monthly EMI</span>
+              <span className="font-semibold text-emerald-700 text-right">{fmtInr(autoCalc.emi)}</span>
+              <span className="text-gray-600">Current outstanding</span>
+              <span className="font-semibold text-rose-600 text-right">{fmtInr(autoCalc.outstanding)}</span>
+              <span className="text-gray-600">Months remaining</span>
+              <span className="font-semibold text-right">{autoCalc.remaining}</span>
+              <span className="text-gray-600">Principal repaid</span>
+              <span className="font-semibold text-right">{fmtInr(autoCalc.principalRepaid)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Manual fields (hidden when auto-calc is active) ── */}
+        {!autoCalc && (
+          <div>
+            <SectionLabel>Current loan status</SectionLabel>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Outstanding balance (₹)</label>
+                <input value={manualOutstanding} onChange={e => setManualOutstanding(e.target.value)} placeholder="1500000" type="number" min="0" className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Monthly EMI (₹)</label>
+                <input value={manualEmi} onChange={e => setManualEmi(e.target.value)} placeholder="26000" type="number" min="1" className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">EMIs left</label>
+                  <input value={manualEmisLeft} onChange={e => setManualEmisLeft(e.target.value)} placeholder="144" type="number" min="0" className={inputCls} />
                 </div>
-              ) : (
-                <input value={emi} onChange={e => setEmi(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }} placeholder="18500" type="number" min="1" className={inputCls} />
-              )}
+                <div>
+                  <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                    Total repaid (₹) <OptionalBadge />
+                  </label>
+                  <input value={manualTotalRepaid} onChange={e => setManualTotalRepaid(e.target.value)} placeholder="0" type="number" min="0" className={inputCls} />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700">Next due date</label>
-              <input value={nextDue} onChange={e => setNextDue(e.target.value)} type="date" className={inputCls} />
-            </div>
+          </div>
+        )}
+
+        {/* ── Schedule ── */}
+        <div>
+          <SectionLabel>Schedule</SectionLabel>
+          <div>
+            <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+              Next due date <OptionalBadge />
+            </label>
+            <input value={nextDue} onChange={e => setNextDue(e.target.value)} type="date" className={inputCls} />
           </div>
         </div>
 
@@ -175,19 +268,17 @@ export default function AddLiabilityModal({ open, onClose, onSave, initial, acco
         {accounts.length > 0 && (
           <div>
             <SectionLabel>Repayment</SectionLabel>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
-                  Repayment account <OptionalBadge />
-                </label>
-                <select value={repaymentAccountId} onChange={e => setRepaymentAccountId(e.target.value)} className={inputCls}>
-                  <option value="">— select account —</option>
-                  {accounts.map(a => (<option key={a.id} value={a.id}>{shortAccLabel(a)}</option>))}
-                </select>
-                <p className="mt-1.5 text-xs text-gray-400">
-                  EMI will be debited from this account each time you record a payment.
-                </p>
-              </div>
+            <div>
+              <label className="mb-1.5 flex items-center gap-1 text-sm font-medium text-gray-700">
+                Repayment account <OptionalBadge />
+              </label>
+              <select value={repaymentAccountId} onChange={e => setRepaymentAccountId(e.target.value)} className={inputCls}>
+                <option value="">— select account —</option>
+                {accounts.map(a => (<option key={a.id} value={a.id}>{shortAccLabel(a)}</option>))}
+              </select>
+              <p className="mt-1.5 text-xs text-gray-400">
+                EMI will be debited from this account each time you record a payment.
+              </p>
             </div>
           </div>
         )}
