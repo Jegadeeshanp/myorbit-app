@@ -38,17 +38,17 @@ export default function AccountsPage() {
   }, [state.accounts.length, state.loadState]);
 
   const { totalBalance, liquidBalance, creditUsed, totalExpenses, byType } = useMemo(() => {
-    let bank = 0, credit = 0, wallet = 0, cash = 0, debit = 0;
+    let bank = 0, creditUsed = 0, wallet = 0, cash = 0, debit = 0;
 
     state.accounts.forEach(a => {
-      if (a.type === 'Bank')        bank   += a.balance;
-      if (a.type === 'Credit Card') credit += a.balance;
-      if (a.type === 'Wallet')      wallet += a.balance;
-      if (a.type === 'Cash')        cash   += a.balance;
-      if (a.type === 'Debit Card')  debit  += a.balance;
+      if (a.type === 'Bank')        bank       += a.balance;
+      // Use Math.abs per card — balances may be stored positive or negative
+      // depending on how they were entered; the card UI always shows outstanding as positive
+      if (a.type === 'Credit Card') creditUsed += Math.abs(a.balance);
+      if (a.type === 'Wallet')      wallet     += a.balance;
+      if (a.type === 'Cash')        cash       += a.balance;
+      if (a.type === 'Debit Card')  debit      += a.balance;
     });
-
-    const creditUsed    = Math.abs(Math.min(credit, 0));
     const liquidBalance = bank + wallet + cash + debit;
     const totalBalance  = liquidBalance - creditUsed;
 
