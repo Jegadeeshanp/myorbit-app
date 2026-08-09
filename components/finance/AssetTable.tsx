@@ -86,12 +86,13 @@ function formatInvestmentType(raw: string) {
 }
 
 function AssetDetailSheet({
-  asset, onClose, onEdit, onDelete,
+  asset, onClose, onEdit, onDelete, portfolioValue,
 }: {
   asset: Asset;
   onClose: () => void;
   onEdit?: () => void;
   onDelete: () => void;
+  portfolioValue?: number;
 }) {
   const cfg    = getCategoryConfig(asset.category);
   const Icon   = cfg.icon;
@@ -104,6 +105,9 @@ function AssetDetailSheet({
   const currentPrice    = units ? asset.value    / units : null;
   const priceChangePct  = avgBuyPrice && currentPrice
     ? (((currentPrice - avgBuyPrice) / avgBuyPrice) * 100).toFixed(1)
+    : null;
+  const allocPct = portfolioValue && portfolioValue > 0
+    ? ((asset.value / portfolioValue) * 100)
     : null;
 
   let sipData: { amount?: number; frequency?: string; nextDate?: string } | null = null;
@@ -194,8 +198,8 @@ function AssetDetailSheet({
             </div>
           )}
 
-          {/* Units / Symbol / Type */}
-          {(units != null || asset.symbol || a.investmentType) && (
+          {/* Units / Symbol / Type / Portfolio share */}
+          {(units != null || asset.symbol || a.investmentType || allocPct !== null) && (
             <div className="divide-y divide-gray-100 dark:divide-white/[0.06] rounded-xl border border-gray-100 dark:border-white/[0.07] overflow-hidden">
               {units != null && (
                 <div className="flex justify-between px-4 py-3 text-sm">
@@ -213,6 +217,20 @@ function AssetDetailSheet({
                 <div className="flex justify-between px-4 py-3 text-sm">
                   <span className="text-gray-400 dark:text-[#3d5166]">Type</span>
                   <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{formatInvestmentType(a.investmentType)}</span>
+                </div>
+              )}
+              {allocPct !== null && (
+                <div className="px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-gray-400 dark:text-[#3d5166]">Portfolio share</span>
+                    <span className="font-semibold text-gray-900 dark:text-[#e4eaf4]">{allocPct.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/[0.06]">
+                    <div
+                      className="h-1.5 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, allocPct)}%`, background: `var(--color-emerald-500, #10b981)` }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -498,6 +516,7 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
       {detailAsset && (
         <AssetDetailSheet
           asset={detailAsset}
+          portfolioValue={allocBase}
           onClose={() => setDetailAsset(null)}
           onEdit={onEdit ? () => { onEdit(detailAsset); } : undefined}
           onDelete={() => { setConfirmTarget(detailAsset); setDetailAsset(null); }}
