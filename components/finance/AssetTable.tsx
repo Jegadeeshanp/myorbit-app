@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Asset } from '@/lib/financeData';
 import { useFinance } from '@/lib/financeStore';
 import { getCategoryConfig } from '@/lib/assetCategories';
-import { Trash2, Pencil, MoreVertical } from 'lucide-react';
+import { Trash2, Pencil, MoreVertical, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 function fmt(v: number) {
@@ -16,6 +16,13 @@ type Props = {
   totalPortfolioValue?: number;
   onEdit?: (asset: Asset) => void;
 };
+
+type SortKey = 'name' | 'category' | 'units' | 'invested' | 'value' | 'pnl' | 'allocation';
+const COL_SORT: Record<string, SortKey | undefined> = {
+  Asset: 'name', Category: 'category', Units: 'units',
+  Invested: 'invested', 'Current Value': 'value', 'P&L': 'pnl', Allocation: 'allocation',
+};
+const RIGHT_COLS = new Set(['Units', 'Invested', 'Current Value', 'P&L', 'Allocation']);
 
 function CardMenu({ onEdit, onDelete }: { onEdit?: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
@@ -64,9 +71,37 @@ function CardMenu({ onEdit, onDelete }: { onEdit?: () => void; onDelete: () => v
 
 export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Props) {
   const { deleteAsset } = useFinance();
-  const tableTotal = assets.reduce((s, a) => s + a.value, 0);
-  const allocBase  = totalPortfolioValue ?? tableTotal;
   const [confirmTarget, setConfirmTarget] = useState<Asset | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const sortedAssets = useMemo(() => {
+    if (!sortKey) return assets;
+    return [...assets].sort((a, b) => {
+      let av: number | string, bv: number | string;
+      switch (sortKey) {
+        case 'name':       av = a.name.toLowerCase();         bv = b.name.toLowerCase();        break;
+        case 'category':   av = a.category.toLowerCase();     bv = b.category.toLowerCase();    break;
+        case 'units':      av = (a as any).units ?? -1;       bv = (b as any).units ?? -1;      break;
+        case 'invested':   av = a.invested;                   bv = b.invested;                  break;
+        case 'value':      av = a.value;                      bv = b.value;                     break;
+        case 'pnl':        av = a.value - a.invested;         bv = b.value - b.invested;        break;
+        case 'allocation': av = a.value;                      bv = b.value;                     break;
+        default:           av = 0;                            bv = 0;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [assets, sortKey, sortDir]);
+
+  const tableTotal = sortedAssets.reduce((s, a) => s + a.value, 0);
+  const allocBase  = totalPortfolioValue ?? tableTotal;
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }
 
   if (assets.length === 0) return null;
 
@@ -77,15 +112,27 @@ export default function AssetTable({ assets, totalPortfolioValue, onEdit }: Prop
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-gray-100 dark:border-white/[0.07] bg-gray-50/60 dark:bg-white/[0.02]">
-              {['Asset', 'Category', 'Units', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => (
-                <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-[#3d5166] ${['Units','Invested','Current Value','P&L','Allocation'].includes(h) ? 'text-right' : ''}`}>
-                  {h}
-                </th>
-              ))}
+              {['Asset', 'Category', 'Units', 'Invested', 'Current Value', 'P&L', 'Allocation', ''].map(h => {
+                const key = COL_SORT[h];
+                const active = !!key && sortKey === key;
+                const Icon = active ? (sortDir === 'asc' ? ChevronUp : ChevronDown) : ChevronsUpDown;
+                return (
+                  <th key={h} className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${active ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-gray-400 dark:text-[#3d5166]'} ${RIGHT_COLS.has(h) ? 'text-right' : ''}`}>
+                    {key ? (
+                      <button
+                        onClick={() => handleSort(key)}
+                        className="inline-flex items-center gap-1 hover:text-gray-600 dark:hover:text-[#e4eaf4] transition"
+                      >
+                        {h}<Icon className={`h-3 w-3 flex-none ${active ? 'opacity-100' : 'opacity-40'}`} />
+                      </button>
+                    ) : h}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-white/[0.04]">
-            {assets.map(asset => {
+            {sortedAssets.map(asset => {
               const cfg      = getCategoryConfig(asset.category);
               const Icon     = cfg.icon;
               const invested = asset.invested;

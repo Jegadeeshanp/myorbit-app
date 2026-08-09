@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, CreditCard, CheckCircle2, AlertCircle, CalendarDays, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import Modal, { SectionLabel, inputCls } from '@/components/finance/Modal';
 import AddLiabilityModal from '@/components/finance/AddLiabilityModal';
 import FinanceTopBar from '@/components/finance/FinanceTopBar';
@@ -122,6 +122,13 @@ function RecordPaymentModal({
   );
 }
 
+type LiabSortKey = 'name' | 'lender' | 'borrowed' | 'outstanding' | 'monthlyEmi' | 'emisLeft' | 'nextDueDate';
+const LIAB_COL_SORT: Record<string, LiabSortKey | undefined> = {
+  Loan: 'name', Lender: 'lender', Borrowed: 'borrowed', Outstanding: 'outstanding',
+  'Monthly EMI': 'monthlyEmi', 'EMIs Left': 'emisLeft', 'Next Due': 'nextDueDate',
+};
+const LIAB_RIGHT_COLS = new Set(['Borrowed', 'Outstanding', 'Monthly EMI']);
+
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function LiabilitiesPage() {
   const { state, addLiability, updateLiability, deleteLiability } = useFinance();
@@ -130,6 +137,8 @@ export default function LiabilitiesPage() {
   const [addOpen,     setAddOpen]     = useState(false);
   const [editTarget,  setEditTarget]  = useState<Liability | null>(null);
   const [payTarget,   setPayTarget]   = useState<Liability | null>(null);
+  const [sortKey,     setSortKey]     = useState<LiabSortKey | null>(null);
+  const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('asc');
 
   const summary = useMemo(() => {
     const borrowed    = liabilities.reduce((s, l) => s + l.borrowed, 0);
@@ -137,6 +146,31 @@ export default function LiabilitiesPage() {
     const repaid      = liabilities.reduce((s, l) => s + (l.totalRepaid ?? 0), 0);
     return { borrowed, outstanding, repaid };
   }, [liabilities]);
+
+  const sortedLiabilities = useMemo(() => {
+    if (!sortKey) return liabilities;
+    return [...liabilities].sort((a, b) => {
+      let av: number | string, bv: number | string;
+      switch (sortKey) {
+        case 'name':        av = a.name.toLowerCase();            bv = b.name.toLowerCase();           break;
+        case 'lender':      av = (a.lender ?? '').toLowerCase();  bv = (b.lender ?? '').toLowerCase(); break;
+        case 'borrowed':    av = a.borrowed;                      bv = b.borrowed;                     break;
+        case 'outstanding': av = a.outstanding;                   bv = b.outstanding;                  break;
+        case 'monthlyEmi':  av = a.monthlyEmi;                    bv = b.monthlyEmi;                   break;
+        case 'emisLeft':    av = a.emisLeft;                      bv = b.emisLeft;                     break;
+        case 'nextDueDate': av = a.nextDueDate ?? '';             bv = b.nextDueDate ?? '';            break;
+        default:            av = 0;                               bv = 0;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [liabilities, sortKey, sortDir]);
+
+  function handleSort(key: LiabSortKey) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  }
 
   const repaidPct = summary.borrowed > 0
     ? Math.round((summary.repaid / summary.borrowed) * 100)
@@ -219,15 +253,27 @@ export default function LiabilitiesPage() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100 dark:border-white/[0.07] bg-gray-50/60 dark:bg-white/[0.02]">
-                {['Loan', 'Lender', 'Borrowed', 'Outstanding', 'Monthly EMI', 'EMIs Left', 'Next Due', 'Actions'].map(h => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-[#3d5166] whitespace-nowrap ${['Borrowed','Outstanding','Monthly EMI'].includes(h) ? 'text-right' : ''}`}>
-                    {h}
-                  </th>
-                ))}
+                {['Loan', 'Lender', 'Borrowed', 'Outstanding', 'Monthly EMI', 'EMIs Left', 'Next Due', 'Actions'].map(h => {
+                  const key = LIAB_COL_SORT[h];
+                  const active = !!key && sortKey === key;
+                  const Icon = active ? (sortDir === 'asc' ? ChevronUp : ChevronDown) : ChevronsUpDown;
+                  return (
+                    <th key={h} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${active ? 'text-emerald-600 dark:text-[#00E5A0]' : 'text-gray-400 dark:text-[#3d5166]'} ${LIAB_RIGHT_COLS.has(h) ? 'text-right' : ''}`}>
+                      {key ? (
+                        <button
+                          onClick={() => handleSort(key)}
+                          className="inline-flex items-center gap-1 hover:text-gray-600 dark:hover:text-[#e4eaf4] transition"
+                        >
+                          {h}<Icon className={`h-3 w-3 flex-none ${active ? 'opacity-100' : 'opacity-40'}`} />
+                        </button>
+                      ) : h}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/[0.04]">
-              {liabilities.map(l => {
+              {sortedLiabilities.map(l => {
                 const days        = daysUntil(l.nextDueDate);
                 const dueSoon     = days !== null && days <= 7 && days >= 0;
                 const overdue     = days !== null && days < 0;
