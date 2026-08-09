@@ -63,24 +63,29 @@ function parseCSVText(csv: string): ParsedItem[] {
     return result;
   };
 
-  const headers = splitLine(lines[0]).map(h => h.toLowerCase().replace(/['"]/g, '').trim());
+  // Normalize: lowercase, strip quotes and periods so "Avg. cost" → "avg cost"
+  const norm = (s: string) => s.toLowerCase().replace(/['"\.]/g, '').replace(/\s+/g, ' ').trim();
+
+  const rawHeaders = splitLine(lines[0]);
+  const headers = rawHeaders.map(norm);
 
   const col = (...names: string[]) => {
     for (const n of names) {
-      const idx = headers.findIndex(h => h.includes(n.toLowerCase()));
+      const needle = norm(n);
+      const idx = headers.findIndex(h => h.includes(needle));
       if (idx !== -1) return idx;
     }
     return -1;
   };
 
   const nameCol   = col('instrument', 'symbol', 'name', 'stock', 'scrip');
-  const qtyCol    = col('qty', 'quantity', 'units', 'shares', 'no. of');
-  const avgCol    = col('avg cost', 'average price', 'avg price', 'avg. price', 'buy price', 'cost price');
-  const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp');
-  const curValCol = col('cur val', 'current value', 'market value', 'present value');
-  const invValCol = col('invested', 'invest val', 'buy value', 'cost value', 'amount invested');
-  const pnlCol    = col('p&l', 'pnl', 'unrealised', 'profit', 'gain/loss', 'gain', 'returns\n');
-  const pnlPctCol = col('net chg', 'returns (%)', 'return %', 'gain %', 'p&l %', '% return', 'returns%', 'day chg');
+  const qtyCol    = col('qty', 'quantity', 'units', 'shares', 'no of');
+  const avgCol    = col('avg cost', 'avg price', 'average price', 'average cost', 'buy price', 'cost price');
+  const ltpCol    = col('ltp', 'last price', 'current price', 'market price', 'cmp', 'close');
+  const curValCol = col('cur val', 'current value', 'market value', 'present value', 'mkt val');
+  const invValCol = col('invested', 'invest val', 'buy value', 'cost value', 'amount invested', 'investment');
+  const pnlCol    = col('p&l', 'pnl', 'unrealised', 'profit & loss', 'profit/loss', 'gain/loss', 'gain', 'returns');
+  const pnlPctCol = col('net chg', 'net change', 'returns (%)', 'return %', 'gain %', 'p&l %', '% return', 'returns%');
 
   if (nameCol === -1) return [];
 
@@ -89,12 +94,13 @@ function parseCSVText(csv: string): ParsedItem[] {
   for (let i = 1; i < lines.length; i++) {
     const cells = splitLine(lines[i]);
     const name = nameCol < cells.length ? cells[nameCol].replace(/['"]/g, '').trim() : '';
-    if (!name || name.toLowerCase() === 'total') continue;
+    if (!name || name.toLowerCase() === 'total' || name.toLowerCase() === 'grand total') continue;
 
+    // Parse numeric cell: strip currency symbols, commas, spaces, percent signs
     const n = (idx: number): number | null => {
       if (idx < 0 || idx >= cells.length) return null;
-      const raw = cells[idx].replace(/[₹,\s"']/g, '');
-      if (raw === '' || raw === '-' || raw === 'N/A') return null;
+      const raw = cells[idx].replace(/[₹,\s"'%]/g, '');
+      if (raw === '' || raw === '-' || raw === 'N/A' || raw === '--') return null;
       const v = parseFloat(raw);
       return isNaN(v) ? null : v;
     };
