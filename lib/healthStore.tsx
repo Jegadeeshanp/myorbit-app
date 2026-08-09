@@ -243,14 +243,22 @@ export function HealthProvider({ children }: PropsWithChildren) {
 
   async function load() {
     dispatch({ type: 'setLoadState', payload: 'loading' });
-    try {
-      const [entries, workouts, dashboard] = await Promise.all([
-        api<HealthEntry[]>('/api/health/entries?limit=30'),
-        api<Workout[]>('/api/workouts?limit=20'),
-        api<DashboardData>('/api/health/dashboard'),
-      ]);
-      dispatch({ type: 'hydrate', payload: { entries, workouts, dashboard } });
-    } catch {
+    const [entriesRes, workoutsRes, dashboardRes] = await Promise.allSettled([
+      api<HealthEntry[]>('/api/health/entries?limit=30'),
+      api<Workout[]>('/api/workouts?limit=20'),
+      api<DashboardData>('/api/health/dashboard'),
+    ]);
+    if (dashboardRes.status === 'fulfilled') {
+      dispatch({
+        type: 'hydrate',
+        payload: {
+          entries:   entriesRes.status  === 'fulfilled' ? entriesRes.value  : [],
+          workouts:  workoutsRes.status === 'fulfilled' ? workoutsRes.value : [],
+          dashboard: dashboardRes.value,
+        },
+      });
+    } else {
+      // Dashboard is required for health page rendering; treat as load error
       dispatch({ type: 'setLoadState', payload: 'error' });
     }
   }

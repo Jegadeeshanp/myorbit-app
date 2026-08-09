@@ -165,17 +165,24 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     if (status !== 'authenticated') return;
 
     dispatch({ type: 'setLoadState', payload: 'loading' });
-    Promise.all([
+    // allSettled: a single API failure doesn't wipe the other slices of data
+    Promise.allSettled([
       api<Account[]>('/api/accounts'),
       api<Transaction[]>('/api/transactions'),
       api<Asset[]>('/api/assets'),
       api<Liability[]>('/api/liabilities'),
       api<BudgetCategory[]>('/api/budgets'),
-    ]).then(([accounts, transactions, assets, liabilities, budgets]) => {
-      dispatch({ type: 'hydrate', payload: { accounts, transactions, assets, liabilities, budgets } });
-    }).catch((err) => {
-      console.error('Failed to load finance data:', err);
-      dispatch({ type: 'setLoadState', payload: 'error' });
+    ]).then(([accountsRes, transactionsRes, assetsRes, liabilitiesRes, budgetsRes]) => {
+      dispatch({
+        type: 'hydrate',
+        payload: {
+          accounts:     accountsRes.status     === 'fulfilled' ? accountsRes.value     : [],
+          transactions: transactionsRes.status === 'fulfilled' ? transactionsRes.value : [],
+          assets:       assetsRes.status       === 'fulfilled' ? assetsRes.value       : [],
+          liabilities:  liabilitiesRes.status  === 'fulfilled' ? liabilitiesRes.value  : [],
+          budgets:      budgetsRes.status      === 'fulfilled' ? budgetsRes.value      : [],
+        },
+      });
     });
   }, [status]);
 
