@@ -107,7 +107,17 @@ function parseCSVText(csv: string): ParsedItem[] {
   for (let i = headerRowIdx + 1; i < lines.length; i++) {
     const cells = splitLine(lines[i]);
     const name = nameCol < cells.length ? cells[nameCol].replace(/['"]/g, '').trim() : '';
-    if (!name || name.toLowerCase() === 'total' || name.toLowerCase() === 'grand total') continue;
+    if (!name) continue;
+    // Stop at footer/disclaimer rows
+    const nameLower = name.toLowerCase();
+    if (
+      nameLower === 'total' || nameLower === 'grand total' ||
+      name.startsWith('*') || name.startsWith('#') ||
+      nameLower.startsWith('disclaimer') || nameLower.startsWith('note') ||
+      nameLower.startsWith('this ') || nameLower.startsWith('the ') ||
+      nameLower.includes('indmoney') || nameLower.includes('report may') ||
+      nameLower.includes('past performance') || nameLower.includes('accuracy of')
+    ) break;
 
     // Parse numeric cell: strip currency symbols, commas, spaces, percent signs
     const n = (idx: number): number | null => {
