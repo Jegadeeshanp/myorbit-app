@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, type ComponentType } from 'react';
 import {
-  getCustomExpenseCategoryDefs, addCustomExpenseCategory,
-  getCustomIncomeCategoryDefs,  addCustomIncomeCategory,
+  getCustomExpenseCategoryDefs, getCustomIncomeCategoryDefs,
+  addCustomExpenseCategoryDB, addCustomIncomeCategoryDB,
 } from '@/lib/customCategoryStore';
 import { ChevronDown, Plus, X, Check } from 'lucide-react';
 import {
@@ -110,6 +110,12 @@ export const ICON_OPTIONS: { name: string; icon: ComponentType<{ className?: str
   { name: 'PiggyBank',  icon: PiggyBank,     color: 'text-teal-500'    },
 ];
 
+// Derives a Tailwind bg class from an ICON_OPTIONS color class
+// e.g. 'text-amber-700' → 'bg-amber-100'
+function iconColorToBg(color: string): string {
+  return color.replace(/^text-/, 'bg-').replace(/-\d+$/, '-100');
+}
+
 // Helper used by TransactionList to get color for a category
 export function getCategoryStyle(name: string, type: 'expense' | 'income' | 'transfer') {
   if (type === 'income') {
@@ -136,19 +142,24 @@ export default function CategoryPicker({ categories, value, onChange, allowAdd =
   const [extraCats, setExtraCats] = useState<CategoryDef[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Load persisted custom categories on mount
+  // Reload custom categories every time the dropdown opens so DB-synced categories appear
   useEffect(() => {
+    if (!open) return;
     const stored = type === 'income'
       ? getCustomIncomeCategoryDefs()
       : getCustomExpenseCategoryDefs();
-    const defs: CategoryDef[] = stored.map(s => ({
-      name: s.name,
-      icon: ICON_OPTIONS.find(o => o.name === s.icon)?.icon ?? Package,
-      color: 'text-gray-700',
-      bg: 'bg-gray-100',
-    }));
+    const defs: CategoryDef[] = stored.map(s => {
+      const opt = ICON_OPTIONS.find(o => o.name === s.icon);
+      const color = opt?.color ?? 'text-gray-700';
+      return {
+        name: s.name,
+        icon: opt?.icon ?? Package,
+        color,
+        bg: iconColorToBg(color),
+      };
+    });
     setExtraCats(defs);
-  }, [type]);
+  }, [open, type]);
 
   const allCats = [...categories, ...extraCats]
     .filter((cat, idx, arr) => arr.findIndex(c => c.name === cat.name) === idx);
@@ -176,18 +187,20 @@ export default function CategoryPicker({ categories, value, onChange, allowAdd =
   function confirmCustom() {
     if (!customName.trim()) return;
     const name = customName.trim();
-    const iconName = ICON_OPTIONS.find(o => o.icon === customIcon)?.name ?? 'Package';
+    const iconOption = ICON_OPTIONS.find(o => o.icon === customIcon);
+    const iconName = iconOption?.name ?? 'Package';
+    const color = iconOption?.color ?? 'text-gray-700';
     const newCat: CategoryDef = {
       name,
       icon: customIcon,
-      color: 'text-gray-700',
-      bg: 'bg-gray-100',
+      color,
+      bg: iconColorToBg(color),
     };
-    // Persist to localStorage so the icon survives modal re-opens
+    // Persist to localStorage + DB so category syncs across browsers/devices
     if (type === 'income') {
-      addCustomIncomeCategory(name, iconName);
+      addCustomIncomeCategoryDB(name, iconName);
     } else {
-      addCustomExpenseCategory(name, iconName);
+      addCustomExpenseCategoryDB(name, iconName);
     }
     setExtraCats(prev => [...prev, newCat]);
     onChange(newCat.name);

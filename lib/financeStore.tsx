@@ -5,6 +5,7 @@ import React, {
   useEffect, useMemo, useReducer,
 } from 'react';
 import { useSession } from 'next-auth/react';
+import { syncCategoriesFromDB } from '@/lib/customCategoryStore';
 import type {
   Account as AccountType, Transaction as TransactionType,
   Asset as AssetType, Liability as LiabilityType, BudgetCategory,
@@ -186,6 +187,9 @@ export function FinanceProvider({ children }: PropsWithChildren) {
   // Only load data once the session is authenticated
   useEffect(() => {
     if (status !== 'authenticated') return;
+
+    // Sync custom categories from DB → localStorage so they appear on every browser/device
+    syncCategoriesFromDB();
 
     dispatch({ type: 'setLoadState', payload: 'loading' });
     // allSettled: a single API failure doesn't wipe the other slices of data

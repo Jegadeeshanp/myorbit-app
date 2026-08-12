@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     const row = await prisma.liability.create({
       data: {
         userId, name, lender, nextDueDate, emisLeft,
+        interestRate: interestRate ?? null,
         borrowed: await encryptNumber(borrowed),
         outstanding: await encryptNumber(outstanding),
         monthlyEmi: await encryptNumber(monthlyEmi),

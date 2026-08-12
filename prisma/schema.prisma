@@ -139,6 +139,7 @@ model Liability {
   monthlyEmi  String
   emisLeft    Int
   totalRepaid String
+  interestRate Float?
   nextDueDate        String?
   repaymentAccountId String?
   createdAt          DateTime @default(now())

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Plus, Trash2, Pencil, UtensilsCrossed, ChevronLeft, ChevronRight,
-  Settings2, X,
+  Plus, Trash2, Pencil, ChevronLeft, ChevronRight,
+  Settings2, X, Sparkles, Loader2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { toast } from '@/components/Toast';
 
@@ -171,21 +171,32 @@ function ProfileModal({ profile, onSave, onClose }: {
 
 // ── Log Food Modal ─────────────────────────────────────────────────────────
 
+const EMPTY_FORM = (meal: MealTime) => ({
+  name: '', mealType: meal,
+  servingSize: '', calories: '', proteinG: '', carbsG: '', fatG: '',
+  saturatedFatG: '', sodiumMg: '', potassiumMg: '', fiberG: '', notes: '',
+});
+
 function FoodModal({ open, onClose, initial, date, defaultMeal, onSaved }: {
   open: boolean; onClose: () => void;
   initial?: FoodEntry | null; date: string;
   defaultMeal?: MealTime;
   onSaved: (entry: FoodEntry) => void;
 }) {
-  const [form, setForm] = useState({
-    name: '', mealType: (defaultMeal ?? 'morning') as MealTime,
-    servingSize: '', calories: '', proteinG: '', carbsG: '', fatG: '',
-    saturatedFatG: '', sodiumMg: '', potassiumMg: '', fiberG: '', notes: '',
-  });
+  const [form, setForm] = useState(EMPTY_FORM(defaultMeal ?? 'morning'));
   const [saving, setSaving] = useState(false);
+  const [aiFilling, setAIFilling] = useState(false);
+  const [aiUsed, setAiUsed] = useState(false);
+  const [showFields, setShowFields] = useState(false);
+  // Track last name that was AI-fetched to avoid duplicate calls
+  const lastFetchedName = useRef('');
 
+  // Reset on open/close
   useEffect(() => {
     if (open) {
+      setAiUsed(false);
+      setShowFields(false);
+      lastFetchedName.current = '';
       setForm(initial ? {
         name: initial.name, mealType: initial.mealType,
         servingSize: initial.servingSize ?? '',
@@ -198,16 +209,59 @@ function FoodModal({ open, onClose, initial, date, defaultMeal, onSaved }: {
         potassiumMg: initial.potassiumMg?.toString() ?? '',
         fiberG: initial.fiberG?.toString() ?? '',
         notes: initial.notes ?? '',
-      } : { name: '', mealType: defaultMeal ?? 'morning', servingSize: '', calories: '', proteinG: '', carbsG: '', fatG: '', saturatedFatG: '', sodiumMg: '', potassiumMg: '', fiberG: '', notes: '' });
+      } : EMPTY_FORM(defaultMeal ?? 'morning'));
     }
   }, [open, initial, defaultMeal]);
+
+  // Auto-fetch nutrition 700 ms after the user stops typing the food name.
+  // Skip if editing an existing entry (initial != null) or name unchanged.
+  useEffect(() => {
+    const name = form.name.trim();
+    if (!name || name.length < 2 || initial) return;
+    if (name === lastFetchedName.current) return;
+
+    const timer = setTimeout(async () => {
+      lastFetchedName.current = name;
+      setAIFilling(true);
+      try {
+        const res = await fetch('/api/ai-nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foodName: name, servingSize: form.servingSize || undefined }),
+        });
+        if (!res.ok) return;
+        const d = await res.json();
+        setForm(f => ({
+          ...f,
+          servingSize:    d.servingSize    ?? f.servingSize,
+          calories:       d.calories    != null ? String(d.calories)       : f.calories,
+          proteinG:       d.proteinG    != null ? String(d.proteinG)       : f.proteinG,
+          carbsG:         d.carbsG      != null ? String(d.carbsG)         : f.carbsG,
+          fatG:           d.fatG        != null ? String(d.fatG)           : f.fatG,
+          saturatedFatG:  d.saturatedFatG != null ? String(d.saturatedFatG) : f.saturatedFatG,
+          sodiumMg:       d.sodiumMg    != null ? String(d.sodiumMg)       : f.sodiumMg,
+          potassiumMg:    d.potassiumMg != null ? String(d.potassiumMg)    : f.potassiumMg,
+          fiberG:         d.fiberG      != null ? String(d.fiberG)         : f.fiberG,
+        }));
+        setAiUsed(true);
+      } catch { /* silent — user can still save manually */ }
+      finally { setAIFilling(false); }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.name]);
 
   if (!open) return null;
 
   const n = (s: string) => s ? parseFloat(s) : undefined;
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }));
 
   async function handleSave() {
     if (!form.name.trim()) { toast('Food name required', 'error'); return; }
+    // If AI is still fetching, wait for it before saving
+    if (aiFilling) { toast('Fetching nutrition — please wait a moment', 'error'); return; }
     setSaving(true);
     try {
       const payload = {
@@ -223,8 +277,7 @@ function FoodModal({ open, onClose, initial, date, defaultMeal, onSaved }: {
       const method = initial ? 'PATCH' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) throw new Error();
-      const saved = await res.json();
-      onSaved(saved);
+      onSaved(await res.json());
       onClose();
     } catch {
       toast('Failed to save', 'error');
@@ -238,18 +291,42 @@ function FoodModal({ open, onClose, initial, date, defaultMeal, onSaved }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
+
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-none">
           <p className="font-semibold text-gray-900">{initial ? 'Edit Food' : 'Log Food'}</p>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+          {/* Food name — auto-fetches nutrition while typing */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Food Name *</label>
-            <input autoFocus type="text" className={inputCls} placeholder="e.g. Idli, Dal Rice, Apple"
-              value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Food Name *
+            </label>
+            <div className="relative">
+              <input
+                autoFocus type="text"
+                className={`${inputCls} pr-9`}
+                placeholder="e.g. Idli, Dal Rice, 2 rotis with sabji"
+                value={form.name}
+                onChange={set('name')}
+              />
+              {aiFilling && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-violet-400" />
+              )}
+            </div>
+            {aiFilling && (
+              <p className="text-[11px] text-violet-400 mt-1 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> Fetching nutrition details…
+              </p>
+            )}
           </div>
 
+          {/* Meal time */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Meal Time</label>
             <div className="grid grid-cols-4 gap-2">
@@ -263,39 +340,131 @@ function FoodModal({ open, onClose, initial, date, defaultMeal, onSaved }: {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Serving Size</label>
-              <input type="text" className={inputCls} placeholder="e.g. 1 cup, 100g"
-                value={form.servingSize} onChange={e => setForm(f => ({ ...f, servingSize: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Calories (kcal)</label>
-              <input type="number" className={inputCls} placeholder="0"
-                value={form.calories} onChange={e => setForm(f => ({ ...f, calories: e.target.value }))} />
-            </div>
+          {/* Serving size hint */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Serving Size <span className="font-normal normal-case text-gray-400">(optional — helps AI give accurate values)</span>
+            </label>
+            <input type="text" className={inputCls} placeholder="e.g. 1 cup, 2 pieces, 100g"
+              value={form.servingSize} onChange={set('servingSize')} />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { key: 'proteinG',  label: 'Protein (g)' },
-              { key: 'carbsG',    label: 'Carbs (g)' },
-              { key: 'fatG',      label: 'Fat (g)' },
-            ].map(({ key, label }) => (
-              <div key={key}>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
-                <input type="number" step="0.1" className={inputCls} placeholder="0"
-                  value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
+          {/* AI Nutrition Summary — shown after auto-fill */}
+          {aiUsed && !aiFilling && (
+            <div className="rounded-2xl bg-violet-50 border border-violet-100 overflow-hidden">
+              <div className="px-4 pt-3 pb-2">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-violet-700 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" /> AI Nutrition
+                    {form.servingSize && <span className="font-normal text-violet-400 ml-1">· {form.servingSize}</span>}
+                  </span>
+                  <button
+                    onClick={() => setShowFields(v => !v)}
+                    className="flex items-center gap-0.5 text-[11px] text-violet-500 hover:text-violet-700 transition"
+                  >
+                    {showFields ? 'Hide' : 'Edit values'}
+                    {showFields ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                </div>
+
+                {/* Macro summary pills */}
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: 'Calories', value: form.calories, unit: 'kcal', color: 'text-gray-900' },
+                    { label: 'Protein',  value: form.proteinG,  unit: 'g',    color: 'text-blue-600' },
+                    { label: 'Carbs',    value: form.carbsG,    unit: 'g',    color: 'text-amber-600' },
+                    { label: 'Fat',      value: form.fatG,      unit: 'g',    color: 'text-rose-500' },
+                  ].map(({ label, value, unit, color }) => (
+                    <div key={label} className="rounded-xl bg-white py-2 shadow-sm">
+                      <p className={`text-sm font-bold ${color}`}>{value || '–'}</p>
+                      <p className="text-[10px] text-gray-400">{unit}</p>
+                      <p className="text-[10px] text-gray-500 leading-tight">{label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Micro row */}
+                {(form.fiberG || form.sodiumMg) && (
+                  <p className="text-[11px] text-violet-400 mt-2 text-center">
+                    {form.fiberG   ? `Fiber ${form.fiberG}g` : ''}
+                    {form.fiberG && form.sodiumMg ? ' · ' : ''}
+                    {form.sodiumMg ? `Sodium ${form.sodiumMg}mg` : ''}
+                    {form.potassiumMg ? ` · Potassium ${form.potassiumMg}mg` : ''}
+                  </p>
+                )}
               </div>
-            ))}
-          </div>
+
+              <p className="px-4 pb-2 text-[10px] text-violet-300 text-center">
+                AI-estimated · verify with product label for precision
+              </p>
+            </div>
+          )}
+
+          {/* Editable fields — shown when user clicks "Edit values" or when no AI data yet */}
+          {(showFields || (!aiUsed && !aiFilling)) && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Calories (kcal)</label>
+                  <input type="number" className={inputCls} placeholder="0"
+                    value={form.calories} onChange={set('calories')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Protein (g)</label>
+                  <input type="number" step="0.1" className={inputCls} placeholder="0"
+                    value={form.proteinG} onChange={set('proteinG')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Carbs (g)</label>
+                  <input type="number" step="0.1" className={inputCls} placeholder="0"
+                    value={form.carbsG} onChange={set('carbsG')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fat (g)</label>
+                  <input type="number" step="0.1" className={inputCls} placeholder="0"
+                    value={form.fatG} onChange={set('fatG')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Fiber (g)</label>
+                  <input type="number" step="0.1" className={inputCls} placeholder="0"
+                    value={form.fiberG} onChange={set('fiberG')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Sat. Fat (g)</label>
+                  <input type="number" step="0.1" className={inputCls} placeholder="0"
+                    value={form.saturatedFatG} onChange={set('saturatedFatG')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Sodium (mg)</label>
+                  <input type="number" className={inputCls} placeholder="0"
+                    value={form.sodiumMg} onChange={set('sodiumMg')} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Potassium (mg)</label>
+                  <input type="number" className={inputCls} placeholder="0"
+                    value={form.potassiumMg} onChange={set('potassiumMg')} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Notes</label>
+                <textarea rows={2} className={`${inputCls} resize-none`} placeholder="Optional notes"
+                  value={form.notes} onChange={set('notes')} />
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Footer */}
         <div className="px-5 pb-5 pt-3 flex gap-3 flex-none border-t border-gray-100">
-          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition disabled:opacity-50">
-            {saving ? 'Saving…' : initial ? 'Update' : 'Log Food'}
+          <button onClick={onClose} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving || aiFilling}
+            className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> :
+             aiFilling ? <><Loader2 className="h-4 w-4 animate-spin" /> Getting nutrition…</> :
+             initial ? 'Update' : 'Log Food'}
           </button>
         </div>
       </div>

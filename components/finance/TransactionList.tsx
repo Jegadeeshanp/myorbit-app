@@ -480,7 +480,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
             <div className="divide-y divide-blue-50/60 dark:divide-blue-900/20">
               {filteredUpcoming.map(tx => {
                 const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-                const isExp    = tx.type === 'expense';
+                const isExp    = tx.type === 'expense' || (tx.type === 'transfer' && tx.amount < 0);
                 const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
                 const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                 return (
@@ -588,7 +588,7 @@ export default function TransactionList({ transactions, onAdd }: { transactions:
               <div className="divide-y divide-gray-50 dark:divide-white/[0.04]">
                 {group.transactions.map(tx => {
                   const catColor = CAT_COLORS[tx.category] ?? CAT_COLORS.Default;
-                  const isExp    = tx.type === 'expense';
+                  const isExp    = tx.type === 'expense' || (tx.type === 'transfer' && tx.amount < 0);
                   const account  = tx.accountId ? state.accounts.find(a => a.id === tx.accountId) : null;
                   const dateStr  = new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
