@@ -92,14 +92,14 @@ export default function AddTransactionPage() {
     setAmount(a => a + k);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!amount || !accountId) return;
     if (type === 'transfer') {
       if (!toAccountId) return;
-      addTransaction({ date, category: 'Transfer', description: notes || 'Transfer', amount: -Number(amount), type: 'transfer', accountId });
-      addTransaction({ date, category: 'Transfer', description: notes || 'Transfer', amount:  Number(amount), type: 'transfer', accountId: toAccountId });
+      await addTransaction({ date, category: 'Transfer', description: notes || 'Transfer', amount: -Number(amount), type: 'transfer', accountId });
+      await addTransaction({ date, category: 'Transfer', description: notes || 'Transfer', amount:  Number(amount), type: 'transfer', accountId: toAccountId });
     } else {
-      addTransaction({
+      await addTransaction({
         date,
         category: category || 'Others',
         description: notes || category || type,

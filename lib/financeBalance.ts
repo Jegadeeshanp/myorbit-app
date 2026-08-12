@@ -9,7 +9,10 @@ type BalanceTransaction = {
 };
 
 function isPastOrToday(date: string) {
-  return date <= new Date().toLocaleDateString('en-CA');
+  // Add a 1-day buffer so IST users' "today" transactions aren't rejected by a UTC server
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() + 1);
+  return date <= cutoff.toLocaleDateString('en-CA');
 }
 
 export function affectsAccountBalance(tx: BalanceTransaction) {

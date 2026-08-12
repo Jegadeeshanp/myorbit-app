@@ -437,6 +437,15 @@ export default function AddTransactionSheet({
   const [trDate,   setTrDate]   = useState(today);
   const [trNote,   setTrNote]   = useState('');
 
+  // If accounts weren't loaded when this component mounted, sync defaults once they arrive
+  useEffect(() => {
+    if (accounts.length === 0) return;
+    setExpAcc(a => a || accounts[0].id);
+    setIncAcc(a => a || accounts[0].id);
+    setTrFromId(a => a || accounts[0].id);
+    setTrToId(a => a || (accounts[1]?.id ?? accounts[0].id));
+  }, [accounts]);
+
   // Link to asset (SIP) or liability (EMI)
   type LinkMode = 'none' | 'sip' | 'emi';
   const [linkMode,        setLinkMode]        = useState<LinkMode>('none');

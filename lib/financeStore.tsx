@@ -300,11 +300,16 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       dispatch({ type: 'addTransaction', payload: res.transaction });
       if (res.updatedAsset)     dispatch({ type: 'updateAsset',     payload: res.updatedAsset });
       if (res.updatedLiability) dispatch({ type: 'updateLiability', payload: res.updatedLiability });
-      // Use the account returned directly by the API (avoids a separate GET round-trip and any staleness race)
       if (res.updatedAccount)   dispatch({ type: 'updateAccount',   payload: res.updatedAccount });
+      // Always re-fetch accounts + budgets so the UI stays in sync with the DB,
+      // even if the inline updatedAccount was missing (e.g. timezone edge-case)
       try {
-        const budgets = await api<BudgetCategory[]>('/api/budgets');
-        budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
+        const [accounts, budgets] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<BudgetCategory[]>('/api/budgets'),
+        ]);
+        accounts.forEach(a => dispatch({ type: 'updateAccount', payload: a }));
+        budgets.forEach(b => dispatch({ type: 'updateBudget', payload: b }));
       } catch { /* non-critical */ }
     },
     updateTransaction: async (t) => {
@@ -312,8 +317,12 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       dispatch({ type: 'updateTransaction', payload: res.transaction });
       if (res.updatedAccount) dispatch({ type: 'updateAccount', payload: res.updatedAccount });
       try {
-        const budgets = await api<BudgetCategory[]>('/api/budgets');
-        budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
+        const [accounts, budgets] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<BudgetCategory[]>('/api/budgets'),
+        ]);
+        accounts.forEach(a => dispatch({ type: 'updateAccount', payload: a }));
+        budgets.forEach(b => dispatch({ type: 'updateBudget', payload: b }));
       } catch { /* non-critical */ }
     },
     deleteTransaction: async (id) => {
@@ -325,8 +334,12 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       if (res.updatedLiability) dispatch({ type: 'updateLiability', payload: res.updatedLiability });
       if (res.updatedAccount)   dispatch({ type: 'updateAccount',   payload: res.updatedAccount });
       try {
-        const budgets = await api<BudgetCategory[]>('/api/budgets');
-        budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
+        const [accounts, budgets] = await Promise.all([
+          api<Account[]>('/api/accounts'),
+          api<BudgetCategory[]>('/api/budgets'),
+        ]);
+        accounts.forEach(a => dispatch({ type: 'updateAccount', payload: a }));
+        budgets.forEach(b => dispatch({ type: 'updateBudget', payload: b }));
       } catch { /* non-critical */ }
     },
 
