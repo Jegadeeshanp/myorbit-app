@@ -28,7 +28,7 @@ export default function TransactionsPage() {
         accounts={accountList}
         onSaveExpense={addTransaction}
         onSaveIncome={addTransaction}
-        onSaveTransfer={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
+        onSaveTransfer={async (tx1, tx2) => { await addTransaction(tx1); await addTransaction(tx2); }}
       />
     </div>
   );

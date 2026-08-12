@@ -89,8 +89,9 @@ export async function POST(req: NextRequest) {
       `;
     }
 
+    let updatedAccount: Awaited<ReturnType<typeof applyTransactionBalanceDelta>> | undefined;
     if (accountId) {
-      await applyTransactionBalanceDelta(userId, { accountId, date, amount, type });
+      updatedAccount = await applyTransactionBalanceDelta(userId, { accountId, date, amount, type }) ?? undefined;
     }
 
     // If recurring, register a template
@@ -194,7 +195,7 @@ export async function POST(req: NextRequest) {
     }
 
     const transaction = await decryptTx(row, linkedAssetId, linkedLiabilityId);
-    return NextResponse.json({ transaction, updatedAsset, updatedLiability }, { status: 201 });
+    return NextResponse.json({ transaction, updatedAsset, updatedLiability, updatedAccount }, { status: 201 });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: e.message ?? 'Server error' }, { status: 500 });

@@ -48,7 +48,7 @@ export default function QuickActions() {
       <AddExpenseModal  open={expenseOpen}  onClose={() => setExpenseOpen(false)}  accounts={accounts} onSave={addTransaction} />
       <AddIncomeModal   open={incomeOpen}   onClose={() => setIncomeOpen(false)}   accounts={accounts} onSave={addTransaction} />
       <TransferModal    open={transferOpen} onClose={() => setTransferOpen(false)} accounts={accounts}
-        onSave={(tx1, tx2) => { addTransaction(tx1); addTransaction(tx2); }}
+        onSave={async (tx1, tx2) => { await addTransaction(tx1); await addTransaction(tx2); }}
       />
       <AddAssetModal    open={assetOpen}    onClose={() => setAssetOpen(false)}    onSave={addAsset} />
     </>
