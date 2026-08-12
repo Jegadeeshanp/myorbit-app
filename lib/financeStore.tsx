@@ -290,44 +290,36 @@ export function FinanceProvider({ children }: PropsWithChildren) {
     },
 
     addTransaction: async (t) => {
-      const res = await api<{ transaction: Transaction; updatedAsset?: Asset; updatedLiability?: Liability }>(
+      const res = await api<{ transaction: Transaction; updatedAsset?: Asset; updatedLiability?: Liability; updatedAccount?: Account }>(
         '/api/transactions', { method: 'POST', body: JSON.stringify(t) }
       );
       dispatch({ type: 'addTransaction', payload: res.transaction });
       if (res.updatedAsset)     dispatch({ type: 'updateAsset',     payload: res.updatedAsset });
       if (res.updatedLiability) dispatch({ type: 'updateLiability', payload: res.updatedLiability });
-      try {
-        const accounts = await api<Account[]>('/api/accounts');
-        accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
-      } catch { /* non-critical */ }
+      // Use the account returned directly by the API (avoids a separate GET round-trip and any staleness race)
+      if (res.updatedAccount)   dispatch({ type: 'updateAccount',   payload: res.updatedAccount });
       try {
         const budgets = await api<BudgetCategory[]>('/api/budgets');
         budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
       } catch { /* non-critical */ }
     },
     updateTransaction: async (t) => {
-      const updated = await api<Transaction>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });
-      dispatch({ type: 'updateTransaction', payload: updated });
-      try {
-        const accounts = await api<Account[]>('/api/accounts');
-        accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
-      } catch { /* non-critical */ }
+      const res = await api<{ transaction: Transaction; updatedAccount?: Account }>(`/api/transactions/${t.id}`, { method: 'PATCH', body: JSON.stringify(t) });
+      dispatch({ type: 'updateTransaction', payload: res.transaction });
+      if (res.updatedAccount) dispatch({ type: 'updateAccount', payload: res.updatedAccount });
       try {
         const budgets = await api<BudgetCategory[]>('/api/budgets');
         budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
       } catch { /* non-critical */ }
     },
     deleteTransaction: async (id) => {
-      const res = await api<{ ok: boolean; updatedAsset?: Asset; updatedLiability?: Liability }>(
+      const res = await api<{ ok: boolean; updatedAsset?: Asset; updatedLiability?: Liability; updatedAccount?: Account }>(
         `/api/transactions/${id}`, { method: 'DELETE' }
       );
       dispatch({ type: 'deleteTransaction', payload: id });
       if (res.updatedAsset)     dispatch({ type: 'updateAsset',     payload: res.updatedAsset });
       if (res.updatedLiability) dispatch({ type: 'updateLiability', payload: res.updatedLiability });
-      try {
-        const accounts = await api<Account[]>('/api/accounts');
-        accounts.forEach(account => dispatch({ type: 'updateAccount', payload: account }));
-      } catch { /* non-critical */ }
+      if (res.updatedAccount)   dispatch({ type: 'updateAccount',   payload: res.updatedAccount });
       try {
         const budgets = await api<BudgetCategory[]>('/api/budgets');
         budgets.forEach(budget => dispatch({ type: 'updateBudget', payload: budget }));
@@ -410,10 +402,9 @@ export function FinanceProvider({ children }: PropsWithChildren) {
       // Debit the repayment account: create an expense transaction + update account balance
       const accId = repaymentAccountId ?? liability.repaymentAccountId;
       if (accId) {
-        const account = state.accounts.find(a => a.id === accId);
         const today = new Date().toISOString().slice(0, 10);
         try {
-          const res = await api<{ transaction: Transaction }>('/api/transactions', {
+          const res = await api<{ transaction: Transaction; updatedAccount?: Account }>('/api/transactions', {
             method: 'POST',
             body: JSON.stringify({
               date: today,
@@ -425,14 +416,8 @@ export function FinanceProvider({ children }: PropsWithChildren) {
             }),
           });
           dispatch({ type: 'addTransaction', payload: res.transaction });
-          // Update account balance
-          if (account) {
-            const updatedAcc = await api<Account>(`/api/accounts/${accId}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ balance: account.balance - Math.abs(amount) }),
-            });
-            dispatch({ type: 'updateAccount', payload: updatedAcc });
-          }
+          // The POST already applied the balance delta server-side; use the returned account.
+          if (res.updatedAccount) dispatch({ type: 'updateAccount', payload: res.updatedAccount });
         } catch { /* non-critical — liability payment still recorded */ }
       }
     },

@@ -47,11 +47,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (data.amount != null) data.amount = await encryptNumber(data.amount);
 
     const row = await prisma.transaction.update({ where: { id }, data });
+    // Reverse old balance effect, then apply new one. Track the final affected account.
     await applyTransactionBalanceDelta(userId, { accountId: existing.accountId, date: existing.date, amount: existingAmount, type: existing.type }, -1);
-    await applyTransactionBalanceDelta(userId, { accountId: row.accountId, date: row.date, amount: await decryptNumber(row.amount), type: row.type });
+    const updatedAccount = await applyTransactionBalanceDelta(userId, { accountId: row.accountId, date: row.date, amount: await decryptNumber(row.amount), type: row.type }) ?? undefined;
 
     const { linkedAssetId, linkedLiabilityId } = await getLinkedFields(id);
-    return NextResponse.json(await decryptTx(row, linkedAssetId, linkedLiabilityId));
+    return NextResponse.json({ transaction: await decryptTx(row, linkedAssetId, linkedLiabilityId), updatedAccount });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -69,7 +70,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const { linkedAssetId, linkedLiabilityId } = await getLinkedFields(id);
 
     await prisma.transaction.delete({ where: { id } });
-    await applyTransactionBalanceDelta(userId, { accountId: existing.accountId, date: existing.date, amount: existingAmount, type: existing.type }, -1);
+    const updatedAccount = await applyTransactionBalanceDelta(userId, { accountId: existing.accountId, date: existing.date, amount: existingAmount, type: existing.type }, -1) ?? undefined;
 
     // ── Reverse SIP: delete matching InvestmentTransaction + recompute invested ──
     let updatedAsset: any = undefined;
@@ -143,7 +144,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    return NextResponse.json({ ok: true, updatedAsset, updatedLiability });
+    return NextResponse.json({ ok: true, updatedAsset, updatedLiability, updatedAccount });
   } catch (e: any) {
     if (e.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
