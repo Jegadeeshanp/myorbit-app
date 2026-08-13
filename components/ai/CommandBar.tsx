@@ -5,6 +5,7 @@ import { Sparkles, X, ArrowUp, Loader2, RotateCcw, CheckCircle2, AlertCircle, Tr
 import { toast } from '@/components/Toast';
 import { useDraggableFab } from '@/lib/useDraggableFab';
 import { useRouter } from 'next/navigation';
+import { useFinance } from '@/lib/financeStore';
 // ── Types inlined from @myorbit/api (package not linked in monorepo) ─────────
 interface AIMessage    { role: 'user' | 'assistant'; content: string }
 interface DailySummary {
@@ -444,10 +445,240 @@ function ChatBubble({ msg, onUndo }: { msg: ChatMsg; onUndo?: (msg: ChatMsg) => 
   );
 }
 
+// ── Confirmation panel ────────────────────────────────────────────────────────
+
+const EXPENSE_CATS = ['Food','Groceries','Transport','Restaurants','Shopping','Subscriptions','Utilities','Medical','Travel','Miscellaneous','Insurance','Education','Fuel','Internet','Mobile','Other Expense'];
+const INCOME_CATS  = ['Salary','Bonus','Freelance','Business','Dividends','Interest','Rental Income','Cashback','Refund','Other Income'];
+const GOAL_CATS    = ['Finance','Health','Career','Learning','Personal','Other'];
+const MEAL_TYPES   = ['morning','noon','evening','night'];
+
+function ConfirmationPanel({
+  fn, parsedArgs, previewData, accounts, onConfirm, onCancel, loading,
+}: {
+  fn: string;
+  parsedArgs: Record<string, any>;
+  previewData?: Record<string, any>;
+  accounts: { id: string; name: string; type: string }[];
+  onConfirm: (args: Record<string, any>) => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  // ── Transaction ──
+  const [txAmount,  setTxAmount]  = useState(parsedArgs.amount ?? '');
+  const [txDesc,    setTxDesc]    = useState(parsedArgs.description ?? '');
+  const [txCat,     setTxCat]     = useState(parsedArgs.category ?? 'Miscellaneous');
+  const [txType,    setTxType]    = useState<'expense'|'income'>(parsedArgs.type ?? 'expense');
+  const [txAccId,   setTxAccId]   = useState(parsedArgs.accountId ?? (accounts[0]?.id ?? ''));
+
+  // ── Water ──
+  const [waterMl,   setWaterMl]   = useState(String(previewData?.amount_ml ?? parsedArgs.amount_ml ?? 250));
+
+  // ── Activity ──
+  const [actType,   setActType]   = useState(parsedArgs.activity_type ?? '');
+  const [actDist,   setActDist]   = useState(parsedArgs.distance_km != null ? String(parsedArgs.distance_km) : '');
+  const [actDur,    setActDur]    = useState(parsedArgs.duration_min != null ? String(parsedArgs.duration_min) : '');
+  const [actKcal,   setActKcal]   = useState(String(parsedArgs.estimated_kcal ?? 0));
+
+  // ── Food ──
+  const [mealType,  setMealType]  = useState<string>(previewData?.mealType ?? parsedArgs.meal_type ?? 'noon');
+  const [foodItems, setFoodItems] = useState<NutritionItem[]>(previewData?.items ?? []);
+  const foodTotals = foodItems.reduce(
+    (acc, item) => ({ calories: acc.calories + item.calories, protein: acc.protein + item.protein, carbs: acc.carbs + item.carbs, fat: acc.fat + item.fat, fibre: acc.fibre + item.fibre }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fibre: 0 },
+  );
+
+  // ── Goal ──
+  const [goalTitle,    setGoalTitle]    = useState(parsedArgs.title ?? '');
+  const [goalCategory, setGoalCategory] = useState(parsedArgs.category ?? 'Personal');
+  const [goalDeadline, setGoalDeadline] = useState(parsedArgs.deadline ?? '');
+  const [goalWhy,      setGoalWhy]      = useState(parsedArgs.why ?? '');
+
+  const inputCls = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-emerald-400 focus:outline-none';
+  const labelCls = 'text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5 block';
+
+  const handleConfirm = () => {
+    if (fn === 'add_transaction') {
+      onConfirm({ amount: txAmount, description: txDesc, category: txCat, type: txType, accountId: txAccId || null });
+    } else if (fn === 'log_water') {
+      onConfirm({ amount_ml: Number(waterMl) });
+    } else if (fn === 'log_activity') {
+      onConfirm({ activity_type: actType, distance_km: actDist ? Number(actDist) : null, duration_min: actDur ? Number(actDur) : null, estimated_kcal: Number(actKcal) });
+    } else if (fn === 'log_food_by_description') {
+      onConfirm({ description: parsedArgs.description, preAnalyzed: { items: foodItems, totals: foodTotals, mealType } });
+    } else if (fn === 'add_goal') {
+      onConfirm({ title: goalTitle, category: goalCategory, deadline: goalDeadline || undefined, why: goalWhy || undefined });
+    }
+  };
+
+  const ACTION_LABELS: Record<string, string> = {
+    add_transaction: 'Confirm Transaction',
+    log_water: 'Confirm Water Log',
+    log_activity: 'Confirm Activity',
+    log_food_by_description: 'Confirm Food Log',
+    add_goal: 'Confirm Goal',
+  };
+
+  return (
+    <div className="border-t border-gray-100 px-4 py-3 space-y-3">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
+        ✦ {ACTION_LABELS[fn] ?? 'Confirm'} — review &amp; edit before saving
+      </p>
+
+      {fn === 'add_transaction' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Amount (₹)</label>
+              <input type="number" value={txAmount} onChange={e => setTxAmount(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Type</label>
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                {(['expense','income'] as const).map(t => (
+                  <button key={t} onClick={() => setTxType(t)}
+                    className={`flex-1 py-1.5 text-xs font-semibold capitalize transition ${txType === t ? (t === 'expense' ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white') : 'bg-white text-gray-500'}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Description</label>
+            <input value={txDesc} onChange={e => setTxDesc(e.target.value)} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Category</label>
+              <select value={txCat} onChange={e => setTxCat(e.target.value)} className={inputCls}>
+                {[...(txType === 'income' ? INCOME_CATS : EXPENSE_CATS)].map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Account</label>
+              <select value={txAccId} onChange={e => setTxAccId(e.target.value)} className={inputCls}>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fn === 'log_water' && (
+        <div className="space-y-2">
+          <div>
+            <label className={labelCls}>Amount (ml)</label>
+            <input type="number" value={waterMl} onChange={e => setWaterMl(e.target.value)} className={inputCls} />
+          </div>
+          {previewData && (
+            <div className="rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700">
+              Today: {previewData.currentMl}ml + {waterMl}ml = <strong>{(previewData.currentMl as number) + (Number(waterMl) || 0)}ml</strong> / {previewData.goal_ml}ml goal
+            </div>
+          )}
+        </div>
+      )}
+
+      {fn === 'log_activity' && (
+        <div className="space-y-2">
+          <div>
+            <label className={labelCls}>Activity</label>
+            <input value={actType} onChange={e => setActType(e.target.value)} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className={labelCls}>Distance (km)</label>
+              <input type="number" value={actDist} onChange={e => setActDist(e.target.value)} placeholder="—" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Duration (min)</label>
+              <input type="number" value={actDur} onChange={e => setActDur(e.target.value)} placeholder="—" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Calories (kcal)</label>
+              <input type="number" value={actKcal} onChange={e => setActKcal(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fn === 'log_food_by_description' && (
+        <div className="space-y-2">
+          <div>
+            <label className={labelCls}>Meal</label>
+            <select value={mealType} onChange={e => setMealType(e.target.value)} className={inputCls}>
+              {MEAL_TYPES.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+            </select>
+          </div>
+          <div className="rounded-xl border border-gray-100 overflow-hidden text-[11px]">
+            <div className="grid grid-cols-6 gap-0 bg-gray-50 px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wide text-gray-400 border-b border-gray-100">
+              <span className="col-span-2">Food</span><span className="text-right">kcal</span><span className="text-right">P</span><span className="text-right">C</span><span className="text-right">F</span>
+            </div>
+            {foodItems.map((item, i) => (
+              <div key={i} className="grid grid-cols-6 gap-0 px-3 py-1 border-b border-gray-50 text-gray-700">
+                <span className="col-span-2 text-gray-800 font-medium truncate">{item.name} <span className="text-gray-400 font-normal">{item.quantity}</span></span>
+                <input type="number" value={Math.round(item.calories)} onChange={e => setFoodItems(prev => prev.map((it, j) => j === i ? { ...it, calories: Number(e.target.value) } : it))}
+                  className="text-right bg-emerald-50 rounded w-full text-emerald-800 font-medium text-[11px] px-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-300" />
+                <span className="text-right">{item.protein.toFixed(1)}g</span>
+                <span className="text-right">{item.carbs.toFixed(1)}g</span>
+                <span className="text-right">{item.fat.toFixed(1)}g</span>
+              </div>
+            ))}
+            <div className="grid grid-cols-6 gap-0 px-3 py-1.5 bg-emerald-50 font-bold text-[11px] text-emerald-800">
+              <span className="col-span-2">Total</span>
+              <span className="text-right">{Math.round(foodTotals.calories)}</span>
+              <span className="text-right">{foodTotals.protein.toFixed(1)}g</span>
+              <span className="text-right">{foodTotals.carbs.toFixed(1)}g</span>
+              <span className="text-right">{foodTotals.fat.toFixed(1)}g</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fn === 'add_goal' && (
+        <div className="space-y-2">
+          <div>
+            <label className={labelCls}>Title</label>
+            <input value={goalTitle} onChange={e => setGoalTitle(e.target.value)} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelCls}>Category</label>
+              <select value={goalCategory} onChange={e => setGoalCategory(e.target.value)} className={inputCls}>
+                {GOAL_CATS.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Deadline (optional)</label>
+              <input type="date" value={goalDeadline} onChange={e => setGoalDeadline(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Why (optional)</label>
+            <input value={goalWhy} onChange={e => setGoalWhy(e.target.value)} placeholder="Motivation…" className={inputCls} />
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={onCancel} disabled={loading}
+          className="flex-1 rounded-xl border border-gray-200 bg-white py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50">
+          Cancel
+        </button>
+        <button onClick={handleConfirm} disabled={loading}
+          className="flex-1 rounded-xl bg-emerald-600 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1.5">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          {loading ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CommandBar() {
   const router     = useRouter();
+  const { state: financeState } = useFinance();
   const [open,      setOpen]      = useState(false);
   const [input,     setInput]     = useState('');
   const [loading,   setLoading]   = useState(false);
@@ -456,6 +687,10 @@ export default function CommandBar() {
   const [hintIdx,   setHintIdx]   = useState(0);
 
   const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null);
+
+  type PendingConfirmation = { fn: string; parsedArgs: Record<string, any>; previewData?: Record<string, any> };
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const inputRef   = useRef<HTMLInputElement>(null);
   const fileRef    = useRef<HTMLInputElement>(null);
@@ -555,10 +790,17 @@ export default function CommandBar() {
 
       const res  = await fetch('/api/ai-command', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command, history }),
+        body: JSON.stringify({ command, history, preview: true }),
       });
       if (!res.ok) throw new Error('Command failed — please try again.');
       const data = await res.json();
+
+      // Confirmation flow: show editable panel before saving
+      if (data.pending) {
+        setPendingConfirmation({ fn: data.pendingFn, parsedArgs: data.parsedArgs ?? {}, previewData: data.previewData });
+        return;
+      }
+
       const summary  = data.data?.summary  as DailySummary | undefined;
       const cardData = data.data?.cardData as AnyCardData  | undefined;
       const action   = data.action         as string       | undefined;
@@ -605,6 +847,51 @@ export default function CommandBar() {
     } catch {
       toast(`Could not undo — please delete it manually`, 'error');
     }
+  }, []);
+
+  const handleConfirm = useCallback(async (editedArgs: Record<string, any>) => {
+    if (!pendingConfirmation) return;
+    setConfirmLoading(true);
+    try {
+      const res = await fetch('/api/ai-command', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmedArgs: { fn: pendingConfirmation.fn, args: editedArgs } }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const data = await res.json();
+      const cardData = data.data?.cardData as AnyCardData | undefined;
+      const action   = data.action as string | undefined;
+      const entityId = data.data?.id as string | undefined;
+
+      setPendingConfirmation(null);
+      setMessages(prev => [...prev, {
+        role: 'assistant', content: data.message, cardData, action, ok: data.success, entityId,
+      }]);
+
+      const HEALTH_ACTIONS2 = new Set(['WATER', 'FOOD_LOG', 'ACTIVITY']);
+      if (data.success && HEALTH_ACTIONS2.has(action ?? '')) {
+        window.dispatchEvent(new CustomEvent('health:refresh'));
+      }
+
+      const CARD_ACTIONS2 = new Set(['DAILY_SUMMARY', 'QUERY', 'GOAL_PLAN', 'WATER', 'FOOD_LOG', 'ACTIVITY']);
+      if (data.success) {
+        if (!CARD_ACTIONS2.has(action ?? '') && !UNDO_ACTIONS[action ?? '']) {
+          toast(data.message, 'success');
+          setTimeout(() => { setMessages([]); setOpen(false); }, 2500);
+        }
+      } else {
+        toast(data.message || 'Could not save', 'error');
+      }
+    } catch {
+      toast('Could not save — please try again', 'error');
+    } finally {
+      setConfirmLoading(false);
+    }
+  }, [pendingConfirmation]);
+
+  const handleCancelConfirmation = useCallback(() => {
+    setPendingConfirmation(null);
+    setMessages(prev => [...prev, { role: 'assistant', content: 'Cancelled.', ok: true }]);
   }, []);
 
   const fillInput = (text: string) => {
@@ -734,8 +1021,21 @@ export default function CommandBar() {
             </button>
           </div>
 
-          {/* Examples — hidden when conversation is active */}
-          {!showHistory && (
+          {/* Confirmation panel — shown when AI parsed an action awaiting user review */}
+          {pendingConfirmation && (
+            <ConfirmationPanel
+              fn={pendingConfirmation.fn}
+              parsedArgs={pendingConfirmation.parsedArgs}
+              previewData={pendingConfirmation.previewData}
+              accounts={financeState.accounts}
+              onConfirm={handleConfirm}
+              onCancel={handleCancelConfirmation}
+              loading={confirmLoading}
+            />
+          )}
+
+          {/* Examples — hidden when conversation is active or confirmation pending */}
+          {!showHistory && !pendingConfirmation && (
             <>
               {/* Category tabs */}
               <div className="border-t border-gray-100 dark:border-gray-700 px-4 pt-2 pb-1 flex gap-1.5">

@@ -203,6 +203,11 @@ interface ToolResult {
   data?:    Record<string, unknown>;
 }
 
+// Actions that require user confirmation before saving
+const CONFIRMABLE_ACTIONS = new Set([
+  'add_transaction', 'log_water', 'log_activity', 'log_food_by_description', 'add_goal',
+]);
+
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
 const TOOLS: Groq.Chat.ChatCompletionTool[] = [
@@ -435,6 +440,7 @@ async function executeToolCall(
     accounts: { id: string; name: string; type: string }[];
     goals:    { id: string; title: string }[];
   },
+  preview = false,
 ): Promise<ToolResult> {
   const { userId, today, tomorrow, nextWeek, tasks, habits, accounts, goals } = ctx;
 
@@ -557,6 +563,11 @@ async function executeToolCall(
     const autoCategory = inferCategory(args.description);
     const category = CATEGORIES.includes(args.category) ? args.category : (autoCategory ?? 'Miscellaneous');
     const type     = args.type === 'income' ? 'income' : 'expense';
+    if (preview) {
+      const accountId = args.accountId ? (accounts.find(a => a.id === args.accountId)?.id ?? null) : null;
+      return { success: true, action: 'PENDING', message: '',
+        data: { pending: true, pendingFn: fn, parsedArgs: { amount: String(amount), description: args.description, category, type, accountId: accountId ?? '' } } };
+    }
     const accountId: string | null = args.accountId ? (accounts.find(a => a.id === args.accountId)?.id ?? null) : null;
     const row = await prisma.transaction.create({ data: {
       userId, accountId, date: today, category,
@@ -608,6 +619,10 @@ async function executeToolCall(
   // ── ADD GOAL ────────────────────────────────────────────────────────────────
   if (fn === 'add_goal') {
     const cat  = GOAL_CATEGORIES.includes(args.category) ? args.category : 'Personal';
+    if (preview) {
+      return { success: true, action: 'PENDING', message: '',
+        data: { pending: true, pendingFn: fn, parsedArgs: { title: args.title, category: cat, deadline: args.deadline ?? '', why: args.why ?? '' } } };
+    }
     const goal = await prisma.goal.create({ data: { userId, title: args.title, category: cat, why: args.why ?? null, deadline: args.deadline ?? null, status: 'active' } });
     const parts = [`🎯 Goal: "${goal.title}"`];
     if (args.deadline) parts.push(`by ${args.deadline}`);
@@ -854,7 +869,14 @@ async function executeToolCall(
     const prefs    = await prisma.userPreferences.findUnique({ where: { userId } });
     const goal_ml  = prefs?.waterGoal ?? 2000;
     const existing = await prisma.healthEntry.findUnique({ where: { userId_date: { userId, date: today } } });
-    const total_ml = (existing?.waterMl ?? 0) + amount_ml;
+    const currentMl = existing?.waterMl ?? 0;
+    const total_ml = currentMl + amount_ml;
+
+    if (preview) {
+      return { success: true, action: 'PENDING', message: '',
+        data: { pending: true, pendingFn: fn, parsedArgs: { amount_ml },
+          previewData: { amount_ml, currentMl, goal_ml, newTotal: total_ml } } };
+    }
 
     await prisma.healthEntry.upsert({
       where:  { userId_date: { userId, date: today } },
@@ -876,6 +898,12 @@ async function executeToolCall(
     const distance_km    = args.distance_km != null ? Number(args.distance_km)  : null;
     const duration_min   = args.duration_min != null ? Math.round(Number(args.duration_min)) : null;
     const estimated_kcal = Math.round(Math.abs(Number(args.estimated_kcal)));
+
+    if (preview) {
+      return { success: true, action: 'PENDING', message: '',
+        data: { pending: true, pendingFn: fn,
+          parsedArgs: { activity_type, distance_km, duration_min, estimated_kcal } } };
+    }
 
     // Use undefined (not null) for optional fields so Prisma omits them from
     // the INSERT when the column may not yet exist in the production DB.
@@ -904,6 +932,52 @@ async function executeToolCall(
   if (fn === 'log_food_by_description') {
     const description = String(args.description ?? '').trim();
     if (!description) return { success: false, message: 'Food description is required' };
+    const mealTypeResolved = (args.meal_type as string | undefined) ?? detectMealType(description);
+
+    // Preview mode: run nutrition analysis but don't save
+    if (preview) {
+      const nutritionPreview = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content:
+          `Analyze nutritional content for this Indian meal: "${description}"\n` +
+          `Use Indian portion sizes and common Indian foods. Return ONLY valid JSON, no markdown:\n` +
+          `{"items":[{"name":string,"quantity":string,"calories":number,"protein":number,"carbs":number,"fat":number,"fibre":number}],` +
+          `"totals":{"calories":number,"protein":number,"carbs":number,"fat":number,"fibre":number}}`,
+        }],
+        max_tokens: 600, temperature: 0.1,
+      });
+      const rawPrev = nutritionPreview.choices[0]?.message?.content ?? '';
+      const jmPrev = rawPrev.match(/\{[\s\S]*\}/);
+      if (!jmPrev) return { success: false, message: 'Could not analyse food — please try rephrasing' };
+      const nutritionPrev = JSON.parse(jmPrev[0]) as { items: any[]; totals: any };
+      return { success: true, action: 'PENDING', message: '',
+        data: { pending: true, pendingFn: fn, parsedArgs: { description, meal_type: mealTypeResolved },
+          previewData: { items: nutritionPrev.items, totals: nutritionPrev.totals, mealType: mealTypeResolved } } };
+    }
+
+    // Confirm mode: use pre-analyzed nutrition data from the confirmation step
+    if (args.preAnalyzed) {
+      const { items, totals, mealType: mt } = args.preAnalyzed as {
+        items: { name: string; quantity: string; calories: number; protein: number; carbs: number; fat: number; fibre: number }[];
+        totals: { calories: number; protein: number; carbs: number; fat: number; fibre: number };
+        mealType: string;
+      };
+      await Promise.all(items.map(item =>
+        prisma.foodEntry.create({ data: {
+          userId, date: today,
+          name:     `${item.name} (${item.quantity})`,
+          mealType: mt,
+          calories:  item.calories,
+          proteinG:  item.protein,
+          carbsG:    item.carbs,
+          fatG:      item.fat,
+          fiberG:    item.fibre,
+        } }),
+      ));
+      return { success: true, action: 'FOOD_LOG',
+        message: `🍽️ Logged ${items.length} item${items.length === 1 ? '' : 's'} — ${Math.round(totals.calories)} kcal`,
+        data: { cardData: { items, totals } } };
+    }
 
     const nutritionCompletion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
@@ -926,8 +1000,8 @@ async function executeToolCall(
       totals: { calories: number; protein: number; carbs: number; fat: number; fibre: number };
     };
 
-    // Determine meal slot: LLM-detected > description keywords > time of day
-    const mealType = (args.meal_type as string | undefined) ?? detectMealType(description);
+    // Determine meal slot: LLM-detected > description keywords > time of day (already resolved above)
+    const mealType = mealTypeResolved;
 
     await Promise.all(nutrition.items.map(item =>
       prisma.foodEntry.create({ data: {
@@ -1017,12 +1091,32 @@ async function executeToolCall(
 export async function POST(req: NextRequest) {
   try {
     const userId = await requireUserId();
-    const { command, history = [] } = await req.json() as { command: string; history?: { role: string; content: string }[] };
-    if (!command?.trim()) return NextResponse.json({ error: 'No command provided' }, { status: 400 });
+    const { command, history = [], preview = false, confirmedArgs } = await req.json() as {
+      command?: string;
+      history?: { role: string; content: string }[];
+      preview?: boolean;
+      confirmedArgs?: { fn: string; args: Record<string, any> };
+    };
 
     const today    = todayStr();
     const tomorrow = tomorrowStr();
     const nextWeek = nextWeekStr();
+
+    // ── Confirmed execution (skip AI, save directly with user-edited args) ─────
+    if (confirmedArgs) {
+      const [tasks, habits, accounts, goals] = await Promise.all([
+        prisma.task.findMany({ where: { userId, isDeleted: false, status: 'active', isActive: true }, select: { id: true, title: true, dueDate: true, priority: true }, orderBy: { createdAt: 'desc' }, take: 60 }),
+        prisma.habit.findMany({ where: { userId, isActive: true }, select: { id: true, name: true } }),
+        prisma.account.findMany({ where: { userId }, select: { id: true, name: true, type: true } }),
+        prisma.goal.findMany({ where: { userId, status: 'active' }, select: { id: true, title: true }, take: 20 }),
+      ]);
+      const ctx = { userId, today, tomorrow, nextWeek, tasks, habits, accounts, goals };
+      const result = await executeToolCall(confirmedArgs.fn, confirmedArgs.args, ctx, false);
+      if (!result.success) return NextResponse.json(result);
+      return NextResponse.json({ success: true, action: result.action, message: result.message, data: result.data });
+    }
+
+    if (!command?.trim()) return NextResponse.json({ error: 'No command provided' }, { status: 400 });
 
     const [tasks, habits, accounts, goals] = await Promise.all([
       prisma.task.findMany({
@@ -1112,7 +1206,19 @@ Goals:  ${goals.map(g=>g.title).join(' | ') || 'none'}
       } catch {
         return NextResponse.json({ success: false, message: 'Could not parse that command — please try again.' });
       }
-      const res  = await executeToolCall(fn, args, ctx);
+
+      // Preview mode: for single confirmable actions, return parsed data without saving
+      if (preview && toolCalls.length === 1 && CONFIRMABLE_ACTIONS.has(fn)) {
+        const res = await executeToolCall(fn, args, ctx, true);
+        if (res.data?.pending) {
+          return NextResponse.json({
+            success: true, pending: true,
+            pendingFn: res.data.pendingFn, parsedArgs: res.data.parsedArgs, previewData: res.data.previewData,
+          });
+        }
+      }
+
+      const res  = await executeToolCall(fn, args, ctx, false);
       results.push(res);
       if (!res.success) {
         // Return the first failure immediately
